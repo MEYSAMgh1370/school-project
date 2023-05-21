@@ -1,0 +1,23 @@
+spring:
+  datasource:
+    url: jdbc:mysql://localhost:3306
+    username: root
+    password:
+    driver-class-name: com.mysql.cj.jdbc.Driver
+
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    database: mysql
+    show-sql: true
+    properties:
+      jakarta:
+        persistence:
+          schema-generation:
+            create-source: metadata
+            script:
+              action: create
+              create-target: guru_database_create.sql
+  sql:
+    init:
+      platform: mysql
