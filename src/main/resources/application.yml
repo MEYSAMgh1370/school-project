@@ -1,0 +1,46 @@
+spring:
+  application:
+    name: roshdeandishe
+
+  # یادآوری معماری: طبق نیازمندی پروژه، هر ماژول دیتابیس PostgreSQL مجزای خود را دارد.
+  # در این فاز اسکلت، یک دیتاسورس مشترک تعریف شده تا پروژه بالا بیاید؛
+  # در فاز بعدی (تنظیمات Multi-DataSource) سه DataSource جدا برای iam, academic, finance
+  # با @ConfigurationProperties و @Primary مشخص خواهد شد - این کار نیازمند
+  # کلاس‌های پیکربندی جداگانه (DataSourceConfig) در هر ماژول است.
+  datasource:
+    url: jdbc:postgresql://localhost:5432/roshdeandishe_iam
+    username: postgres
+    password: postgres
+
+  jpa:
+    hibernate:
+      # توجه: validate در نسخه‌ی قبلی بود؛ چون پروژه هنوز در فاز dev است و
+      # migration رسمی (Flyway/Liquibase) معرفی نشده، فعلاً روی update
+      # گذاشته شده تا جدول‌های جدید (users, roles, school_memberships,
+      # modules, school_entitlements, user_entitlements) خودکار ساخته شوند.
+      # قبل از نزدیک شدن به production، حتماً باید Flyway اضافه و این مقدار
+      # به validate برگردانده شود.
+      ddl-auto: update
+    properties:
+      hibernate:
+        format_sql: true
+        default_schema: iam
+
+  thymeleaf:
+    cache: false
+
+  modulith:
+    events:
+      # ثبت رویدادهای منتشرشده در دیتابیس برای قابلیت Retry/Audit
+      jdbc-schema-initialization:
+        enabled: true
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health, info, modulith
+
+logging:
+  level:
+    org.springframework.modulith: DEBUG
