@@ -14,7 +14,7 @@ import org.springframework.modulith.Modulithic;
  * displayName صرفاً برای خوانایی بهتر در داشبورد Observability/Actuator استفاده می‌شود.
  */
 @SpringBootApplication
-@Modulithic(displayName = "Roshdeandishe School Management System")
+@Modulithic(systemName = "Roshdeandishe School Management System")
 public class RoshdeandisheApplication {
 
     public static void main(String[] args) {
