@@ -8,22 +8,34 @@ import com.example.roshdeandishe.iam.shared.exception.IamError;
 import com.example.roshdeandishe.iam.shared.exception.IamException;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.security.SecureRandom;
+import java.time.Instant;
+import java.time.temporal.ChronoUnit;
+import java.util.Base64;
 import java.util.List;
 import java.util.Optional;
 
 @Service
 class IamFacadeImpl implements IamFacade {
 
+    private static final int INVITE_TOKEN_BYTES = 32;
+    private static final long INVITE_TOKEN_TTL_DAYS = 7;
+    private static final int MIN_PASSWORD_LENGTH = 8;
+    private static final SecureRandom SECURE_RANDOM = new SecureRandom();
+
     private final UserRepository userRepository;
     private final RoleRepository roleRepository;
     private final ModuleRepository moduleRepository;
     private final SchoolMembershipRepository schoolMembershipRepository;
     private final SchoolEntitlementRepository schoolEntitlementRepository;
+    private final InviteTokenRepository inviteTokenRepository;
     private final AccessDecisionService accessDecisionService;
     private final PermissionDecisionService permissionDecisionService;
+    private final PasswordEncoder passwordEncoder;
 
     IamFacadeImpl(
             UserRepository userRepository,
@@ -31,16 +43,20 @@ class IamFacadeImpl implements IamFacade {
             ModuleRepository moduleRepository,
             SchoolMembershipRepository schoolMembershipRepository,
             SchoolEntitlementRepository schoolEntitlementRepository,
+            InviteTokenRepository inviteTokenRepository,
             AccessDecisionService accessDecisionService,
-            PermissionDecisionService permissionDecisionService
+            PermissionDecisionService permissionDecisionService,
+            PasswordEncoder passwordEncoder
     ) {
         this.userRepository = userRepository;
         this.roleRepository = roleRepository;
         this.moduleRepository = moduleRepository;
         this.schoolMembershipRepository = schoolMembershipRepository;
         this.schoolEntitlementRepository = schoolEntitlementRepository;
+        this.inviteTokenRepository = inviteTokenRepository;
         this.accessDecisionService = accessDecisionService;
         this.permissionDecisionService = permissionDecisionService;
+        this.passwordEncoder = passwordEncoder;
     }
 
     @Override
@@ -125,6 +141,68 @@ class IamFacadeImpl implements IamFacade {
 
         membership.setActive(active);
         schoolMembershipRepository.save(membership);
+    }
+
+    @Override
+    @Transactional
+    public Optional<String> issueInviteToken(Long membershipId) {
+        SchoolMembershipEntity membership = schoolMembershipRepository.findById(membershipId)
+                .orElseThrow(() -> new IamException(new IamError.MembershipIdNotFound(membershipId)));
+
+        UserEntity user = userRepository.findById(membership.getUserId())
+                .orElseThrow(() -> new IamException(new IamError.UserNotFound(membership.getUserId())));
+
+        if (user.getPasswordHash() != null) {
+            // قبلاً فعال شده - نه خطا، فقط کاری برای انجام دادن نیست
+            return Optional.empty();
+        }
+
+        Instant now = Instant.now();
+        Optional<InviteTokenEntity> existing = inviteTokenRepository
+                .findFirstByUserIdAndRedeemedAtIsNullAndExpiresAtAfterOrderByCreatedAtDesc(user.getId(), now);
+        if (existing.isPresent()) {
+            return Optional.of(existing.get().getToken());
+        }
+
+        String token = generateToken();
+        Instant expiresAt = now.plus(INVITE_TOKEN_TTL_DAYS, ChronoUnit.DAYS);
+        inviteTokenRepository.save(new InviteTokenEntity(user.getId(), token, now, expiresAt));
+
+        return Optional.of(token);
+    }
+
+    @Override
+    @Transactional
+    public void redeemInviteToken(String token, String newPassword) {
+        InviteTokenEntity inviteToken = inviteTokenRepository.findByToken(token)
+                .orElseThrow(() -> new IamException(new IamError.InviteTokenNotFound(token)));
+
+        if (inviteToken.isRedeemed()) {
+            throw new IamException(new IamError.InviteTokenAlreadyRedeemed(token));
+        }
+        if (inviteToken.isExpired(Instant.now())) {
+            throw new IamException(new IamError.InviteTokenExpired(token));
+        }
+        if (newPassword == null || newPassword.isBlank() || newPassword.length() < MIN_PASSWORD_LENGTH) {
+            throw new IamException(new IamError.InvalidPassword(
+                    "رمز عبور باید حداقل " + MIN_PASSWORD_LENGTH + " کاراکتر باشد."
+            ));
+        }
+
+        UserEntity user = userRepository.findById(inviteToken.getUserId())
+                .orElseThrow(() -> new IamException(new IamError.UserNotFound(inviteToken.getUserId())));
+
+        user.setPasswordHash(passwordEncoder.encode(newPassword));
+        userRepository.save(user);
+
+        inviteToken.setRedeemedAt(Instant.now());
+        inviteTokenRepository.save(inviteToken);
+    }
+
+    private static String generateToken() {
+        byte[] bytes = new byte[INVITE_TOKEN_BYTES];
+        SECURE_RANDOM.nextBytes(bytes);
+        return Base64.getUrlEncoder().withoutPadding().encodeToString(bytes);
     }
 
     @Override

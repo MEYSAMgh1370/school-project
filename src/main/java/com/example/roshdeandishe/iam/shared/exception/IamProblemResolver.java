@@ -54,6 +54,26 @@ public class IamProblemResolver {
                     "کاربر یافت نشد",
                     "کاربر احراز هویت‌شده‌ی فعلی در سیستم پیدا نشد."
             );
+            case IamError.InviteTokenNotFound e -> ProblemDetailFactory.problem(
+                    HttpStatus.NOT_FOUND, "invite-token-not-found",
+                    "توکن دعوت یافت نشد",
+                    "توکن دعوت نامعتبر است یا وجود ندارد."
+            );
+            case IamError.InviteTokenExpired e -> ProblemDetailFactory.problem(
+                    HttpStatus.GONE, "invite-token-expired",
+                    "توکن دعوت منقضی شده",
+                    "این توکن دعوت منقضی شده است. یک توکن جدید درخواست کنید."
+            );
+            case IamError.InviteTokenAlreadyRedeemed e -> ProblemDetailFactory.problem(
+                    HttpStatus.CONFLICT, "invite-token-already-redeemed",
+                    "توکن دعوت قبلاً استفاده شده",
+                    "این توکن دعوت قبلاً برای فعال‌سازی حساب استفاده شده است."
+            );
+            case IamError.InvalidPassword e -> ProblemDetailFactory.problem(
+                    HttpStatus.BAD_REQUEST, "invalid-password",
+                    "رمز عبور نامعتبر",
+                    e.reason()
+            );
         };
     }
 }

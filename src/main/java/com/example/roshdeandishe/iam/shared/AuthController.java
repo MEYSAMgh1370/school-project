@@ -1,5 +1,6 @@
 package com.example.roshdeandishe.iam.shared;
 
+import com.example.roshdeandishe.iam.IamFacade;
 import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
@@ -28,10 +29,12 @@ import jakarta.servlet.http.HttpServletResponse;
 public class AuthController {
 
     private final AuthenticationManager authenticationManager;
+    private final IamFacade iamFacade;
     private final SecurityContextRepository securityContextRepository = new HttpSessionSecurityContextRepository();
 
-    public AuthController(AuthenticationManager authenticationManager) {
+    public AuthController(AuthenticationManager authenticationManager, IamFacade iamFacade) {
         this.authenticationManager = authenticationManager;
+        this.iamFacade = iamFacade;
     }
 
     @PostMapping("/api/auth/login")
@@ -57,9 +60,21 @@ public class AuthController {
         }
     }
 
+    @PostMapping("/api/auth/activate")
+    public ActivateAccountResponse activate(@RequestBody ActivateAccountRequest request) {
+        iamFacade.redeemInviteToken(request.token(), request.newPassword());
+        return new ActivateAccountResponse("حساب کاربری با موفقیت فعال شد. اکنون می‌توانید وارد شوید.");
+    }
+
     public record LoginRequest(String email, String password) {
     }
 
     public record LoginResponse(String email) {
+    }
+
+    public record ActivateAccountRequest(String token, String newPassword) {
+    }
+
+    public record ActivateAccountResponse(String message) {
     }
 }

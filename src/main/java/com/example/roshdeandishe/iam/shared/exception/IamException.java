@@ -34,6 +34,14 @@ public final class IamException extends RuntimeException {
                     " است، نه " + e.expectedScope() + " - عملیات نامعتبر است.";
             case IamError.UserNotFound e ->
                     "کاربر یافت نشد" + (e.userId() != null ? " (شناسه: " + e.userId() + ")" : ".");
+            case IamError.InviteTokenNotFound e ->
+                    "توکن دعوت نامعتبر است یا وجود ندارد.";
+            case IamError.InviteTokenExpired e ->
+                    "توکن دعوت منقضی شده است.";
+            case IamError.InviteTokenAlreadyRedeemed e ->
+                    "این توکن دعوت قبلاً استفاده شده است.";
+            case IamError.InvalidPassword e ->
+                    "رمز عبور نامعتبر است: " + e.reason();
         };
     }
 }

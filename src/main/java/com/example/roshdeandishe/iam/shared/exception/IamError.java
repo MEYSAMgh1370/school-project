@@ -38,4 +38,16 @@ public sealed interface IamError {
 
     record UserNotFound(Long userId) implements IamError {
     }
+
+    record InviteTokenNotFound(String token) implements IamError {
+    }
+
+    record InviteTokenExpired(String token) implements IamError {
+    }
+
+    record InviteTokenAlreadyRedeemed(String token) implements IamError {
+    }
+
+    record InvalidPassword(String reason) implements IamError {
+    }
 }

@@ -65,6 +65,16 @@ public class MembershipController {
         iamFacade.setMembershipActive(membershipId, request.active());
     }
 
+    @PostMapping("/{membershipId}/invite-token")
+    @RequiresPermission("MEMBERSHIP_MANAGE")
+    public InviteTokenResponse issueInviteToken(@PathVariable Long schoolId, @PathVariable Long membershipId) {
+        requireHeaderMatchesPath(schoolId);
+
+        return iamFacade.issueInviteToken(membershipId)
+                .map(token -> new InviteTokenResponse(token, true))
+                .orElseGet(() -> new InviteTokenResponse(null, false));
+    }
+
     /**
      * جلوگیری از ناهم‌خوانی بین schoolId ای که permission check روی آن
      * انجام شده (از هدر) و schoolId ای که عملیات واقعاً روی آن اجرا می‌شود
@@ -92,5 +102,8 @@ public class MembershipController {
                     membershipId, info.userId().value(), info.schoolId(), info.roleCode(), info.active()
             );
         }
+    }
+
+    public record InviteTokenResponse(String inviteToken, boolean issued) {
     }
 }
