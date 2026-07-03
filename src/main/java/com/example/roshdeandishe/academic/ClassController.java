@@ -1,0 +1,69 @@
+package com.example.roshdeandishe.academic;
+
+import com.example.roshdeandishe.academic.AcademicFacade.ClassId;
+import com.example.roshdeandishe.academic.AcademicFacade.ClassInfo;
+import com.example.roshdeandishe.iam.shared.RequiresPermission;
+import com.example.roshdeandishe.platform.TenantContext;
+import org.springframework.web.bind.annotation.*;
+
+import java.util.List;
+
+/**
+ * مدیریت کلاس‌های یک مدرسه. طبق تصمیم صریح، ساخت کلاس یک تصمیم
+ * اداری/چیدمانی است و فقط SCHOOL_ADMIN مجاز است (بر خلاف ثبت‌نام
+ * دانش‌آموز که TEACHER هم مجاز است - رجوع کنید به StudentController).
+ */
+@RestController
+@RequestMapping("/api/admin/schools/{schoolId}/classes")
+public class ClassController {
+
+    private final AcademicFacade academicFacade;
+
+    public ClassController(AcademicFacade academicFacade) {
+        this.academicFacade = academicFacade;
+    }
+
+    @PostMapping
+    @RequiresPermission("CLASS_MANAGE")
+    public ClassResponse createClass(@PathVariable Long schoolId, @RequestBody CreateClassRequest request) {
+        requireHeaderMatchesPath(schoolId);
+
+        ClassId classId = academicFacade.createClass(schoolId, request.name(), request.teacherId(), request.section());
+        return new ClassResponse(classId.value(), schoolId, request.name(), request.teacherId(), request.section());
+    }
+
+    @GetMapping
+    @RequiresPermission("CLASS_MANAGE")
+    public List<ClassResponse> listClasses(@PathVariable Long schoolId) {
+        requireHeaderMatchesPath(schoolId);
+
+        return academicFacade.listClasses(schoolId).stream()
+                .map(ClassController::toResponse)
+                .toList();
+    }
+
+    /**
+     * همان محافظت مورد استفاده در MembershipController: schoolId هدر
+     * (که مبنای permission check است) باید با schoolId مسیر (که عملیات
+     * واقعی روی آن اجرا می‌شود) یکی باشد.
+     */
+    private void requireHeaderMatchesPath(Long schoolIdFromPath) {
+        Long schoolIdFromHeader = TenantContext.get();
+        if (!schoolIdFromHeader.equals(schoolIdFromPath)) {
+            throw new IllegalStateException(
+                    "هدر X-School-ID (" + schoolIdFromHeader + ") با schoolId در URL (" +
+                    schoolIdFromPath + ") مطابقت ندارد."
+            );
+        }
+    }
+
+    private static ClassResponse toResponse(ClassInfo info) {
+        return new ClassResponse(info.id().value(), info.schoolId(), info.name(), info.teacherId(), info.section());
+    }
+
+    public record CreateClassRequest(String name, Long teacherId, String section) {
+    }
+
+    public record ClassResponse(Long id, Long schoolId, String name, Long teacherId, String section) {
+    }
+}

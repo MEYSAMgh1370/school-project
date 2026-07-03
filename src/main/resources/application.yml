@@ -7,6 +7,15 @@ spring:
   # در فاز بعدی (تنظیمات Multi-DataSource) سه DataSource جدا برای iam, academic, finance
   # با @ConfigurationProperties و @Primary مشخص خواهد شد - این کار نیازمند
   # کلاس‌های پیکربندی جداگانه (DataSourceConfig) در هر ماژول است.
+  #
+  # ⚠️ نکته‌ی مهم Postgres: Hibernate با ddl-auto=update فقط جدول‌ها را
+  # می‌سازد، نه خود schema را. چون SchoolEntity با schema="school"،
+  # FinanceAuditEntity با schema="finance"، و حالا ClassEntity/StudentEntity
+  # با schema="academic" تعریف شده‌اند، قبل از اجرای اپلیکیشن باید این
+  # schemaها را دستی بسازید:
+  #   CREATE SCHEMA IF NOT EXISTS school;
+  #   CREATE SCHEMA IF NOT EXISTS finance;
+  #   CREATE SCHEMA IF NOT EXISTS academic;
   datasource:
     url: jdbc:postgresql://localhost:5432/roshdeandishe_iam
     username: postgres

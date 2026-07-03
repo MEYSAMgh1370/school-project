@@ -1,0 +1,21 @@
+package com.example.roshdeandishe.school.shared;
+
+public final class SchoolException extends RuntimeException {
+
+    private final SchoolError error;
+
+    public SchoolException(SchoolError error) {
+        super(describe(error));
+        this.error = error;
+    }
+
+    public SchoolError error() {
+        return error;
+    }
+
+    private static String describe(SchoolError error) {
+        return switch (error) {
+            case SchoolError.SchoolNotFound e -> "مدرسه‌ای با شناسه " + e.schoolId() + " یافت نشد.";
+        };
+    }
+}

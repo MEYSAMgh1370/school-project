@@ -1,0 +1,156 @@
+package com.example.roshdeandishe.iam.internal;
+
+import com.example.roshdeandishe.iam.internal.ModuleEntity.ModuleScope;
+import org.springframework.boot.ApplicationArguments;
+import org.springframework.boot.ApplicationRunner;
+import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.stereotype.Component;
+import org.springframework.transaction.annotation.Transactional;
+
+import java.util.Map;
+
+/**
+ * Seed داده‌ی dev. علاوه بر Role/Module قبلی، حالا Permission و
+ * RolePermission هم seed می‌شوند تا نمونه‌ی واقعی "دو نقش با سطح دسترسی
+ * متفاوت" در دیتابیس وجود داشته باشد: SCHOOL_ADMIN (دسترسی کامل) در مقابل
+ * FINANCE_ADMIN (فقط دسترسی مالی) - بدون اینکه هیچ کدی برای این تفاوت
+ * نوشته شده باشد، فقط داده.
+ * <p>
+ * از این فاز به بعد، یک کاربر ادمین نمونه هم seed می‌شود
+ * (admin@roshdeandishe.test / password: "password") تا لاگین session-based
+ * از ابتدا قابل تست باشد. این فقط برای dev است - در production باید
+ * حذف شود (یا پشت یک profile مثل "dev" قرار بگیرد).
+ */
+@Component
+class IamSeedDataRunner implements ApplicationRunner {
+
+    private static final String DEMO_ADMIN_EMAIL = "admin@roshdeandishe.test";
+    private static final String DEMO_ADMIN_PASSWORD = "password";
+
+    private final UserRepository userRepository;
+    private final RoleRepository roleRepository;
+    private final ModuleRepository moduleRepository;
+    private final PermissionRepository permissionRepository;
+    private final RolePermissionRepository rolePermissionRepository;
+    private final PasswordEncoder passwordEncoder;
+
+    IamSeedDataRunner(
+            UserRepository userRepository,
+            RoleRepository roleRepository,
+            ModuleRepository moduleRepository,
+            PermissionRepository permissionRepository,
+            RolePermissionRepository rolePermissionRepository,
+            PasswordEncoder passwordEncoder
+    ) {
+        this.userRepository = userRepository;
+        this.roleRepository = roleRepository;
+        this.moduleRepository = moduleRepository;
+        this.permissionRepository = permissionRepository;
+        this.rolePermissionRepository = rolePermissionRepository;
+        this.passwordEncoder = passwordEncoder;
+    }
+
+    @Override
+    @Transactional
+    public void run(ApplicationArguments args) {
+        seedModules();
+        Map<String, RoleEntity> roles = seedRoles();
+        Map<String, PermissionEntity> permissions = seedPermissions();
+        seedRolePermissions(roles, permissions);
+        seedDemoAdminUser();
+    }
+
+    private void seedModules() {
+        if (moduleRepository.count() > 0) {
+            return;
+        }
+        moduleRepository.save(new ModuleEntity("ACADEMIC", "آموزش", ModuleScope.SCHOOL));
+        moduleRepository.save(new ModuleEntity("FINANCE", "مالی", ModuleScope.SCHOOL));
+        moduleRepository.save(new ModuleEntity("LIBRARY", "کتابخانه", ModuleScope.SCHOOL));
+        moduleRepository.save(new ModuleEntity("ATTENDANCE", "حضور و غیاب", ModuleScope.SCHOOL));
+        moduleRepository.save(new ModuleEntity("TRANSPORTATION", "سرویس", ModuleScope.SCHOOL));
+
+        moduleRepository.save(new ModuleEntity("AI_TUTOR", "معلم هوش مصنوعی", ModuleScope.USER));
+        moduleRepository.save(new ModuleEntity("EXAM_PREP", "آماده‌سازی آزمون", ModuleScope.USER));
+        moduleRepository.save(new ModuleEntity("PORTFOLIO_BUILDER", "ساخت نمونه‌کار", ModuleScope.USER));
+        moduleRepository.save(new ModuleEntity("TEACHER_MARKETPLACE", "بازار معلم‌ها", ModuleScope.USER));
+        moduleRepository.save(new ModuleEntity("PROFESSIONAL_DEVELOPMENT", "دوره‌های توسعه‌ی حرفه‌ای", ModuleScope.USER));
+    }
+
+    private Map<String, RoleEntity> seedRoles() {
+        if (roleRepository.count() > 0) {
+            return roleRepository.findAll().stream()
+                    .collect(java.util.stream.Collectors.toMap(RoleEntity::getCode, r -> r));
+        }
+
+        Map<String, RoleEntity> roles = new java.util.LinkedHashMap<>();
+        roles.put("STUDENT", roleRepository.save(new RoleEntity("STUDENT", "دانش‌آموز")));
+        roles.put("TEACHER", roleRepository.save(new RoleEntity("TEACHER", "معلم")));
+        roles.put("PARENT", roleRepository.save(new RoleEntity("PARENT", "والد")));
+        roles.put("SCHOOL_ADMIN", roleRepository.save(new RoleEntity("SCHOOL_ADMIN", "مدیر کامل مدرسه")));
+        // نمونه‌ی نقش با سطح دسترسی محدودتر نسبت به SCHOOL_ADMIN - فقط مالی
+        roles.put("FINANCE_ADMIN", roleRepository.save(new RoleEntity("FINANCE_ADMIN", "مدیر مالی مدرسه")));
+        roles.put("PLATFORM_ADMIN", roleRepository.save(new RoleEntity("PLATFORM_ADMIN", "مدیر پلتفرم")));
+        return roles;
+    }
+
+    private Map<String, PermissionEntity> seedPermissions() {
+        if (permissionRepository.count() > 0) {
+            return permissionRepository.findAll().stream()
+                    .collect(java.util.stream.Collectors.toMap(PermissionEntity::getCode, p -> p));
+        }
+
+        Map<String, PermissionEntity> permissions = new java.util.LinkedHashMap<>();
+        permissions.put("GRADES_VIEW", permissionRepository.save(new PermissionEntity("GRADES_VIEW", "مشاهده نمرات")));
+        permissions.put("GRADES_EDIT", permissionRepository.save(new PermissionEntity("GRADES_EDIT", "ثبت/ویرایش نمرات")));
+        permissions.put("FINANCE_VIEW", permissionRepository.save(new PermissionEntity("FINANCE_VIEW", "مشاهده وضعیت مالی")));
+        permissions.put("FINANCE_MANAGE", permissionRepository.save(new PermissionEntity("FINANCE_MANAGE", "صدور/مدیریت فاکتور")));
+        permissions.put("MEMBERSHIP_MANAGE", permissionRepository.save(new PermissionEntity("MEMBERSHIP_MANAGE", "مدیریت عضویت‌ها (فعال/غیرفعال‌سازی دسترسی)")));
+        permissions.put("STUDENT_ENROLL", permissionRepository.save(new PermissionEntity("STUDENT_ENROLL", "ثبت‌نام دانش‌آموز در کلاس")));
+        permissions.put("CLASS_MANAGE", permissionRepository.save(new PermissionEntity("CLASS_MANAGE", "ایجاد و مدیریت کلاس‌ها")));
+        return permissions;
+    }
+
+    private void seedRolePermissions(Map<String, RoleEntity> roles, Map<String, PermissionEntity> permissions) {
+        if (rolePermissionRepository.count() > 0) {
+            return;
+        }
+
+        grant(roles.get("STUDENT"), permissions.get("GRADES_VIEW"));
+
+        grant(roles.get("TEACHER"), permissions.get("GRADES_VIEW"));
+        grant(roles.get("TEACHER"), permissions.get("GRADES_EDIT"));
+        // طبق تصمیم صریح: ثبت‌نام دانش‌آموز، هم برای SCHOOL_ADMIN هم TEACHER مجاز است
+        grant(roles.get("TEACHER"), permissions.get("STUDENT_ENROLL"));
+
+        grant(roles.get("PARENT"), permissions.get("GRADES_VIEW"));
+        grant(roles.get("PARENT"), permissions.get("FINANCE_VIEW"));
+
+        // SCHOOL_ADMIN: دسترسی کامل
+        grant(roles.get("SCHOOL_ADMIN"), permissions.get("GRADES_VIEW"));
+        grant(roles.get("SCHOOL_ADMIN"), permissions.get("FINANCE_VIEW"));
+        grant(roles.get("SCHOOL_ADMIN"), permissions.get("FINANCE_MANAGE"));
+        grant(roles.get("SCHOOL_ADMIN"), permissions.get("MEMBERSHIP_MANAGE"));
+        // ساخت کلاس یک تصمیم چیدمانی/اداری است، فرض شده فقط کار SCHOOL_ADMIN
+        // است، نه TEACHER (بر خلاف ثبت‌نام دانش‌آموز که هر دو مجازند)
+        grant(roles.get("SCHOOL_ADMIN"), permissions.get("CLASS_MANAGE"));
+        grant(roles.get("SCHOOL_ADMIN"), permissions.get("STUDENT_ENROLL"));
+
+        // FINANCE_ADMIN: فقط دسترسی مالی - نمونه‌ی واقعی "نقش متفاوت با سطح دسترسی متفاوت"
+        grant(roles.get("FINANCE_ADMIN"), permissions.get("FINANCE_VIEW"));
+        grant(roles.get("FINANCE_ADMIN"), permissions.get("FINANCE_MANAGE"));
+    }
+
+    private void grant(RoleEntity role, PermissionEntity permission) {
+        rolePermissionRepository.save(new RolePermissionEntity(role.getId(), permission.getId()));
+    }
+
+    private void seedDemoAdminUser() {
+        if (userRepository.findByEmail(DEMO_ADMIN_EMAIL).isPresent()) {
+            return;
+        }
+        UserEntity admin = new UserEntity(DEMO_ADMIN_EMAIL, "ادمین نمونه");
+        admin.setPasswordHash(passwordEncoder.encode(DEMO_ADMIN_PASSWORD));
+        userRepository.save(admin);
+    }
+}
