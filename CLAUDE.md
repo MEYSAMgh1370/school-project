@@ -115,10 +115,13 @@ com.example.roshdeandishe
 │   ├── AccessContext.java          Module, Entitlement
 │   ├── AccessDecision.java         (sealed: SchoolContext | PlatformContext /
 │   │                                 Granted | Denied)
-│   ├── MembershipController.java   (REST: create/list memberships, toggle active —
+│   ├── MembershipController.java   (REST: create/list memberships, toggle active,
+│   │                                 issue invite-token —
 │   │                                 @RequiresPermission("MEMBERSHIP_MANAGE"))
 │   ├── internal/
 │   │   ├── UserEntity / UserRepository        (now includes nullable passwordHash)
+│   │   ├── InviteTokenEntity / InviteTokenRepository  (per-user, single-use,
+│   │   │                                        7-day TTL — backs account activation)
 │   │   ├── RoleEntity / RoleRepository
 │   │   ├── PermissionEntity / PermissionRepository
 │   │   ├── RolePermissionEntity / RolePermissionRepository
@@ -141,8 +144,10 @@ com.example.roshdeandishe
 │       ├── RequiresPermission.java + PermissionAccessAspect.java (@Order(11))
 │       ├── SecurityConfig.java        (session auth config; lives here, not
 │       │                                platform, because it wires IamUserDetailsService)
-│       ├── AuthController.java        (POST /api/auth/login, /api/auth/logout —
-│       │                                JSON, not Spring's default form login)
+│       ├── AuthController.java        (POST /api/auth/login, /api/auth/logout,
+│       │                                /api/auth/activate — JSON, not Spring's
+│       │                                default form login; activate redeems an
+│       │                                invite token to set a first password)
 │       └── exception/                 (@NamedInterface("shared.exception") — own
 │           ├── IamError.java (sealed)   NamedInterface, does NOT inherit iam.shared's)
 │           ├── IamException.java
@@ -250,10 +255,40 @@ UserEntity
 ├── email (unique)
 ├── fullName
 ├── passwordHash (nullable — null means the account was created by an admin/
-│                  enrollment flow via findOrCreateUser and can't log in yet;
-│                  no self-service "set your password" flow exists yet, see §7)
+│                  enrollment flow via findOrCreateUser and can't log in yet.
+│                  Activated via a redeemed InviteToken — see below — which sets
+│                  this field; still no email delivery or frontend page, see §7)
 └── status (ACTIVE | SUSPENDED)
 ```
+
+### InviteToken
+
+Backs self-service account activation for users created with a null `passwordHash`
+(§7 item 2). One-time-use, scoped to a `User` (not a `SchoolMembership` — a password
+belongs to the person, and one person can hold multiple memberships).
+
+```
+InviteTokenEntity
+├── id
+├── userId
+├── token           (unique, SecureRandom-generated, Base64 URL-safe)
+├── createdAt
+├── expiresAt       (createdAt + 7 days)
+└── redeemedAt       (nullable — null means still unredeemed)
+```
+
+`IamFacade.issueInviteToken(membershipId)` — resolves the membership to its user,
+returns `Optional.empty()` (idempotent no-op, not an error) if that user already has
+a password, otherwise reuses any still-valid unredeemed token or mints a new one.
+Exposed at `POST /api/admin/schools/{schoolId}/memberships/{membershipId}/invite-token`
+(`MEMBERSHIP_MANAGE`, same as the rest of `MembershipController`).
+
+`IamFacade.redeemInviteToken(token, newPassword)` — validates the token (exists, not
+redeemed, not expired) and the new password (min. 8 chars — first and so-far-only
+manual-validation convention in `iam`, no Bean Validation/`@Valid` used anywhere in
+this codebase yet), then BCrypt-encodes it onto the `UserEntity` and marks the token
+redeemed. Exposed at `POST /api/auth/activate`, intentionally unauthenticated (the
+token *is* the credential), same trust model as `/api/auth/login`.
 
 ### Role
 
@@ -496,6 +531,10 @@ above.
 - **Academic basics**: real `ClassEntity`/`StudentEntity`, `enrollStudent` wired to
   `StudentEnrolledEvent`
 - **Finance audit trail**: `InvoiceIssuedEvent` → `FinanceAuditEntity` (append-only)
+- **Account activation (backend)**: `InviteTokenEntity`/`InviteTokenRepository`,
+  `IamFacade.issueInviteToken`/`redeemInviteToken`, `POST .../memberships/{id}/invite-token`,
+  `POST /api/auth/activate` — see §4's `InviteToken` subsection. Closes the backend
+  half of the previously-open item 2 below; delivery + UI are still missing.
 - Dev-only seed data: roles, modules, permissions, role-permission grants, one demo
   school, one demo admin user
 - `ModularityTests` enforcing module boundaries
@@ -506,11 +545,14 @@ above.
    non-school-scoped checks unconditionally. Blocks: REST exposure of
    `setSchoolEntitlement` and `setSchoolStatus`. Do not build until a real need
    (billing integration, ops tooling) exists — see §5.
-2. **Self-service password / account activation.** Users created via
-   `findOrCreateUser` (school creation's auto-admin, enrollment's auto-student) have
-   `passwordHash = null` and **cannot log in**. No invite-token or "set your
-   password" flow exists. This is the actual practical blocker to a real person
-   using the system end-to-end today.
+2. **Self-service password / account activation — delivery + UI.** The backend flow
+   (issue/redeem an invite token, §4's `InviteToken` subsection) is done. What's
+   still missing: no email sending (the token comes back directly in the admin API's
+   JSON response — `MembershipController.InviteTokenResponse` — not delivered to the
+   invited person automatically), and no actual HTML page for entering a new
+   password (today the whole flow is JSON-only, curl/Postman-only). This is now the
+   actual practical blocker to a real, non-technical person using the system
+   end-to-end — not the missing token mechanism itself anymore.
 3. **Real invoice persistence.** `FinanceFacade.issueTuitionInvoice` is still a stub
    — no `InvoiceEntity`, no real pricing (hardcoded `0`), no persistence. The audit
    trail records that an invoice-issuing *attempt* happened, not a real invoice.
@@ -545,16 +587,22 @@ Session-based (explicit decision — see former Open Question, now resolved).
 Spring Security handles authentication only; all authorization stays in the
 `@RequiresModule`/`@RequiresPermission` aspects (§2, §5).
 
+**Phase C.1 — Account activation backend: done.** `IamFacade.issueInviteToken`/
+`redeemInviteToken`, invite-token entity/repository, new `MembershipController` and
+`AuthController` endpoints — see §4/§7. Frontend delivery (an actual "set your
+password" page) and email sending remain open, tracked as the narrowed §7 item 2.
+
 **Phase D — Finance basics: not started.** `StudentEnrolledEventListener` calls
 `issueTuitionInvoice` but that method is still a stub (§7 item 3). Next concrete
 step here is real `InvoiceEntity` + persistence + actual pricing, not more
 audit/event scaffolding — the audit pattern is already established and should be
 reused as-is once real invoices exist.
 
-**Immediate practical blocker across all phases:** §7 item 2 (no password-set flow
-for admin/enrollment-created accounts). Worth prioritizing before more feature work,
-since it currently means no admin-invited teacher or enrolled student can actually
-log in and use anything built so far.
+**Immediate practical blocker across all phases:** §7 item 2, narrowed — the
+issue/redeem invite-token backend now exists, but there's still no email delivery
+and no frontend page, so an admin-invited teacher or enrolled student still can't
+self-activate without someone manually calling the API on their behalf. Worth
+prioritizing before more feature work.
 
 ---
 
