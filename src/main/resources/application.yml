@@ -35,6 +35,19 @@ spring:
         format_sql: true
         default_schema: iam
 
+  # ارسال ایمیل دعوت/فعال‌سازی (iam/internal/InviteEmailSender).
+  # پیش‌فرض dev: یک SMTP محلی مثل Mailpit/MailHog روی پورت 1025
+  # (docker run -p 1025:1025 -p 8025:8025 axllent/mailpit).
+  # اگر SMTP در دسترس نباشد، صدور توکن شکست نمی‌خورد - فقط emailSent=false
+  # برمی‌گردد و ادمین مثل قبل لینک را دستی تحویل می‌دهد.
+  mail:
+    host: localhost
+    port: 1025
+    properties:
+      mail.smtp.connectiontimeout: 5000
+      mail.smtp.timeout: 5000
+      mail.smtp.writetimeout: 5000
+
   modulith:
     events:
       # ثبت رویدادهای منتشرشده در دیتابیس برای قابلیت Retry/Audit
@@ -54,3 +67,11 @@ logging:
 gg:
   jte:
     use-precompiled-templates: true
+
+roshdeandishe:
+  mail:
+    # آدرس فرستنده‌ی ایمیل‌های سیستم
+    from: no-reply@roshdeandishe.test
+    # پایه‌ی لینک فعال‌سازی که داخل ایمیل دعوت قرار می‌گیرد
+    # (به /activate?token=... ختم می‌شود)
+    activation-base-url: http://localhost:8080

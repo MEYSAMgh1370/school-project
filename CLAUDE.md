@@ -141,6 +141,10 @@ com.example.roshdeandishe
 │   │   ├── UserEntity / UserRepository        (now includes nullable passwordHash)
 │   │   ├── InviteTokenEntity / InviteTokenRepository  (per-user, single-use,
 │   │   │                                        7-day TTL — backs account activation)
+│   │   ├── InviteEmailSender          (best-effort SMTP delivery of the
+│   │   │                                activation link; deliberately in
+│   │   │                                iam/internal, not platform — only iam
+│   │   │                                sends email, no generic abstraction)
 │   │   ├── RoleEntity / RoleRepository
 │   │   ├── PermissionEntity / PermissionRepository
 │   │   ├── RolePermissionEntity / RolePermissionRepository
@@ -282,7 +286,7 @@ UserEntity
 │                  enrollment flow via findOrCreateUser and can't log in yet.
 │                  Activated via a redeemed InviteToken — see below — which sets
 │                  this field via GET /activate (AccountActivationPageController);
-│                  still no email delivery, see §7)
+│                  the activation link is emailed on issue — see InviteToken below)
 └── status (ACTIVE | SUSPENDED)
 ```
 
@@ -304,7 +308,15 @@ InviteTokenEntity
 
 `IamFacade.issueInviteToken(membershipId)` — resolves the membership to its user,
 returns `Optional.empty()` (idempotent no-op, not an error) if that user already has
-a password, otherwise reuses any still-valid unredeemed token or mints a new one.
+a password, otherwise reuses any still-valid unredeemed token or mints a new one,
+then emails the activation link (`{base-url}/activate?token=...`) to the user via
+`iam/internal/InviteEmailSender` — so re-issuing doubles as "resend the invite
+email." Returns `InviteIssued(token, emailSent)`. Email delivery is **best-effort**:
+an SMTP failure never fails token issuance; `emailSent=false` in the response tells
+the admin to hand over the link manually (the pre-email flow). SMTP config is
+`spring.mail.*` (dev default: localhost:1025, i.e. Mailpit/MailHog); sender address
+and link base come from `roshdeandishe.mail.from` /
+`roshdeandishe.mail.activation-base-url` in `application.yml`.
 Exposed at `POST /api/admin/schools/{schoolId}/memberships/{membershipId}/invite-token`
 (`MEMBERSHIP_MANAGE`, same as the rest of `MembershipController`).
 
@@ -556,12 +568,16 @@ above.
 - **Academic basics**: real `ClassEntity`/`StudentEntity`, `enrollStudent` wired to
   `StudentEnrolledEvent`
 - **Finance audit trail**: `InvoiceIssuedEvent` → `FinanceAuditEntity` (append-only)
-- **Account activation (backend + page)**: `InviteTokenEntity`/`InviteTokenRepository`,
+- **Account activation (backend + page + email)**: `InviteTokenEntity`/`InviteTokenRepository`,
   `IamFacade.issueInviteToken`/`redeemInviteToken`, `POST .../memberships/{id}/invite-token`,
   `POST /api/auth/activate` — see §4's `InviteToken` subsection — plus a real
   `GET /activate` HTML page (`AccountActivationPageController`, JTE + Alpine.js +
-  Bulma) where an invited person pastes their token and sets a password. Only
-  email delivery of the token remains open — see item 2 below.
+  Bulma) where an invited person pastes their token and sets a password, plus
+  best-effort email delivery of the activation link (`iam/internal/InviteEmailSender`,
+  `spring-boot-starter-mail`; covered end-to-end by GreenMail in
+  `InviteTokenFlowIntegrationTest`). Dev SMTP default is localhost:1025
+  (Mailpit/MailHog); a real production SMTP account/provider is still to be
+  configured, but that's deployment config, not missing code.
 - **Frontend stack chosen and started**: JTE (WebJar-delivered Alpine.js + Bulma,
   no npm/webpack build) replaces the previously-unused Thymeleaf dependency — see
   §2. `GET /activate` is the first page; no others exist yet.
@@ -575,15 +591,13 @@ above.
    non-school-scoped checks unconditionally. Blocks: REST exposure of
    `setSchoolEntitlement` and `setSchoolStatus`. Do not build until a real need
    (billing integration, ops tooling) exists — see §5.
-2. **Self-service account activation — email delivery.** Both the backend flow
-   (issue/redeem an invite token, §4's `InviteToken` subsection) and the frontend
-   page (`GET /activate`) are done. What's still missing: no email sending — the
-   token comes back directly in the admin API's JSON response
-   (`MembershipController.InviteTokenResponse`), not delivered to the invited
-   person automatically. An admin currently has to manually hand the invited
-   person a link like `/activate?token=...`. This is now the actual practical
-   blocker to a real, non-technical person self-activating without an admin's
-   manual involvement.
+2. ~~**Self-service account activation — email delivery.**~~ **Resolved.**
+   `issueInviteToken` now emails the activation link to the invited person
+   (see §4's `InviteToken` subsection). The token still also comes back in the
+   admin JSON response together with `emailSent` — deliberately kept as the
+   manual fallback for when SMTP delivery fails. Remaining follow-up is
+   deployment-time only: point `spring.mail.*` at a real SMTP provider and set
+   `roshdeandishe.mail.activation-base-url` to the public URL.
 3. **Real invoice persistence.** `FinanceFacade.issueTuitionInvoice` is still a stub
    — no `InvoiceEntity`, no real pricing (hardcoded `0`), no persistence. The audit
    trail records that an invoice-issuing *attempt* happened, not a real invoice.
@@ -623,10 +637,12 @@ Session-based (explicit decision — see former Open Question, now resolved).
 Spring Security handles authentication only; all authorization stays in the
 `@RequiresModule`/`@RequiresPermission` aspects (§2, §5).
 
-**Phase C.1 — Account activation backend + page: done.** `IamFacade.issueInviteToken`/
-`redeemInviteToken`, invite-token entity/repository, `MembershipController`/
-`AuthController` endpoints — see §4/§7 — plus the `GET /activate` JTE+Alpine.js+
-Bulma page. Only email sending remains open, tracked as the narrowed §7 item 2.
+**Phase C.1 — Account activation backend + page + email: done.**
+`IamFacade.issueInviteToken`/`redeemInviteToken`, invite-token entity/repository,
+`MembershipController`/`AuthController` endpoints — see §4/§7 — plus the
+`GET /activate` JTE+Alpine.js+Bulma page, plus email delivery of the activation
+link (`InviteEmailSender`, best-effort with the admin JSON token as fallback).
+§7 item 2 is resolved; only production SMTP credentials remain, as deployment config.
 
 **Phase D — Finance basics: not started.** `StudentEnrolledEventListener` calls
 `issueTuitionInvoice` but that method is still a stub (§7 item 3). Next concrete
@@ -634,11 +650,11 @@ step here is real `InvoiceEntity` + persistence + actual pricing, not more
 audit/event scaffolding — the audit pattern is already established and should be
 reused as-is once real invoices exist.
 
-**Immediate practical blocker across all phases:** §7 item 2, narrowed further —
-both the invite-token backend and the activation page now exist, but there's still
-no email delivery, so an admin has to manually hand the invited person a link
-rather than the system doing it automatically. Worth prioritizing before more
-feature work.
+**Former immediate blocker (invite email delivery): resolved.** The system now
+emails the activation link itself (§7 item 2). With that done, the next phase in
+original roadmap order is **Phase D — Finance basics** (real `InvoiceEntity` +
+persistence + pricing, §7 item 3), with the broader admin frontend (§7 item 6) as
+the main competing priority.
 
 ---
 

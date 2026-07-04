@@ -36,6 +36,7 @@ class IamFacadeImpl implements IamFacade {
     private final AccessDecisionService accessDecisionService;
     private final PermissionDecisionService permissionDecisionService;
     private final PasswordEncoder passwordEncoder;
+    private final InviteEmailSender inviteEmailSender;
 
     IamFacadeImpl(
             UserRepository userRepository,
@@ -46,7 +47,8 @@ class IamFacadeImpl implements IamFacade {
             InviteTokenRepository inviteTokenRepository,
             AccessDecisionService accessDecisionService,
             PermissionDecisionService permissionDecisionService,
-            PasswordEncoder passwordEncoder
+            PasswordEncoder passwordEncoder,
+            InviteEmailSender inviteEmailSender
     ) {
         this.userRepository = userRepository;
         this.roleRepository = roleRepository;
@@ -57,6 +59,7 @@ class IamFacadeImpl implements IamFacade {
         this.accessDecisionService = accessDecisionService;
         this.permissionDecisionService = permissionDecisionService;
         this.passwordEncoder = passwordEncoder;
+        this.inviteEmailSender = inviteEmailSender;
     }
 
     @Override
@@ -145,7 +148,7 @@ class IamFacadeImpl implements IamFacade {
 
     @Override
     @Transactional
-    public Optional<String> issueInviteToken(Long membershipId) {
+    public Optional<InviteIssued> issueInviteToken(Long membershipId) {
         SchoolMembershipEntity membership = schoolMembershipRepository.findById(membershipId)
                 .orElseThrow(() -> new IamException(new IamError.MembershipIdNotFound(membershipId)));
 
@@ -158,17 +161,21 @@ class IamFacadeImpl implements IamFacade {
         }
 
         Instant now = Instant.now();
-        Optional<InviteTokenEntity> existing = inviteTokenRepository
-                .findFirstByUserIdAndRedeemedAtIsNullAndExpiresAtAfterOrderByCreatedAtDesc(user.getId(), now);
-        if (existing.isPresent()) {
-            return Optional.of(existing.get().getToken());
-        }
+        String token = inviteTokenRepository
+                .findFirstByUserIdAndRedeemedAtIsNullAndExpiresAtAfterOrderByCreatedAtDesc(user.getId(), now)
+                .map(InviteTokenEntity::getToken)
+                .orElseGet(() -> {
+                    String fresh = generateToken();
+                    Instant expiresAt = now.plus(INVITE_TOKEN_TTL_DAYS, ChronoUnit.DAYS);
+                    inviteTokenRepository.save(new InviteTokenEntity(user.getId(), fresh, now, expiresAt));
+                    return fresh;
+                });
 
-        String token = generateToken();
-        Instant expiresAt = now.plus(INVITE_TOKEN_TTL_DAYS, ChronoUnit.DAYS);
-        inviteTokenRepository.save(new InviteTokenEntity(user.getId(), token, now, expiresAt));
+        // ارسال ایمیل در هر دو حالت (توکن تازه یا موجود) - صدور مجدد یعنی
+        // «ایمیل دعوت را دوباره بفرست». شکست ارسال، صدور را باطل نمی‌کند.
+        boolean emailSent = inviteEmailSender.sendActivationEmail(user.getEmail(), user.getFullName(), token);
 
-        return Optional.of(token);
+        return Optional.of(new InviteIssued(token, emailSent));
     }
 
     @Override
