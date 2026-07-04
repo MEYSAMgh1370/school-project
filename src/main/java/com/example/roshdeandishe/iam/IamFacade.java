@@ -81,11 +81,17 @@ public interface IamFacade {
      * انجام نمی‌شود و Optional.empty() برگردانده می‌شود - این حالت خطا
      * نیست، بلکه یک no-op idempotent است. اگر یک توکن معتبر و redeem-نشده
      * از قبل برای این کاربر وجود داشته باشد، همان دوباره برگردانده می‌شود.
+     * <p>
+     * پس از صدور (یا استفاده‌ی مجدد از توکن موجود)، لینک فعال‌سازی به ایمیل
+     * کاربر فرستاده می‌شود - یعنی صدور مجدد، همان «ارسال دوباره‌ی ایمیل
+     * دعوت» است. ارسال best-effort است: اگر شکست بخورد، توکن همچنان
+     * برگردانده می‌شود و {@code emailSent=false} به ادمین می‌گوید که باید
+     * لینک را دستی تحویل دهد.
      *
      * @throws com.example.roshdeandishe.iam.shared.exception.IamException با
      * IamError.MembershipIdNotFound اگر چنین Membershipای وجود نداشته باشد
      */
-    Optional<String> issueInviteToken(Long membershipId);
+    Optional<InviteIssued> issueInviteToken(Long membershipId);
 
     /**
      * تکمیل فرآیند فعال‌سازی حساب: توکن را معتبر می‌سنجد و در صورت موفقیت
@@ -132,5 +138,8 @@ public interface IamFacade {
             String roleCode,
             boolean active
     ) {
+    }
+
+    record InviteIssued(String token, boolean emailSent) {
     }
 }

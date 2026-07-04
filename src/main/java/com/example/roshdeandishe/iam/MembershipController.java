@@ -71,8 +71,8 @@ public class MembershipController {
         requireHeaderMatchesPath(schoolId);
 
         return iamFacade.issueInviteToken(membershipId)
-                .map(token -> new InviteTokenResponse(token, true))
-                .orElseGet(() -> new InviteTokenResponse(null, false));
+                .map(issued -> new InviteTokenResponse(issued.token(), true, issued.emailSent()))
+                .orElseGet(() -> new InviteTokenResponse(null, false, false));
     }
 
     /**
@@ -104,6 +104,11 @@ public class MembershipController {
         }
     }
 
-    public record InviteTokenResponse(String inviteToken, boolean issued) {
+    /**
+     * emailSent=false با issued=true یعنی توکن صادر شد اما ایمیل به مقصد
+     * نرسید (مثلاً SMTP در دسترس نبود) - ادمین باید لینک
+     * /activate?token=... را دستی به فرد دعوت‌شده برساند.
+     */
+    public record InviteTokenResponse(String inviteToken, boolean issued, boolean emailSent) {
     }
 }
