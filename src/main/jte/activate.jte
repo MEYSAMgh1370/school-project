@@ -31,6 +31,10 @@
                                 return this.token.length > 0 && this.newPassword.length >= 8
                                     && this.newPassword === this.confirmPassword && !this.submitting;
                             },
+                            csrfToken() {
+                                const match = document.cookie.match(/(?:^|;\s*)XSRF-TOKEN=([^;]*)/);
+                                return match ? decodeURIComponent(match[1]) : '';
+                            },
                             async submit() {
                                 this.submitting = true;
                                 this.resultMessage = '';
@@ -38,7 +42,7 @@
                                 try {
                                     const response = await fetch('/api/auth/activate', {
                                         method: 'POST',
-                                        headers: { 'Content-Type': 'application/json' },
+                                        headers: { 'Content-Type': 'application/json', 'X-XSRF-TOKEN': this.csrfToken() },
                                         body: JSON.stringify({ token: this.token, newPassword: this.newPassword })
                                     });
                                     const body = await response.json();

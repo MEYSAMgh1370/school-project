@@ -718,14 +718,16 @@ above.
    *mutating* UI: membership/class/student/finance management pages. Angular was
    considered and rejected in favor of JTE given the session-cookie-based backend
    and this project's preference for zero-build, server-rendered pages over an
-   SPA + token-auth rework. **Two explicit gates before building the mutating UI:**
-   (a) CSRF is currently disabled (`SecurityConfig`) and its own comment says that
-   decision must be revisited the moment a session-cookie-authenticated client
-   issues mutating requests against the admin REST APIs — the read-only dashboard
-   doesn't cross that line; a management UI does. (b) Any management page is
-   per-school, which forces Open Question 2 (the school/role switcher UX) —
-   resolve it explicitly first; the backend `GET /api/me/memberships` for it
-   already exists.
+   SPA + token-auth rework. **Gate (a) — CSRF — is resolved: CSRF is now
+   enabled** (`SecurityConfig`): `CookieCsrfTokenRepository.withHttpOnlyFalse()`
+   + the Spring-docs `SpaCsrfTokenRequestHandler` (nested in `SecurityConfig`);
+   the server writes an `XSRF-TOKEN` cookie, every JTE page's `fetch` sends it
+   back as `X-XSRF-TOKEN` (all three templates have a `csrfToken()` helper —
+   copy it into new pages), Swagger UI does the same via
+   `springdoc.swagger-ui.csrf.enabled`, and MockMvc tests use `.with(csrf())`.
+   **The one remaining gate is (b):** any management page is per-school, which
+   forces Open Question 2 (the school/role switcher UX) — resolve it explicitly
+   first; the backend `GET /api/me/memberships` for it already exists.
 7. **Class reassignment as an explicit action.** `enrollStudent` happens to support
    moving a student to a different class (idempotent re-enroll updates `classId`),
    but there's no dedicated "transfer" endpoint/semantics, and it's unclear whether a
@@ -764,9 +766,10 @@ deferred (§7 item 3).
 `GET /dashboard`, `MeController` (`/api/me`, `/api/me/memberships`), page-vs-API
 authentication entry points, and the dev-seed fixes (demo admin membership) — see
 §7 Done. **The next slice — the mutating management UI — is explicitly gated** on
-(a) revisiting the disabled-CSRF decision and (b) resolving Open Question 2 (the
-school/role switcher UX); see §7 item 6. Don't start management pages without
-settling both.
+resolving Open Question 2 (the school/role switcher UX); see §7 item 6. The other
+former gate — CSRF — is resolved: enabled, cookie-based, see §7 item 6 for the
+pattern new pages must follow. Don't start management pages without settling the
+switcher UX.
 
 ---
 

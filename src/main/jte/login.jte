@@ -22,13 +22,17 @@
                             get canSubmit() {
                                 return this.email.length > 0 && this.password.length > 0 && !this.submitting;
                             },
+                            csrfToken() {
+                                const match = document.cookie.match(/(?:^|;\s*)XSRF-TOKEN=([^;]*)/);
+                                return match ? decodeURIComponent(match[1]) : '';
+                            },
                             async submit() {
                                 this.submitting = true;
                                 this.errorMessage = '';
                                 try {
                                     const response = await fetch('/api/auth/login', {
                                         method: 'POST',
-                                        headers: { 'Content-Type': 'application/json' },
+                                        headers: { 'Content-Type': 'application/json', 'X-XSRF-TOKEN': this.csrfToken() },
                                         body: JSON.stringify({ email: this.email, password: this.password })
                                     });
                                     if (response.ok) {

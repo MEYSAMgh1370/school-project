@@ -14,9 +14,13 @@
 <body>
 <nav class="navbar is-link" role="navigation" aria-label="main navigation"
      x-data="{
+        csrfToken() {
+            const match = document.cookie.match(/(?:^|;\s*)XSRF-TOKEN=([^;]*)/);
+            return match ? decodeURIComponent(match[1]) : '';
+        },
         async logout() {
             try {
-                await fetch('/api/auth/logout', { method: 'POST' });
+                await fetch('/api/auth/logout', { method: 'POST', headers: { 'X-XSRF-TOKEN': this.csrfToken() } });
             } finally {
                 window.location.href = '/login';
             }

@@ -68,6 +68,14 @@ gg:
   jte:
     use-precompiled-templates: true
 
+# CSRF فعال است (SecurityConfig)؛ این تنظیم به Swagger UI می‌گوید کوکی
+# XSRF-TOKEN را بخواند و در هدر X-XSRF-TOKEN بفرستد تا try-it-outهای
+# تغییردهنده (POST/PUT) در dev همچنان کار کنند.
+springdoc:
+  swagger-ui:
+    csrf:
+      enabled: true
+
 roshdeandishe:
   mail:
     # آدرس فرستنده‌ی ایمیل‌های سیستم
