@@ -43,10 +43,24 @@
             <artifactId>spring-boot-starter-web</artifactId>
         </dependency>
 
-        <!-- Thymeleaf برای پنل ادمین/معلم -->
+        <!-- JTE برای صفحه‌ی فعال‌سازی حساب (اولین صفحه‌ی HTML واقعی پروژه) -->
         <dependency>
-            <groupId>org.springframework.boot</groupId>
-            <artifactId>spring-boot-starter-thymeleaf</artifactId>
+            <groupId>gg.jte</groupId>
+            <artifactId>jte-spring-boot-starter-4</artifactId>
+            <version>3.2.4</version>
+        </dependency>
+
+        <!-- Alpine.js و Bulma به‌صورت WebJar، هم‌راستا با الگوی موجود پروژه
+             (springdoc از قبل org.webjars:swagger-ui را ترنزیتیو می‌آورد) -->
+        <dependency>
+            <groupId>org.webjars.npm</groupId>
+            <artifactId>alpinejs</artifactId>
+            <version>3.15.12</version>
+        </dependency>
+        <dependency>
+            <groupId>org.webjars.npm</groupId>
+            <artifactId>bulma</artifactId>
+            <version>1.0.4</version>
         </dependency>
 
         <dependency>
@@ -126,10 +140,55 @@
             <artifactId>spring-security-test</artifactId>
             <scope>test</scope>
         </dependency>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-testcontainers</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.testcontainers</groupId>
+            <artifactId>testcontainers-postgresql</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.testcontainers</groupId>
+            <artifactId>testcontainers-junit-jupiter</artifactId>
+            <scope>test</scope>
+        </dependency>
     </dependencies>
 
     <build>
         <plugins>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-compiler-plugin</artifactId>
+                <configuration>
+                    <annotationProcessorPaths>
+                        <path>
+                            <groupId>org.projectlombok</groupId>
+                            <artifactId>lombok</artifactId>
+                            <version>${lombok.version}</version>
+                        </path>
+                    </annotationProcessorPaths>
+                </configuration>
+            </plugin>
+            <plugin>
+                <groupId>gg.jte</groupId>
+                <artifactId>jte-maven-plugin</artifactId>
+                <version>3.2.4</version>
+                <configuration>
+                    <sourceDirectory>${project.basedir}/src/main/jte</sourceDirectory>
+                    <contentType>Html</contentType>
+                </configuration>
+                <executions>
+                    <execution>
+                        <phase>generate-sources</phase>
+                        <goals>
+                            <goal>generate</goal>
+                        </goals>
+                    </execution>
+                </executions>
+            </plugin>
             <plugin>
                 <groupId>org.springframework.boot</groupId>
                 <artifactId>spring-boot-maven-plugin</artifactId>

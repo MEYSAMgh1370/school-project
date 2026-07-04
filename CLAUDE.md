@@ -81,6 +81,17 @@ too narrow.
   `/v3/api-docs`). Both are `permitAll` in `SecurityConfig` and excluded from the
   `X-School-ID` requirement in `TenantResolverFilter` — documentation endpoints, not
   data, so left open even though everything else requires authentication.
+- **Frontend:** JTE (precompiled, type-checked Java templates — chosen over
+  Thymeleaf specifically for compile-time template safety, matching this project's
+  existing bias toward compile-time checks like sealed error types) + Alpine.js for
+  light client-side interactivity. Both delivered as WebJars (`org.webjars.npm`),
+  not a CDN `<script>` tag and not an npm/webpack/vite build — stays a zero-build
+  addition consistent with "one Maven artifact." Templates live in `src/main/jte/`
+  (flat, no subfolder yet — only one template exists so far). Bulma is used for
+  CSS, also as a WebJar, no custom CSS framework/pipeline. View-rendering
+  `@Controller`s (as opposed to the `@RestController`s everywhere else) are new to
+  this project — see `iam.shared.AccountActivationPageController` for the first
+  and so-far-only one.
 
 ### Module boundary rules (enforced by `ModularityTests.verifyModularStructure()`)
 
@@ -123,10 +134,13 @@ com.example.roshdeandishe
 │   ├── AccessContext.java          Module, Entitlement
 │   ├── AccessDecision.java         (sealed: SchoolContext | PlatformContext /
 │   │                                 Granted | Denied)
-│   ├── MembershipController.java   (REST: create/list memberships, toggle active —
+│   ├── MembershipController.java   (REST: create/list memberships, toggle active,
+│   │                                 issue invite-token —
 │   │                                 @RequiresPermission("MEMBERSHIP_MANAGE"))
 │   ├── internal/
 │   │   ├── UserEntity / UserRepository        (now includes nullable passwordHash)
+│   │   ├── InviteTokenEntity / InviteTokenRepository  (per-user, single-use,
+│   │   │                                        7-day TTL — backs account activation)
 │   │   ├── RoleEntity / RoleRepository
 │   │   ├── PermissionEntity / PermissionRepository
 │   │   ├── RolePermissionEntity / RolePermissionRepository
@@ -149,8 +163,15 @@ com.example.roshdeandishe
 │       ├── RequiresPermission.java + PermissionAccessAspect.java (@Order(11))
 │       ├── SecurityConfig.java        (session auth config; lives here, not
 │       │                                platform, because it wires IamUserDetailsService)
-│       ├── AuthController.java        (POST /api/auth/login, /api/auth/logout —
-│       │                                JSON, not Spring's default form login)
+│       ├── AuthController.java        (POST /api/auth/login, /api/auth/logout,
+│       │                                /api/auth/activate — JSON, not Spring's
+│       │                                default form login; activate redeems an
+│       │                                invite token to set a first password)
+│       ├── AccountActivationPageController.java   (GET /activate — the project's
+│       │                                first and so-far-only view-rendering
+│       │                                @Controller; renders src/main/jte/activate.jte,
+│       │                                a JTE+Alpine.js+Bulma page whose JS calls
+│       │                                AuthController's /api/auth/activate)
 │       └── exception/                 (@NamedInterface("shared.exception") — own
 │           ├── IamError.java (sealed)   NamedInterface, does NOT inherit iam.shared's)
 │           ├── IamException.java
@@ -258,10 +279,41 @@ UserEntity
 ├── email (unique)
 ├── fullName
 ├── passwordHash (nullable — null means the account was created by an admin/
-│                  enrollment flow via findOrCreateUser and can't log in yet;
-│                  no self-service "set your password" flow exists yet, see §7)
+│                  enrollment flow via findOrCreateUser and can't log in yet.
+│                  Activated via a redeemed InviteToken — see below — which sets
+│                  this field via GET /activate (AccountActivationPageController);
+│                  still no email delivery, see §7)
 └── status (ACTIVE | SUSPENDED)
 ```
+
+### InviteToken
+
+Backs self-service account activation for users created with a null `passwordHash`
+(§7 item 2). One-time-use, scoped to a `User` (not a `SchoolMembership` — a password
+belongs to the person, and one person can hold multiple memberships).
+
+```
+InviteTokenEntity
+├── id
+├── userId
+├── token           (unique, SecureRandom-generated, Base64 URL-safe)
+├── createdAt
+├── expiresAt       (createdAt + 7 days)
+└── redeemedAt       (nullable — null means still unredeemed)
+```
+
+`IamFacade.issueInviteToken(membershipId)` — resolves the membership to its user,
+returns `Optional.empty()` (idempotent no-op, not an error) if that user already has
+a password, otherwise reuses any still-valid unredeemed token or mints a new one.
+Exposed at `POST /api/admin/schools/{schoolId}/memberships/{membershipId}/invite-token`
+(`MEMBERSHIP_MANAGE`, same as the rest of `MembershipController`).
+
+`IamFacade.redeemInviteToken(token, newPassword)` — validates the token (exists, not
+redeemed, not expired) and the new password (min. 8 chars — first and so-far-only
+manual-validation convention in `iam`, no Bean Validation/`@Valid` used anywhere in
+this codebase yet), then BCrypt-encodes it onto the `UserEntity` and marks the token
+redeemed. Exposed at `POST /api/auth/activate`, intentionally unauthenticated (the
+token *is* the credential), same trust model as `/api/auth/login`.
 
 ### Role
 
@@ -504,6 +556,15 @@ above.
 - **Academic basics**: real `ClassEntity`/`StudentEntity`, `enrollStudent` wired to
   `StudentEnrolledEvent`
 - **Finance audit trail**: `InvoiceIssuedEvent` → `FinanceAuditEntity` (append-only)
+- **Account activation (backend + page)**: `InviteTokenEntity`/`InviteTokenRepository`,
+  `IamFacade.issueInviteToken`/`redeemInviteToken`, `POST .../memberships/{id}/invite-token`,
+  `POST /api/auth/activate` — see §4's `InviteToken` subsection — plus a real
+  `GET /activate` HTML page (`AccountActivationPageController`, JTE + Alpine.js +
+  Bulma) where an invited person pastes their token and sets a password. Only
+  email delivery of the token remains open — see item 2 below.
+- **Frontend stack chosen and started**: JTE (WebJar-delivered Alpine.js + Bulma,
+  no npm/webpack build) replaces the previously-unused Thymeleaf dependency — see
+  §2. `GET /activate` is the first page; no others exist yet.
 - Dev-only seed data: roles, modules, permissions, role-permission grants, one demo
   school, one demo admin user
 - `ModularityTests` enforcing module boundaries
@@ -514,11 +575,15 @@ above.
    non-school-scoped checks unconditionally. Blocks: REST exposure of
    `setSchoolEntitlement` and `setSchoolStatus`. Do not build until a real need
    (billing integration, ops tooling) exists — see §5.
-2. **Self-service password / account activation.** Users created via
-   `findOrCreateUser` (school creation's auto-admin, enrollment's auto-student) have
-   `passwordHash = null` and **cannot log in**. No invite-token or "set your
-   password" flow exists. This is the actual practical blocker to a real person
-   using the system end-to-end today.
+2. **Self-service account activation — email delivery.** Both the backend flow
+   (issue/redeem an invite token, §4's `InviteToken` subsection) and the frontend
+   page (`GET /activate`) are done. What's still missing: no email sending — the
+   token comes back directly in the admin API's JSON response
+   (`MembershipController.InviteTokenResponse`), not delivered to the invited
+   person automatically. An admin currently has to manually hand the invited
+   person a link like `/activate?token=...`. This is now the actual practical
+   blocker to a real, non-technical person self-activating without an admin's
+   manual involvement.
 3. **Real invoice persistence.** `FinanceFacade.issueTuitionInvoice` is still a stub
    — no `InvoiceEntity`, no real pricing (hardcoded `0`), no persistence. The audit
    trail records that an invoice-issuing *attempt* happened, not a real invoice.
@@ -530,7 +595,12 @@ above.
    tables, not schemas.
 5. **Flyway/Liquibase.** All seed runners + `ddl-auto: update` are dev-only
    stand-ins.
-6. **Angular / Thymeleaf frontends.** Not started.
+6. **Broader admin/teacher frontend.** JTE + Alpine.js + Bulma is the chosen stack
+   (see §2) and `GET /activate` is the first page built, but that's the only page
+   that exists — no admin dashboard, no membership/class/student management UI, no
+   login page. Angular was considered and rejected in favor of JTE given the
+   session-cookie-based backend and this project's preference for zero-build,
+   server-rendered pages over an SPA + token-auth rework.
 7. **Class reassignment as an explicit action.** `enrollStudent` happens to support
    moving a student to a different class (idempotent re-enroll updates `classId`),
    but there's no dedicated "transfer" endpoint/semantics, and it's unclear whether a
@@ -553,16 +623,22 @@ Session-based (explicit decision — see former Open Question, now resolved).
 Spring Security handles authentication only; all authorization stays in the
 `@RequiresModule`/`@RequiresPermission` aspects (§2, §5).
 
+**Phase C.1 — Account activation backend + page: done.** `IamFacade.issueInviteToken`/
+`redeemInviteToken`, invite-token entity/repository, `MembershipController`/
+`AuthController` endpoints — see §4/§7 — plus the `GET /activate` JTE+Alpine.js+
+Bulma page. Only email sending remains open, tracked as the narrowed §7 item 2.
+
 **Phase D — Finance basics: not started.** `StudentEnrolledEventListener` calls
 `issueTuitionInvoice` but that method is still a stub (§7 item 3). Next concrete
 step here is real `InvoiceEntity` + persistence + actual pricing, not more
 audit/event scaffolding — the audit pattern is already established and should be
 reused as-is once real invoices exist.
 
-**Immediate practical blocker across all phases:** §7 item 2 (no password-set flow
-for admin/enrollment-created accounts). Worth prioritizing before more feature work,
-since it currently means no admin-invited teacher or enrolled student can actually
-log in and use anything built so far.
+**Immediate practical blocker across all phases:** §7 item 2, narrowed further —
+both the invite-token backend and the activation page now exist, but there's still
+no email delivery, so an admin has to manually hand the invited person a link
+rather than the system doing it automatically. Worth prioritizing before more
+feature work.
 
 ---
 
@@ -619,8 +695,9 @@ log in and use anything built so far.
 1. ~~Session vs. JWT for authentication~~ — **Resolved: session-based** (§2, §8).
    Revisit only if/when the KMP mobile client makes session cookies impractical.
 2. How does a user holding multiple memberships switch between schools/roles in the
-   UI? Still open — no frontend work has started, but affects what the backend needs
-   to expose (e.g. a "list my memberships" endpoint for a switcher).
+   UI? Still open — the only frontend page that exists (`GET /activate`) doesn't
+   touch this, but it affects what the backend needs to expose (e.g. a "list my
+   memberships" endpoint for a switcher).
 3. Can a school define custom roles, or only choose from system-defined ones?
    `RoleEntity`-as-data supports it technically; no admin UI or facade method exists.
 4. Should `UserEntitlementEntity` (B2C) ever interact with `SchoolEntitlementEntity`

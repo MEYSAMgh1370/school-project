@@ -76,6 +76,30 @@ public interface IamFacade {
     void setMembershipActive(Long membershipId, boolean active);
 
     /**
+     * صدور یک توکن دعوت (فعال‌سازی حساب) برای کاربر پشت این Membership.
+     * اگر کاربر از قبل passwordHash دارد (یعنی قبلاً فعال شده)، هیچ کاری
+     * انجام نمی‌شود و Optional.empty() برگردانده می‌شود - این حالت خطا
+     * نیست، بلکه یک no-op idempotent است. اگر یک توکن معتبر و redeem-نشده
+     * از قبل برای این کاربر وجود داشته باشد، همان دوباره برگردانده می‌شود.
+     *
+     * @throws com.example.roshdeandishe.iam.shared.exception.IamException با
+     * IamError.MembershipIdNotFound اگر چنین Membershipای وجود نداشته باشد
+     */
+    Optional<String> issueInviteToken(Long membershipId);
+
+    /**
+     * تکمیل فرآیند فعال‌سازی حساب: توکن را معتبر می‌سنجد و در صورت موفقیت
+     * passwordHash کاربر را با رمز عبور تازه تنظیم می‌کند.
+     *
+     * @throws com.example.roshdeandishe.iam.shared.exception.IamException با
+     * IamError.InviteTokenNotFound اگر توکن وجود نداشته باشد،
+     * IamError.InviteTokenAlreadyRedeemed اگر قبلاً استفاده شده باشد،
+     * IamError.InviteTokenExpired اگر منقضی شده باشد، یا
+     * IamError.InvalidPassword اگر رمز عبور تازه معتبر نباشد
+     */
+    void redeemInviteToken(String token, String newPassword);
+
+    /**
      * فعال یا غیرفعال کردن اشتراک یک مدرسه برای یک ماژول SCHOOL-scoped
      * (مثلاً ادمین پلتفرم، ماژول FINANCE را برای مدرسه‌ی X فعال می‌کند).
      * اگر ردیف Entitlement ای از قبل برای این (schoolId, moduleCode) وجود

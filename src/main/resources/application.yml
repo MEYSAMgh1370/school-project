@@ -35,9 +35,6 @@ spring:
         format_sql: true
         default_schema: iam
 
-  thymeleaf:
-    cache: false
-
   modulith:
     events:
       # ثبت رویدادهای منتشرشده در دیتابیس برای قابلیت Retry/Audit
@@ -53,3 +50,7 @@ management:
 logging:
   level:
     org.springframework.modulith: DEBUG
+
+gg:
+  jte:
+    use-precompiled-templates: true
