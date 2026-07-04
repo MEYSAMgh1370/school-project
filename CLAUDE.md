@@ -10,6 +10,14 @@ UUID ids). That draft was never implemented. What follows documents the model th
 was actually built and is now the resolved architecture. **`RoleGrant` and a
 `Person`/`User` split remain explicitly rejected** — see §10.
 
+See [`BEST_PRACTICES.md`](BEST_PRACTICES.md) for working discipline and Java/Spring
+conventions — it applies to every coding task in this repo, same as this file.
+
+**Before creating any new module** (new top-level package under
+`com.example.roshdeandishe` with its own Facade), you MUST invoke the
+`new-module` skill first, even if the request doesn't use the word "module" —
+this covers phrasing like "add Library support" or "build out Attendance."
+
 ---
 
 ## 1. What This Product Is
