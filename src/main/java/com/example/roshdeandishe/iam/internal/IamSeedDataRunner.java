@@ -32,6 +32,7 @@ class IamSeedDataRunner implements ApplicationRunner {
     private final ModuleRepository moduleRepository;
     private final PermissionRepository permissionRepository;
     private final RolePermissionRepository rolePermissionRepository;
+    private final SchoolEntitlementRepository schoolEntitlementRepository;
     private final PasswordEncoder passwordEncoder;
 
     IamSeedDataRunner(
@@ -40,6 +41,7 @@ class IamSeedDataRunner implements ApplicationRunner {
             ModuleRepository moduleRepository,
             PermissionRepository permissionRepository,
             RolePermissionRepository rolePermissionRepository,
+            SchoolEntitlementRepository schoolEntitlementRepository,
             PasswordEncoder passwordEncoder
     ) {
         this.userRepository = userRepository;
@@ -47,6 +49,7 @@ class IamSeedDataRunner implements ApplicationRunner {
         this.moduleRepository = moduleRepository;
         this.permissionRepository = permissionRepository;
         this.rolePermissionRepository = rolePermissionRepository;
+        this.schoolEntitlementRepository = schoolEntitlementRepository;
         this.passwordEncoder = passwordEncoder;
     }
 
@@ -58,6 +61,7 @@ class IamSeedDataRunner implements ApplicationRunner {
         Map<String, PermissionEntity> permissions = seedPermissions();
         seedRolePermissions(roles, permissions);
         seedDemoAdminUser();
+        seedDemoSchoolEntitlements();
     }
 
     private void seedModules() {
@@ -152,5 +156,25 @@ class IamSeedDataRunner implements ApplicationRunner {
         UserEntity admin = new UserEntity(DEMO_ADMIN_EMAIL, "ادمین نمونه");
         admin.setPasswordHash(passwordEncoder.encode(DEMO_ADMIN_PASSWORD));
         userRepository.save(admin);
+    }
+
+    /**
+     * ماژول‌های ACADEMIC و FINANCE را برای مدرسه‌ی نمونه (id=1، ساخته‌شده
+     * توسط SchoolSeedDataRunner روی دیتابیس تازه) فعال می‌کند - وگرنه
+     * FinanceController (اولین کنترلر با @RequiresModule) برای جریان dev
+     * از همان ابتدا 403 می‌دهد. مثل بقیه‌ی این کلاس، فقط seed مخصوص dev.
+     */
+    private void seedDemoSchoolEntitlements() {
+        if (schoolEntitlementRepository.count() > 0) {
+            return;
+        }
+        Long demoSchoolId = 1L;
+        for (String moduleCode : new String[]{"ACADEMIC", "FINANCE"}) {
+            moduleRepository.findByCode(moduleCode).ifPresent(module ->
+                    schoolEntitlementRepository.save(
+                            new SchoolEntitlementEntity(demoSchoolId, module.getId(), true)
+                    )
+            );
+        }
     }
 }

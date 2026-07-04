@@ -216,17 +216,32 @@ com.example.roshdeandishe
 │       └── AcademicExceptionHandler.java   (bean name "academicGlobalExceptionHandler")
 │
 └── finance/                    ← tuition, invoices, payments, audit
-    ├── FinanceFacade.java           (issueTuitionInvoice — still a stub, no real
-    │                                  InvoiceEntity/persistence yet)
+    ├── FinanceFacade.java           (issueTuitionInvoice — real persistence now;
+    │                                  amount comes from the school's TuitionFee,
+    │                                  no longer a parameter. Plus setTuitionFee /
+    │                                  getTuitionFee / listInvoices)
+    ├── FinanceController.java       (REST: PUT+GET tuition-fee, GET invoices —
+    │                                  first controller carrying BOTH layers:
+    │                                  @RequiresModule("FINANCE") class-level +
+    │                                  @RequiresPermission per method)
     ├── InvoiceIssuedEvent.java      (schoolId, studentId, amount, actorUserId
     │                                  nullable, occurredAt)
-    └── internal/
-        ├── StudentEnrolledEventListener   (reacts to academic's enrollment event,
-        │                                    calls issueTuitionInvoice — amount
-        │                                    hardcoded to 0, real pricing not built)
-        ├── FinanceAuditEntity / FinanceAuditRepository   (append-only audit trail)
-        └── FinanceAuditEventListener      (@ApplicationModuleListener, writes one
-                                             audit row per InvoiceIssuedEvent)
+    ├── internal/
+    │   ├── TuitionFeeEntity / TuitionFeeRepository   (one row per school —
+    │   │                                  unique school_id; the pricing source)
+    │   ├── InvoiceEntity / InvoiceRepository   (persisted invoices; deliberately
+    │   │                                  no status/payment fields until payments
+    │   │                                  are actually built)
+    │   ├── StudentEnrolledEventListener   (reacts to academic's enrollment event,
+    │   │                                    calls issueTuitionInvoice — amount now
+    │   │                                    resolved from TuitionFee internally)
+    │   ├── FinanceAuditEntity / FinanceAuditRepository   (append-only audit trail)
+    │   └── FinanceAuditEventListener      (@ApplicationModuleListener, writes one
+    │                                        audit row per InvoiceIssuedEvent)
+    └── shared/
+        ├── FinanceError.java (sealed: TuitionFeeNotSet, InvalidTuitionFee)
+        ├── FinanceException.java
+        └── FinanceExceptionHandler.java   (bean name "financeExceptionHandler")
 ```
 
 **Adding a new module**: copy the `academic/shared` error-handling pattern
@@ -241,7 +256,7 @@ from the simple class name, and two modules both naming their handler
 `GlobalExceptionHandler` (or any identical name) causes a
 `ConflictingBeanDefinitionException` at startup — this already happened once.
 Current names: `iamGlobalExceptionHandler`, `academicGlobalExceptionHandler`,
-`schoolExceptionHandler`.
+`schoolExceptionHandler`, `financeExceptionHandler`.
 
 **Audit pattern** (established in `finance`, to be repeated in any module that needs
 an audit trail — see `finance/internal/FinanceAuditEventListener.java`):
@@ -488,6 +503,39 @@ StudentEntity
 second call for the same user at the same school updates their `classId` (i.e. moves
 them to a different class) rather than erroring or duplicating.
 
+### TuitionFee (owned by `finance`)
+
+```
+TuitionFeeEntity
+├── id
+├── schoolId        (unique — one flat fee per school, deliberately not per-class/
+│                     per-grade; richer pricing is YAGNI until actually requested)
+└── amount          (BigDecimal(12,2))
+```
+
+`FinanceFacade.setTuitionFee(schoolId, amount)` — idempotent upsert; rejects null or
+non-positive amounts with `FinanceError.InvalidTuitionFee`. `getTuitionFee` returns
+`Optional.empty()` when unset (the REST GET maps that to 404 `TuitionFeeNotSet`).
+
+### Invoice (owned by `finance`)
+
+```
+InvoiceEntity
+├── id
+├── schoolId
+├── studentId       (references academic's StudentEntity id, opaque to finance)
+├── amount          (copied from the school's TuitionFee at issue time)
+└── issuedAt
+```
+
+Deliberately no `status`/payment fields — payments aren't built yet; the field
+arrives with them, not speculatively. `FinanceFacade.issueTuitionInvoice(schoolId,
+studentId)` reads the amount from `TuitionFeeEntity` itself (no longer a parameter).
+**Explicit decision:** if the school has no tuition fee configured, no invoice is
+issued (warn log only) and enrollment is never blocked; students enrolled before the
+fee was set do not get backfilled invoices — build backfill when a real need shows
+up. After persisting, it publishes `InvoiceIssuedEvent` (audit trail unchanged).
+
 ---
 
 ## 5. Access Control — Two Layers
@@ -519,12 +567,23 @@ it speculatively.
 **`@RequiresPermission`/`@RequiresModule` check `TenantContext` (from the
 `X-School-ID` header), independent of any `schoolId` path variable a controller might
 also have.** Every controller with a `{schoolId}` path variable and a permission
-annotation (`MembershipController`, `ClassController`, `StudentController`) explicitly
-verifies the header matches the path before doing anything — a header/path mismatch
-is a real security bug class (permission checked against one school, mutation applied
-to another), not a hypothetical. This check is currently duplicated three times, not
-yet extracted into a shared helper — extract it if a fourth controller needs it, not
-before.
+annotation (`MembershipController`, `ClassController`, `StudentController`,
+`FinanceController`) explicitly verifies the header matches the path before doing
+anything — a header/path mismatch is a real security bug class (permission checked
+against one school, mutation applied to another), not a hypothetical. The check
+lives in `platform.TenantContext.requireMatches(schoolIdFromPath)` — it was
+duplicated privately in three controllers until the fourth (`FinanceController`)
+arrived, which per the rule here triggered extracting it. New controllers call
+`TenantContext.requireMatches(...)`; do not re-inline it.
+
+**Known inconsistency, flagged not fixed:** the pre-finance controllers
+(`MembershipController`, `ClassController`, `StudentController`) carry only
+`@RequiresPermission`, not `@RequiresModule` — `FinanceController` is the first to
+carry both layers as §5 prescribes. For memberships that's arguably correct
+(membership management isn't a subscribable module), but `ClassController`/
+`StudentController` are ACADEMIC-module features and skip the entitlement layer.
+Left as-is deliberately when finance was built (surgical-change discipline);
+resolve consciously, not as a drive-by.
 
 `LoggingAspect` (`@Order(1)`, in `platform`, opt-in via `@Loggable`) wraps both of the
 above.
@@ -568,6 +627,12 @@ above.
 - **Academic basics**: real `ClassEntity`/`StudentEntity`, `enrollStudent` wired to
   `StudentEnrolledEvent`
 - **Finance audit trail**: `InvoiceIssuedEvent` → `FinanceAuditEntity` (append-only)
+- **Finance basics (Phase D)**: real `InvoiceEntity` persistence + per-school
+  `TuitionFeeEntity` pricing (see §4), `FinanceController` (tuition-fee PUT/GET,
+  invoices GET) — the first controller carrying both §5 layers
+  (`@RequiresModule("FINANCE")` + `@RequiresPermission`). Enrollment →
+  `StudentEnrolledEvent` → invoice at the school's real fee, end-to-end tested in
+  `FinanceFlowIntegrationTest`.
 - **Account activation (backend + page + email)**: `InviteTokenEntity`/`InviteTokenRepository`,
   `IamFacade.issueInviteToken`/`redeemInviteToken`, `POST .../memberships/{id}/invite-token`,
   `POST /api/auth/activate` — see §4's `InviteToken` subsection — plus a real
@@ -582,7 +647,8 @@ above.
   no npm/webpack build) replaces the previously-unused Thymeleaf dependency — see
   §2. `GET /activate` is the first page; no others exist yet.
 - Dev-only seed data: roles, modules, permissions, role-permission grants, one demo
-  school, one demo admin user
+  school, one demo admin user, and ACADEMIC+FINANCE entitlements for the demo school
+  (so the first `@RequiresModule`-guarded controller works out of the box in dev)
 - `ModularityTests` enforcing module boundaries
 
 ### Open / explicitly deferred
@@ -598,9 +664,11 @@ above.
    manual fallback for when SMTP delivery fails. Remaining follow-up is
    deployment-time only: point `spring.mail.*` at a real SMTP provider and set
    `roshdeandishe.mail.activation-base-url` to the public URL.
-3. **Real invoice persistence.** `FinanceFacade.issueTuitionInvoice` is still a stub
-   — no `InvoiceEntity`, no real pricing (hardcoded `0`), no persistence. The audit
-   trail records that an invoice-issuing *attempt* happened, not a real invoice.
+3. ~~**Real invoice persistence.**~~ **Resolved** — `InvoiceEntity` +
+   `TuitionFeeEntity` persistence and real per-school pricing exist (§4). Still
+   deliberately *not* built, in rough priority order: payments (and with them an
+   invoice `status`), invoice backfill for students enrolled before a fee was set,
+   and per-class/per-grade pricing — each waits for a concrete request.
 4. **Multi-DataSource.** Single shared datasource. Per-module DataSource routing is
    a distinct, not-yet-started phase. Each module's tables live in their own Postgres
    *schema* already (`iam`, `school`, `academic`, `finance`) but all through one
@@ -644,17 +712,17 @@ Spring Security handles authentication only; all authorization stays in the
 link (`InviteEmailSender`, best-effort with the admin JSON token as fallback).
 §7 item 2 is resolved; only production SMTP credentials remain, as deployment config.
 
-**Phase D — Finance basics: not started.** `StudentEnrolledEventListener` calls
-`issueTuitionInvoice` but that method is still a stub (§7 item 3). Next concrete
-step here is real `InvoiceEntity` + persistence + actual pricing, not more
-audit/event scaffolding — the audit pattern is already established and should be
-reused as-is once real invoices exist.
+**Phase D — Finance basics: done.** Real `InvoiceEntity` persistence, per-school
+`TuitionFeeEntity` pricing, and `FinanceController` (see §4, §7 item 3). The audit
+pattern was reused as-is; payments/invoice-status/backfill remain explicitly
+deferred (§7 item 3).
 
 **Former immediate blocker (invite email delivery): resolved.** The system now
-emails the activation link itself (§7 item 2). With that done, the next phase in
-original roadmap order is **Phase D — Finance basics** (real `InvoiceEntity` +
-persistence + pricing, §7 item 3), with the broader admin frontend (§7 item 6) as
-the main competing priority.
+emails the activation link itself (§7 item 2). Phase D (finance basics) is also
+done — the next major piece of work is the **broader admin/teacher frontend**
+(§7 item 6): login page, membership/class/student/finance management UI on the
+established JTE + Alpine.js + Bulma stack, which also forces Open Question 2
+(school/role switcher for multi-membership users).
 
 ---
 
