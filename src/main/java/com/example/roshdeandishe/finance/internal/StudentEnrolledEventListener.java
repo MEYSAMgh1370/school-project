@@ -6,7 +6,6 @@ import com.example.roshdeandishe.platform.TenantContext;
 import org.springframework.modulith.events.ApplicationModuleListener;
 import org.springframework.stereotype.Component;
 
-import java.math.BigDecimal;
 
 /**
  * نمونه‌ی عملی الگوی "Event-Carried State Transfer" بین ماژول‌ها.
@@ -36,12 +35,10 @@ class StudentEnrolledEventListener {
             // بازیابی Tenant Context در این Thread جدید، از روی payload رویداد
             TenantContext.set(event.schoolId());
 
-            // TODO: مقدار amount باید از Pricing/Tariff واقعی مدرسه خوانده شود
-            financeFacade.issueTuitionInvoice(
-                    event.schoolId(),
-                    event.studentId(),
-                    BigDecimal.valueOf(0)
-            );
+            // مبلغ را خود ماژول finance از شهریه‌ی مصوب مدرسه می‌خواند؛
+            // اگر شهریه هنوز تنظیم نشده باشد، فاکتوری صادر نمی‌شود (رجوع
+            // به doc متد در FinanceFacade)
+            financeFacade.issueTuitionInvoice(event.schoolId(), event.studentId());
         } finally {
             // پاک‌سازی، چون این Thread ممکن است بعداً برای Job دیگری reuse شود
             TenantContext.clear();

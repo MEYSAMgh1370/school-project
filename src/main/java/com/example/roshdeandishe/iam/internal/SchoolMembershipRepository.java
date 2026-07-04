@@ -18,6 +18,10 @@ interface SchoolMembershipRepository extends JpaRepository<SchoolMembershipEntit
     // برای پنل مدیریت مدرسه: "همه‌ی عضویت‌های این مدرسه را نشان بده"
     List<SchoolMembershipEntity> findBySchoolId(Long schoolId);
 
+    // برای "عضویت‌های خودم" (داشبورد/سوییچر آینده) - شامل غیرفعال‌ها،
+    // چون کاربر باید ببیند دسترسی‌اش به کدام مدرسه غیرفعال شده
+    List<SchoolMembershipEntity> findByUserId(Long userId);
+
     // برای idempotent بودن createMembership - اگر همین سه‌تایی از قبل وجود
     // داشته باشد (حتی غیرفعال)، رکورد جدید نمی‌سازیم
     Optional<SchoolMembershipEntity> findByUserIdAndSchoolIdAndRoleId(Long userId, Long schoolId, Long roleId);

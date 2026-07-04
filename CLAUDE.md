@@ -87,11 +87,16 @@ too narrow.
   light client-side interactivity. Both delivered as WebJars (`org.webjars.npm`),
   not a CDN `<script>` tag and not an npm/webpack/vite build — stays a zero-build
   addition consistent with "one Maven artifact." Templates live in `src/main/jte/`
-  (flat, no subfolder yet — only one template exists so far). Bulma is used for
-  CSS, also as a WebJar, no custom CSS framework/pipeline. View-rendering
-  `@Controller`s (as opposed to the `@RestController`s everywhere else) are new to
-  this project — see `iam.shared.AccountActivationPageController` for the first
-  and so-far-only one.
+  (flat, no subfolder yet — three templates: `activate.jte`, `login.jte`,
+  `dashboard.jte`). Bulma is used for CSS, also as a WebJar, no custom CSS
+  framework/pipeline. View-rendering `@Controller`s (as opposed to the
+  `@RestController`s everywhere else) all live in `iam.shared` so far
+  (`AccountActivationPageController`, `LoginPageController`,
+  `DashboardPageController`) — auth/identity pages are conceptually iam's concern.
+  A page that must compose data across modules (e.g. school *names* next to
+  membership rows) has no home yet — that needs a UI-composition decision (likely
+  a dedicated `web` module) that hasn't been made; don't force cross-module
+  facades into iam page controllers (iam→school would be a dependency cycle).
 
 ### Module boundary rules (enforced by `ModularityTests.verifyModularStructure()`)
 
@@ -137,10 +142,20 @@ com.example.roshdeandishe
 │   ├── MembershipController.java   (REST: create/list memberships, toggle active,
 │   │                                 issue invite-token —
 │   │                                 @RequiresPermission("MEMBERSHIP_MANAGE"))
+│   ├── MeController.java           (REST: GET /api/me, /api/me/memberships —
+│   │                                 authenticated-only, deliberately NO
+│   │                                 permission/module annotations and NO
+│   │                                 X-School-ID: it's about the user, not a
+│   │                                 school. The "list my memberships" endpoint
+│   │                                 Open Question 2 anticipated.)
 │   ├── internal/
 │   │   ├── UserEntity / UserRepository        (now includes nullable passwordHash)
 │   │   ├── InviteTokenEntity / InviteTokenRepository  (per-user, single-use,
 │   │   │                                        7-day TTL — backs account activation)
+│   │   ├── InviteEmailSender          (best-effort SMTP delivery of the
+│   │   │                                activation link; deliberately in
+│   │   │                                iam/internal, not platform — only iam
+│   │   │                                sends email, no generic abstraction)
 │   │   ├── RoleEntity / RoleRepository
 │   │   ├── PermissionEntity / PermissionRepository
 │   │   ├── RolePermissionEntity / RolePermissionRepository
@@ -156,8 +171,9 @@ com.example.roshdeandishe
 │   │   │                                empty authorities — see Architecture above)
 │   │   ├── IamFacadeImpl
 │   │   └── IamSeedDataRunner          (dev-only seed, incl. one demo admin user
-│   │                                    with a working password and an ACADEMIC
-│   │                                    entitlement for the demo school (id 1);
+│   │                                    with a working password + their
+│   │                                    SCHOOL_ADMIN membership and the demo
+│   │                                    school's ACADEMIC+FINANCE entitlements;
 │   │                                    replace w/ Flyway pre-prod)
 │   └── shared/
 │       ├── RequiresModule.java + ModuleAccessAspect.java     (@Order(10))
@@ -168,11 +184,18 @@ com.example.roshdeandishe
 │       │                                /api/auth/activate — JSON, not Spring's
 │       │                                default form login; activate redeems an
 │       │                                invite token to set a first password)
-│       ├── AccountActivationPageController.java   (GET /activate — the project's
-│       │                                first and so-far-only view-rendering
-│       │                                @Controller; renders src/main/jte/activate.jte,
-│       │                                a JTE+Alpine.js+Bulma page whose JS calls
-│       │                                AuthController's /api/auth/activate)
+│       ├── AccountActivationPageController.java   (GET /activate — renders
+│       │                                src/main/jte/activate.jte, a JTE+Alpine.js
+│       │                                +Bulma page whose JS calls AuthController's
+│       │                                /api/auth/activate)
+│       ├── LoginPageController.java   (GET /login — renders login.jte; its JS
+│       │                                posts to /api/auth/login then goes to
+│       │                                /dashboard)
+│       ├── DashboardPageController.java   (GET /dashboard — read-only,
+│       │                                server-rendered "my memberships" page;
+│       │                                shows schoolId not school name — see §2
+│       │                                Frontend note on UI composition — and has
+│       │                                NO school switcher, that's Open Question 2)
 │       └── exception/                 (@NamedInterface("shared.exception") — own
 │           ├── IamError.java (sealed)   NamedInterface, does NOT inherit iam.shared's)
 │           ├── IamException.java
@@ -215,17 +238,32 @@ com.example.roshdeandishe
 │       └── AcademicExceptionHandler.java   (bean name "academicGlobalExceptionHandler")
 │
 └── finance/                    ← tuition, invoices, payments, audit
-    ├── FinanceFacade.java           (issueTuitionInvoice — still a stub, no real
-    │                                  InvoiceEntity/persistence yet)
+    ├── FinanceFacade.java           (issueTuitionInvoice — real persistence now;
+    │                                  amount comes from the school's TuitionFee,
+    │                                  no longer a parameter. Plus setTuitionFee /
+    │                                  getTuitionFee / listInvoices)
+    ├── FinanceController.java       (REST: PUT+GET tuition-fee, GET invoices —
+    │                                  first controller carrying BOTH layers:
+    │                                  @RequiresModule("FINANCE") class-level +
+    │                                  @RequiresPermission per method)
     ├── InvoiceIssuedEvent.java      (schoolId, studentId, amount, actorUserId
     │                                  nullable, occurredAt)
-    └── internal/
-        ├── StudentEnrolledEventListener   (reacts to academic's enrollment event,
-        │                                    calls issueTuitionInvoice — amount
-        │                                    hardcoded to 0, real pricing not built)
-        ├── FinanceAuditEntity / FinanceAuditRepository   (append-only audit trail)
-        └── FinanceAuditEventListener      (@ApplicationModuleListener, writes one
-                                             audit row per InvoiceIssuedEvent)
+    ├── internal/
+    │   ├── TuitionFeeEntity / TuitionFeeRepository   (one row per school —
+    │   │                                  unique school_id; the pricing source)
+    │   ├── InvoiceEntity / InvoiceRepository   (persisted invoices; deliberately
+    │   │                                  no status/payment fields until payments
+    │   │                                  are actually built)
+    │   ├── StudentEnrolledEventListener   (reacts to academic's enrollment event,
+    │   │                                    calls issueTuitionInvoice — amount now
+    │   │                                    resolved from TuitionFee internally)
+    │   ├── FinanceAuditEntity / FinanceAuditRepository   (append-only audit trail)
+    │   └── FinanceAuditEventListener      (@ApplicationModuleListener, writes one
+    │                                        audit row per InvoiceIssuedEvent)
+    └── shared/
+        ├── FinanceError.java (sealed: TuitionFeeNotSet, InvalidTuitionFee)
+        ├── FinanceException.java
+        └── FinanceExceptionHandler.java   (bean name "financeExceptionHandler")
 ```
 
 **Adding a new module**: copy the `academic/shared` error-handling pattern
@@ -240,7 +278,7 @@ from the simple class name, and two modules both naming their handler
 `GlobalExceptionHandler` (or any identical name) causes a
 `ConflictingBeanDefinitionException` at startup — this already happened once.
 Current names: `iamGlobalExceptionHandler`, `academicGlobalExceptionHandler`,
-`schoolExceptionHandler`.
+`schoolExceptionHandler`, `financeExceptionHandler`.
 
 **Audit pattern** (established in `finance`, to be repeated in any module that needs
 an audit trail — see `finance/internal/FinanceAuditEventListener.java`):
@@ -285,7 +323,7 @@ UserEntity
 │                  enrollment flow via findOrCreateUser and can't log in yet.
 │                  Activated via a redeemed InviteToken — see below — which sets
 │                  this field via GET /activate (AccountActivationPageController);
-│                  still no email delivery, see §7)
+│                  the activation link is emailed on issue — see InviteToken below)
 └── status (ACTIVE | SUSPENDED)
 ```
 
@@ -307,7 +345,15 @@ InviteTokenEntity
 
 `IamFacade.issueInviteToken(membershipId)` — resolves the membership to its user,
 returns `Optional.empty()` (idempotent no-op, not an error) if that user already has
-a password, otherwise reuses any still-valid unredeemed token or mints a new one.
+a password, otherwise reuses any still-valid unredeemed token or mints a new one,
+then emails the activation link (`{base-url}/activate?token=...`) to the user via
+`iam/internal/InviteEmailSender` — so re-issuing doubles as "resend the invite
+email." Returns `InviteIssued(token, emailSent)`. Email delivery is **best-effort**:
+an SMTP failure never fails token issuance; `emailSent=false` in the response tells
+the admin to hand over the link manually (the pre-email flow). SMTP config is
+`spring.mail.*` (dev default: localhost:1025, i.e. Mailpit/MailHog); sender address
+and link base come from `roshdeandishe.mail.from` /
+`roshdeandishe.mail.activation-base-url` in `application.yml`.
 Exposed at `POST /api/admin/schools/{schoolId}/memberships/{membershipId}/invite-token`
 (`MEMBERSHIP_MANAGE`, same as the rest of `MembershipController`).
 
@@ -479,6 +525,39 @@ StudentEntity
 second call for the same user at the same school updates their `classId` (i.e. moves
 them to a different class) rather than erroring or duplicating.
 
+### TuitionFee (owned by `finance`)
+
+```
+TuitionFeeEntity
+├── id
+├── schoolId        (unique — one flat fee per school, deliberately not per-class/
+│                     per-grade; richer pricing is YAGNI until actually requested)
+└── amount          (BigDecimal(12,2))
+```
+
+`FinanceFacade.setTuitionFee(schoolId, amount)` — idempotent upsert; rejects null or
+non-positive amounts with `FinanceError.InvalidTuitionFee`. `getTuitionFee` returns
+`Optional.empty()` when unset (the REST GET maps that to 404 `TuitionFeeNotSet`).
+
+### Invoice (owned by `finance`)
+
+```
+InvoiceEntity
+├── id
+├── schoolId
+├── studentId       (references academic's StudentEntity id, opaque to finance)
+├── amount          (copied from the school's TuitionFee at issue time)
+└── issuedAt
+```
+
+Deliberately no `status`/payment fields — payments aren't built yet; the field
+arrives with them, not speculatively. `FinanceFacade.issueTuitionInvoice(schoolId,
+studentId)` reads the amount from `TuitionFeeEntity` itself (no longer a parameter).
+**Explicit decision:** if the school has no tuition fee configured, no invoice is
+issued (warn log only) and enrollment is never blocked; students enrolled before the
+fee was set do not get backfilled invoices — build backfill when a real need shows
+up. After persisting, it publishes `InvoiceIssuedEvent` (audit trail unchanged).
+
 ---
 
 ## 5. Access Control — Two Layers
@@ -522,12 +601,23 @@ it speculatively.
 **`@RequiresPermission`/`@RequiresModule` check `TenantContext` (from the
 `X-School-ID` header), independent of any `schoolId` path variable a controller might
 also have.** Every controller with a `{schoolId}` path variable and a permission
-annotation (`MembershipController`, `ClassController`, `StudentController`) explicitly
-verifies the header matches the path before doing anything — a header/path mismatch
-is a real security bug class (permission checked against one school, mutation applied
-to another), not a hypothetical. This check is currently duplicated three times, not
-yet extracted into a shared helper — extract it if a fourth controller needs it, not
-before.
+annotation (`MembershipController`, `ClassController`, `StudentController`,
+`FinanceController`) explicitly verifies the header matches the path before doing
+anything — a header/path mismatch is a real security bug class (permission checked
+against one school, mutation applied to another), not a hypothetical. The check
+lives in `platform.TenantContext.requireMatches(schoolIdFromPath)` — it was
+duplicated privately in three controllers until the fourth (`FinanceController`)
+arrived, which per the rule here triggered extracting it. New controllers call
+`TenantContext.requireMatches(...)`; do not re-inline it.
+
+**Known inconsistency, flagged not fixed:** the pre-finance controllers
+(`MembershipController`, `ClassController`, `StudentController`) carry only
+`@RequiresPermission`, not `@RequiresModule` — `FinanceController` is the first to
+carry both layers as §5 prescribes. For memberships that's arguably correct
+(membership management isn't a subscribable module), but `ClassController`/
+`StudentController` are ACADEMIC-module features and skip the entitlement layer.
+Left as-is deliberately when finance was built (surgical-change discipline);
+resolve consciously, not as a drive-by.
 
 `LoggingAspect` (`@Order(1)`, in `platform`, opt-in via `@Loggable`) wraps both of the
 above.
@@ -571,17 +661,39 @@ above.
 - **Academic basics**: real `ClassEntity`/`StudentEntity`, `enrollStudent` wired to
   `StudentEnrolledEvent`
 - **Finance audit trail**: `InvoiceIssuedEvent` → `FinanceAuditEntity` (append-only)
-- **Account activation (backend + page)**: `InviteTokenEntity`/`InviteTokenRepository`,
+- **Finance basics (Phase D)**: real `InvoiceEntity` persistence + per-school
+  `TuitionFeeEntity` pricing (see §4), `FinanceController` (tuition-fee PUT/GET,
+  invoices GET) — the first controller carrying both §5 layers
+  (`@RequiresModule("FINANCE")` + `@RequiresPermission`). Enrollment →
+  `StudentEnrolledEvent` → invoice at the school's real fee, end-to-end tested in
+  `FinanceFlowIntegrationTest`.
+- **Account activation (backend + page + email)**: `InviteTokenEntity`/`InviteTokenRepository`,
   `IamFacade.issueInviteToken`/`redeemInviteToken`, `POST .../memberships/{id}/invite-token`,
   `POST /api/auth/activate` — see §4's `InviteToken` subsection — plus a real
   `GET /activate` HTML page (`AccountActivationPageController`, JTE + Alpine.js +
-  Bulma) where an invited person pastes their token and sets a password. Only
-  email delivery of the token remains open — see item 2 below.
+  Bulma) where an invited person pastes their token and sets a password, plus
+  best-effort email delivery of the activation link (`iam/internal/InviteEmailSender`,
+  `spring-boot-starter-mail`; covered end-to-end by GreenMail in
+  `InviteTokenFlowIntegrationTest`). Dev SMTP default is localhost:1025
+  (Mailpit/MailHog); a real production SMTP account/provider is still to be
+  configured, but that's deployment config, not missing code.
 - **Frontend stack chosen and started**: JTE (WebJar-delivered Alpine.js + Bulma,
   no npm/webpack build) replaces the previously-unused Thymeleaf dependency — see
-  §2. `GET /activate` is the first page; no others exist yet.
+  §2. Three pages exist: `GET /activate`, `GET /login`, `GET /dashboard`.
+- **Login page + read-only dashboard (first slice of §7 item 6)**: `GET /login`
+  (posts to the existing `/api/auth/login`), `GET /dashboard` (server-rendered
+  "my memberships"), `MeController` (`GET /api/me`, `GET /api/me/memberships`),
+  `IamFacade.findMembershipsByUser`. Unauthenticated page requests redirect to
+  `/login`; unauthenticated `/api/**` stays 403 (two explicit entry points in
+  `SecurityConfig` — the first registered one is also the fallback). Covered by
+  `LoginDashboardFlowIntegrationTest`. **Deliberately read-only** — see item 6
+  below for what gates the mutating management UI.
 - Dev-only seed data: roles, modules, permissions, role-permission grants, one demo
-  school, one demo admin user
+  school, one demo admin user with a SCHOOL_ADMIN membership at the demo school
+  (without it the demo admin couldn't call any school-scoped API — the demo school
+  is seeded via repository, bypassing the self-service flow that auto-creates the
+  creator's membership), and ACADEMIC+FINANCE entitlements for the demo school
+  (so the first `@RequiresModule`-guarded controller works out of the box in dev)
 - `ModularityTests` enforcing module boundaries
 
 ### Open / explicitly deferred
@@ -590,18 +702,18 @@ above.
    non-school-scoped checks unconditionally. Blocks: REST exposure of
    `setSchoolEntitlement` and `setSchoolStatus`. Do not build until a real need
    (billing integration, ops tooling) exists — see §5.
-2. **Self-service account activation — email delivery.** Both the backend flow
-   (issue/redeem an invite token, §4's `InviteToken` subsection) and the frontend
-   page (`GET /activate`) are done. What's still missing: no email sending — the
-   token comes back directly in the admin API's JSON response
-   (`MembershipController.InviteTokenResponse`), not delivered to the invited
-   person automatically. An admin currently has to manually hand the invited
-   person a link like `/activate?token=...`. This is now the actual practical
-   blocker to a real, non-technical person self-activating without an admin's
-   manual involvement.
-3. **Real invoice persistence.** `FinanceFacade.issueTuitionInvoice` is still a stub
-   — no `InvoiceEntity`, no real pricing (hardcoded `0`), no persistence. The audit
-   trail records that an invoice-issuing *attempt* happened, not a real invoice.
+2. ~~**Self-service account activation — email delivery.**~~ **Resolved.**
+   `issueInviteToken` now emails the activation link to the invited person
+   (see §4's `InviteToken` subsection). The token still also comes back in the
+   admin JSON response together with `emailSent` — deliberately kept as the
+   manual fallback for when SMTP delivery fails. Remaining follow-up is
+   deployment-time only: point `spring.mail.*` at a real SMTP provider and set
+   `roshdeandishe.mail.activation-base-url` to the public URL.
+3. ~~**Real invoice persistence.**~~ **Resolved** — `InvoiceEntity` +
+   `TuitionFeeEntity` persistence and real per-school pricing exist (§4). Still
+   deliberately *not* built, in rough priority order: payments (and with them an
+   invoice `status`), invoice backfill for students enrolled before a fee was set,
+   and per-class/per-grade pricing — each waits for a concrete request.
 4. **Multi-DataSource.** Single shared datasource. Per-module DataSource routing is
    a distinct, not-yet-started phase. Each module's tables live in their own Postgres
    *schema* already (`iam`, `school`, `academic`, `finance`) but all through one
@@ -610,12 +722,19 @@ above.
    tables, not schemas.
 5. **Flyway/Liquibase.** All seed runners + `ddl-auto: update` are dev-only
    stand-ins.
-6. **Broader admin/teacher frontend.** JTE + Alpine.js + Bulma is the chosen stack
-   (see §2) and `GET /activate` is the first page built, but that's the only page
-   that exists — no admin dashboard, no membership/class/student management UI, no
-   login page. Angular was considered and rejected in favor of JTE given the
-   session-cookie-based backend and this project's preference for zero-build,
-   server-rendered pages over an SPA + token-auth rework.
+6. **Broader admin/teacher frontend — management UI.** The login page and a
+   read-only dashboard now exist (see Done). What's still missing is every
+   *mutating* UI: membership/class/student/finance management pages. Angular was
+   considered and rejected in favor of JTE given the session-cookie-based backend
+   and this project's preference for zero-build, server-rendered pages over an
+   SPA + token-auth rework. **Two explicit gates before building the mutating UI:**
+   (a) CSRF is currently disabled (`SecurityConfig`) and its own comment says that
+   decision must be revisited the moment a session-cookie-authenticated client
+   issues mutating requests against the admin REST APIs — the read-only dashboard
+   doesn't cross that line; a management UI does. (b) Any management page is
+   per-school, which forces Open Question 2 (the school/role switcher UX) —
+   resolve it explicitly first; the backend `GET /api/me/memberships` for it
+   already exists.
 7. **Class reassignment as an explicit action.** `enrollStudent` happens to support
    moving a student to a different class (idempotent re-enroll updates `classId`),
    but there's no dedicated "transfer" endpoint/semantics, and it's unclear whether a
@@ -638,22 +757,25 @@ Session-based (explicit decision — see former Open Question, now resolved).
 Spring Security handles authentication only; all authorization stays in the
 `@RequiresModule`/`@RequiresPermission` aspects (§2, §5).
 
-**Phase C.1 — Account activation backend + page: done.** `IamFacade.issueInviteToken`/
-`redeemInviteToken`, invite-token entity/repository, `MembershipController`/
-`AuthController` endpoints — see §4/§7 — plus the `GET /activate` JTE+Alpine.js+
-Bulma page. Only email sending remains open, tracked as the narrowed §7 item 2.
+**Phase C.1 — Account activation backend + page + email: done.**
+`IamFacade.issueInviteToken`/`redeemInviteToken`, invite-token entity/repository,
+`MembershipController`/`AuthController` endpoints — see §4/§7 — plus the
+`GET /activate` JTE+Alpine.js+Bulma page, plus email delivery of the activation
+link (`InviteEmailSender`, best-effort with the admin JSON token as fallback).
+§7 item 2 is resolved; only production SMTP credentials remain, as deployment config.
 
-**Phase D — Finance basics: not started.** `StudentEnrolledEventListener` calls
-`issueTuitionInvoice` but that method is still a stub (§7 item 3). Next concrete
-step here is real `InvoiceEntity` + persistence + actual pricing, not more
-audit/event scaffolding — the audit pattern is already established and should be
-reused as-is once real invoices exist.
+**Phase D — Finance basics: done.** Real `InvoiceEntity` persistence, per-school
+`TuitionFeeEntity` pricing, and `FinanceController` (see §4, §7 item 3). The audit
+pattern was reused as-is; payments/invoice-status/backfill remain explicitly
+deferred (§7 item 3).
 
-**Immediate practical blocker across all phases:** §7 item 2, narrowed further —
-both the invite-token backend and the activation page now exist, but there's still
-no email delivery, so an admin has to manually hand the invited person a link
-rather than the system doing it automatically. Worth prioritizing before more
-feature work.
+**Phase E — Frontend, slice 1 (login + read-only dashboard): done.** `GET /login`,
+`GET /dashboard`, `MeController` (`/api/me`, `/api/me/memberships`), page-vs-API
+authentication entry points, and the dev-seed fixes (demo admin membership) — see
+§7 Done. **The next slice — the mutating management UI — is explicitly gated** on
+(a) revisiting the disabled-CSRF decision and (b) resolving Open Question 2 (the
+school/role switcher UX); see §7 item 6. Don't start management pages without
+settling both.
 
 ---
 
@@ -710,9 +832,12 @@ feature work.
 1. ~~Session vs. JWT for authentication~~ — **Resolved: session-based** (§2, §8).
    Revisit only if/when the KMP mobile client makes session cookies impractical.
 2. How does a user holding multiple memberships switch between schools/roles in the
-   UI? Still open — the only frontend page that exists (`GET /activate`) doesn't
-   touch this, but it affects what the backend needs to expose (e.g. a "list my
-   memberships" endpoint for a switcher).
+   UI? **Still open.** The backend piece it needs now exists
+   (`GET /api/me/memberships`, `IamFacade.findMembershipsByUser`) and the
+   read-only dashboard *displays* the membership list — but deliberately without
+   any switching/selection semantics. Resolving the switcher UX is a prerequisite
+   for the mutating management UI (§7 item 6); do not pick an approach silently
+   while building it.
 3. Can a school define custom roles, or only choose from system-defined ones?
    `RoleEntity`-as-data supports it technically; no admin UI or facade method exists.
 4. Should `UserEntitlementEntity` (B2C) ever interact with `SchoolEntitlementEntity`
