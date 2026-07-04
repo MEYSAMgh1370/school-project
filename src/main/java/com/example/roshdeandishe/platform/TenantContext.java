@@ -61,4 +61,25 @@ public final class TenantContext {
     public static void clear() {
         CURRENT_SCHOOL_ID.remove();
     }
+
+    /**
+     * محافظ ناهم‌خوانی هدر/مسیر: schoolId هدر X-School-ID (که permission
+     * check بر اساس آن انجام می‌شود) باید با schoolId مسیر URL (که عملیات
+     * واقعی روی آن اجرا می‌شود) یکی باشد - وگرنه permission روی یک مدرسه
+     * چک می‌شود و mutation روی مدرسه‌ی دیگری اجرا می‌شود (یک کلاس باگ
+     * امنیتی واقعی، نه فرضی). قبلاً این چک در سه کنترلر تکرار شده بود؛
+     * طبق قاعده‌ی CLAUDE.md §5 با آمدن کنترلر چهارم (finance) به اینجا
+     * منتقل شد.
+     *
+     * @throws IllegalStateException اگر هدر با مسیر مطابقت نداشته باشد
+     */
+    public static void requireMatches(Long schoolIdFromPath) {
+        Long schoolIdFromHeader = get();
+        if (!schoolIdFromHeader.equals(schoolIdFromPath)) {
+            throw new IllegalStateException(
+                    "هدر X-School-ID (" + schoolIdFromHeader + ") با schoolId در URL (" +
+                    schoolIdFromPath + ") مطابقت ندارد."
+            );
+        }
+    }
 }
