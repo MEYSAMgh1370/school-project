@@ -11,6 +11,7 @@ import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
@@ -47,6 +48,7 @@ class LoginDashboardFlowIntegrationTest {
     void loginThenSeeOwnMembershipsAndDashboard() throws Exception {
         // لاگین با ادمین نمونه (seed شده) و نگه‌داشتن session
         MvcResult loginResult = mockMvc.perform(post("/api/auth/login")
+                        .with(csrf())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"email\":\"admin@roshdeandishe.test\",\"password\":\"password\"}"))
                 .andExpect(status().isOk())
@@ -70,15 +72,25 @@ class LoginDashboardFlowIntegrationTest {
     }
 
     @Test
+    void mutatingRequestWithoutCsrfTokenIsForbidden() throws Exception {
+        // CSRF فعال است: POST بدون توکن باید رد شود، حتی با اعتبارنامه‌ی درست
+        mockMvc.perform(post("/api/auth/login")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"email\":\"admin@roshdeandishe.test\",\"password\":\"password\"}"))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
     void logoutInvalidatesSession() throws Exception {
         MvcResult loginResult = mockMvc.perform(post("/api/auth/login")
+                        .with(csrf())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"email\":\"admin@roshdeandishe.test\",\"password\":\"password\"}"))
                 .andExpect(status().isOk())
                 .andReturn();
         MockHttpSession session = (MockHttpSession) loginResult.getRequest().getSession(false);
 
-        mockMvc.perform(post("/api/auth/logout").session(session))
+        mockMvc.perform(post("/api/auth/logout").with(csrf()).session(session))
                 .andExpect(status().isOk());
 
         mockMvc.perform(get("/api/me").session(session))

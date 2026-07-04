@@ -10,6 +10,17 @@ import org.springframework.security.config.annotation.web.configurers.AbstractHt
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.security.web.csrf.CookieCsrfTokenRepository;
+import org.springframework.security.web.csrf.CsrfToken;
+import org.springframework.security.web.csrf.CsrfTokenRequestAttributeHandler;
+import org.springframework.security.web.csrf.CsrfTokenRequestHandler;
+import org.springframework.security.web.csrf.XorCsrfTokenRequestAttributeHandler;
+import org.springframework.util.StringUtils;
+
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
+
+import java.util.function.Supplier;
 
 /**
  * Session-based authentication (تصمیم صریح - نه JWT، طبق تصمیم فعلی روی
@@ -21,16 +32,16 @@ import org.springframework.security.web.SecurityFilterChain;
  * در iam.shared قرار دارد نه platform، چون به IamUserDetailsService (که
  * internal ماژول iam است) وابسته است - platform هرگز نباید به iam وابسته شود.
  * <p>
- * ⚠️ CSRF عمداً غیرفعال شده. این API فقط JSON برمی‌گرداند و صفحه‌ی تک HTML
- * موجود (GET /activate، فعال‌سازی حساب) هیچ session cookie ضمنی‌ای را
- * به‌عنوان اعتبارنامه استفاده نمی‌کند - اعتبارنامه‌ی واقعی خودِ invite token
- * در بدنه‌ی درخواست است (دقیقاً هم‌راستا با مدل اعتماد /api/auth/login که
- * خودش هم عمداً بدون احراز هویت است)، پس ریسک CSRF کلاسیک (بهره‌برداری از
- * یک session معتبرِ از پیش موجود در مرورگر قربانی) برای این یک صفحه صدق
- * نمی‌کند. اگر در آینده یک وب‌کلاینت مبتنی بر *session cookie* در برابر
- * REST APIهای ادمین (MembershipController، ClassController،
- * StudentController و...) ساخته شود - که هنوز اصلاً scope نشده - این
- * تصمیم باید در آن نقطه بازبینی شود.
+ * CSRF فعال است (پیش‌نیاز صریح UI مدیریتی - CLAUDE.md بند ۷ مورد ۶ گیت الف).
+ * الگو: CookieCsrfTokenRepository با httpOnly=false، یعنی سرور توکن را در
+ * کوکی XSRF-TOKEN می‌نویسد و جاوااسکریپت صفحه‌های JTE آن را خوانده و در
+ * هدر X-XSRF-TOKEN با هر درخواست تغییردهنده (POST/PUT/...) برمی‌گرداند -
+ * الگوی استاندارد مستندات Spring Security برای کلاینت‌های جاوااسکریپتی.
+ * {@link SpaCsrfTokenRequestHandler} همان handler توصیه‌شده‌ی مستندات است:
+ * برای مقدار هدر از resolve ساده استفاده می‌کند (کوکی خودش در برابر BREACH
+ * حساس نیست) ولی رندر درون‌صفحه‌ای احتمالی آینده را XorشدهBREACH-safe نگه
+ * می‌دارد، و با csrfToken.get()‌ در handle، نوشتن کوکیِ به‌تعویق‌افتاده را
+ * در هر پاسخ تضمین می‌کند (بدون آن، کوکی هرگز ست نمی‌شد).
  */
 @Configuration
 public class SecurityConfig {
@@ -48,7 +59,10 @@ public class SecurityConfig {
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         http
-                .csrf(AbstractHttpConfigurer::disable) // بازبینی لازم فقط اگر یک کلاینت *session-cookie-authenticated* در برابر REST ادمین ساخته شود؛ نه برای /activate
+                .csrf(csrf -> csrf
+                        .csrfTokenRepository(CookieCsrfTokenRepository.withHttpOnlyFalse())
+                        .csrfTokenRequestHandler(new SpaCsrfTokenRequestHandler())
+                )
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers(
                                 "/api/auth/**", "/actuator/**", "/error",
@@ -79,5 +93,33 @@ public class SecurityConfig {
                 .formLogin(form -> form.disable());
 
         return http.build();
+    }
+
+    /**
+     * همان SpaCsrfTokenRequestHandler مستندات رسمی Spring Security
+     * (بخش Single-Page Applications). دو کار انجام می‌دهد:
+     * ۱) resolveCsrfTokenValue: اگر توکن از هدر آمده باشد (مسیر عادی
+     * کلاینت‌های fetch ما) مقدار خام پذیرفته می‌شود؛ اگر روزی از پارامتر
+     * فرم بیاید، مسیر Xorشده (محافظ BREACH) استفاده می‌شود.
+     * ۲) handle: با فراخوانی csrfToken.get() بارگذاری به‌تعویق‌افتاده‌ی
+     * توکن را مجبور می‌کند تا CookieCsrfTokenRepository کوکی XSRF-TOKEN
+     * را واقعاً در پاسخ بنویسد.
+     */
+    private static final class SpaCsrfTokenRequestHandler implements CsrfTokenRequestHandler {
+
+        private final CsrfTokenRequestHandler plain = new CsrfTokenRequestAttributeHandler();
+        private final CsrfTokenRequestHandler xor = new XorCsrfTokenRequestAttributeHandler();
+
+        @Override
+        public void handle(HttpServletRequest request, HttpServletResponse response, Supplier<CsrfToken> csrfToken) {
+            this.xor.handle(request, response, csrfToken);
+            csrfToken.get();
+        }
+
+        @Override
+        public String resolveCsrfTokenValue(HttpServletRequest request, CsrfToken csrfToken) {
+            String headerValue = request.getHeader(csrfToken.getHeaderName());
+            return (StringUtils.hasText(headerValue) ? this.plain : this.xor).resolveCsrfTokenValue(request, csrfToken);
+        }
     }
 }
