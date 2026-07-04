@@ -217,10 +217,12 @@ com.example.roshdeandishe
 │   ├── AcademicFacade.java
 │   ├── StudentEnrolledEvent.java   (fields: schoolId, studentId, classId — NOT
 │   │                                 gradeLevel; superseded by real ClassEntity)
-│   ├── ClassController.java        (REST: create/list classes —
+│   ├── ClassController.java        (REST: create/list classes — class-level
+│   │                                 @RequiresModule("ACADEMIC") +
 │   │                                 @RequiresPermission("CLASS_MANAGE"),
 │   │                                 SCHOOL_ADMIN only)
-│   ├── StudentController.java      (REST: enroll/get student —
+│   ├── StudentController.java      (REST: enroll/get student — class-level
+│   │                                 @RequiresModule("ACADEMIC") +
 │   │                                 @RequiresPermission("STUDENT_ENROLL"),
 │   │                                 SCHOOL_ADMIN + TEACHER)
 │   ├── internal/
@@ -573,6 +575,18 @@ Every protected action is checked in two steps, in this order. Both must pass.
    Failure → `IamError.PermissionDenied` → HTTP 403.
 
 **Never conflate these two failure states.**
+
+Which controllers carry which layers (resolved): `ClassController` and
+`StudentController` carry class-level `@RequiresModule("ACADEMIC")` (the aspect
+supports `@Target(TYPE)` via `@within`) plus per-method `@RequiresPermission`.
+`MembershipController` and `SchoolController` deliberately carry **no**
+`@RequiresModule` — membership management and school creation/reading are
+platform capabilities, not subscribable modules (there is no `IAM` or `SCHOOL`
+module code). `IamSeedDataRunner.seedDemoSchoolEntitlements()` seeds an
+`ACADEMIC` entitlement for the demo school (id 1) so the academic endpoints
+stay usable in dev; a school created self-service at runtime has zero
+entitlements and will correctly get 403 `ModuleNotEntitled` on them until
+granted via `setSchoolEntitlement` (facade-only, see §7 item 1).
 
 **Critical caveat, not yet resolved:** `PermissionDecisionService` currently
 **unconditionally denies** any check made with `AccessContext.PlatformContext`

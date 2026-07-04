@@ -2,6 +2,7 @@ package com.example.roshdeandishe.academic;
 
 import com.example.roshdeandishe.academic.AcademicFacade.ClassId;
 import com.example.roshdeandishe.academic.AcademicFacade.ClassInfo;
+import com.example.roshdeandishe.iam.shared.RequiresModule;
 import com.example.roshdeandishe.iam.shared.RequiresPermission;
 import com.example.roshdeandishe.platform.TenantContext;
 import org.springframework.web.bind.annotation.*;
@@ -12,9 +13,14 @@ import java.util.List;
  * مدیریت کلاس‌های یک مدرسه. طبق تصمیم صریح، ساخت کلاس یک تصمیم
  * اداری/چیدمانی است و فقط SCHOOL_ADMIN مجاز است (بر خلاف ثبت‌نام
  * دانش‌آموز که TEACHER هم مجاز است - رجوع کنید به StudentController).
+ * <p>
+ * {@code @RequiresModule("ACADEMIC")} در سطح کلاس: همه‌ی این عملیات فقط
+ * وقتی معنا دارند که مدرسه ماژول ACADEMIC را خریده باشد (لایه‌ی اول از
+ * کنترل دسترسی دولایه؛ لایه‌ی دوم همان @RequiresPermission روی هر متد است).
  */
 @RestController
 @RequestMapping("/api/admin/schools/{schoolId}/classes")
+@RequiresModule("ACADEMIC")
 public class ClassController {
 
     private final AcademicFacade academicFacade;

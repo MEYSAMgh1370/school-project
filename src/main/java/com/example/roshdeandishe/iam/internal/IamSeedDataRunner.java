@@ -26,6 +26,7 @@ class IamSeedDataRunner implements ApplicationRunner {
 
     private static final String DEMO_ADMIN_EMAIL = "admin@roshdeandishe.test";
     private static final String DEMO_ADMIN_PASSWORD = "password";
+    private static final Long DEMO_SCHOOL_ID = 1L;
 
     private final UserRepository userRepository;
     private final RoleRepository roleRepository;
