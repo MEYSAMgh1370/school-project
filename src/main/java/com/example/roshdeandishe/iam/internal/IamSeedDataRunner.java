@@ -34,6 +34,7 @@ class IamSeedDataRunner implements ApplicationRunner {
     private final PermissionRepository permissionRepository;
     private final RolePermissionRepository rolePermissionRepository;
     private final SchoolEntitlementRepository schoolEntitlementRepository;
+    private final SchoolMembershipRepository schoolMembershipRepository;
     private final PasswordEncoder passwordEncoder;
 
     IamSeedDataRunner(
@@ -43,6 +44,7 @@ class IamSeedDataRunner implements ApplicationRunner {
             PermissionRepository permissionRepository,
             RolePermissionRepository rolePermissionRepository,
             SchoolEntitlementRepository schoolEntitlementRepository,
+            SchoolMembershipRepository schoolMembershipRepository,
             PasswordEncoder passwordEncoder
     ) {
         this.userRepository = userRepository;
@@ -51,6 +53,7 @@ class IamSeedDataRunner implements ApplicationRunner {
         this.permissionRepository = permissionRepository;
         this.rolePermissionRepository = rolePermissionRepository;
         this.schoolEntitlementRepository = schoolEntitlementRepository;
+        this.schoolMembershipRepository = schoolMembershipRepository;
         this.passwordEncoder = passwordEncoder;
     }
 
@@ -63,6 +66,7 @@ class IamSeedDataRunner implements ApplicationRunner {
         seedRolePermissions(roles, permissions);
         seedDemoAdminUser();
         seedDemoSchoolEntitlements();
+        seedDemoAdminMembership();
     }
 
     private void seedModules() {
@@ -160,18 +164,45 @@ class IamSeedDataRunner implements ApplicationRunner {
     }
 
     /**
-     * مدرسه‌ی نمونه (که SchoolSeedDataRunner در ماژول school به عنوان اولین
-     * ردیف می‌سازد و بنابراین id آن ۱ است) باید ماژول ACADEMIC را داشته باشد،
-     * وگرنه بعد از اضافه شدن {@code @RequiresModule("ACADEMIC")} روی
-     * Class/StudentController همه‌ی endpointهای آموزشی در dev با 403
-     * (ModuleNotEntitled) جواب می‌دادند. schoolId اینجا از دید iam یک Long
-     * مات است (بدون FK)، پس ترتیب اجرای دو Seeder اهمیتی ندارد.
+     * ماژول‌های ACADEMIC و FINANCE را برای مدرسه‌ی نمونه (id=1، ساخته‌شده
+     * توسط SchoolSeedDataRunner روی دیتابیس تازه) فعال می‌کند - وگرنه
+     * FinanceController (اولین کنترلر با @RequiresModule) برای جریان dev
+     * از همان ابتدا 403 می‌دهد. مثل بقیه‌ی این کلاس، فقط seed مخصوص dev.
      */
     private void seedDemoSchoolEntitlements() {
         if (schoolEntitlementRepository.count() > 0) {
             return;
         }
-        ModuleEntity academic = moduleRepository.findByCode("ACADEMIC").orElseThrow();
-        schoolEntitlementRepository.save(new SchoolEntitlementEntity(DEMO_SCHOOL_ID, academic.getId(), true));
+        Long demoSchoolId = 1L;
+        for (String moduleCode : new String[]{"ACADEMIC", "FINANCE"}) {
+            moduleRepository.findByCode(moduleCode).ifPresent(module ->
+                    schoolEntitlementRepository.save(
+                            new SchoolEntitlementEntity(demoSchoolId, module.getId(), true)
+                    )
+            );
+        }
+    }
+
+    /**
+     * ادمین نمونه بدون Membership در مدرسه‌ی نمونه عملاً هیچ API مدرسه‌محوری
+     * را نمی‌تواند صدا بزند (PermissionDecisionService عضویت فعال می‌خواهد) -
+     * شکافی که تا قبل از ساخت داشبورد به چشم نیامده بود، چون مدرسه‌ی نمونه
+     * مستقیم با Repository ساخته می‌شود نه از مسیر خودسرویسی SchoolController
+     * (که سازنده را خودکار SCHOOL_ADMIN می‌کند). فقط seed مخصوص dev.
+     */
+    private void seedDemoAdminMembership() {
+        userRepository.findByEmail(DEMO_ADMIN_EMAIL).ifPresent(admin ->
+                roleRepository.findByCode("SCHOOL_ADMIN").ifPresent(role -> {
+                    Long demoSchoolId = 1L;
+                    boolean exists = schoolMembershipRepository
+                            .findByUserIdAndSchoolIdAndRoleId(admin.getId(), demoSchoolId, role.getId())
+                            .isPresent();
+                    if (!exists) {
+                        schoolMembershipRepository.save(
+                                new SchoolMembershipEntity(admin.getId(), demoSchoolId, role.getId())
+                        );
+                    }
+                })
+        );
     }
 }

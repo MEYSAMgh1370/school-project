@@ -35,7 +35,7 @@ public class MembershipController {
     @PostMapping
     @RequiresPermission("MEMBERSHIP_MANAGE")
     public MembershipResponse createMembership(@PathVariable Long schoolId, @RequestBody CreateMembershipRequest request) {
-        requireHeaderMatchesPath(schoolId);
+        TenantContext.requireMatches(schoolId);
 
         UserId userId = iamFacade.findOrCreateUser(request.email(), request.fullName());
         Long membershipId = iamFacade.createMembership(userId, schoolId, request.roleCode());
@@ -47,7 +47,7 @@ public class MembershipController {
     @GetMapping
     @RequiresPermission("MEMBERSHIP_MANAGE")
     public List<MembershipResponse> listMemberships(@PathVariable Long schoolId) {
-        requireHeaderMatchesPath(schoolId);
+        TenantContext.requireMatches(schoolId);
 
         return iamFacade.findMembershipsBySchool(schoolId).stream()
                 .map(info -> MembershipResponse.from(info.membershipId(), info))
@@ -61,34 +61,20 @@ public class MembershipController {
             @PathVariable Long membershipId,
             @RequestBody SetActiveRequest request
     ) {
-        requireHeaderMatchesPath(schoolId);
+        TenantContext.requireMatches(schoolId);
         iamFacade.setMembershipActive(membershipId, request.active());
     }
 
     @PostMapping("/{membershipId}/invite-token")
     @RequiresPermission("MEMBERSHIP_MANAGE")
     public InviteTokenResponse issueInviteToken(@PathVariable Long schoolId, @PathVariable Long membershipId) {
-        requireHeaderMatchesPath(schoolId);
+        TenantContext.requireMatches(schoolId);
 
         return iamFacade.issueInviteToken(membershipId)
-                .map(token -> new InviteTokenResponse(token, true))
-                .orElseGet(() -> new InviteTokenResponse(null, false));
+                .map(issued -> new InviteTokenResponse(issued.token(), true, issued.emailSent()))
+                .orElseGet(() -> new InviteTokenResponse(null, false, false));
     }
 
-    /**
-     * جلوگیری از ناهم‌خوانی بین schoolId ای که permission check روی آن
-     * انجام شده (از هدر) و schoolId ای که عملیات واقعاً روی آن اجرا می‌شود
-     * (از path).
-     */
-    private void requireHeaderMatchesPath(Long schoolIdFromPath) {
-        Long schoolIdFromHeader = TenantContext.get();
-        if (!schoolIdFromHeader.equals(schoolIdFromPath)) {
-            throw new IllegalStateException(
-                    "هدر X-School-ID (" + schoolIdFromHeader + ") با schoolId در URL (" +
-                    schoolIdFromPath + ") مطابقت ندارد."
-            );
-        }
-    }
 
     public record CreateMembershipRequest(String email, String fullName, String roleCode) {
     }
@@ -104,6 +90,11 @@ public class MembershipController {
         }
     }
 
-    public record InviteTokenResponse(String inviteToken, boolean issued) {
+    /**
+     * emailSent=false با issued=true یعنی توکن صادر شد اما ایمیل به مقصد
+     * نرسید (مثلاً SMTP در دسترس نبود) - ادمین باید لینک
+     * /activate?token=... را دستی به فرد دعوت‌شده برساند.
+     */
+    public record InviteTokenResponse(String inviteToken, boolean issued, boolean emailSent) {
     }
 }

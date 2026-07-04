@@ -32,7 +32,7 @@ public class ClassController {
     @PostMapping
     @RequiresPermission("CLASS_MANAGE")
     public ClassResponse createClass(@PathVariable Long schoolId, @RequestBody CreateClassRequest request) {
-        requireHeaderMatchesPath(schoolId);
+        TenantContext.requireMatches(schoolId);
 
         ClassId classId = academicFacade.createClass(schoolId, request.name(), request.teacherId(), request.section());
         return new ClassResponse(classId.value(), schoolId, request.name(), request.teacherId(), request.section());
@@ -41,27 +41,13 @@ public class ClassController {
     @GetMapping
     @RequiresPermission("CLASS_MANAGE")
     public List<ClassResponse> listClasses(@PathVariable Long schoolId) {
-        requireHeaderMatchesPath(schoolId);
+        TenantContext.requireMatches(schoolId);
 
         return academicFacade.listClasses(schoolId).stream()
                 .map(ClassController::toResponse)
                 .toList();
     }
 
-    /**
-     * همان محافظت مورد استفاده در MembershipController: schoolId هدر
-     * (که مبنای permission check است) باید با schoolId مسیر (که عملیات
-     * واقعی روی آن اجرا می‌شود) یکی باشد.
-     */
-    private void requireHeaderMatchesPath(Long schoolIdFromPath) {
-        Long schoolIdFromHeader = TenantContext.get();
-        if (!schoolIdFromHeader.equals(schoolIdFromPath)) {
-            throw new IllegalStateException(
-                    "هدر X-School-ID (" + schoolIdFromHeader + ") با schoolId در URL (" +
-                    schoolIdFromPath + ") مطابقت ندارد."
-            );
-        }
-    }
 
     private static ClassResponse toResponse(ClassInfo info) {
         return new ClassResponse(info.id().value(), info.schoolId(), info.name(), info.teacherId(), info.section());
