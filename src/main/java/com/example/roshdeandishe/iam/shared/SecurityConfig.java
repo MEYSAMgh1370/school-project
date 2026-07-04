@@ -53,9 +53,24 @@ public class SecurityConfig {
                         .requestMatchers(
                                 "/api/auth/**", "/actuator/**", "/error",
                                 "/swagger-ui/**", "/swagger-ui.html", "/v3/api-docs/**",
-                                "/activate", "/webjars/**"
+                                "/activate", "/login", "/webjars/**"
                         ).permitAll()
                         .anyRequest().authenticated()
+                )
+                // صفحه‌های HTML (مثل /dashboard) بدون لاگین باید به /login
+                // ری‌دایرکت شوند؛ APIهای JSON (/api/**) باید 403 بگیرند تا
+                // fetchهای کلاینت پاسخ قابل‌تشخیص بگیرند. هر دو matcher صریح
+                // ثبت شده‌اند چون اولین entry point ثبت‌شده، fallback پیش‌فرض
+                // هم می‌شود - با فقط یکی، ریدایرکت به /api هم نشت می‌کرد.
+                .exceptionHandling(ex -> ex
+                        .defaultAuthenticationEntryPointFor(
+                                new org.springframework.security.web.authentication.Http403ForbiddenEntryPoint(),
+                                request -> request.getRequestURI().startsWith("/api/")
+                        )
+                        .defaultAuthenticationEntryPointFor(
+                                new org.springframework.security.web.authentication.LoginUrlAuthenticationEntryPoint("/login"),
+                                request -> !request.getRequestURI().startsWith("/api/")
+                        )
                 )
                 .sessionManagement(session -> session
                         .sessionCreationPolicy(org.springframework.security.config.http.SessionCreationPolicy.IF_REQUIRED)

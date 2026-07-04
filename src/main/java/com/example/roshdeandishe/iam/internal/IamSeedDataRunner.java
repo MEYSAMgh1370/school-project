@@ -33,6 +33,7 @@ class IamSeedDataRunner implements ApplicationRunner {
     private final PermissionRepository permissionRepository;
     private final RolePermissionRepository rolePermissionRepository;
     private final SchoolEntitlementRepository schoolEntitlementRepository;
+    private final SchoolMembershipRepository schoolMembershipRepository;
     private final PasswordEncoder passwordEncoder;
 
     IamSeedDataRunner(
@@ -42,6 +43,7 @@ class IamSeedDataRunner implements ApplicationRunner {
             PermissionRepository permissionRepository,
             RolePermissionRepository rolePermissionRepository,
             SchoolEntitlementRepository schoolEntitlementRepository,
+            SchoolMembershipRepository schoolMembershipRepository,
             PasswordEncoder passwordEncoder
     ) {
         this.userRepository = userRepository;
@@ -50,6 +52,7 @@ class IamSeedDataRunner implements ApplicationRunner {
         this.permissionRepository = permissionRepository;
         this.rolePermissionRepository = rolePermissionRepository;
         this.schoolEntitlementRepository = schoolEntitlementRepository;
+        this.schoolMembershipRepository = schoolMembershipRepository;
         this.passwordEncoder = passwordEncoder;
     }
 
@@ -62,6 +65,7 @@ class IamSeedDataRunner implements ApplicationRunner {
         seedRolePermissions(roles, permissions);
         seedDemoAdminUser();
         seedDemoSchoolEntitlements();
+        seedDemoAdminMembership();
     }
 
     private void seedModules() {
@@ -176,5 +180,28 @@ class IamSeedDataRunner implements ApplicationRunner {
                     )
             );
         }
+    }
+
+    /**
+     * ادمین نمونه بدون Membership در مدرسه‌ی نمونه عملاً هیچ API مدرسه‌محوری
+     * را نمی‌تواند صدا بزند (PermissionDecisionService عضویت فعال می‌خواهد) -
+     * شکافی که تا قبل از ساخت داشبورد به چشم نیامده بود، چون مدرسه‌ی نمونه
+     * مستقیم با Repository ساخته می‌شود نه از مسیر خودسرویسی SchoolController
+     * (که سازنده را خودکار SCHOOL_ADMIN می‌کند). فقط seed مخصوص dev.
+     */
+    private void seedDemoAdminMembership() {
+        userRepository.findByEmail(DEMO_ADMIN_EMAIL).ifPresent(admin ->
+                roleRepository.findByCode("SCHOOL_ADMIN").ifPresent(role -> {
+                    Long demoSchoolId = 1L;
+                    boolean exists = schoolMembershipRepository
+                            .findByUserIdAndSchoolIdAndRoleId(admin.getId(), demoSchoolId, role.getId())
+                            .isPresent();
+                    if (!exists) {
+                        schoolMembershipRepository.save(
+                                new SchoolMembershipEntity(admin.getId(), demoSchoolId, role.getId())
+                        );
+                    }
+                })
+        );
     }
 }
