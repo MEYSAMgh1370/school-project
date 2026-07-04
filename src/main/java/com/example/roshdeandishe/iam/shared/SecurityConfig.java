@@ -21,11 +21,16 @@ import org.springframework.security.web.SecurityFilterChain;
  * در iam.shared قرار دارد نه platform، چون به IamUserDetailsService (که
  * internal ماژول iam است) وابسته است - platform هرگز نباید به iam وابسته شود.
  * <p>
- * ⚠️ CSRF عمداً غیرفعال شده برای این فاز (API فقط JSON، بدون فرم HTML).
- * اگر در آینده یک وب‌کلاینت مبتنی بر مرورگر (مثلاً Thymeleaf با فرم واقعی،
- * یا یک SPA که از همان session cookie استفاده می‌کند) اضافه شد، این تصمیم
- * باید بازبینی شود - CSRF غیرفعال یعنی endpointهای mutating در برابر
- * Cross-Site Request Forgery محافظت نمی‌شوند.
+ * ⚠️ CSRF عمداً غیرفعال شده. این API فقط JSON برمی‌گرداند و صفحه‌ی تک HTML
+ * موجود (GET /activate، فعال‌سازی حساب) هیچ session cookie ضمنی‌ای را
+ * به‌عنوان اعتبارنامه استفاده نمی‌کند - اعتبارنامه‌ی واقعی خودِ invite token
+ * در بدنه‌ی درخواست است (دقیقاً هم‌راستا با مدل اعتماد /api/auth/login که
+ * خودش هم عمداً بدون احراز هویت است)، پس ریسک CSRF کلاسیک (بهره‌برداری از
+ * یک session معتبرِ از پیش موجود در مرورگر قربانی) برای این یک صفحه صدق
+ * نمی‌کند. اگر در آینده یک وب‌کلاینت مبتنی بر *session cookie* در برابر
+ * REST APIهای ادمین (MembershipController، ClassController،
+ * StudentController و...) ساخته شود - که هنوز اصلاً scope نشده - این
+ * تصمیم باید در آن نقطه بازبینی شود.
  */
 @Configuration
 public class SecurityConfig {
@@ -43,11 +48,12 @@ public class SecurityConfig {
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         http
-                .csrf(AbstractHttpConfigurer::disable) // TODO: قبل از افزودن هر کلاینت مبتنی بر مرورگر، بازبینی شود
+                .csrf(AbstractHttpConfigurer::disable) // بازبینی لازم فقط اگر یک کلاینت *session-cookie-authenticated* در برابر REST ادمین ساخته شود؛ نه برای /activate
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers(
                                 "/api/auth/**", "/actuator/**", "/error",
-                                "/swagger-ui/**", "/swagger-ui.html", "/v3/api-docs/**"
+                                "/swagger-ui/**", "/swagger-ui.html", "/v3/api-docs/**",
+                                "/activate", "/webjars/**"
                         ).permitAll()
                         .anyRequest().authenticated()
                 )

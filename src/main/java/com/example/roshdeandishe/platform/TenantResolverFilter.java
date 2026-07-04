@@ -31,7 +31,7 @@ public class TenantResolverFilter extends OncePerRequestFilter {
      */
     private static final String[] EXCLUDED_PATHS = {
             "/actuator", "/api/auth", "/login", "/error", "/css", "/js", "/favicon.ico",
-            "/swagger-ui", "/v3/api-docs"
+            "/swagger-ui", "/v3/api-docs", "/activate", "/webjars"
     };
 
     /**
