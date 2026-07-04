@@ -90,13 +90,16 @@ too narrow.
   (flat, no subfolder yet — three templates: `activate.jte`, `login.jte`,
   `dashboard.jte`). Bulma is used for CSS, also as a WebJar, no custom CSS
   framework/pipeline. View-rendering `@Controller`s (as opposed to the
-  `@RestController`s everywhere else) all live in `iam.shared` so far
-  (`AccountActivationPageController`, `LoginPageController`,
-  `DashboardPageController`) — auth/identity pages are conceptually iam's concern.
-  A page that must compose data across modules (e.g. school *names* next to
-  membership rows) has no home yet — that needs a UI-composition decision (likely
-  a dedicated `web` module) that hasn't been made; don't force cross-module
-  facades into iam page controllers (iam→school would be a dependency cycle).
+  `@RestController`s everywhere else) live in two places, split by concern:
+  pure auth/identity pages stay in `iam.shared`
+  (`AccountActivationPageController`, `LoginPageController`), while any page
+  that composes data across modules lives in the dedicated **`web` module**
+  (`DashboardPageController` — memberships from iam + school names from
+  school). This resolved the former UI-composition open point: `web` is a
+  pure view-composition layer — it consumes other modules' Facades, owns no
+  entities/Facade/REST of its own, and nothing depends on it. Do not put
+  cross-module page controllers in `iam` (iam→school would be a dependency
+  cycle), and do not put REST endpoints in `web`.
 
 ### Module boundary rules (enforced by `ModularityTests.verifyModularStructure()`)
 
@@ -191,11 +194,6 @@ com.example.roshdeandishe
 │       ├── LoginPageController.java   (GET /login — renders login.jte; its JS
 │       │                                posts to /api/auth/login then goes to
 │       │                                /dashboard)
-│       ├── DashboardPageController.java   (GET /dashboard — read-only,
-│       │                                server-rendered "my memberships" page;
-│       │                                shows schoolId not school name — see §2
-│       │                                Frontend note on UI composition — and has
-│       │                                NO school switcher, that's Open Question 2)
 │       └── exception/                 (@NamedInterface("shared.exception") — own
 │           ├── IamError.java (sealed)   NamedInterface, does NOT inherit iam.shared's)
 │           ├── IamException.java
@@ -237,7 +235,7 @@ com.example.roshdeandishe
 │       ├── AcademicException.java
 │       └── AcademicExceptionHandler.java   (bean name "academicGlobalExceptionHandler")
 │
-└── finance/                    ← tuition, invoices, payments, audit
+├── finance/                    ← tuition, invoices, payments, audit
     ├── FinanceFacade.java           (issueTuitionInvoice — real persistence now;
     │                                  amount comes from the school's TuitionFee,
     │                                  no longer a parameter. Plus setTuitionFee /
@@ -260,10 +258,18 @@ com.example.roshdeandishe
     │   ├── FinanceAuditEntity / FinanceAuditRepository   (append-only audit trail)
     │   └── FinanceAuditEventListener      (@ApplicationModuleListener, writes one
     │                                        audit row per InvoiceIssuedEvent)
-    └── shared/
-        ├── FinanceError.java (sealed: TuitionFeeNotSet, InvalidTuitionFee)
-        ├── FinanceException.java
-        └── FinanceExceptionHandler.java   (bean name "financeExceptionHandler")
+│   └── shared/
+│       ├── FinanceError.java (sealed: TuitionFeeNotSet, InvalidTuitionFee)
+│       ├── FinanceException.java
+│       └── FinanceExceptionHandler.java   (bean name "financeExceptionHandler")
+│
+└── web/                        ← UI-composition layer (see §2 Frontend): page
+    └── DashboardPageController.java   controllers that need more than one
+                                  module's Facade. GET /dashboard composes iam
+                                  memberships + school names and renders the
+                                  school/role switcher navbar (§11 Q2). No
+                                  Facade, no entities, no REST, no exception
+                                  handler of its own; nothing depends on it.
 ```
 
 **Adding a new module**: copy the `academic/shared` error-handling pattern
@@ -679,6 +685,13 @@ above.
   `SecurityConfig` — the first registered one is also the fallback). Covered by
   `LoginDashboardFlowIntegrationTest`. **Deliberately read-only** — see item 6
   below for what gates the mutating management UI.
+- **CSRF enabled + school/role switcher (both former gates of item 6)**: CSRF is
+  on (cookie-based `XSRF-TOKEN` / `X-XSRF-TOKEN` — see item 6 for the exact
+  pattern), and the dashboard navbar now carries the school/role switcher
+  (Open Question 2 resolved — see §11 Q2 for semantics). This also created the
+  **`web` module** (§2 Frontend, §3): `DashboardPageController` moved there from
+  `iam.shared` and now shows school *names* (composed from `SchoolFacade`)
+  instead of raw schoolIds.
 - Dev-only seed data: roles, modules, permissions, role-permission grants, one demo
   school, one demo admin user with a SCHOOL_ADMIN membership at the demo school
   (without it the demo admin couldn't call any school-scoped API — the demo school
@@ -725,9 +738,12 @@ above.
    back as `X-XSRF-TOKEN` (all three templates have a `csrfToken()` helper —
    copy it into new pages), Swagger UI does the same via
    `springdoc.swagger-ui.csrf.enabled`, and MockMvc tests use `.with(csrf())`.
-   **The one remaining gate is (b):** any management page is per-school, which
-   forces Open Question 2 (the school/role switcher UX) — resolve it explicitly
-   first; the backend `GET /api/me/memberships` for it already exists.
+   **Gate (b) — the school/role switcher — is also resolved** (see §11 Q2 for
+   the chosen UX and its semantics; the switcher navbar exists on the
+   dashboard, rendered by the `web` module). **The management UI is therefore
+   unblocked** — new management pages go in the `web` module, reuse the
+   dashboard's navbar pattern, and their JS must send both `X-School-ID` (the
+   page's school) and `X-XSRF-TOKEN` on mutating requests.
 7. **Class reassignment as an explicit action.** `enrollStudent` happens to support
    moving a student to a different class (idempotent re-enroll updates `classId`),
    but there's no dedicated "transfer" endpoint/semantics, and it's unclear whether a
@@ -765,11 +781,10 @@ deferred (§7 item 3).
 **Phase E — Frontend, slice 1 (login + read-only dashboard): done.** `GET /login`,
 `GET /dashboard`, `MeController` (`/api/me`, `/api/me/memberships`), page-vs-API
 authentication entry points, and the dev-seed fixes (demo admin membership) — see
-§7 Done. **The next slice — the mutating management UI — is explicitly gated** on
-resolving Open Question 2 (the school/role switcher UX); see §7 item 6. The other
-former gate — CSRF — is resolved: enabled, cookie-based, see §7 item 6 for the
-pattern new pages must follow. Don't start management pages without settling the
-switcher UX.
+§7 Done. **Both former gates on the next slice — the mutating management UI — are
+resolved**: CSRF is enabled (cookie-based, §7 item 6) and the school/role switcher
+UX is decided and built (dashboard navbar, `web` module, §11 Q2). Management pages
+can now be started; follow the patterns in §7 item 6.
 
 ---
 
@@ -825,13 +840,23 @@ switcher UX.
 
 1. ~~Session vs. JWT for authentication~~ — **Resolved: session-based** (§2, §8).
    Revisit only if/when the KMP mobile client makes session cookies impractical.
-2. How does a user holding multiple memberships switch between schools/roles in the
-   UI? **Still open.** The backend piece it needs now exists
-   (`GET /api/me/memberships`, `IamFacade.findMembershipsByUser`) and the
-   read-only dashboard *displays* the membership list — but deliberately without
-   any switching/selection semantics. Resolving the switcher UX is a prerequisite
-   for the mutating management UI (§7 item 6); do not pick an approach silently
-   while building it.
+2. ~~How does a user holding multiple memberships switch between schools/roles in
+   the UI?~~ — **Resolved (2026-07-05, explicit user decision):** two navbar
+   dropdowns. The **school dropdown sits on the school name** (distinct schools
+   from the user's *active* memberships, names composed by the `web` module);
+   the **role dropdown sits on the person's name** and lists their roles at the
+   currently selected school (plus logout). Semantics, deliberately chosen:
+   - Selection is **client-side only** (localStorage: `selectedSchoolId`,
+     `selectedRole`) — no server-side "current school" session state. Management
+     pages send the selected school as `X-School-ID` on their API calls.
+   - **The role selection is display-only.** The backend has no per-request
+     "acting as role" concept — `PermissionDecisionService` evaluates all of the
+     user's active roles at the school. The role dropdown may drive which UI is
+     shown, never what the backend permits. Do not build per-request role
+     scoping off the back of this dropdown without an explicit new decision.
+   - The switcher **must tolerate zero school memberships** (dropdown simply not
+     rendered): individual B2C accounts (e.g. a teacher self-registering with no
+     school) are an anticipated future flow — see Q7.
 3. Can a school define custom roles, or only choose from system-defined ones?
    `RoleEntity`-as-data supports it technically; no admin UI or facade method exists.
 4. Should `UserEntitlementEntity` (B2C) ever interact with `SchoolEntitlementEntity`
@@ -844,3 +869,10 @@ switcher UX.
    "has zero entitlements until manually granted" sufficient signal on its own?
    Discussed once; decided not to build the extra status field for now, but not
    fully closed if a concrete need surfaces.
+7. **New (raised 2026-07-05):** Individual (B2C) self-registration — e.g. a
+   teacher creating their own account with no school, using USER-scoped modules.
+   The domain model already supports it (`User` without memberships,
+   `UserEntitlementEntity`), and the dashboard/switcher already tolerate zero
+   memberships by design (Q2). What's missing and unscoped: a public sign-up
+   flow (today accounts are only created via school flows: findOrCreateUser +
+   invite tokens). Explicitly "later maybe" — do not build until asked.

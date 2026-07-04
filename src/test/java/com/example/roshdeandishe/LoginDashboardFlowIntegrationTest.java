@@ -65,10 +65,13 @@ class LoginDashboardFlowIntegrationTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$[?(@.schoolId == 1 && @.roleCode == 'SCHOOL_ADMIN' && @.active == true)]").exists());
 
+        // داشبورد حالا نام مدرسه را (از ماژول school، از طریق ماژول web)
+        // به‌جای schoolId خام نشان می‌دهد + سوییچر مدرسه/نقش را رندر می‌کند
         mockMvc.perform(get("/dashboard").session(session))
                 .andExpect(status().isOk())
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("SCHOOL_ADMIN")))
-                .andExpect(content().string(org.hamcrest.Matchers.containsString("عضویت‌های من")));
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("عضویت‌های من")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("مدرسه‌ی نمونه")));
     }
 
     @Test
