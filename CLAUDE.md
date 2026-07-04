@@ -610,15 +610,6 @@ duplicated privately in three controllers until the fourth (`FinanceController`)
 arrived, which per the rule here triggered extracting it. New controllers call
 `TenantContext.requireMatches(...)`; do not re-inline it.
 
-**Known inconsistency, flagged not fixed:** the pre-finance controllers
-(`MembershipController`, `ClassController`, `StudentController`) carry only
-`@RequiresPermission`, not `@RequiresModule` — `FinanceController` is the first to
-carry both layers as §5 prescribes. For memberships that's arguably correct
-(membership management isn't a subscribable module), but `ClassController`/
-`StudentController` are ACADEMIC-module features and skip the entitlement layer.
-Left as-is deliberately when finance was built (surgical-change discipline);
-resolve consciously, not as a drive-by.
-
 `LoggingAspect` (`@Order(1)`, in `platform`, opt-in via `@Loggable`) wraps both of the
 above.
 
