@@ -2,6 +2,7 @@ package com.example.roshdeandishe.academic;
 
 import com.example.roshdeandishe.academic.AcademicFacade.StudentId;
 import com.example.roshdeandishe.academic.AcademicFacade.StudentInfo;
+import com.example.roshdeandishe.iam.shared.RequiresModule;
 import com.example.roshdeandishe.iam.shared.RequiresPermission;
 import com.example.roshdeandishe.platform.TenantContext;
 import org.springframework.web.bind.annotation.*;
@@ -10,9 +11,13 @@ import org.springframework.web.bind.annotation.*;
  * ثبت‌نام دانش‌آموز در یک کلاس. طبق تصمیم صریح، این عمل هم برای
  * SCHOOL_ADMIN و هم TEACHER مجاز است (بر خلاف ساخت کلاس که فقط ادمین
  * مجاز است - رجوع کنید به ClassController).
+ * <p>
+ * {@code @RequiresModule("ACADEMIC")} در سطح کلاس: همان لایه‌ی اول
+ * کنترل دسترسی دولایه - رجوع کنید به توضیح مشابه در ClassController.
  */
 @RestController
 @RequestMapping("/api/admin/schools/{schoolId}/students")
+@RequiresModule("ACADEMIC")
 public class StudentController {
 
     private final AcademicFacade academicFacade;

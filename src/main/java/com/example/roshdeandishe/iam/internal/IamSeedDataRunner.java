@@ -26,12 +26,14 @@ class IamSeedDataRunner implements ApplicationRunner {
 
     private static final String DEMO_ADMIN_EMAIL = "admin@roshdeandishe.test";
     private static final String DEMO_ADMIN_PASSWORD = "password";
+    private static final Long DEMO_SCHOOL_ID = 1L;
 
     private final UserRepository userRepository;
     private final RoleRepository roleRepository;
     private final ModuleRepository moduleRepository;
     private final PermissionRepository permissionRepository;
     private final RolePermissionRepository rolePermissionRepository;
+    private final SchoolEntitlementRepository schoolEntitlementRepository;
     private final PasswordEncoder passwordEncoder;
 
     IamSeedDataRunner(
@@ -40,6 +42,7 @@ class IamSeedDataRunner implements ApplicationRunner {
             ModuleRepository moduleRepository,
             PermissionRepository permissionRepository,
             RolePermissionRepository rolePermissionRepository,
+            SchoolEntitlementRepository schoolEntitlementRepository,
             PasswordEncoder passwordEncoder
     ) {
         this.userRepository = userRepository;
@@ -47,6 +50,7 @@ class IamSeedDataRunner implements ApplicationRunner {
         this.moduleRepository = moduleRepository;
         this.permissionRepository = permissionRepository;
         this.rolePermissionRepository = rolePermissionRepository;
+        this.schoolEntitlementRepository = schoolEntitlementRepository;
         this.passwordEncoder = passwordEncoder;
     }
 
@@ -58,6 +62,7 @@ class IamSeedDataRunner implements ApplicationRunner {
         Map<String, PermissionEntity> permissions = seedPermissions();
         seedRolePermissions(roles, permissions);
         seedDemoAdminUser();
+        seedDemoSchoolEntitlements();
     }
 
     private void seedModules() {
@@ -152,5 +157,21 @@ class IamSeedDataRunner implements ApplicationRunner {
         UserEntity admin = new UserEntity(DEMO_ADMIN_EMAIL, "ادمین نمونه");
         admin.setPasswordHash(passwordEncoder.encode(DEMO_ADMIN_PASSWORD));
         userRepository.save(admin);
+    }
+
+    /**
+     * مدرسه‌ی نمونه (که SchoolSeedDataRunner در ماژول school به عنوان اولین
+     * ردیف می‌سازد و بنابراین id آن ۱ است) باید ماژول ACADEMIC را داشته باشد،
+     * وگرنه بعد از اضافه شدن {@code @RequiresModule("ACADEMIC")} روی
+     * Class/StudentController همه‌ی endpointهای آموزشی در dev با 403
+     * (ModuleNotEntitled) جواب می‌دادند. schoolId اینجا از دید iam یک Long
+     * مات است (بدون FK)، پس ترتیب اجرای دو Seeder اهمیتی ندارد.
+     */
+    private void seedDemoSchoolEntitlements() {
+        if (schoolEntitlementRepository.count() > 0) {
+            return;
+        }
+        ModuleEntity academic = moduleRepository.findByCode("ACADEMIC").orElseThrow();
+        schoolEntitlementRepository.save(new SchoolEntitlementEntity(DEMO_SCHOOL_ID, academic.getId(), true));
     }
 }
