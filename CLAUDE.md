@@ -87,11 +87,16 @@ too narrow.
   light client-side interactivity. Both delivered as WebJars (`org.webjars.npm`),
   not a CDN `<script>` tag and not an npm/webpack/vite build — stays a zero-build
   addition consistent with "one Maven artifact." Templates live in `src/main/jte/`
-  (flat, no subfolder yet — only one template exists so far). Bulma is used for
-  CSS, also as a WebJar, no custom CSS framework/pipeline. View-rendering
-  `@Controller`s (as opposed to the `@RestController`s everywhere else) are new to
-  this project — see `iam.shared.AccountActivationPageController` for the first
-  and so-far-only one.
+  (flat, no subfolder yet — three templates: `activate.jte`, `login.jte`,
+  `dashboard.jte`). Bulma is used for CSS, also as a WebJar, no custom CSS
+  framework/pipeline. View-rendering `@Controller`s (as opposed to the
+  `@RestController`s everywhere else) all live in `iam.shared` so far
+  (`AccountActivationPageController`, `LoginPageController`,
+  `DashboardPageController`) — auth/identity pages are conceptually iam's concern.
+  A page that must compose data across modules (e.g. school *names* next to
+  membership rows) has no home yet — that needs a UI-composition decision (likely
+  a dedicated `web` module) that hasn't been made; don't force cross-module
+  facades into iam page controllers (iam→school would be a dependency cycle).
 
 ### Module boundary rules (enforced by `ModularityTests.verifyModularStructure()`)
 
@@ -137,6 +142,12 @@ com.example.roshdeandishe
 │   ├── MembershipController.java   (REST: create/list memberships, toggle active,
 │   │                                 issue invite-token —
 │   │                                 @RequiresPermission("MEMBERSHIP_MANAGE"))
+│   ├── MeController.java           (REST: GET /api/me, /api/me/memberships —
+│   │                                 authenticated-only, deliberately NO
+│   │                                 permission/module annotations and NO
+│   │                                 X-School-ID: it's about the user, not a
+│   │                                 school. The "list my memberships" endpoint
+│   │                                 Open Question 2 anticipated.)
 │   ├── internal/
 │   │   ├── UserEntity / UserRepository        (now includes nullable passwordHash)
 │   │   ├── InviteTokenEntity / InviteTokenRepository  (per-user, single-use,
@@ -160,8 +171,10 @@ com.example.roshdeandishe
 │   │   │                                empty authorities — see Architecture above)
 │   │   ├── IamFacadeImpl
 │   │   └── IamSeedDataRunner          (dev-only seed, incl. one demo admin user
-│   │                                    with a working password; replace w/ Flyway
-│   │                                    pre-prod)
+│   │                                    with a working password + their
+│   │                                    SCHOOL_ADMIN membership and the demo
+│   │                                    school's ACADEMIC+FINANCE entitlements;
+│   │                                    replace w/ Flyway pre-prod)
 │   └── shared/
 │       ├── RequiresModule.java + ModuleAccessAspect.java     (@Order(10))
 │       ├── RequiresPermission.java + PermissionAccessAspect.java (@Order(11))
@@ -171,11 +184,18 @@ com.example.roshdeandishe
 │       │                                /api/auth/activate — JSON, not Spring's
 │       │                                default form login; activate redeems an
 │       │                                invite token to set a first password)
-│       ├── AccountActivationPageController.java   (GET /activate — the project's
-│       │                                first and so-far-only view-rendering
-│       │                                @Controller; renders src/main/jte/activate.jte,
-│       │                                a JTE+Alpine.js+Bulma page whose JS calls
-│       │                                AuthController's /api/auth/activate)
+│       ├── AccountActivationPageController.java   (GET /activate — renders
+│       │                                src/main/jte/activate.jte, a JTE+Alpine.js
+│       │                                +Bulma page whose JS calls AuthController's
+│       │                                /api/auth/activate)
+│       ├── LoginPageController.java   (GET /login — renders login.jte; its JS
+│       │                                posts to /api/auth/login then goes to
+│       │                                /dashboard)
+│       ├── DashboardPageController.java   (GET /dashboard — read-only,
+│       │                                server-rendered "my memberships" page;
+│       │                                shows schoolId not school name — see §2
+│       │                                Frontend note on UI composition — and has
+│       │                                NO school switcher, that's Open Question 2)
 │       └── exception/                 (@NamedInterface("shared.exception") — own
 │           ├── IamError.java (sealed)   NamedInterface, does NOT inherit iam.shared's)
 │           ├── IamException.java
@@ -645,9 +665,20 @@ above.
   configured, but that's deployment config, not missing code.
 - **Frontend stack chosen and started**: JTE (WebJar-delivered Alpine.js + Bulma,
   no npm/webpack build) replaces the previously-unused Thymeleaf dependency — see
-  §2. `GET /activate` is the first page; no others exist yet.
+  §2. Three pages exist: `GET /activate`, `GET /login`, `GET /dashboard`.
+- **Login page + read-only dashboard (first slice of §7 item 6)**: `GET /login`
+  (posts to the existing `/api/auth/login`), `GET /dashboard` (server-rendered
+  "my memberships"), `MeController` (`GET /api/me`, `GET /api/me/memberships`),
+  `IamFacade.findMembershipsByUser`. Unauthenticated page requests redirect to
+  `/login`; unauthenticated `/api/**` stays 403 (two explicit entry points in
+  `SecurityConfig` — the first registered one is also the fallback). Covered by
+  `LoginDashboardFlowIntegrationTest`. **Deliberately read-only** — see item 6
+  below for what gates the mutating management UI.
 - Dev-only seed data: roles, modules, permissions, role-permission grants, one demo
-  school, one demo admin user, and ACADEMIC+FINANCE entitlements for the demo school
+  school, one demo admin user with a SCHOOL_ADMIN membership at the demo school
+  (without it the demo admin couldn't call any school-scoped API — the demo school
+  is seeded via repository, bypassing the self-service flow that auto-creates the
+  creator's membership), and ACADEMIC+FINANCE entitlements for the demo school
   (so the first `@RequiresModule`-guarded controller works out of the box in dev)
 - `ModularityTests` enforcing module boundaries
 
@@ -677,12 +708,19 @@ above.
    tables, not schemas.
 5. **Flyway/Liquibase.** All seed runners + `ddl-auto: update` are dev-only
    stand-ins.
-6. **Broader admin/teacher frontend.** JTE + Alpine.js + Bulma is the chosen stack
-   (see §2) and `GET /activate` is the first page built, but that's the only page
-   that exists — no admin dashboard, no membership/class/student management UI, no
-   login page. Angular was considered and rejected in favor of JTE given the
-   session-cookie-based backend and this project's preference for zero-build,
-   server-rendered pages over an SPA + token-auth rework.
+6. **Broader admin/teacher frontend — management UI.** The login page and a
+   read-only dashboard now exist (see Done). What's still missing is every
+   *mutating* UI: membership/class/student/finance management pages. Angular was
+   considered and rejected in favor of JTE given the session-cookie-based backend
+   and this project's preference for zero-build, server-rendered pages over an
+   SPA + token-auth rework. **Two explicit gates before building the mutating UI:**
+   (a) CSRF is currently disabled (`SecurityConfig`) and its own comment says that
+   decision must be revisited the moment a session-cookie-authenticated client
+   issues mutating requests against the admin REST APIs — the read-only dashboard
+   doesn't cross that line; a management UI does. (b) Any management page is
+   per-school, which forces Open Question 2 (the school/role switcher UX) —
+   resolve it explicitly first; the backend `GET /api/me/memberships` for it
+   already exists.
 7. **Class reassignment as an explicit action.** `enrollStudent` happens to support
    moving a student to a different class (idempotent re-enroll updates `classId`),
    but there's no dedicated "transfer" endpoint/semantics, and it's unclear whether a
@@ -717,12 +755,13 @@ link (`InviteEmailSender`, best-effort with the admin JSON token as fallback).
 pattern was reused as-is; payments/invoice-status/backfill remain explicitly
 deferred (§7 item 3).
 
-**Former immediate blocker (invite email delivery): resolved.** The system now
-emails the activation link itself (§7 item 2). Phase D (finance basics) is also
-done — the next major piece of work is the **broader admin/teacher frontend**
-(§7 item 6): login page, membership/class/student/finance management UI on the
-established JTE + Alpine.js + Bulma stack, which also forces Open Question 2
-(school/role switcher for multi-membership users).
+**Phase E — Frontend, slice 1 (login + read-only dashboard): done.** `GET /login`,
+`GET /dashboard`, `MeController` (`/api/me`, `/api/me/memberships`), page-vs-API
+authentication entry points, and the dev-seed fixes (demo admin membership) — see
+§7 Done. **The next slice — the mutating management UI — is explicitly gated** on
+(a) revisiting the disabled-CSRF decision and (b) resolving Open Question 2 (the
+school/role switcher UX); see §7 item 6. Don't start management pages without
+settling both.
 
 ---
 
@@ -779,9 +818,12 @@ established JTE + Alpine.js + Bulma stack, which also forces Open Question 2
 1. ~~Session vs. JWT for authentication~~ — **Resolved: session-based** (§2, §8).
    Revisit only if/when the KMP mobile client makes session cookies impractical.
 2. How does a user holding multiple memberships switch between schools/roles in the
-   UI? Still open — the only frontend page that exists (`GET /activate`) doesn't
-   touch this, but it affects what the backend needs to expose (e.g. a "list my
-   memberships" endpoint for a switcher).
+   UI? **Still open.** The backend piece it needs now exists
+   (`GET /api/me/memberships`, `IamFacade.findMembershipsByUser`) and the
+   read-only dashboard *displays* the membership list — but deliberately without
+   any switching/selection semantics. Resolving the switcher UX is a prerequisite
+   for the mutating management UI (§7 item 6); do not pick an approach silently
+   while building it.
 3. Can a school define custom roles, or only choose from system-defined ones?
    `RoleEntity`-as-data supports it technically; no admin UI or facade method exists.
 4. Should `UserEntitlementEntity` (B2C) ever interact with `SchoolEntitlementEntity`

@@ -120,6 +120,13 @@ class IamFacadeImpl implements IamFacade {
     }
 
     @Override
+    public List<MembershipInfo> findMembershipsByUser(UserId userId) {
+        return schoolMembershipRepository.findByUserId(userId.value()).stream()
+                .map(this::toMembershipInfo)
+                .toList();
+    }
+
+    @Override
     @Transactional
     public Long createMembership(UserId userId, Long schoolId, String roleCode) {
         RoleEntity role = roleRepository.findByCode(roleCode)
