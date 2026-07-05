@@ -94,18 +94,26 @@ too narrow.
   not a CDN `<script>` tag and not an npm/webpack/vite build — stays a zero-build
   addition consistent with "one Maven artifact." Templates live in `src/main/jte/`
   — four page templates (`activate.jte`, `login.jte`, `register.jte`,
-  `dashboard.jte`), all wrapped in the shared **`layout/main.jte`** (`title` +
-  `gg.jte.Content content` params). The layout is the *only* place that owns the
-  `<head>` (WebJar stylesheet/script tags); a page needing a page-specific asset
-  gets a new layout param, never its own duplicated `<head>`. Bulma is used for
+  `dashboard.jte`), all wrapped in the shared **`layout/main.jte`** (`title`,
+  `gg.jte.Content content`, and optional `pageScript` params). The layout is the
+  *only* place that owns the `<head>` (WebJar stylesheet/script tags + the global
+  `/css/app.css`); a page needing a page-specific asset gets a new layout param,
+  never its own duplicated `<head>`. `pageScript` (a `/js/...` path) is emitted
+  *before* the Alpine `<script defer>` tag on purpose: deferred scripts run in
+  document order, and `Alpine.data` registrations must exist before `alpine:init`
+  fires. Bulma is used for
   CSS, also as a WebJar, no custom CSS framework/pipeline.
   **Frontend code-placement rule (explicit user decision, 2026-07-05):** Bulma
   classes and small Alpine expressions stay inline in the template; anything with
   `fetch`, a regex, or more than ~10 lines of JS moves to a static file (under
   `src/main/resources/static/js/`) as an `Alpine.data` component; custom CSS is
-  always an external file, never inline `<style>`. The existing four pages
-  predate this rule and keep their inline components until next touched — apply
-  the rule when writing new pages or meaningfully editing existing ones. View-rendering `@Controller`s (as opposed to the
+  always an external file, never inline `<style>`. First applications:
+  `static/js/dashboard.js` (`createSchoolForm` component, wired via the layout's
+  `pageScript` param) and `static/css/app.css` (global, holds the `[x-cloak]`
+  rule). `/js/**` and `/css/**` are `permitAll` in `SecurityConfig` and excluded
+  in `TenantResolverFilter`. The four pages' *pre-existing* inline components
+  predate the rule and keep their inline form until next touched — apply the
+  rule to new code and meaningful edits. View-rendering `@Controller`s (as opposed to the
   `@RestController`s everywhere else) live in two places, split by concern:
   pure auth/identity pages stay in `iam.shared`
   (`AccountActivationPageController`, `LoginPageController`,
@@ -290,9 +298,13 @@ com.example.roshdeandishe
     └── DashboardPageController.java   controllers that need more than one
                                   module's Facade. GET /dashboard composes iam
                                   memberships + school names and renders the
-                                  school/role switcher navbar (§11 Q2). No
-                                  Facade, no entities, no REST, no exception
-                                  handler of its own; nothing depends on it.
+                                  school/role switcher navbar (§11 Q2) plus the
+                                  self-service create-school form (first mutating
+                                  UI - posts to POST /api/admin/schools via the
+                                  static createSchoolForm component in
+                                  /js/dashboard.js, then reloads). No Facade, no
+                                  entities, no REST, no exception handler of its
+                                  own; nothing depends on it.
 ```
 
 **Adding a new module**: copy the `academic/shared` error-handling pattern
@@ -783,9 +795,14 @@ above.
    **Gate (b) — the school/role switcher — is also resolved** (see §11 Q2 for
    the chosen UX and its semantics; the switcher navbar exists on the
    dashboard, rendered by the `web` module). **The management UI is therefore
-   unblocked** — new management pages go in the `web` module, reuse the
-   dashboard's navbar pattern, and their JS must send both `X-School-ID` (the
-   page's school) and `X-XSRF-TOKEN` on mutating requests.
+   unblocked, and its first mutating slice exists**: the dashboard's
+   create-school form (`createSchoolForm` in `/js/dashboard.js` →
+   `POST /api/admin/schools`; no `X-School-ID`, the school doesn't exist yet).
+   Still missing: membership/class/student/finance management pages — they go
+   in the `web` module, reuse the dashboard's navbar pattern, follow the §2
+   code-placement rule (fetch → static `Alpine.data` file via the layout's
+   `pageScript` param), and their JS must send both `X-School-ID` (the page's
+   school) and `X-XSRF-TOKEN` on mutating requests.
 7. **Class reassignment as an explicit action.** `enrollStudent` happens to support
    moving a student to a different class (idempotent re-enroll updates `classId`),
    but there's no dedicated "transfer" endpoint/semantics, and it's unclear whether a

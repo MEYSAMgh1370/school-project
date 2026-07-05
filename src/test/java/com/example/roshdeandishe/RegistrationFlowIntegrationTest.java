@@ -68,6 +68,48 @@ class RegistrationFlowIntegrationTest {
     }
 
     @Test
+    void registerThenCreateSchoolAndBecomeItsAdmin() throws Exception {
+        // کل مسیر onboarding خودسرویسی B2B: ثبت‌نام → ساخت مدرسه →
+        // SCHOOL_ADMIN شدن خودکار → دیدن مدرسه در داشبورد
+        mockMvc.perform(post("/api/auth/register")
+                        .with(csrf())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"email\":\"founder@example.test\",\"fullName\":\"بنیان‌گذار\",\"password\":\"password123\"}"))
+                .andExpect(status().isOk());
+
+        MvcResult loginResult = mockMvc.perform(post("/api/auth/login")
+                        .with(csrf())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"email\":\"founder@example.test\",\"password\":\"password123\"}"))
+                .andExpect(status().isOk())
+                .andReturn();
+        MockHttpSession session = (MockHttpSession) loginResult.getRequest().getSession(false);
+
+        MvcResult createResult = mockMvc.perform(post("/api/admin/schools")
+                        .with(csrf())
+                        .session(session)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"name\":\"مدرسه‌ی بنیان‌گذار\",\"timezone\":\"Asia/Tehran\",\"locale\":\"fa-IR\"}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.name").value("مدرسه‌ی بنیان‌گذار"))
+                .andReturn();
+        long schoolId = new com.fasterxml.jackson.databind.ObjectMapper()
+                .readTree(createResult.getResponse().getContentAsString()).get("id").asLong();
+
+        mockMvc.perform(get("/api/me/memberships").session(session))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[?(@.schoolId == " + schoolId
+                        + " && @.roleCode == 'SCHOOL_ADMIN' && @.active == true)]").exists());
+
+        mockMvc.perform(get("/dashboard").session(session))
+                .andExpect(status().isOk())
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("مدرسه‌ی بنیان‌گذار")))
+                // فرم ساخت مدرسه (کامپوننت استاتیک /js/dashboard.js) رندر می‌شود
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("createSchoolForm")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("/js/dashboard.js")));
+    }
+
+    @Test
     void duplicateEmailIsRejectedWithConflict() throws Exception {
         // ادمین نمونه seed شده و passwordHash دارد
         mockMvc.perform(post("/api/auth/register")

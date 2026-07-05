@@ -1,0 +1,8 @@
+/* CSS سراسری خارج از template (قانون جای‌گذاری کد - CLAUDE.md §2:
+   CSS سفارشی همیشه فایل جداست، هرگز <style> درون‌صفحه‌ای). */
+
+/* عناصر x-cloak تا پیش از init شدن Alpine پنهان می‌مانند تا فرم‌های
+   بسته (x-show=false) در لحظه‌ی load سوسو نزنند. */
+[x-cloak] {
+    display: none !important;
+}
