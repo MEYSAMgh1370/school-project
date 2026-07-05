@@ -1,7 +1,9 @@
 <%-- تنها جای مدیریت <head> (استایل‌شیت‌ها و اسکریپت‌ها): هر صفحه فقط
-     عنوان و محتوای body را می‌دهد. اگر روزی صفحه‌ای اسکریپت اختصاصی
-     (فایل استاتیک) لازم داشت، پارامتر جدیدی برای آن به همین layout اضافه
-     کنید - نه یک <head> تکراری در آن صفحه. --%>
+     عنوان و محتوای body را می‌دهد. صفحه‌ای که اسکریپت اختصاصی دارد
+     (کامپوننت Alpine.data استاتیک - قانون جای‌گذاری کد در CLAUDE.md §2)
+     آن را با scripts می‌دهد؛ این تگ‌ها عمداً *قبل از* اسکریپت Alpine
+     می‌آیند: هر دو defer هستند و به ترتیب سند اجرا می‌شوند، و ثبت
+     Alpine.data باید پیش از رویداد alpine:init انجام شده باشد. --%>
 @param String title
 @param gg.jte.Content content
 @param java.util.List<String> scripts = java.util.List.of()
@@ -12,10 +14,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>${title} - رشدِاندیشه</title>
     <link rel="stylesheet" href="/webjars/bulma/1.0.4/css/bulma.min.css">
-    <%-- Alpine.data() باید قبل از شروع خودِ Alpine ثبت شود؛ چون readyState
-         در لحظه‌ی اجرای اسکریپت‌های defer از قبل "interactive" است، Alpine
-         بلافاصله بعد از اجرای اسکریپت خودش شروع می‌شود - پس اسکریپت‌های
-         Alpine.data صفحه باید قبل از تگ اسکریپت خودِ Alpine بیایند، نه بعدش. --%>
+    <link rel="stylesheet" href="/css/app.css">
     @for(var script : scripts)
         <script defer src="${script}"></script>
     @endfor
