@@ -9,14 +9,15 @@
      static/js/navbar.js (قاعده‌ی جانمایی کد ۲۰۲۶-۰۷-۰۵: fetch/regex در
      فایل استاتیک، نه inline). --%>
 <nav class="navbar is-link" role="navigation" aria-label="main navigation"
-     x-data="schoolNavbar({@for(var school : navbar.schools())${school.id()}: [@for(var role : school.roles())'${role}',@endfor],@endfor})">
+     x-data="schoolNavbar({@for(var school : navbar.schools())${school.id()}: [@for(var role : school.roles())'${role}',@endfor],@endfor})"
+     @keydown.escape.window="schoolOpen = false; personOpen = false">
     <div class="navbar-brand">
         <span class="navbar-item has-text-weight-bold">رشدِاندیشه</span>
     </div>
     <div class="navbar-end">
         @if(!navbar.schools().isEmpty())
-            <div class="navbar-item has-dropdown" :class="{ 'is-active': schoolOpen }">
-                <a class="navbar-link" @click="schoolOpen = !schoolOpen; personOpen = false">
+            <div class="navbar-item has-dropdown" :class="{ 'is-active': schoolOpen }" @click.outside="schoolOpen = false">
+                <a class="navbar-link" aria-haspopup="true" :aria-expanded="schoolOpen" @click="schoolOpen = !schoolOpen; personOpen = false">
                     @for(var school : navbar.schools())
                         <span x-show="selectedSchoolId === ${school.id()}">${school.name()}</span>
                     @endfor
@@ -31,8 +32,8 @@
                 </div>
             </div>
         @endif
-        <div class="navbar-item has-dropdown" :class="{ 'is-active': personOpen }">
-            <a class="navbar-link" @click="personOpen = !personOpen; schoolOpen = false">${navbar.fullName()}</a>
+        <div class="navbar-item has-dropdown" :class="{ 'is-active': personOpen }" @click.outside="personOpen = false">
+            <a class="navbar-link" aria-haspopup="true" :aria-expanded="personOpen" @click="personOpen = !personOpen; schoolOpen = false">${navbar.fullName()}</a>
             <div class="navbar-dropdown is-right">
                 @for(var school : navbar.schools())
                     @for(var role : school.roles())
