@@ -50,4 +50,10 @@ public sealed interface IamError {
 
     record InvalidPassword(String reason) implements IamError {
     }
+
+    record InvalidRegistration(String reason) implements IamError {
+    }
+
+    record EmailAlreadyRegistered(String email) implements IamError {
+    }
 }

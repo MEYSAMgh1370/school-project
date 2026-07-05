@@ -74,6 +74,17 @@ public class IamProblemResolver {
                     "رمز عبور نامعتبر",
                     e.reason()
             );
+            case IamError.InvalidRegistration e -> ProblemDetailFactory.problem(
+                    HttpStatus.BAD_REQUEST, "invalid-registration",
+                    "اطلاعات ثبت‌نام نامعتبر",
+                    e.reason()
+            );
+            case IamError.EmailAlreadyRegistered e -> ProblemDetailFactory.problem(
+                    HttpStatus.CONFLICT, "email-already-registered",
+                    "ایمیل قبلاً ثبت شده",
+                    "کاربری با ایمیل '" + e.email() + "' از قبل وجود دارد. اگر این حساب شماست، " +
+                    "وارد شوید یا (اگر دعوت‌نامه دارید) حساب را از مسیر فعال‌سازی فعال کنید."
+            );
         };
     }
 }

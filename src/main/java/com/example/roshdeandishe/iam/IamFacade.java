@@ -42,6 +42,26 @@ public interface IamFacade {
     UserId findOrCreateUser(String email, String fullName);
 
     /**
+     * ثبت‌نام عمومی (self-service): برخلاف {@link #findOrCreateUser} که برای
+     * جریان‌های ادمین‌محور است و کاربرِ بدون رمز می‌سازد، این متد کاربری
+     * می‌سازد که از همان ابتدا رمز عبور دارد و می‌تواند وارد شود. کاربر
+     * تازه‌ثبت‌نام‌شده هیچ Membershipای ندارد - می‌تواند بعداً مدرسه بسازد
+     * (و SCHOOL_ADMIN شود) یا به یک مدرسه دعوت شود.
+     * <p>
+     * نکته‌ی امنیتی: اگر ایمیل از قبل وجود داشته باشد - حتی به‌صورت حسابِ
+     * دعوت‌شده‌ی فعال‌نشده (passwordHash=null) - ثبت‌نام رد می‌شود. تصاحب
+     * چنین حسابی فقط از مسیر توکن دعوتِ ایمیل‌شده مجاز است (که مالکیت
+     * ایمیل را اثبات می‌کند)، وگرنه هر کسی با دانستن ایمیلِ یک
+     * دانش‌آموز/معلم موجود می‌توانست حساب او را تصاحب کند.
+     *
+     * @throws com.example.roshdeandishe.iam.shared.exception.IamException با
+     * IamError.InvalidRegistration اگر ایمیل/نام معتبر نباشد،
+     * IamError.InvalidPassword اگر رمز عبور کوتاه‌تر از حد مجاز باشد، یا
+     * IamError.EmailAlreadyRegistered اگر ایمیل از قبل ثبت شده باشد
+     */
+    UserId registerUser(String email, String fullName, String password);
+
+    /**
      * نقش(های) کاربر در یک مدرسه‌ی خاص، شامل وضعیت فعال/غیرفعال هر Membership.
      * اگر کاربر چند نقش در همان مدرسه داشته باشد، اولین مورد بازگردانده می‌شود.
      */

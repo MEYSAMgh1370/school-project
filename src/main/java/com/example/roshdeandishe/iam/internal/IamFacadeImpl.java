@@ -101,6 +101,32 @@ class IamFacadeImpl implements IamFacade {
     }
 
     @Override
+    @Transactional
+    public UserId registerUser(String email, String fullName, String password) {
+        if (email == null || email.isBlank() || !email.contains("@")) {
+            throw new IamException(new IamError.InvalidRegistration("ایمیل معتبر نیست."));
+        }
+        if (fullName == null || fullName.isBlank()) {
+            throw new IamException(new IamError.InvalidRegistration("نام و نام خانوادگی الزامی است."));
+        }
+        if (password == null || password.isBlank() || password.length() < MIN_PASSWORD_LENGTH) {
+            throw new IamException(new IamError.InvalidPassword(
+                    "رمز عبور باید حداقل " + MIN_PASSWORD_LENGTH + " کاراکتر باشد."
+            ));
+        }
+
+        // ایمیلِ موجود - حتی حساب دعوت‌شده‌ی فعال‌نشده - همیشه رد می‌شود؛
+        // مسیر مجاز برای آن حساب‌ها فقط توکن دعوت است (اثبات مالکیت ایمیل).
+        if (userRepository.findByEmail(email).isPresent()) {
+            throw new IamException(new IamError.EmailAlreadyRegistered(email));
+        }
+
+        UserEntity user = new UserEntity(email, fullName);
+        user.setPasswordHash(passwordEncoder.encode(password));
+        return new UserId(userRepository.save(user).getId());
+    }
+
+    @Override
     public Optional<MembershipInfo> findMembership(UserId userId, Long schoolId) {
         List<SchoolMembershipEntity> memberships =
                 schoolMembershipRepository.findByUserIdAndSchoolId(userId.value(), schoolId);

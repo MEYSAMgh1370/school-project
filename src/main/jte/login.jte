@@ -78,6 +78,9 @@
                         <div class="notification is-danger mt-4" x-show="errorMessage" x-text="errorMessage"></div>
 
                         <p class="has-text-centered mt-4">
+                            <a href="/register">حساب ندارید؟ ثبت‌نام کنید</a>
+                        </p>
+                        <p class="has-text-centered mt-2">
                             <a href="/activate">کد دعوت دارید؟ حساب خود را فعال کنید</a>
                         </p>
                     </div>
