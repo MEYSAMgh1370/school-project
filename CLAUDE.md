@@ -77,6 +77,12 @@ too narrow.
   project is **one Maven artifact**, not a multi-module reactor — Spring Modulith
   detects module boundaries by package, and a multi-module Maven split would break
   illegal-dependency detection and the Event Publication Registry.
+- **Architecture documentation:** generated, never hand-drawn —
+  `ModularityTests.writeDocumentationSnippets()` (Spring Modulith `Documenter`)
+  writes C4/PlantUML diagrams + per-module AsciiDoc canvases to
+  `target/spring-modulith-docs/` on every test run, derived from the same
+  verified model as `verifyModularStructure()`. Not committed; regenerate with
+  `mvn test -Dtest=ModularityTests`.
 - **API documentation:** springdoc-openapi (Swagger UI at `/swagger-ui.html`,
   `/v3/api-docs`). Both are `permitAll` in `SecurityConfig` and excluded from the
   `X-School-ID` requirement in `TenantResolverFilter` — documentation endpoints, not

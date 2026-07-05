@@ -2,6 +2,7 @@ package com.example.roshdeandishe;
 
 import org.junit.jupiter.api.Test;
 import org.springframework.modulith.core.ApplicationModules;
+import org.springframework.modulith.docs.Documenter;
 
 /**
  * این تست مهم‌ترین ابزار برای پایبندی تیم به معماری Modular Monolith است.
@@ -26,5 +27,19 @@ class ModularityTests {
     void printModuleStructure() {
         ApplicationModules modules = ApplicationModules.of(RoshdeandisheApplication.class);
         modules.forEach(System.out::println);
+    }
+
+    /**
+     * تولید مستندات معماری در target/spring-modulith-docs: دیاگرام‌های
+     * C4/PlantUML (کل سیستم + هر ماژول جدا) و یک Module Canvas (AsciiDoc)
+     * برای هر ماژول - Beanهای علنی، رویدادهای publish/listen شده،
+     * NamedInterfaceها و وابستگی‌ها. چون از همان مدلِ تأییدشده‌ی
+     * verifyModularStructure ساخته می‌شود، هیچ‌وقت از کد عقب نمی‌افتد -
+     * برخلاف دیاگرام دستی.
+     */
+    @Test
+    void writeDocumentationSnippets() {
+        ApplicationModules modules = ApplicationModules.of(RoshdeandisheApplication.class);
+        new Documenter(modules).writeDocumentation();
     }
 }
