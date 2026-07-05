@@ -87,9 +87,19 @@ too narrow.
   light client-side interactivity. Both delivered as WebJars (`org.webjars.npm`),
   not a CDN `<script>` tag and not an npm/webpack/vite build — stays a zero-build
   addition consistent with "one Maven artifact." Templates live in `src/main/jte/`
-  (flat, no subfolder yet — four templates: `activate.jte`, `login.jte`,
-  `register.jte`, `dashboard.jte`). Bulma is used for CSS, also as a WebJar, no custom CSS
-  framework/pipeline. View-rendering `@Controller`s (as opposed to the
+  — four page templates (`activate.jte`, `login.jte`, `register.jte`,
+  `dashboard.jte`), all wrapped in the shared **`layout/main.jte`** (`title` +
+  `gg.jte.Content content` params). The layout is the *only* place that owns the
+  `<head>` (WebJar stylesheet/script tags); a page needing a page-specific asset
+  gets a new layout param, never its own duplicated `<head>`. Bulma is used for
+  CSS, also as a WebJar, no custom CSS framework/pipeline.
+  **Frontend code-placement rule (explicit user decision, 2026-07-05):** Bulma
+  classes and small Alpine expressions stay inline in the template; anything with
+  `fetch`, a regex, or more than ~10 lines of JS moves to a static file (under
+  `src/main/resources/static/js/`) as an `Alpine.data` component; custom CSS is
+  always an external file, never inline `<style>`. The existing four pages
+  predate this rule and keep their inline components until next touched — apply
+  the rule when writing new pages or meaningfully editing existing ones. View-rendering `@Controller`s (as opposed to the
   `@RestController`s everywhere else) live in two places, split by concern:
   pure auth/identity pages stay in `iam.shared`
   (`AccountActivationPageController`, `LoginPageController`,
