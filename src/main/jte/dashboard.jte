@@ -2,16 +2,7 @@
 
 @param DashboardModel model
 
-<!DOCTYPE html>
-<html lang="fa" dir="rtl">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>داشبورد - رشدِاندیشه</title>
-    <link rel="stylesheet" href="/webjars/bulma/1.0.4/css/bulma.min.css">
-    <script defer src="/webjars/alpinejs/3.15.12/dist/cdn.min.js"></script>
-</head>
-<body>
+@template.layout.main(title = "داشبورد", content = @`
 <!-- سوییچر مدرسه/نقش (Open Question 2 - حل‌شده): انتخاب فقط client-side
      است و در localStorage می‌ماند؛ نقش صرفاً نمایشی است (backend همه‌ی
      نقش‌های فعال را چک می‌کند - CLAUDE.md بند ۱۱ سؤال ۲). کاربر بدون
@@ -135,5 +126,4 @@
         @endif
     </div>
 </section>
-</body>
-</html>
+`)
