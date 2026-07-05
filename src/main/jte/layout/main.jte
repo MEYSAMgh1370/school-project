@@ -1,12 +1,12 @@
 <%-- تنها جای مدیریت <head> (استایل‌شیت‌ها و اسکریپت‌ها): هر صفحه فقط
      عنوان و محتوای body را می‌دهد. صفحه‌ای که اسکریپت اختصاصی دارد
      (کامپوننت Alpine.data استاتیک - قانون جای‌گذاری کد در CLAUDE.md §2)
-     آن را با pageScript می‌دهد؛ این تگ عمداً *قبل از* اسکریپت Alpine
-     می‌آید: هر دو defer هستند و به ترتیب سند اجرا می‌شوند، و ثبت
+     آن را با scripts می‌دهد؛ این تگ‌ها عمداً *قبل از* اسکریپت Alpine
+     می‌آیند: هر دو defer هستند و به ترتیب سند اجرا می‌شوند، و ثبت
      Alpine.data باید پیش از رویداد alpine:init انجام شده باشد. --%>
 @param String title
 @param gg.jte.Content content
-@param String pageScript = null
+@param java.util.List<String> scripts = java.util.List.of()
 <!DOCTYPE html>
 <html lang="fa" dir="rtl">
 <head>
@@ -15,9 +15,9 @@
     <title>${title} - رشدِاندیشه</title>
     <link rel="stylesheet" href="/webjars/bulma/1.0.4/css/bulma.min.css">
     <link rel="stylesheet" href="/css/app.css">
-    @if(pageScript != null)
-        <script defer src="${pageScript}"></script>
-    @endif
+    @for(var script : scripts)
+        <script defer src="${script}"></script>
+    @endfor
     <script defer src="/webjars/alpinejs/3.15.12/dist/cdn.min.js"></script>
 </head>
 <body>

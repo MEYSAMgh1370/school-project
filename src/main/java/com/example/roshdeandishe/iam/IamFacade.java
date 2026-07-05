@@ -162,6 +162,8 @@ public interface IamFacade {
     record MembershipInfo(
             Long membershipId,
             UserId userId,
+            String email,
+            String fullName,
             Long schoolId,
             String roleCode,
             boolean active

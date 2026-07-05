@@ -93,38 +93,46 @@ too narrow.
   light client-side interactivity. Both delivered as WebJars (`org.webjars.npm`),
   not a CDN `<script>` tag and not an npm/webpack/vite build — stays a zero-build
   addition consistent with "one Maven artifact." Templates live in `src/main/jte/`
-  — four page templates (`activate.jte`, `login.jte`, `register.jte`,
-  `dashboard.jte`), all wrapped in the shared **`layout/main.jte`** (`title`,
-  `gg.jte.Content content`, and optional `pageScript` params). The layout is the
-  *only* place that owns the `<head>` (WebJar stylesheet/script tags + the global
-  `/css/app.css`); a page needing a page-specific asset gets a new layout param,
-  never its own duplicated `<head>`. `pageScript` (a `/js/...` path) is emitted
-  *before* the Alpine `<script defer>` tag on purpose: deferred scripts run in
-  document order, and `Alpine.data` registrations must exist before `alpine:init`
-  fires. Bulma is used for
-  CSS, also as a WebJar, no custom CSS framework/pipeline.
+  — five page templates (`activate.jte`, `login.jte`, `register.jte`,
+  `dashboard.jte`, `people.jte`), all wrapped in the shared **`layout/main.jte`**
+  (`title`, `gg.jte.Content content`, and an optional `scripts` param —
+  `List<String>` of `/js/...` paths). The layout is the *only* place that owns
+  the `<head>` (WebJar stylesheet/script tags + the global `/css/app.css`); a
+  page needing a page-specific asset adds an entry to `scripts`, never its own
+  duplicated `<head>`. Each `scripts` entry is emitted *before* the Alpine
+  `<script defer>` tag on purpose: deferred scripts run in document order, and
+  `Alpine.data` registrations must exist before `alpine:init` fires. Bulma is
+  used for CSS, also as a WebJar, no custom CSS framework/pipeline.
   **Frontend code-placement rule (explicit user decision, 2026-07-05):** Bulma
   classes and small Alpine expressions stay inline in the template; anything with
   `fetch`, a regex, or more than ~10 lines of JS moves to a static file (under
   `src/main/resources/static/js/`) as an `Alpine.data` component; custom CSS is
-  always an external file, never inline `<style>`. First applications:
-  `static/js/dashboard.js` (`createSchoolForm` component, wired via the layout's
-  `pageScript` param) and `static/css/app.css` (global, holds the `[x-cloak]`
-  rule). `/js/**` and `/css/**` are `permitAll` in `SecurityConfig` and excluded
-  in `TenantResolverFilter`. The four pages' *pre-existing* inline components
-  predate the rule and keep their inline form until next touched — apply the
-  rule to new code and meaningful edits. View-rendering `@Controller`s (as opposed to the
+  always an external file, never inline `<style>`. `src/main/resources/static/js/`
+  holds `dashboard.js` (`createSchoolForm` — self-service school creation, §1),
+  `navbar.js` (the shared school/role switcher, see below), and `people.js` (see
+  `web` module below); `src/main/resources/static/css/app.css` is the one global
+  stylesheet so far (holds the `[x-cloak]` rule, used to keep closed
+  `x-show`-gated forms from flashing open before Alpine initializes). `/js/**`
+  and `/css/**` are `permitAll` in `SecurityConfig` and excluded in
+  `TenantResolverFilter`. `login`/`register`/`activate` predate this rule and
+  keep their inline components until next touched — apply the rule when writing
+  new pages or meaningfully editing existing ones. View-rendering `@Controller`s
+  (as opposed to the
   `@RestController`s everywhere else) live in two places, split by concern:
   pure auth/identity pages stay in `iam.shared`
   (`AccountActivationPageController`, `LoginPageController`,
   `RegisterPageController`), while any page
   that composes data across modules lives in the dedicated **`web` module**
-  (`DashboardPageController` — memberships from iam + school names from
-  school). This resolved the former UI-composition open point: `web` is a
+  (`DashboardPageController`, `PeoplePageController` — memberships from iam +
+  school names from school). This resolved the former UI-composition open point: `web` is a
   pure view-composition layer — it consumes other modules' Facades, owns no
   entities/Facade/REST of its own, and nothing depends on it. Do not put
   cross-module page controllers in `iam` (iam→school would be a dependency
-  cycle), and do not put REST endpoints in `web`.
+  cycle), and do not put REST endpoints in `web`. The school/role switcher
+  navbar is a **shared JTE template** (`layout/navbar.jte`, fed by
+  `web.NavbarModelAssembler`) reused by every management page — see `web`
+  module below and [`UX_ROADMAP.md`](UX_ROADMAP.md) for the full page-by-page
+  plan and the shared UX conventions every new management page must follow.
 
 ### Module boundary rules (enforced by `ModularityTests.verifyModularStructure()`)
 
@@ -295,16 +303,26 @@ com.example.roshdeandishe
 │       └── FinanceExceptionHandler.java   (bean name "financeExceptionHandler")
 │
 └── web/                        ← UI-composition layer (see §2 Frontend): page
-    └── DashboardPageController.java   controllers that need more than one
-                                  module's Facade. GET /dashboard composes iam
-                                  memberships + school names and renders the
-                                  school/role switcher navbar (§11 Q2) plus the
-                                  self-service create-school form (first mutating
-                                  UI - posts to POST /api/admin/schools via the
-                                  static createSchoolForm component in
-                                  /js/dashboard.js, then reloads). No Facade, no
-                                  entities, no REST, no exception handler of its
-                                  own; nothing depends on it.
+    ├── DashboardPageController.java   controllers that need more than one
+    ├── PeoplePageController.java      module's Facade. GET /dashboard composes
+    ├── NavbarModel.java               iam memberships + school names, renders
+    └── NavbarModelAssembler.java      the school/role switcher (§11 Q2) plus
+                                  the self-service create-school form (posts to
+                                  POST /api/admin/schools via the static
+                                  createSchoolForm component in /js/dashboard.js,
+                                  then reloads); GET /people (first
+                                  management-UI slice past the dashboard, see
+                                  UX_ROADMAP.md) lists/adds/toggles a school's
+                                  memberships and issues invite tokens, entirely
+                                  client-side against iam.MembershipController
+                                  (school selection lives only in localStorage —
+                                  see §11 Q2). NavbarModel/NavbarModelAssembler
+                                  build the shared school/role switcher
+                                  (rendered by layout/navbar.jte) once, reused by
+                                  every page instead of recomposed per
+                                  controller. No Facade, no entities, no REST, no
+                                  exception handler of its own; nothing depends
+                                  on it.
 ```
 
 **Adding a new module**: copy the `academic/shared` error-handling pattern
@@ -746,6 +764,20 @@ above.
   case Q2's switcher already tolerates). Existing emails are always rejected
   (409), including invited-but-not-activated accounts — see §4's `registerUser`
   note for why. Covered by `RegistrationFlowIntegrationTest`.
+- **Management UI, first slice — People (`/people`, built 2026-07-05, see
+  [`UX_ROADMAP.md`](UX_ROADMAP.md) for the full page-by-page plan)**: lists a
+  school's memberships, adds a member (email/fullName/roleCode), toggles
+  active, issues/resends invite tokens — all client-side against the existing
+  `iam.MembershipController` REST endpoints (`web.PeoplePageController` is a
+  thin shell, same pattern as `/dashboard`). Required extracting the
+  school/role switcher navbar out of `dashboard.jte` into a shared
+  `layout/navbar.jte` template + `web.NavbarModel`/`NavbarModelAssembler`, and
+  adding the `layout/main.jte` `scripts` param so pages can load page-specific
+  static JS. `IamFacade.MembershipInfo`/`MembershipController.MembershipResponse`
+  gained `email`/`fullName` (previously only `userId`) — the smallest change
+  needed for a people list to show names, not just opaque user ids. Covered by
+  `MembershipManagementFlowIntegrationTest`; `LoginDashboardFlowIntegrationTest`
+  re-verified green after the navbar extraction.
 - Dev-only seed data: roles, modules, permissions, role-permission grants, one demo
   school, one demo admin user with a SCHOOL_ADMIN membership at the demo school
   (without it the demo admin couldn't call any school-scoped API — the demo school
@@ -789,20 +821,25 @@ above.
    enabled** (`SecurityConfig`): `CookieCsrfTokenRepository.withHttpOnlyFalse()`
    + the Spring-docs `SpaCsrfTokenRequestHandler` (nested in `SecurityConfig`);
    the server writes an `XSRF-TOKEN` cookie, every JTE page's `fetch` sends it
-   back as `X-XSRF-TOKEN` (all four templates have a `csrfToken()` helper —
-   copy it into new pages), Swagger UI does the same via
-   `springdoc.swagger-ui.csrf.enabled`, and MockMvc tests use `.with(csrf())`.
-   **Gate (b) — the school/role switcher — is also resolved** (see §11 Q2 for
-   the chosen UX and its semantics; the switcher navbar exists on the
-   dashboard, rendered by the `web` module). **The management UI is therefore
-   unblocked, and its first mutating slice exists**: the dashboard's
+   back as `X-XSRF-TOKEN` (`login`/`register`/`activate` each have an inline
+   `csrfToken()` helper — copy it if writing another inline-only page; pages
+   with a static JS component, per the code-placement rule above, each keep
+   their own small copy of the same helper in that file instead), Swagger UI
+   does the same via `springdoc.swagger-ui.csrf.enabled`, and MockMvc tests use
+   `.with(csrf())`. **Gate (b) — the school/role switcher — is also resolved**
+   (see §11 Q2 for the chosen UX and its semantics; the switcher navbar is now
+   a shared `layout/navbar.jte` template rendered on every management page, not
+   reimplemented per page). **The management UI is unblocked and underway** —
+   see [`UX_ROADMAP.md`](UX_ROADMAP.md) for the full page inventory, build
+   order, and shared conventions. **Done so far:** the dashboard's self-service
    create-school form (`createSchoolForm` in `/js/dashboard.js` →
-   `POST /api/admin/schools`; no `X-School-ID`, the school doesn't exist yet).
-   Still missing: membership/class/student/finance management pages — they go
-   in the `web` module, reuse the dashboard's navbar pattern, follow the §2
-   code-placement rule (fetch → static `Alpine.data` file via the layout's
-   `pageScript` param), and their JS must send both `X-School-ID` (the page's
-   school) and `X-XSRF-TOKEN` on mutating requests.
+   `POST /api/admin/schools`; no `X-School-ID` sent, the school doesn't exist
+   yet) and **People (`/people`)** — see §7 Done for both. Remaining: classes,
+   enrollment, finance pages (in that order per the roadmap doc). New
+   management pages go in the `web` module, reuse `NavbarModelAssembler` +
+   `layout/navbar.jte`, and their JS must send both `X-School-ID` (the page's
+   school — omitted only for school-creation itself, which precedes any
+   schoolId existing) and `X-XSRF-TOKEN` on mutating requests.
 7. **Class reassignment as an explicit action.** `enrollStudent` happens to support
    moving a student to a different class (idempotent re-enroll updates `classId`),
    but there's no dedicated "transfer" endpoint/semantics, and it's unclear whether a
@@ -842,8 +879,14 @@ deferred (§7 item 3).
 authentication entry points, and the dev-seed fixes (demo admin membership) — see
 §7 Done. **Both former gates on the next slice — the mutating management UI — are
 resolved**: CSRF is enabled (cookie-based, §7 item 6) and the school/role switcher
-UX is decided and built (dashboard navbar, `web` module, §11 Q2). Management pages
-can now be started; follow the patterns in §7 item 6.
+UX is decided and built (now a shared navbar template, `web` module, §11 Q2).
+
+**Phase E.1 — Management UI, slice 1 (People): done.** `GET /people`, built
+against the existing `iam.MembershipController` REST endpoints, with the
+navbar extracted into a reusable template and the first `static/js/`
+`Alpine.data` components. See `UX_ROADMAP.md` for the full page inventory and
+build order for the remaining slices (classes, enrollment, finance, school
+creation).
 
 ---
 

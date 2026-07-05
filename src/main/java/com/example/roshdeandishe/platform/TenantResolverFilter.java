@@ -34,7 +34,11 @@ public class TenantResolverFilter extends OncePerRequestFilter {
             "/swagger-ui", "/v3/api-docs", "/activate", "/register", "/webjars",
             // «من» و داشبورد درباره‌ی خودِ کاربرند، نه یک مدرسه‌ی خاص -
             // schoolId ای وجود ندارد که در هدر بیاید
-            "/api/me", "/dashboard"
+            "/api/me", "/dashboard",
+            // صفحه‌ی مدیریتیِ /people خودش یک route است نه یک API؛ فراخوانی‌های
+            // fetch آن (به /api/admin/schools/{id}/memberships) هدر را خودشان
+            // می‌فرستند - این استثنا فقط بارگذاری خودِ صفحه را شامل می‌شود
+            "/people"
     };
 
     /**
