@@ -4,8 +4,6 @@ import com.example.roshdeandishe.iam.IamFacade;
 import com.example.roshdeandishe.iam.IamFacade.MembershipInfo;
 import com.example.roshdeandishe.iam.IamFacade.UserId;
 import com.example.roshdeandishe.iam.IamFacade.UserProfile;
-import com.example.roshdeandishe.school.SchoolFacade;
-import com.example.roshdeandishe.school.SchoolFacade.SchoolId;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -34,11 +32,11 @@ import java.util.Map;
 public class DashboardPageController {
 
     private final IamFacade iamFacade;
-    private final SchoolFacade schoolFacade;
+    private final NavbarModelAssembler navbarModelAssembler;
 
-    public DashboardPageController(IamFacade iamFacade, SchoolFacade schoolFacade) {
+    public DashboardPageController(IamFacade iamFacade, NavbarModelAssembler navbarModelAssembler) {
         this.iamFacade = iamFacade;
-        this.schoolFacade = schoolFacade;
+        this.navbarModelAssembler = navbarModelAssembler;
     }
 
     @GetMapping("/dashboard")
@@ -47,45 +45,25 @@ public class DashboardPageController {
         UserProfile profile = iamFacade.findUser(userId).orElseThrow();
         List<MembershipInfo> memberships = iamFacade.findMembershipsByUser(userId);
 
-        // نام مدرسه‌ها را یک‌بار per-school حل می‌کنیم؛ اگر مدرسه‌ای پیدا
-        // نشد (نباید رخ دهد، ولی iam فقط یک Long مات نگه می‌دارد) به جای
-        // شکستن صفحه، شناسه را نمایش می‌دهیم.
+        // نام مدرسه‌ها را یک‌بار per-school حل می‌کنیم (از طریق همان
+        // assembler که ناوبار را می‌سازد، تا این منطق دوباره نوشته نشود).
         Map<Long, String> schoolNames = new LinkedHashMap<>();
         for (MembershipInfo membership : memberships) {
-            schoolNames.computeIfAbsent(membership.schoolId(), id ->
-                    schoolFacade.findSchool(new SchoolId(id))
-                            .map(SchoolFacade.SchoolInfo::name)
-                            .orElse("مدرسه #" + id));
+            schoolNames.computeIfAbsent(membership.schoolId(), navbarModelAssembler::schoolName);
         }
 
         List<MembershipRow> rows = memberships.stream()
                 .map(m -> new MembershipRow(m.schoolId(), schoolNames.get(m.schoolId()), m.roleCode(), m.active()))
                 .toList();
 
-        // گزینه‌های سوییچر: فقط عضویت‌های فعال، گروه‌شده per-school با
-        // فهرست نقش‌های فعالِ همان مدرسه (برای دراپ‌داون نقش).
-        Map<Long, SchoolOption> options = new LinkedHashMap<>();
-        for (MembershipInfo membership : memberships) {
-            if (!membership.active()) {
-                continue;
-            }
-            options.computeIfAbsent(membership.schoolId(), id ->
-                            new SchoolOption(id, schoolNames.get(id), new java.util.ArrayList<>()))
-                    .roles().add(membership.roleCode());
-        }
-
-        model.addAttribute("model", new DashboardModel(
-                profile.fullName(), profile.email(), rows, List.copyOf(options.values())));
+        model.addAttribute("model", new DashboardModel(profile.fullName(), profile.email(), rows));
+        model.addAttribute("navbar", navbarModelAssembler.assemble(profile, memberships));
         return "dashboard";
     }
 
-    public record DashboardModel(String fullName, String email,
-                                 List<MembershipRow> memberships, List<SchoolOption> schools) {
+    public record DashboardModel(String fullName, String email, List<MembershipRow> memberships) {
     }
 
     public record MembershipRow(Long schoolId, String schoolName, String roleCode, boolean active) {
-    }
-
-    public record SchoolOption(Long id, String name, List<String> roles) {
     }
 }

@@ -275,9 +275,14 @@ class IamFacadeImpl implements IamFacade {
                         new IamError.MembershipNotFound(membership.getUserId(), membership.getSchoolId())
                 ));
 
+        UserEntity user = userRepository.findById(membership.getUserId())
+                .orElseThrow(() -> new IamException(new IamError.UserNotFound(membership.getUserId())));
+
         return new MembershipInfo(
                 membership.getId(),
                 new UserId(membership.getUserId()),
+                user.getEmail(),
+                user.getFullName(),
                 membership.getSchoolId(),
                 roleCode,
                 membership.isActive()

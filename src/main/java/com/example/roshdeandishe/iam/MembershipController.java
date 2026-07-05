@@ -82,10 +82,14 @@ public class MembershipController {
     public record SetActiveRequest(boolean active) {
     }
 
-    public record MembershipResponse(Long membershipId, Long userId, Long schoolId, String roleCode, boolean active) {
+    public record MembershipResponse(
+            Long membershipId, Long userId, String email, String fullName,
+            Long schoolId, String roleCode, boolean active
+    ) {
         static MembershipResponse from(Long membershipId, MembershipInfo info) {
             return new MembershipResponse(
-                    membershipId, info.userId().value(), info.schoolId(), info.roleCode(), info.active()
+                    membershipId, info.userId().value(), info.email(), info.fullName(),
+                    info.schoolId(), info.roleCode(), info.active()
             );
         }
     }
