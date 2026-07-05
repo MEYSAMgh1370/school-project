@@ -3,6 +3,7 @@ document.addEventListener('alpine:init', () => {
     // است و در localStorage می‌ماند؛ نقش صرفاً نمایشی است (backend همه‌ی
     // نقش‌های فعال را چک می‌کند - CLAUDE.md بند ۱۱ سؤال ۲).
     Alpine.data('schoolNavbar', (schoolRoles) => ({
+        menuOpen: false,
         schoolOpen: false,
         personOpen: false,
         selectedSchoolId: null,
@@ -15,6 +16,17 @@ document.addEventListener('alpine:init', () => {
             const roles = this.selectedSchoolId ? this.schoolRoles[this.selectedSchoolId] : [];
             const savedRole = localStorage.getItem('selectedRole') || '';
             this.selectedRole = roles.includes(savedRole) ? savedRole : (roles.length ? roles[0] : '');
+            // انتخابِ پیش‌فرضِ حل‌شده هم باید ذخیره شود، نه فقط کلیک کاربر:
+            // وگرنه ادمینِ تک‌مدرسه‌ای که هرگز دراپ‌داون را باز نکرده، در
+            // /people پیام «مدرسه انتخاب کنید» می‌گیرد در حالی که navbar
+            // همان مدرسه را انتخاب‌شده نشان می‌دهد. (navbar در ترتیب سند
+            // قبل از کامپوننت صفحه init می‌شود، پس صفحه مقدار را می‌بیند.)
+            if (this.selectedSchoolId !== null) {
+                localStorage.setItem('selectedSchoolId', this.selectedSchoolId);
+            }
+            if (this.selectedRole) {
+                localStorage.setItem('selectedRole', this.selectedRole);
+            }
         },
         selectSchool(id) {
             this.selectedSchoolId = id;

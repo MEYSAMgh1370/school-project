@@ -306,23 +306,30 @@ com.example.roshdeandishe
     ├── DashboardPageController.java   controllers that need more than one
     ├── PeoplePageController.java      module's Facade. GET /dashboard composes
     ├── NavbarModel.java               iam memberships + school names, renders
-    └── NavbarModelAssembler.java      the school/role switcher (§11 Q2) plus
-                                  the self-service create-school form (posts to
-                                  POST /api/admin/schools via the static
-                                  createSchoolForm component in /js/dashboard.js,
-                                  then reloads); GET /people (first
-                                  management-UI slice past the dashboard, see
-                                  UX_ROADMAP.md) lists/adds/toggles a school's
-                                  memberships and issues invite tokens, entirely
-                                  client-side against iam.MembershipController
-                                  (school selection lives only in localStorage —
-                                  see §11 Q2). NavbarModel/NavbarModelAssembler
-                                  build the shared school/role switcher
-                                  (rendered by layout/navbar.jte) once, reused by
-                                  every page instead of recomposed per
-                                  controller. No Facade, no entities, no REST, no
-                                  exception handler of its own; nothing depends
-                                  on it.
+    ├── NavbarModelAssembler.java      the school/role switcher (§11 Q2) plus
+    └── RoleLabels.java                the self-service create-school form
+                                  (posts to POST /api/admin/schools via the
+                                  static createSchoolForm component in
+                                  /js/dashboard.js, then reloads); GET /people
+                                  (first management-UI slice past the dashboard,
+                                  see UX_ROADMAP.md) lists/adds/toggles a
+                                  school's memberships and issues invite tokens,
+                                  entirely client-side against
+                                  iam.MembershipController (school selection
+                                  lives only in localStorage — see §11 Q2).
+                                  NavbarModel/NavbarModelAssembler build the
+                                  shared school/role switcher navbar (rendered
+                                  by layout/navbar.jte: page links in
+                                  navbar-start — every page must be linked
+                                  there, no orphan URLs — plus a Bulma burger
+                                  for mobile) once, reused by every page instead
+                                  of recomposed per controller. RoleLabels maps
+                                  role codes to Persian labels for
+                                  server-rendered templates (mirrored
+                                  client-side in people.js — raw codes never
+                                  reach the UI, UX_ROADMAP.md §2). No Facade, no
+                                  entities, no REST, no exception handler of its
+                                  own; nothing depends on it.
 ```
 
 **Adding a new module**: copy the `academic/shared` error-handling pattern
@@ -778,6 +785,16 @@ above.
   needed for a people list to show names, not just opaque user ids. Covered by
   `MembershipManagementFlowIntegrationTest`; `LoginDashboardFlowIntegrationTest`
   re-verified green after the navbar extraction.
+- **Management UI, slice 2 — navigation + funnel fixes (built 2026-07-06, from
+  the UX review in UX_ROADMAP.md §3 item 2)**: page links in the shared navbar
+  (`navbar-start`; the People link's *visibility* follows the display-only
+  selected role — first UI consumer of §11 Q2's role dropdown, enforcement
+  stays server-side), proper Bulma `navbar-menu` + burger so the navbar works
+  below 1024px, the navbar persists its *resolved default* school/role to
+  localStorage on init (fixes "select a school" appearing for single-school
+  admins who never clicked the dropdown), Persian role labels everywhere via
+  `web.RoleLabels` (server) mirrored in `people.js` (client), and success
+  notices on every `/people` mutation. No backend changes.
 - Dev-only seed data: roles, modules, permissions, role-permission grants, one demo
   school, one demo admin user with a SCHOOL_ADMIN membership at the demo school
   (without it the demo admin couldn't call any school-scoped API — the demo school

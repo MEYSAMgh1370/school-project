@@ -51,6 +51,17 @@ coherent as more pages are added by different people/sessions over time.
   Bulma box. Wrap the parse in try/catch — some failures (e.g. the tenant
   filter's missing-header 400) are plain-text, not JSON. Successes use
   `notification is-success`; empty states use a plain `notification`.
+- **Every mutation confirms.** A successful POST/PUT/PATCH sets a visible
+  success notice (Persian, `notification is-success`) — a silently-updated
+  list is not enough feedback. Errors and successes share one notice area at
+  the top of the page section.
+- **Role labels.** Raw role codes (`SCHOOL_ADMIN`, …) never reach the UI.
+  Server-rendered templates use `web.RoleLabels.persian(code)`; client-rendered
+  pages (API data) use the matching map in their `Alpine.data` component (see
+  `people.js`). Keep the two in sync when roles change.
+- **Navigation.** Every management page is reachable from the shared navbar's
+  `navbar-start` links — never ship an orphan URL. Link *visibility* may follow
+  the selected (display-only) role; access is still enforced server-side only.
 - **Role dropdown is display-only.** It may drive which UI elements are shown,
   but never what the backend permits — permission checks always evaluate all of
   the user's active roles server-side (CLAUDE.md §11 Q2). Never build
@@ -65,23 +76,41 @@ coherent as more pages are added by different people/sessions over time.
 
 ### SCHOOL_ADMIN (build order)
 
-1. **People** — `/people` (`web.PeoplePageController`) — **built, this slice.**
+1. **People** — `/people` (`web.PeoplePageController`) — **built.**
    List/add members, toggle active, issue/resend invite tokens. Backed by
    `iam.MembershipController`.
-2. **Classes** — `/classes` — create/list classes. Backed by
+2. **Navigation + funnel fixes** — **built.** No new backend; fixes the gaps
+   that made slice 1 undiscoverable:
+   - Page links in the shared navbar (`navbar-start`): Dashboard always;
+     People only while the *selected* role is `SCHOOL_ADMIN` (first real
+     consumer of the display-only role dropdown — visibility only, backend
+     still enforces). New pages MUST add their link here; no orphan URLs.
+   - Proper Bulma `navbar-menu` + burger so the navbar works on mobile
+     (previous markup skipped `navbar-menu` entirely).
+   - The navbar persists its *resolved default* school/role to localStorage
+     on init — before this, a single-school admin who never clicked the
+     dropdown got "select a school" on `/people` despite the navbar visibly
+     showing their school as selected.
+   - Persian role labels everywhere via `web.RoleLabels` (server-rendered
+     navbar + dashboard) mirrored by the map in `people.js` (client-rendered
+     API data) — raw codes like `SCHOOL_ADMIN` never reach the UI.
+   - Success notices on every mutation in `/people` (previously only the
+     invite action confirmed; add/toggle succeeded silently).
+3. **Classes** — `/classes` — create/list classes. Backed by
    `academic.ClassController` (`CLASS_MANAGE`, SCHOOL_ADMIN only per the
    admin/day-to-day split in CLAUDE.md §4).
-3. **Enrollment** — `/students` — enroll/move students into classes. Backed by
+4. **Enrollment** — `/students` — enroll/move students into classes. Backed by
    `academic.StudentController` (`STUDENT_ENROLL`, SCHOOL_ADMIN + TEACHER).
-   Needs the class list from step 2 to populate a picker.
-4. **Finance** — `/finance` — set/view tuition fee, list invoices. Backed by
+   Needs the class list from step 3 to populate a picker.
+5. **Finance** — `/finance` — set/view tuition fee, list invoices. Backed by
    `finance.FinanceController` (`FINANCE_MANAGE`/`FINANCE_VIEW`). First page
    that must render `ModuleNotEntitled` (403, module not subscribed) distinctly
    from `PermissionDenied` (403, role lacks the permission) — CLAUDE.md §5's two
    layers need two different user-facing messages here, not one generic 403.
-5. **School creation** — `/schools/new` — thin wrapper over the existing
-   self-service `POST /api/admin/schools` (any authenticated user becomes
-   `SCHOOL_ADMIN` of the school they create).
+6. ~~**School creation** — `/schools/new`~~ — **already shipped differently**:
+   an inline form on the dashboard (`createSchoolForm` in `/js/dashboard.js`
+   → `POST /api/admin/schools`), merged via PR #16. A separate `/schools/new`
+   page is not needed.
 
 ### FINANCE_ADMIN
 
@@ -121,10 +150,15 @@ page shell and the REST flow behind it.
 ## 5. Per-slice definition of done
 
 - [ ] Page renders behind login (redirects to `/login` when unauthenticated).
-- [ ] Shared navbar rendered via `NavbarModelAssembler` + `layout/navbar.jte`.
+- [ ] Shared navbar rendered via `NavbarModelAssembler` + `layout/navbar.jte`,
+      **and the page has a navbar link** (no orphan URLs).
 - [ ] All mutating fetches send both `X-School-ID` and `X-XSRF-TOKEN`.
 - [ ] ProblemDetail errors rendered via the shared pattern (§2), tolerant of
-      non-JSON error bodies.
+      non-JSON error bodies; **every successful mutation shows a success notice**.
+- [ ] Role codes rendered through `RoleLabels`/the client map — never raw.
+- [ ] New interactive widgets are keyboard-usable (Escape/light-dismiss where
+      applicable) and carry correct ARIA state (`aria-expanded`, …).
+- [ ] Checked at a mobile viewport (~375px) — navbar burger and page layout hold.
 - [ ] At least one integration test (`@SpringBootTest` + `MockMvc`, following
       `LoginDashboardFlowIntegrationTest`'s pattern) covering the page shell and
       the REST flow it drives.

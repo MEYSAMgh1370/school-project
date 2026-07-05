@@ -59,7 +59,9 @@ class MembershipManagementFlowIntegrationTest {
         mockMvc.perform(get("/people").session(session))
                 .andExpect(status().isOk())
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("اعضای مدرسه")))
-                .andExpect(content().string(org.hamcrest.Matchers.containsString("مدرسه‌ی نمونه")));
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("مدرسه‌ی نمونه")))
+                // لینک‌های ناوبری navbar روی همه‌ی صفحه‌های مدیریتی هستند
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("href=\"/dashboard\"")));
     }
 
     @Test
