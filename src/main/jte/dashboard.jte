@@ -1,5 +1,6 @@
 @import com.example.roshdeandishe.web.DashboardPageController.DashboardModel
 @import com.example.roshdeandishe.web.NavbarModel
+@import com.example.roshdeandishe.web.RoleLabels
 
 @param DashboardModel model
 @param NavbarModel navbar
@@ -30,7 +31,7 @@
                 @for(var membership : model.memberships())
                     <tr>
                         <td>${membership.schoolName()}</td>
-                        <td>${membership.roleCode()}</td>
+                        <td>${RoleLabels.persian(membership.roleCode())}</td>
                         <td>
                             @if(membership.active())
                                 <span class="tag is-success">فعال</span>

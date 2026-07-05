@@ -90,6 +90,7 @@ document.addEventListener('alpine:init', () => {
                     await this.showError(response);
                     return;
                 }
+                this.notice = 'عضو جدید اضافه شد.';
                 this.form = { email: '', fullName: '', roleCode: 'STUDENT' };
                 await this.load();
             } catch (e) {
@@ -116,6 +117,8 @@ document.addEventListener('alpine:init', () => {
                     await this.showError(response);
                     return;
                 }
+                // member.active هنوز مقدار قبل از تغییر است
+                this.notice = member.active ? 'عضویت غیرفعال شد.' : 'عضویت فعال شد.';
                 await this.load();
             } catch (e) {
                 this.error = 'ارتباط با سرور برقرار نشد.';

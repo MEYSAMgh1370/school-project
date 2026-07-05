@@ -66,10 +66,16 @@ class LoginDashboardFlowIntegrationTest {
                 .andExpect(jsonPath("$[?(@.schoolId == 1 && @.roleCode == 'SCHOOL_ADMIN' && @.active == true)]").exists());
 
         // داشبورد حالا نام مدرسه را (از ماژول school، از طریق ماژول web)
-        // به‌جای schoolId خام نشان می‌دهد + سوییچر مدرسه/نقش را رندر می‌کند
+        // به‌جای schoolId خام نشان می‌دهد + سوییچر مدرسه/نقش را رندر می‌کند.
+        // نقش با برچسب فارسی (RoleLabels) نمایش داده می‌شود نه کد خام، و
+        // navbar باید لینک صفحه‌ها را داشته باشد (UX_ROADMAP.md §2: هیچ
+        // URL یتیمی وجود ندارد). کد SCHOOL_ADMIN همچنان در سند هست (در
+        // selectRole سوییچر) - سیم‌کشی سوییچر را تأیید می‌کند.
         mockMvc.perform(get("/dashboard").session(session))
                 .andExpect(status().isOk())
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("SCHOOL_ADMIN")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("مدیر مدرسه")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("href=\"/people\"")))
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("عضویت‌های من")))
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("مدرسه‌ی نمونه")));
     }
