@@ -42,6 +42,10 @@ public final class IamException extends RuntimeException {
                     "این توکن دعوت قبلاً استفاده شده است.";
             case IamError.InvalidPassword e ->
                     "رمز عبور نامعتبر است: " + e.reason();
+            case IamError.InvalidRegistration e ->
+                    "اطلاعات ثبت‌نام نامعتبر است: " + e.reason();
+            case IamError.EmailAlreadyRegistered e ->
+                    "کاربری با ایمیل '" + e.email() + "' از قبل ثبت شده است.";
         };
     }
 }

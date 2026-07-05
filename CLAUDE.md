@@ -87,12 +87,13 @@ too narrow.
   light client-side interactivity. Both delivered as WebJars (`org.webjars.npm`),
   not a CDN `<script>` tag and not an npm/webpack/vite build — stays a zero-build
   addition consistent with "one Maven artifact." Templates live in `src/main/jte/`
-  (flat, no subfolder yet — three templates: `activate.jte`, `login.jte`,
-  `dashboard.jte`). Bulma is used for CSS, also as a WebJar, no custom CSS
+  (flat, no subfolder yet — four templates: `activate.jte`, `login.jte`,
+  `register.jte`, `dashboard.jte`). Bulma is used for CSS, also as a WebJar, no custom CSS
   framework/pipeline. View-rendering `@Controller`s (as opposed to the
   `@RestController`s everywhere else) live in two places, split by concern:
   pure auth/identity pages stay in `iam.shared`
-  (`AccountActivationPageController`, `LoginPageController`), while any page
+  (`AccountActivationPageController`, `LoginPageController`,
+  `RegisterPageController`), while any page
   that composes data across modules lives in the dedicated **`web` module**
   (`DashboardPageController` — memberships from iam + school names from
   school). This resolved the former UI-composition open point: `web` is a
@@ -184,16 +185,22 @@ com.example.roshdeandishe
 │       ├── SecurityConfig.java        (session auth config; lives here, not
 │       │                                platform, because it wires IamUserDetailsService)
 │       ├── AuthController.java        (POST /api/auth/login, /api/auth/logout,
-│       │                                /api/auth/activate — JSON, not Spring's
-│       │                                default form login; activate redeems an
-│       │                                invite token to set a first password)
+│       │                                /api/auth/activate, /api/auth/register —
+│       │                                JSON, not Spring's default form login;
+│       │                                activate redeems an invite token to set a
+│       │                                first password; register is public
+│       │                                self-service sign-up → IamFacade.registerUser)
 │       ├── AccountActivationPageController.java   (GET /activate — renders
 │       │                                src/main/jte/activate.jte, a JTE+Alpine.js
 │       │                                +Bulma page whose JS calls AuthController's
 │       │                                /api/auth/activate)
 │       ├── LoginPageController.java   (GET /login — renders login.jte; its JS
 │       │                                posts to /api/auth/login then goes to
-│       │                                /dashboard)
+│       │                                /dashboard; links to /register and /activate)
+│       ├── RegisterPageController.java (GET /register — renders register.jte; its
+│       │                                JS posts to /api/auth/register then
+│       │                                auto-logs-in via /api/auth/login and goes
+│       │                                to /dashboard)
 │       └── exception/                 (@NamedInterface("shared.exception") — own
 │           ├── IamError.java (sealed)   NamedInterface, does NOT inherit iam.shared's)
 │           ├── IamException.java
@@ -449,6 +456,17 @@ member of the school they just interacted with" flow (school creation →
 existing `UserId` if one already exists rather than erroring or duplicating. The
 first step of every "add this person to the system" flow.
 
+`IamFacade.registerUser(email, fullName, password)` — public self-service sign-up
+(§11 Q7): creates a `User` that has a `passwordHash` from the start and zero
+memberships. **Deliberately NOT idempotent, unlike `findOrCreateUser`:** any
+existing email is rejected with `IamError.EmailAlreadyRegistered` (409) — *even a
+not-yet-activated account with `passwordHash = null`*. Claiming such an account is
+only allowed through the emailed invite token (which proves email ownership);
+otherwise anyone knowing an enrolled student's email could take over their account.
+Validation: same 8-char password minimum as `redeemInviteToken`, plus non-blank
+email/fullName. Exposed at `POST /api/auth/register` (unauthenticated, same trust
+model as login) with the `GET /register` page in front of it.
+
 ### Module + ModuleScope
 
 A feature area that can be subscribed to. `scope` decides which entitlement table is
@@ -676,7 +694,8 @@ above.
   configured, but that's deployment config, not missing code.
 - **Frontend stack chosen and started**: JTE (WebJar-delivered Alpine.js + Bulma,
   no npm/webpack build) replaces the previously-unused Thymeleaf dependency — see
-  §2. Three pages exist: `GET /activate`, `GET /login`, `GET /dashboard`.
+  §2. Four pages exist: `GET /activate`, `GET /login`, `GET /register`,
+  `GET /dashboard`.
 - **Login page + read-only dashboard (first slice of §7 item 6)**: `GET /login`
   (posts to the existing `/api/auth/login`), `GET /dashboard` (server-rendered
   "my memberships"), `MeController` (`GET /api/me`, `GET /api/me/memberships`),
@@ -692,6 +711,13 @@ above.
   **`web` module** (§2 Frontend, §3): `DashboardPageController` moved there from
   `iam.shared` and now shows school *names* (composed from `SchoolFacade`)
   instead of raw schoolIds.
+- **Public self-registration (resolves the sign-up gap of §11 Q7, built
+  2026-07-05 on explicit request)**: `IamFacade.registerUser`,
+  `POST /api/auth/register`, `GET /register` (JTE page, linked from `/login`;
+  registers, auto-logs-in, lands on `/dashboard` with zero memberships — the
+  case Q2's switcher already tolerates). Existing emails are always rejected
+  (409), including invited-but-not-activated accounts — see §4's `registerUser`
+  note for why. Covered by `RegistrationFlowIntegrationTest`.
 - Dev-only seed data: roles, modules, permissions, role-permission grants, one demo
   school, one demo admin user with a SCHOOL_ADMIN membership at the demo school
   (without it the demo admin couldn't call any school-scoped API — the demo school
@@ -735,7 +761,7 @@ above.
    enabled** (`SecurityConfig`): `CookieCsrfTokenRepository.withHttpOnlyFalse()`
    + the Spring-docs `SpaCsrfTokenRequestHandler` (nested in `SecurityConfig`);
    the server writes an `XSRF-TOKEN` cookie, every JTE page's `fetch` sends it
-   back as `X-XSRF-TOKEN` (all three templates have a `csrfToken()` helper —
+   back as `X-XSRF-TOKEN` (all four templates have a `csrfToken()` helper —
    copy it into new pages), Swagger UI does the same via
    `springdoc.swagger-ui.csrf.enabled`, and MockMvc tests use `.with(csrf())`.
    **Gate (b) — the school/role switcher — is also resolved** (see §11 Q2 for
@@ -869,10 +895,11 @@ can now be started; follow the patterns in §7 item 6.
    "has zero entitlements until manually granted" sufficient signal on its own?
    Discussed once; decided not to build the extra status field for now, but not
    fully closed if a concrete need surfaces.
-7. **New (raised 2026-07-05):** Individual (B2C) self-registration — e.g. a
-   teacher creating their own account with no school, using USER-scoped modules.
-   The domain model already supports it (`User` without memberships,
-   `UserEntitlementEntity`), and the dashboard/switcher already tolerate zero
-   memberships by design (Q2). What's missing and unscoped: a public sign-up
-   flow (today accounts are only created via school flows: findOrCreateUser +
-   invite tokens). Explicitly "later maybe" — do not build until asked.
+7. **(raised 2026-07-05; sign-up part resolved 2026-07-05):** Individual (B2C)
+   self-registration — e.g. a teacher creating their own account with no school,
+   using USER-scoped modules. **The public sign-up flow now exists** (user asked
+   for a registration page): `GET /register` + `POST /api/auth/register` +
+   `IamFacade.registerUser` — see §4 and §7 Done. What remains open and unscoped
+   is the *B2C module* side: no flow exists for an individual to actually obtain
+   a `UserEntitlementEntity` (subscribe to AI Tutor, Exam Prep, …), and no UI
+   consumes USER-scoped modules. Still "later maybe" — do not build until asked.

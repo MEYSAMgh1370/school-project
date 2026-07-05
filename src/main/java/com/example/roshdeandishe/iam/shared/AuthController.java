@@ -66,6 +66,17 @@ public class AuthController {
         return new ActivateAccountResponse("حساب کاربری با موفقیت فعال شد. اکنون می‌توانید وارد شوید.");
     }
 
+    /**
+     * ثبت‌نام عمومی (self-service) - عمداً بدون احراز هویت، همان مدل اعتماد
+     * /api/auth/login و /api/auth/activate. منطق و اعتبارسنجی در
+     * {@code IamFacade.registerUser} است؛ صفحه‌ی HTML آن /register است.
+     */
+    @PostMapping("/api/auth/register")
+    public RegisterResponse register(@RequestBody RegisterRequest request) {
+        iamFacade.registerUser(request.email(), request.fullName(), request.password());
+        return new RegisterResponse("ثبت‌نام با موفقیت انجام شد. اکنون می‌توانید وارد شوید.");
+    }
+
     public record LoginRequest(String email, String password) {
     }
 
@@ -76,5 +87,11 @@ public class AuthController {
     }
 
     public record ActivateAccountResponse(String message) {
+    }
+
+    public record RegisterRequest(String email, String fullName, String password) {
+    }
+
+    public record RegisterResponse(String message) {
     }
 }
