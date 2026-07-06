@@ -93,24 +93,26 @@ too narrow.
   light client-side interactivity. Both delivered as WebJars (`org.webjars.npm`),
   not a CDN `<script>` tag and not an npm/webpack/vite build — stays a zero-build
   addition consistent with "one Maven artifact." Templates live in `src/main/jte/`
-  — five page templates (`activate.jte`, `login.jte`, `register.jte`,
-  `dashboard.jte`, `people.jte`), all wrapped in the shared **`layout/main.jte`**
-  (`title`, `gg.jte.Content content`, and an optional `scripts` param —
-  `List<String>` of `/js/...` paths). The layout is the *only* place that owns
-  the `<head>` (WebJar stylesheet/script tags + the global `/css/app.css`); a
-  page needing a page-specific asset adds an entry to `scripts`, never its own
-  duplicated `<head>`. Each `scripts` entry is emitted *before* the Alpine
-  `<script defer>` tag on purpose: deferred scripts run in document order, and
-  `Alpine.data` registrations must exist before `alpine:init` fires. Bulma is
-  used for CSS, also as a WebJar, no custom CSS framework/pipeline.
+  — seven page templates (`landing.jte`, `activate.jte`, `login.jte`,
+  `register.jte`, `dashboard.jte`, `people.jte`, `school-new.jte`), all wrapped
+  in the shared **`layout/main.jte`** (`title`, `gg.jte.Content content`, and
+  an optional `scripts` param — `List<String>` of `/js/...` paths). The layout
+  is the *only* place that owns the `<head>` (WebJar stylesheet/script tags +
+  the global `/css/app.css`); a page needing a page-specific asset adds an
+  entry to `scripts`, never its own duplicated `<head>`. Each `scripts` entry
+  is emitted *before* the Alpine `<script defer>` tag on purpose: deferred
+  scripts run in document order, and `Alpine.data` registrations must exist
+  before `alpine:init` fires. Bulma is used for CSS, also as a WebJar, no
+  custom CSS framework/pipeline.
   **Frontend code-placement rule (explicit user decision, 2026-07-05):** Bulma
   classes and small Alpine expressions stay inline in the template; anything with
   `fetch`, a regex, or more than ~10 lines of JS moves to a static file (under
   `src/main/resources/static/js/`) as an `Alpine.data` component; custom CSS is
   always an external file, never inline `<style>`. `src/main/resources/static/js/`
-  holds `dashboard.js` (`createSchoolForm` — self-service school creation, §1),
-  `navbar.js` (the shared school/role switcher, see below), and `people.js` (see
-  `web` module below); `src/main/resources/static/css/app.css` is the one global
+  holds `school-new.js` (`createSchoolForm` — self-service school creation, §1,
+  moved off the dashboard onto its own page 2026-07-06 — see §7 Done), `navbar.js`
+  (the shared school/role switcher, see below), and `people.js` (see `web`
+  module below); `src/main/resources/static/css/app.css` is the one global
   stylesheet so far (holds the `[x-cloak]` rule, used to keep closed
   `x-show`-gated forms from flashing open before Alpine initializes). `/js/**`
   and `/css/**` are `permitAll` in `SecurityConfig` and excluded in
@@ -303,23 +305,19 @@ com.example.roshdeandishe
 │       └── FinanceExceptionHandler.java   (bean name "financeExceptionHandler")
 │
 └── web/                        ← UI-composition layer (see §2 Frontend): page
-    ├── DashboardPageController.java   controllers that need more than one
-    ├── PeoplePageController.java      module's Facade. GET /dashboard composes
-    ├── NavbarModel.java               iam memberships + school names, renders
-    ├── NavbarModelAssembler.java      the school/role switcher (§11 Q2) plus
-    └── RoleLabels.java                the self-service create-school form
-                                  (posts to POST /api/admin/schools via the
-                                  static createSchoolForm component in
-                                  /js/dashboard.js, then reloads); GET /people
-                                  (first management-UI slice past the dashboard,
-                                  see UX_ROADMAP.md) lists/adds/toggles a
-                                  school's memberships and issues invite tokens,
-                                  entirely client-side against
-                                  iam.MembershipController (school selection
-                                  lives only in localStorage — see §11 Q2).
-                                  NavbarModel/NavbarModelAssembler build the
-                                  shared school/role switcher navbar (rendered
-                                  by layout/navbar.jte: page links in
+    ├── LandingPageController.java     controllers that need more than one
+    ├── DashboardPageController.java   module's Facade. GET / (public landing
+    ├── SchoolRegistrationPageController.java  page — see below) composes iam
+    ├── PeoplePageController.java      memberships + school names; GET /people
+    ├── NavbarModel.java               (first management-UI slice past the
+    ├── NavbarModelAssembler.java      dashboard, see UX_ROADMAP.md)
+    └── RoleLabels.java                lists/adds/toggles a school's
+                                  memberships and issues invite tokens, entirely
+                                  client-side against iam.MembershipController
+                                  (school selection lives only in localStorage —
+                                  see §11 Q2). NavbarModel/NavbarModelAssembler
+                                  build the shared school/role switcher navbar
+                                  (rendered by layout/navbar.jte: page links in
                                   navbar-start — every page must be linked
                                   there, no orphan URLs — plus a Bulma burger
                                   for mobile) once, reused by every page instead
@@ -795,6 +793,35 @@ above.
   admins who never clicked the dropdown), Persian role labels everywhere via
   `web.RoleLabels` (server) mirrored in `people.js` (client), and success
   notices on every `/people` mutation. No backend changes.
+- **Management UI, slice 3 — public landing page + dedicated school
+  registration (built 2026-07-06, explicit product decision)**: real people
+  don't casually "create a school" from their own dashboard — the create-school
+  form used to sit there for *every* logged-in user, including invited
+  students/parents with zero reason to see it. Moved to its own page,
+  `GET /schools/new` (`web.SchoolRegistrationPageController`, thin shell +
+  shared navbar, same pattern as `/people`), with the `createSchoolForm`
+  Alpine component relocated verbatim from `dashboard.js` to
+  `static/js/school-new.js` (`dashboard.js` deleted). Also added `GET /`
+  (`web.LandingPageController`) as the public entry point for anonymous
+  visitors — login/register CTAs plus a "ثبت مدرسه" link to `/schools/new`;
+  an already-authenticated visitor is redirected straight to `/dashboard`.
+  `/` is `permitAll` in `SecurityConfig` and excluded in
+  `TenantResolverFilter` (checked by `path.equals("/")`, not `startsWith`,
+  since every path starts with `/`); `/schools/new` is excluded in the filter
+  the same way `/people` is (the school doesn't exist yet to carry a
+  schoolId) but still requires login via `SecurityConfig`. The dashboard's
+  empty-membership state now links to `/schools/new` instead of hosting the
+  form inline. Self-service creation itself is unchanged (CLAUDE.md §1) —
+  this is presentation only, not a new gate. **This is a deliberate first
+  step toward §11 Q6** (should self-created schools be distinguishable from
+  verified customers?) — a real approval flow is still blocked on
+  `PLATFORM_ADMIN` permission infrastructure (§7 item 1) and stays
+  unbuilt until that exists; do not add a `PENDING`/`VERIFIED` status
+  speculatively ahead of it. Covered by new tests in
+  `LoginDashboardFlowIntegrationTest` (landing page content, authenticated
+  redirect, unauthenticated `/schools/new` redirect) and an updated
+  `RegistrationFlowIntegrationTest` (founder flow now visits `/schools/new`
+  instead of asserting the form on `/dashboard`).
 - Dev-only seed data: roles, modules, permissions, role-permission grants, one demo
   school, one demo admin user with a SCHOOL_ADMIN membership at the demo school
   (without it the demo admin couldn't call any school-scoped API — the demo school
@@ -848,15 +875,17 @@ above.
    a shared `layout/navbar.jte` template rendered on every management page, not
    reimplemented per page). **The management UI is unblocked and underway** —
    see [`UX_ROADMAP.md`](UX_ROADMAP.md) for the full page inventory, build
-   order, and shared conventions. **Done so far:** the dashboard's self-service
-   create-school form (`createSchoolForm` in `/js/dashboard.js` →
-   `POST /api/admin/schools`; no `X-School-ID` sent, the school doesn't exist
-   yet) and **People (`/people`)** — see §7 Done for both. Remaining: classes,
-   enrollment, finance pages (in that order per the roadmap doc). New
-   management pages go in the `web` module, reuse `NavbarModelAssembler` +
-   `layout/navbar.jte`, and their JS must send both `X-School-ID` (the page's
-   school — omitted only for school-creation itself, which precedes any
-   schoolId existing) and `X-XSRF-TOKEN` on mutating requests.
+   order, and shared conventions. **Done so far:** the dedicated self-service
+   school-registration page (`GET /schools/new`, `createSchoolForm` in
+   `/js/school-new.js` → `POST /api/admin/schools`; no `X-School-ID` sent, the
+   school doesn't exist yet — moved off the dashboard 2026-07-06, see §7 Done),
+   the public landing page (`GET /`), and **People (`/people`)** — see §7 Done
+   for all three. Remaining: classes, enrollment, finance pages (in that order
+   per the roadmap doc). New management pages go in the `web` module, reuse
+   `NavbarModelAssembler` + `layout/navbar.jte`, and their JS must send both
+   `X-School-ID` (the page's school — omitted only for school-creation itself,
+   which precedes any schoolId existing) and `X-XSRF-TOKEN` on mutating
+   requests.
 7. **Class reassignment as an explicit action.** `enrollStudent` happens to support
    moving a student to a different class (idempotent re-enroll updates `classId`),
    but there's no dedicated "transfer" endpoint/semantics, and it's unclear whether a
@@ -987,7 +1016,13 @@ creation).
    distinguishing "someone just signed up" from "a real, approved customer," or is
    "has zero entitlements until manually granted" sufficient signal on its own?
    Discussed once; decided not to build the extra status field for now, but not
-   fully closed if a concrete need surfaces.
+   fully closed if a concrete need surfaces. **2026-07-06 update:** the
+   presentation half was addressed without touching this question — school
+   creation moved off the dashboard to its own `GET /schools/new` page (§7
+   Done) so it's no longer offered to every logged-in user regardless of
+   intent. A real approval/verification flow (this question's actual subject)
+   still waits on `PLATFORM_ADMIN` infrastructure (§7 item 1) — do not build a
+   status field speculatively ahead of that.
 7. **(raised 2026-07-05; sign-up part resolved 2026-07-05):** Individual (B2C)
    self-registration — e.g. a teacher creating their own account with no school,
    using USER-scoped modules. **The public sign-up flow now exists** (user asked

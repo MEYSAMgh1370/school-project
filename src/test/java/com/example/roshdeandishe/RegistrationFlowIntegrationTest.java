@@ -62,15 +62,18 @@ class RegistrationFlowIntegrationTest {
                 .andExpect(jsonPath("$.email").value("newuser@example.test"));
 
         // کاربر تازه هیچ Membershipای ندارد - داشبورد باید این حالت را
-        // تحمل کند (تصمیم Q2: سوییچر بدون عضویت اصلاً رندر نمی‌شود)
+        // تحمل کند (تصمیم Q2: سوییچر بدون عضویت اصلاً رندر نمی‌شود) و در
+        // حالت خالی، CTA ثبت مدرسه را نشان دهد (جریان بنیان‌گذار)
         mockMvc.perform(get("/dashboard").session(session))
-                .andExpect(status().isOk());
+                .andExpect(status().isOk())
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("href=\"/schools/new\"")));
     }
 
     @Test
     void registerThenCreateSchoolAndBecomeItsAdmin() throws Exception {
-        // کل مسیر onboarding خودسرویسی B2B: ثبت‌نام → ساخت مدرسه →
-        // SCHOOL_ADMIN شدن خودکار → دیدن مدرسه در داشبورد
+        // کل مسیر onboarding خودسرویسی B2B: ثبت‌نام → صفحه‌ی ثبت مدرسه
+        // (/schools/new - تصمیم ۲۰۲۶-۰۷-۰۶: فرم دیگر روی داشبورد نیست) →
+        // ساخت مدرسه → SCHOOL_ADMIN شدن خودکار → دیدن مدرسه در داشبورد
         mockMvc.perform(post("/api/auth/register")
                         .with(csrf())
                         .contentType(MediaType.APPLICATION_JSON)
@@ -84,6 +87,12 @@ class RegistrationFlowIntegrationTest {
                 .andExpect(status().isOk())
                 .andReturn();
         MockHttpSession session = (MockHttpSession) loginResult.getRequest().getSession(false);
+
+        // صفحه‌ی اختصاصی ثبت مدرسه با کامپوننت استاتیک /js/school-new.js
+        mockMvc.perform(get("/schools/new").session(session))
+                .andExpect(status().isOk())
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("createSchoolForm")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("/js/school-new.js")));
 
         MvcResult createResult = mockMvc.perform(post("/api/admin/schools")
                         .with(csrf())
@@ -103,10 +112,7 @@ class RegistrationFlowIntegrationTest {
 
         mockMvc.perform(get("/dashboard").session(session))
                 .andExpect(status().isOk())
-                .andExpect(content().string(org.hamcrest.Matchers.containsString("مدرسه‌ی بنیان‌گذار")))
-                // فرم ساخت مدرسه (کامپوننت استاتیک /js/dashboard.js) رندر می‌شود
-                .andExpect(content().string(org.hamcrest.Matchers.containsString("createSchoolForm")))
-                .andExpect(content().string(org.hamcrest.Matchers.containsString("/js/dashboard.js")));
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("مدرسه‌ی بنیان‌گذار")));
     }
 
     @Test

@@ -32,6 +32,39 @@ class LoginDashboardFlowIntegrationTest {
     }
 
     @Test
+    void landingPageIsPubliclyReachableWithSchoolRegistrationPath() throws Exception {
+        // صفحه‌ی اول عمومی (تصمیم ۲۰۲۶-۰۷-۰۶): درِ ورودی محصول با مسیر
+        // ورود/ثبت‌نام/ثبت مدرسه - بدون نیاز به لاگین
+        mockMvc.perform(get("/"))
+                .andExpect(status().isOk())
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("ثبت مدرسه")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("href=\"/schools/new\"")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("href=\"/login\"")));
+    }
+
+    @Test
+    void landingPageRedirectsAuthenticatedUsersToDashboard() throws Exception {
+        MvcResult loginResult = mockMvc.perform(post("/api/auth/login")
+                        .with(csrf())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"email\":\"admin@roshdeandishe.test\",\"password\":\"password\"}"))
+                .andExpect(status().isOk())
+                .andReturn();
+        MockHttpSession session = (MockHttpSession) loginResult.getRequest().getSession(false);
+
+        mockMvc.perform(get("/").session(session))
+                .andExpect(status().is3xxRedirection())
+                .andExpect(result -> assertThat(result.getResponse().getRedirectedUrl()).isEqualTo("/dashboard"));
+    }
+
+    @Test
+    void unauthenticatedSchoolRegistrationPageRedirectsToLogin() throws Exception {
+        mockMvc.perform(get("/schools/new"))
+                .andExpect(status().is3xxRedirection())
+                .andExpect(result -> assertThat(result.getResponse().getRedirectedUrl()).endsWith("/login"));
+    }
+
+    @Test
     void unauthenticatedDashboardRedirectsToLogin() throws Exception {
         mockMvc.perform(get("/dashboard"))
                 .andExpect(status().is3xxRedirection())

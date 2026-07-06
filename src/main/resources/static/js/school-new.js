@@ -1,15 +1,13 @@
-// کامپوننت‌های Alpine صفحه‌ی داشبورد - اولین فایل استاتیک طبق قانون
-// جای‌گذاری کد (CLAUDE.md §2): JSای که fetch دارد در template نمی‌ماند.
-// این فایل باید *قبل از* اسکریپت Alpine لود شود (layout/main.jte این را
-// با pageScript تضمین می‌کند) تا Alpine.data پیش از alpine:init ثبت شود.
+// کامپوننت صفحه‌ی ثبت مدرسه (/schools/new) - جابه‌جاشده از dashboard.js
+// (تصمیم ۲۰۲۶-۰۷-۰۶: فرم ساخت مدرسه از داشبورد به صفحه‌ی اختصاصی رفت).
 document.addEventListener('alpine:init', () => {
 
     // ساخت مدرسه‌ی self-service: POST /api/admin/schools - سازنده بلافاصله
-    // SCHOOL_ADMIN می‌شود (SchoolController)، پس reload کافی است تا عضویت
-    // تازه در جدول و سوییچر ظاهر شود. X-School-ID لازم نیست: این مسیر در
-    // TenantResolverFilter مستثناست (مدرسه هنوز وجود ندارد که id داشته باشد).
+    // SCHOOL_ADMIN می‌شود (SchoolController). X-School-ID لازم نیست: این
+    // مسیر در TenantResolverFilter مستثناست (مدرسه هنوز وجود ندارد که id
+    // داشته باشد). پس از موفقیت به داشبورد می‌رویم تا عضویت تازه در جدول
+    // و سوییچر دیده شود.
     Alpine.data('createSchoolForm', () => ({
-        open: false,
         name: '',
         timezone: 'Asia/Tehran',
         locale: 'fa-IR',
@@ -37,7 +35,7 @@ document.addEventListener('alpine:init', () => {
                     })
                 });
                 if (response.ok) {
-                    window.location.reload();
+                    window.location.href = '/dashboard';
                     return;
                 }
                 let detail = '';
