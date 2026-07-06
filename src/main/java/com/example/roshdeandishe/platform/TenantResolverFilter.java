@@ -38,7 +38,9 @@ public class TenantResolverFilter extends OncePerRequestFilter {
             // صفحه‌ی مدیریتیِ /people خودش یک route است نه یک API؛ فراخوانی‌های
             // fetch آن (به /api/admin/schools/{id}/memberships) هدر را خودشان
             // می‌فرستند - این استثنا فقط بارگذاری خودِ صفحه را شامل می‌شود
-            "/people"
+            "/people",
+            // صفحه‌ی ثبت مدرسه: مدرسه هنوز وجود ندارد که schoolId داشته باشد
+            "/schools/new"
     };
 
     /**
@@ -62,7 +64,10 @@ public class TenantResolverFilter extends OncePerRequestFilter {
     ) throws ServletException, IOException {
 
         String path = request.getRequestURI();
-        boolean excluded = java.util.Arrays.stream(EXCLUDED_PATHS).anyMatch(path::startsWith)
+        // "/" (صفحه‌ی اول عمومی) جداگانه و با equals چک می‌شود - داخل
+        // EXCLUDED_PATHS نمی‌رود چون startsWith("/") همه‌چیز را مستثنا می‌کرد.
+        boolean excluded = path.equals("/")
+                || java.util.Arrays.stream(EXCLUDED_PATHS).anyMatch(path::startsWith)
                 || SCHOOL_SELF_SERVICE_PATH.matcher(path).matches();
 
         try {

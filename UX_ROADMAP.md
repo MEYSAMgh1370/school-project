@@ -107,10 +107,20 @@ coherent as more pages are added by different people/sessions over time.
    that must render `ModuleNotEntitled` (403, module not subscribed) distinctly
    from `PermissionDenied` (403, role lacks the permission) — CLAUDE.md §5's two
    layers need two different user-facing messages here, not one generic 403.
-6. ~~**School creation** — `/schools/new`~~ — **already shipped differently**:
-   an inline form on the dashboard (`createSchoolForm` in `/js/dashboard.js`
-   → `POST /api/admin/schools`), merged via PR #16. A separate `/schools/new`
-   page is not needed.
+6. **School registration** — `/schools/new` — **built.** First shipped (PR #16)
+   as an inline form on the dashboard; moved to this dedicated page 2026-07-06
+   because real people don't casually "create a school" from their own
+   dashboard — the form was showing up for every logged-in user, including
+   invited students/parents with no reason to see it. Linked from the new
+   public landing page (`GET /`, item 7) and from the dashboard's
+   empty-membership state, not from the navbar (it's a one-time bootstrapping
+   action, not ongoing management). `createSchoolForm` now lives in
+   `/js/school-new.js`. Self-service creation itself is unchanged (CLAUDE.md
+   §1) — this was a presentation fix, not a new gate.
+7. **Public landing page** — `GET /` — **built** alongside item 6.
+   `web.LandingPageController`: login/register CTAs plus the "ثبت مدرسه" link
+   to `/schools/new`, for anonymous visitors. An already-authenticated visitor
+   is redirected straight to `/dashboard`.
 
 ### FINANCE_ADMIN
 
