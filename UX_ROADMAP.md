@@ -96,9 +96,16 @@ coherent as more pages are added by different people/sessions over time.
      API data) — raw codes like `SCHOOL_ADMIN` never reach the UI.
    - Success notices on every mutation in `/people` (previously only the
      invite action confirmed; add/toggle succeeded silently).
-3. **Classes** — `/classes` — create/list classes. Backed by
+3. **Classes** — `/classes` (`web.ClassesPageController`) — **built.**
+   Create/list classes (name, optional section, optional teacher). Backed by
    `academic.ClassController` (`CLASS_MANAGE`, SCHOOL_ADMIN only per the
-   admin/day-to-day split in CLAUDE.md §4).
+   admin/day-to-day split in CLAUDE.md §4). `academic` has no visibility into
+   `iam` names (module boundary — `teacherId` is an opaque `Long`), so
+   `classes.js` resolves teacher names client-side from the same
+   `iam.MembershipController` list `/people` already uses, filtered to active
+   `TEACHER` memberships — no backend change, no new `web`→`academic` Java
+   dependency (the page composes two existing REST endpoints in JS, not two
+   Facades in the controller).
 4. **Enrollment** — `/students` — enroll/move students into classes. Backed by
    `academic.StudentController` (`STUDENT_ENROLL`, SCHOOL_ADMIN + TEACHER).
    Needs the class list from step 3 to populate a picker.

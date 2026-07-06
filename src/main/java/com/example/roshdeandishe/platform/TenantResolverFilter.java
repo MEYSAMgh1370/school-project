@@ -39,6 +39,8 @@ public class TenantResolverFilter extends OncePerRequestFilter {
             // fetch آن (به /api/admin/schools/{id}/memberships) هدر را خودشان
             // می‌فرستند - این استثنا فقط بارگذاری خودِ صفحه را شامل می‌شود
             "/people",
+            // همان استدلال /people برای صفحه‌ی مدیریت کلاس‌ها
+            "/classes",
             // صفحه‌ی ثبت مدرسه: مدرسه هنوز وجود ندارد که schoolId داشته باشد
             "/schools/new"
     };
