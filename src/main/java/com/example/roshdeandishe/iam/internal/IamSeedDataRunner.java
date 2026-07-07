@@ -117,6 +117,7 @@ class IamSeedDataRunner implements ApplicationRunner {
         permissions.put("MEMBERSHIP_MANAGE", permissionRepository.save(new PermissionEntity("MEMBERSHIP_MANAGE", "مدیریت عضویت‌ها (فعال/غیرفعال‌سازی دسترسی)")));
         permissions.put("STUDENT_ENROLL", permissionRepository.save(new PermissionEntity("STUDENT_ENROLL", "ثبت‌نام دانش‌آموز در کلاس")));
         permissions.put("CLASS_MANAGE", permissionRepository.save(new PermissionEntity("CLASS_MANAGE", "ایجاد و مدیریت کلاس‌ها")));
+        permissions.put("CLASS_VIEW", permissionRepository.save(new PermissionEntity("CLASS_VIEW", "مشاهده‌ی فهرست کلاس‌ها")));
         return permissions;
     }
 
@@ -131,6 +132,10 @@ class IamSeedDataRunner implements ApplicationRunner {
         grant(roles.get("TEACHER"), permissions.get("GRADES_EDIT"));
         // طبق تصمیم صریح: ثبت‌نام دانش‌آموز، هم برای SCHOOL_ADMIN هم TEACHER مجاز است
         grant(roles.get("TEACHER"), permissions.get("STUDENT_ENROLL"));
+        // بدون این، TEACHER نمی‌تواند فهرست کلاس‌ها را برای پر کردن دراپ‌داون
+        // انتخاب کلاس در صفحه‌ی ثبت‌نام (/students) ببیند - ساخت کلاس همچنان
+        // فقط با CLASS_MANAGE (پایین‌تر) مخصوص SCHOOL_ADMIN می‌ماند
+        grant(roles.get("TEACHER"), permissions.get("CLASS_VIEW"));
 
         grant(roles.get("PARENT"), permissions.get("GRADES_VIEW"));
         grant(roles.get("PARENT"), permissions.get("FINANCE_VIEW"));
@@ -143,6 +148,7 @@ class IamSeedDataRunner implements ApplicationRunner {
         // ساخت کلاس یک تصمیم چیدمانی/اداری است، فرض شده فقط کار SCHOOL_ADMIN
         // است، نه TEACHER (بر خلاف ثبت‌نام دانش‌آموز که هر دو مجازند)
         grant(roles.get("SCHOOL_ADMIN"), permissions.get("CLASS_MANAGE"));
+        grant(roles.get("SCHOOL_ADMIN"), permissions.get("CLASS_VIEW"));
         grant(roles.get("SCHOOL_ADMIN"), permissions.get("STUDENT_ENROLL"));
 
         // FINANCE_ADMIN: فقط دسترسی مالی - نمونه‌ی واقعی "نقش متفاوت با سطح دسترسی متفاوت"

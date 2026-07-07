@@ -14,6 +14,13 @@ import java.util.List;
  * اداری/چیدمانی است و فقط SCHOOL_ADMIN مجاز است (بر خلاف ثبت‌نام
  * دانش‌آموز که TEACHER هم مجاز است - رجوع کنید به StudentController).
  * <p>
+ * فهرست کلاس‌ها (GET) عمداً Permission جدایی دارد: CLASS_VIEW، نه
+ * CLASS_MANAGE. بدون این جدایی، TEACHER (که STUDENT_ENROLL دارد ولی
+ * CLASS_MANAGE ندارد) نمی‌توانست فهرست کلاس‌ها را برای پر کردن دراپ‌داون
+ * انتخاب کلاس در صفحه‌ی ثبت‌نام (/students) ببیند - یک باگ واقعی که در
+ * بازبینی بعد از ساخت آن صفحه پیدا شد. CLASS_VIEW به SCHOOL_ADMIN و
+ * TEACHER هر دو داده می‌شود؛ CLASS_MANAGE (ساخت کلاس) فقط SCHOOL_ADMIN.
+ * <p>
  * {@code @RequiresModule("ACADEMIC")} در سطح کلاس: همه‌ی این عملیات فقط
  * وقتی معنا دارند که مدرسه ماژول ACADEMIC را خریده باشد (لایه‌ی اول از
  * کنترل دسترسی دولایه؛ لایه‌ی دوم همان @RequiresPermission روی هر متد است).
@@ -39,7 +46,7 @@ public class ClassController {
     }
 
     @GetMapping
-    @RequiresPermission("CLASS_MANAGE")
+    @RequiresPermission("CLASS_VIEW")
     public List<ClassResponse> listClasses(@PathVariable Long schoolId) {
         TenantContext.requireMatches(schoolId);
 

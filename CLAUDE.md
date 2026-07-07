@@ -256,10 +256,11 @@ com.example.roshdeandishe
 │   ├── AcademicFacade.java
 │   ├── StudentEnrolledEvent.java   (fields: schoolId, studentId, classId — NOT
 │   │                                 gradeLevel; superseded by real ClassEntity)
-│   ├── ClassController.java        (REST: create/list classes — class-level
-│   │                                 @RequiresModule("ACADEMIC") +
-│   │                                 @RequiresPermission("CLASS_MANAGE"),
-│   │                                 SCHOOL_ADMIN only)
+│   ├── ClassController.java        (REST: create (CLASS_MANAGE, SCHOOL_ADMIN
+│   │                                 only) / list (CLASS_VIEW, SCHOOL_ADMIN +
+│   │                                 TEACHER) classes — class-level
+│   │                                 @RequiresModule("ACADEMIC"), per-method
+│   │                                 @RequiresPermission)
 │   ├── StudentController.java      (REST: enroll/get/list students —
 │   │                                 class-level @RequiresModule("ACADEMIC") +
 │   │                                 @RequiresPermission("STUDENT_ENROLL"),
@@ -475,7 +476,7 @@ different access levels without any code change.
 PermissionEntity
 ├── id
 ├── code (GRADES_VIEW, GRADES_EDIT, FINANCE_VIEW, FINANCE_MANAGE,
-│         MEMBERSHIP_MANAGE, STUDENT_ENROLL, CLASS_MANAGE)
+│         MEMBERSHIP_MANAGE, STUDENT_ENROLL, CLASS_MANAGE, CLASS_VIEW)
 └── displayName
 
 RolePermissionEntity  (join table: which roles have which permissions)
@@ -488,14 +489,25 @@ Current grants (seeded in `IamSeedDataRunner`):
 | Role | Permissions |
 |---|---|
 | `STUDENT` | `GRADES_VIEW` |
-| `TEACHER` | `GRADES_VIEW`, `GRADES_EDIT`, `STUDENT_ENROLL` |
+| `TEACHER` | `GRADES_VIEW`, `GRADES_EDIT`, `STUDENT_ENROLL`, `CLASS_VIEW` |
 | `PARENT` | `GRADES_VIEW`, `FINANCE_VIEW` |
-| `SCHOOL_ADMIN` | `GRADES_VIEW`, `FINANCE_VIEW`, `FINANCE_MANAGE`, `MEMBERSHIP_MANAGE`, `CLASS_MANAGE`, `STUDENT_ENROLL` |
+| `SCHOOL_ADMIN` | `GRADES_VIEW`, `FINANCE_VIEW`, `FINANCE_MANAGE`, `MEMBERSHIP_MANAGE`, `CLASS_MANAGE`, `CLASS_VIEW`, `STUDENT_ENROLL` |
 | `FINANCE_ADMIN` | `FINANCE_VIEW`, `FINANCE_MANAGE` |
 
 Design intent behind the split: **class creation is administrative/scheduling
 (`SCHOOL_ADMIN` only)**, while **student enrollment is a day-to-day task
 (`SCHOOL_ADMIN` + `TEACHER`)** — a deliberate, explicit choice, not an oversight.
+
+**`CLASS_VIEW` vs `CLASS_MANAGE` (added 2026-07-07, bug found after the
+Enrollment UI slice shipped):** listing classes (`GET .../classes`) was
+originally gated behind `CLASS_MANAGE`, same as creating one. Since `TEACHER`
+was never granted `CLASS_MANAGE` (only `SCHOOL_ADMIN` creates classes), a
+teacher opening `/students` couldn't populate the class picker at all —
+`STUDENT_ENROLL` was nominally granted to them, but the class list they need
+to enroll *into* was invisible. Fixed by splitting read from write: a new
+`CLASS_VIEW` permission, granted to both `SCHOOL_ADMIN` and `TEACHER`, now
+guards the `GET` endpoint; `CLASS_MANAGE` (create) stays `SCHOOL_ADMIN`-only,
+preserving the admin/day-to-day split above unchanged.
 
 ### SchoolMembership
 
@@ -909,6 +921,14 @@ above.
   UX_ROADMAP.md §3** — remaining scheduled work is the FINANCE_ADMIN/TEACHER
   personas reusing pages already built, and items explicitly deferred until
   asked (grades UI, custom roles, B2C module UI).
+- **Bug fix — `CLASS_VIEW` permission split (2026-07-07)**: found while
+  scoping the TEACHER persona's next step — `ClassController.listClasses`
+  required `CLASS_MANAGE`, which `TEACHER` never had, so the class picker on
+  `/students` silently rendered empty for every teacher (they could never
+  actually enroll anyone). Fixed by adding `CLASS_VIEW` (granted to
+  `SCHOOL_ADMIN` + `TEACHER`) for the `GET` endpoint, leaving `CLASS_MANAGE`
+  (create) `SCHOOL_ADMIN`-only — see §4's `CLASS_VIEW` note. Covered by a new
+  `ClassManagementFlowIntegrationTest.teacherCanListClassesButCannotCreateOne`.
 - Dev-only seed data: roles, modules, permissions, role-permission grants, one demo
   school, one demo admin user with a SCHOOL_ADMIN membership at the demo school
   (without it the demo admin couldn't call any school-scoped API — the demo school

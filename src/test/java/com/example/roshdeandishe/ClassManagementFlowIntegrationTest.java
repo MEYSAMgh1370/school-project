@@ -106,6 +106,49 @@ class ClassManagementFlowIntegrationTest {
     }
 
     @Test
+    void teacherCanListClassesButCannotCreateOne() throws Exception {
+        MockHttpSession adminSession = loginAsAdmin();
+
+        mockMvc.perform(post("/api/auth/register")
+                        .with(csrf())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"email\":\"class.viewer@roshdeandishe.test\",\"fullName\":\"معلم بیننده کلاس‌ها\",\"password\":\"password123\"}"))
+                .andExpect(status().isOk());
+        MvcResult loginResult = mockMvc.perform(post("/api/auth/login")
+                        .with(csrf())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"email\":\"class.viewer@roshdeandishe.test\",\"password\":\"password123\"}"))
+                .andExpect(status().isOk())
+                .andReturn();
+        MockHttpSession teacherSession = (MockHttpSession) loginResult.getRequest().getSession(false);
+
+        mockMvc.perform(post("/api/admin/schools/1/memberships")
+                        .with(csrf())
+                        .header("X-School-ID", "1")
+                        .session(adminSession)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"email\":\"class.viewer@roshdeandishe.test\",\"fullName\":\"معلم بیننده کلاس‌ها\",\"roleCode\":\"TEACHER\"}"))
+                .andExpect(status().isOk());
+
+        // CLASS_VIEW (نه CLASS_MANAGE) به TEACHER هم داده می‌شود - بدون این،
+        // دراپ‌داون انتخاب کلاس در صفحه‌ی ثبت‌نام (/students) برای معلم‌ها
+        // همیشه خالی می‌ماند (باگی که بعد از ساخت آن صفحه پیدا شد)
+        mockMvc.perform(get("/api/admin/schools/1/classes")
+                        .header("X-School-ID", "1")
+                        .session(teacherSession))
+                .andExpect(status().isOk());
+
+        // اما ساخت کلاس همچنان یک تصمیم اداری/چیدمانی است - فقط SCHOOL_ADMIN
+        mockMvc.perform(post("/api/admin/schools/1/classes")
+                        .with(csrf())
+                        .header("X-School-ID", "1")
+                        .session(teacherSession)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"name\":\"کلاس ممنوع برای معلم\",\"section\":null,\"teacherId\":null}"))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
     void userWithNoMembershipCannotCreateAClass() throws Exception {
         // بدون Membership در مدرسه‌ی نمونه، هیچ نقشی (نه فقط SCHOOL_ADMIN)
         // نمی‌تواند کلاس بسازد - CLASS_MANAGE فقط SCHOOL_ADMIN دارد
