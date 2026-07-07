@@ -119,11 +119,23 @@ coherent as more pages are added by different people/sessions over time.
    (fetched client-side, same as the class picker). Navbar link added,
    visible while the selected role is `SCHOOL_ADMIN` or `TEACHER` (first link
    shown to a non-admin role, since `STUDENT_ENROLL` is granted to both).
-5. **Finance** — `/finance` — set/view tuition fee, list invoices. Backed by
-   `finance.FinanceController` (`FINANCE_MANAGE`/`FINANCE_VIEW`). First page
-   that must render `ModuleNotEntitled` (403, module not subscribed) distinctly
-   from `PermissionDenied` (403, role lacks the permission) — CLAUDE.md §5's two
-   layers need two different user-facing messages here, not one generic 403.
+5. **Finance** — `/finance` (`web.FinancePageController`) — **built.** Set/view
+   the school's tuition fee and list its invoices, entirely client-side
+   against the existing `finance.FinanceController` (`FINANCE_MANAGE`/
+   `FINANCE_VIEW`). First page that renders `ModuleNotEntitled` (403, school
+   hasn't subscribed to FINANCE) distinctly from `PermissionDenied` (403, role
+   lacks the permission) — `finance.js` inspects the `ProblemDetail.type` URI
+   suffix (`module-not-entitled` vs `permission-denied`, set by
+   `IamProblemResolver`) and shows two different Persian messages, blocking
+   the whole page body in both cases rather than rendering a broken form.
+   Invoice rows only carry an opaque `studentId` (finance has no visibility
+   into student names, same module-boundary reason as teacher/student names
+   elsewhere), so `finance.js` resolves names the same way `students.js`
+   does: `academic.StudentController` (id → userId) composed with
+   `iam.MembershipController` (userId → name), both best-effort — if the
+   current role lacks `STUDENT_ENROLL`, invoices just show `#id` instead of
+   breaking. Navbar link visible while the selected role is `SCHOOL_ADMIN` or
+   `FINANCE_ADMIN` (§3's FINANCE_ADMIN persona reuses this same page).
 6. **School registration** — `/schools/new` — **built.** First shipped (PR #16)
    as an inline form on the dashboard; moved to this dedicated page 2026-07-06
    because real people don't casually "create a school" from their own
