@@ -31,7 +31,7 @@
             <a class="navbar-item" href="/dashboard">داشبورد</a>
             @if(!navbar.schools().isEmpty())
                 <a class="navbar-item" href="/people" x-cloak x-show="selectedRole === 'SCHOOL_ADMIN'">اعضای مدرسه</a>
-                <a class="navbar-item" href="/classes" x-cloak x-show="selectedRole === 'SCHOOL_ADMIN'">کلاس‌ها</a>
+                <a class="navbar-item" href="/classes" x-cloak x-show="selectedRole === 'SCHOOL_ADMIN' || selectedRole === 'TEACHER'">کلاس‌ها</a>
                 <a class="navbar-item" href="/students" x-cloak x-show="selectedRole === 'SCHOOL_ADMIN' || selectedRole === 'TEACHER'">دانش‌آموزان</a>
                 <a class="navbar-item" href="/finance" x-cloak x-show="selectedRole === 'SCHOOL_ADMIN' || selectedRole === 'FINANCE_ADMIN'">امور مالی</a>
             @endif
