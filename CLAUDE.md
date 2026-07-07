@@ -93,8 +93,9 @@ too narrow.
   light client-side interactivity. Both delivered as WebJars (`org.webjars.npm`),
   not a CDN `<script>` tag and not an npm/webpack/vite build — stays a zero-build
   addition consistent with "one Maven artifact." Templates live in `src/main/jte/`
-  — seven page templates (`landing.jte`, `activate.jte`, `login.jte`,
-  `register.jte`, `dashboard.jte`, `people.jte`, `school-new.jte`), all wrapped
+  — ten page templates (`landing.jte`, `activate.jte`, `login.jte`,
+  `register.jte`, `dashboard.jte`, `people.jte`, `school-new.jte`,
+  `classes.jte`, `students.jte`, `finance.jte`), all wrapped
   in the shared **`layout/main.jte`** (`title`, `gg.jte.Content content`, and
   an optional `scripts` param — `List<String>` of `/js/...` paths). The layout
   is the *only* place that owns the `<head>` (WebJar stylesheet/script tags +
@@ -111,8 +112,9 @@ too narrow.
   always an external file, never inline `<style>`. `src/main/resources/static/js/`
   holds `school-new.js` (`createSchoolForm` — self-service school creation, §1,
   moved off the dashboard onto its own page 2026-07-06 — see §7 Done), `navbar.js`
-  (the shared school/role switcher, see below), and `people.js` (see `web`
-  module below); `src/main/resources/static/css/app.css` is the one global
+  (the shared school/role switcher, see below), `people.js`, `classes.js`,
+  `students.js`, and `finance.js` (one `Alpine.data` component per management
+  page, see `web` module below); `src/main/resources/static/css/app.css` is the one global
   stylesheet so far (holds the `[x-cloak]` rule, used to keep closed
   `x-show`-gated forms from flashing open before Alpine initializes). `/js/**`
   and `/css/**` are `permitAll` in `SecurityConfig` and excluded in
@@ -449,6 +451,10 @@ manual-validation convention in `iam`, no Bean Validation/`@Valid` used anywhere
 this codebase yet), then BCrypt-encodes it onto the `UserEntity` and marks the token
 redeemed. Exposed at `POST /api/auth/activate`, intentionally unauthenticated (the
 token *is* the credential), same trust model as `/api/auth/login`.
+(`spring-boot-starter-validation` is already in `pom.xml` but currently unused —
+don't treat its presence as license to sprinkle `@Valid` in ad hoc; if/when
+declarative validation is actually adopted, do it as one deliberate pass across
+all modules, not incrementally per endpoint.)
 
 ### Role
 
@@ -867,8 +873,14 @@ above.
   rows) — `academic` has no visibility into `iam` names by design (`teacherId`
   is an opaque `Long`, no FK across the module boundary), so this composition
   happens in JavaScript, not by adding an `IamFacade`/`AcademicFacade`
-  cross-dependency in the Java layer. Navbar link added (`SCHOOL_ADMIN`-only
-  visibility, same pattern as `/people`); `TenantResolverFilter` excludes
+  cross-dependency in the Java layer. Navbar link added, initially
+  `SCHOOL_ADMIN`-only (same pattern as `/people`), then widened 2026-07-07
+  (commit `f31a8c0`) to also show for `TEACHER` once the `CLASS_VIEW` split
+  below let them load the page usefully — read-only in practice, since
+  `CLASS_MANAGE` (create) stays `SCHOOL_ADMIN`-only and the create form falls
+  back to the same generic permission-denied notification every other page
+  shows, with no client-side role-gating of the form itself.
+  `TenantResolverFilter` excludes
   `/classes` the page route for the same reason it excludes `/people`.
   Covered by `ClassManagementFlowIntegrationTest`.
 - **Management UI, slice 5 — Enrollment (`/students`, built 2026-07-07, see
@@ -929,6 +941,9 @@ above.
   `SCHOOL_ADMIN` + `TEACHER`) for the `GET` endpoint, leaving `CLASS_MANAGE`
   (create) `SCHOOL_ADMIN`-only — see §4's `CLASS_VIEW` note. Covered by a new
   `ClassManagementFlowIntegrationTest.teacherCanListClassesButCannotCreateOne`.
+  Follow-up commit `f31a8c0` widened the `/classes` navbar link itself to
+  `TEACHER` (previously `SCHOOL_ADMIN`-only, see the Classes slice above) —
+  the permission fix was pointless if TEACHER still couldn't discover the page.
 - Dev-only seed data: roles, modules, permissions, role-permission grants, one demo
   school, one demo admin user with a SCHOOL_ADMIN membership at the demo school
   (without it the demo admin couldn't call any school-scoped API — the demo school
@@ -936,6 +951,17 @@ above.
   creator's membership), and ACADEMIC+FINANCE entitlements for the demo school
   (so the first `@RequiresModule`-guarded controller works out of the box in dev)
 - `ModularityTests` enforcing module boundaries
+- **Test infrastructure:** all `*FlowIntegrationTest` classes run against a real
+  Postgres via `TestcontainersConfiguration` (`testcontainers-postgresql` +
+  `spring-boot-testcontainers`), not an in-memory database — matching production's
+  DB engine matters more here given the per-module Postgres *schema* convention
+  (§7 item 4). `awaitility` is used where a test needs to wait on an
+  `@ApplicationModuleListener` (async, runs on its own thread post-commit — see
+  the thread-boundary rule above) rather than asserting immediately.
+  `Demo5ApplicationTests` is the unmodified Spring Boot smoke test left over from
+  the original project scaffold (stale "Demo5" name predates the
+  `roshdeandishe` rename) — harmless, not worth touching until something else
+  in that file changes.
 
 ### Open / explicitly deferred
 
