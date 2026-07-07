@@ -21,6 +21,8 @@ public interface AcademicFacade {
 
     StudentInfo getStudentInfo(Long studentId);
 
+    List<StudentInfo> listStudents(Long schoolId);
+
     ClassId createClass(Long schoolId, String name, Long teacherId, String section);
 
     List<ClassInfo> listClasses(Long schoolId);

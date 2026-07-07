@@ -66,6 +66,13 @@ class AcademicFacadeImpl implements AcademicFacade {
     }
 
     @Override
+    public List<StudentInfo> listStudents(Long schoolId) {
+        return studentRepository.findBySchoolId(schoolId).stream()
+                .map(s -> new StudentInfo(new StudentId(s.getId()), s.getUserId(), s.getSchoolId(), new ClassId(s.getClassId())))
+                .toList();
+    }
+
+    @Override
     @Transactional
     public ClassId createClass(Long schoolId, String name, Long teacherId, String section) {
         ClassEntity saved = classRepository.save(new ClassEntity(schoolId, name, teacherId, section));

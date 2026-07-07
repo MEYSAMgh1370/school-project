@@ -260,8 +260,8 @@ com.example.roshdeandishe
 │   │                                 @RequiresModule("ACADEMIC") +
 │   │                                 @RequiresPermission("CLASS_MANAGE"),
 │   │                                 SCHOOL_ADMIN only)
-│   ├── StudentController.java      (REST: enroll/get student — class-level
-│   │                                 @RequiresModule("ACADEMIC") +
+│   ├── StudentController.java      (REST: enroll/get/list students —
+│   │                                 class-level @RequiresModule("ACADEMIC") +
 │   │                                 @RequiresPermission("STUDENT_ENROLL"),
 │   │                                 SCHOOL_ADMIN + TEACHER)
 │   ├── internal/
@@ -310,33 +310,37 @@ com.example.roshdeandishe
     ├── SchoolRegistrationPageController.java  page — see below) composes iam
     ├── PeoplePageController.java      memberships + school names; GET /people
     ├── ClassesPageController.java     (first management-UI slice past the
-    ├── NavbarModel.java               dashboard, see UX_ROADMAP.md)
-    ├── NavbarModelAssembler.java      lists/adds/toggles a school's
-    └── RoleLabels.java                memberships and issues invite tokens;
-                                  GET /classes (second slice) creates/lists a
-                                  school's classes — both entirely client-side
-                                  against their respective REST controllers
-                                  (school selection lives only in localStorage —
-                                  see §11 Q2). ClassesPageController does NOT
-                                  depend on AcademicFacade or any academic type —
-                                  it's a thin shell like PeoplePageController;
-                                  classes.js composes iam.MembershipController
-                                  (for teacher names) and academic.ClassController
-                                  in JavaScript, not the Java controller, so `web`
-                                  gains no new module dependency for this slice.
-                                  NavbarModel/NavbarModelAssembler build the
-                                  shared school/role switcher navbar (rendered
-                                  by layout/navbar.jte: page links in
-                                  navbar-start — every page must be linked
-                                  there, no orphan URLs — plus a Bulma burger
-                                  for mobile) once, reused by every page instead
-                                  of recomposed per controller. RoleLabels maps
-                                  role codes to Persian labels for
-                                  server-rendered templates (mirrored
-                                  client-side in people.js — raw codes never
-                                  reach the UI, UX_ROADMAP.md §2). No Facade, no
-                                  entities, no REST, no exception handler of its
-                                  own; nothing depends on it.
+    ├── StudentsPageController.java    dashboard, see UX_ROADMAP.md)
+    ├── NavbarModel.java               lists/adds/toggles a school's
+    ├── NavbarModelAssembler.java      memberships and issues invite tokens;
+    └── RoleLabels.java                GET /classes (second slice) creates/lists
+                                  a school's classes; GET /students (third
+                                  slice) enrolls/lists students into a class —
+                                  all entirely client-side against their
+                                  respective REST controllers (school selection
+                                  lives only in localStorage — see §11 Q2).
+                                  Neither ClassesPageController nor
+                                  StudentsPageController depends on
+                                  AcademicFacade or any academic type — both are
+                                  thin shells like PeoplePageController;
+                                  classes.js/students.js compose
+                                  iam.MembershipController (for teacher/student
+                                  names) and academic.ClassController/
+                                  StudentController in JavaScript, not the Java
+                                  controller, so `web` gains no new module
+                                  dependency for either slice. NavbarModel/
+                                  NavbarModelAssembler build the shared
+                                  school/role switcher navbar (rendered by
+                                  layout/navbar.jte: page links in navbar-start
+                                  — every page must be linked there, no orphan
+                                  URLs — plus a Bulma burger for mobile) once,
+                                  reused by every page instead of recomposed
+                                  per controller. RoleLabels maps role codes to
+                                  Persian labels for server-rendered templates
+                                  (mirrored client-side in people.js — raw
+                                  codes never reach the UI, UX_ROADMAP.md §2).
+                                  No Facade, no entities, no REST, no exception
+                                  handler of its own; nothing depends on it.
 ```
 
 **Adding a new module**: copy the `academic/shared` error-handling pattern
@@ -608,6 +612,8 @@ StudentEntity
 `AcademicFacade.enrollStudent(email, fullName, schoolId, classId)` is idempotent: a
 second call for the same user at the same school updates their `classId` (i.e. moves
 them to a different class) rather than erroring or duplicating.
+`AcademicFacade.listStudents(schoolId)` (added for the `/students` UI slice, §7)
+returns every student row for a school, same flat-list shape as `listClasses`.
 
 ### TuitionFee (owned by `finance`)
 
@@ -845,6 +851,27 @@ above.
   visibility, same pattern as `/people`); `TenantResolverFilter` excludes
   `/classes` the page route for the same reason it excludes `/people`.
   Covered by `ClassManagementFlowIntegrationTest`.
+- **Management UI, slice 5 — Enrollment (`/students`, built 2026-07-07, see
+  [`UX_ROADMAP.md`](UX_ROADMAP.md) §3 item 4)**: enroll a student (email,
+  fullName, class picker) into one of the school's classes and list who's
+  enrolled where, entirely client-side against `academic.StudentController`
+  (`web.StudentsPageController` is a thin shell, same pattern as `/classes`).
+  `StudentController` was previously enroll-only + get-by-id with no roster
+  listing — added `GET /api/admin/schools/{schoolId}/students`
+  (`STUDENT_ENROLL`, same permission as enroll — SCHOOL_ADMIN + TEACHER) backed
+  by a new `AcademicFacade.listStudents(schoolId)` /
+  `StudentRepository.findBySchoolId` (§4). Student name/email are resolved
+  client-side in `students.js` from `iam.MembershipController`'s membership
+  list (filtered to active `STUDENT` rows) — the same composition pattern
+  `classes.js` uses for teacher names, for the same module-boundary reason
+  (`academic` holds `userId` as an opaque `Long`, no FK into `iam`). Class
+  names are resolved the same way from the existing `academic.ClassController`
+  list. Navbar link added, visible while the selected role is `SCHOOL_ADMIN`
+  *or* `TEACHER` — the first navbar link shown to a non-admin role, since
+  `STUDENT_ENROLL` (unlike `CLASS_MANAGE`) is granted to both.
+  `TenantResolverFilter` excludes `/students` the page route for the same
+  reason it excludes `/people` and `/classes`. Covered by
+  `StudentManagementFlowIntegrationTest`.
 - Dev-only seed data: roles, modules, permissions, role-permission grants, one demo
   school, one demo admin user with a SCHOOL_ADMIN membership at the demo school
   (without it the demo admin couldn't call any school-scoped API — the demo school
@@ -902,9 +929,9 @@ above.
    school-registration page (`GET /schools/new`, `createSchoolForm` in
    `/js/school-new.js` → `POST /api/admin/schools`; no `X-School-ID` sent, the
    school doesn't exist yet — moved off the dashboard 2026-07-06, see §7 Done),
-   the public landing page (`GET /`), **People (`/people`)**, and **Classes
-   (`/classes`)** — see §7 Done for all four. Remaining: enrollment, finance
-   pages (in that order per the roadmap doc). New management pages go in the
+   the public landing page (`GET /`), **People (`/people`)**, **Classes
+   (`/classes`)**, and **Enrollment (`/students`)** — see §7 Done for all five.
+   Remaining: the finance page. New management pages go in the
    `web` module, reuse
    `NavbarModelAssembler` + `layout/navbar.jte`, and their JS must send both
    `X-School-ID` (the page's school — omitted only for school-creation itself,
@@ -959,8 +986,14 @@ navbar extracted into a reusable template and the first `static/js/`
 **Phase E.2 — Management UI, slice 4 (Classes): done.** `GET /classes`, built
 against the existing `academic.ClassController` REST endpoints; teacher names
 resolved client-side from `iam.MembershipController` (no cross-module Java
-dependency added to `web`). See `UX_ROADMAP.md` for the full page inventory
-and build order for the remaining slices (enrollment, finance).
+dependency added to `web`).
+
+**Phase E.3 — Management UI, slice 5 (Enrollment): done.** `GET /students`,
+built against `academic.StudentController`, which gained its first roster-list
+endpoint (`GET .../students`) plus `AcademicFacade.listStudents` to back it;
+student names resolved client-side from `iam.MembershipController`, same
+pattern as Classes' teacher-name resolution. See `UX_ROADMAP.md` for the full
+page inventory and build order for the remaining slice (finance).
 
 ---
 

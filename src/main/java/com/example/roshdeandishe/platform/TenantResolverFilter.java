@@ -41,6 +41,8 @@ public class TenantResolverFilter extends OncePerRequestFilter {
             "/people",
             // همان استدلال /people برای صفحه‌ی مدیریت کلاس‌ها
             "/classes",
+            // همان استدلال /people برای صفحه‌ی ثبت‌نام دانش‌آموز
+            "/students",
             // صفحه‌ی ثبت مدرسه: مدرسه هنوز وجود ندارد که schoolId داشته باشد
             "/schools/new"
     };
