@@ -85,6 +85,15 @@ public class IamProblemResolver {
                     "کاربری با ایمیل '" + e.email() + "' از قبل وجود دارد. اگر این حساب شماست، " +
                     "وارد شوید یا (اگر دعوت‌نامه دارید) حساب را از مسیر فعال‌سازی فعال کنید."
             );
+            case IamError.InvalidPhoneNumber e -> ProblemDetailFactory.problem(
+                    HttpStatus.BAD_REQUEST, "invalid-phone-number",
+                    "شماره تلفن نامعتبر", e.reason()
+            );
+            case IamError.PhoneNumberAlreadyClaimed e -> ProblemDetailFactory.problem(
+                    HttpStatus.CONFLICT, "phone-number-already-claimed",
+                    "شماره تلفن قبلاً ثبت شده",
+                    "شماره '" + e.phoneNumber() + "' قبلاً برای حساب کاربری دیگری ثبت شده است."
+            );
         };
     }
 }

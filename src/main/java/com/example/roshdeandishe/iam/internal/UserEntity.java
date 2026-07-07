@@ -38,6 +38,13 @@ class UserEntity {
     @Column(name = "password_hash", length = 255)
     private String passwordHash;
 
+    // nullable و عمداً بدون رابطه با login: کاربر باید اول با سشن معتبر
+    // وارد شود، بعد شماره‌اش را اضافه کند (IamFacade.setPhoneNumber) - نه
+    // یک مسیر جدید احراز هویت. هدف اصلی، لینک کردن این کاربر به ربات بله
+    // است (bale.internal.BaleLinkEntity)، نه ورود با شماره تلفن.
+    @Column(name = "phone_number", unique = true, length = 32)
+    private String phoneNumber;
+
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 32)
     private UserStatus status = UserStatus.ACTIVE;

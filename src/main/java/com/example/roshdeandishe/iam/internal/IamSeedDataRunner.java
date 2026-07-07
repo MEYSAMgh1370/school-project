@@ -118,6 +118,7 @@ class IamSeedDataRunner implements ApplicationRunner {
         permissions.put("STUDENT_ENROLL", permissionRepository.save(new PermissionEntity("STUDENT_ENROLL", "ثبت‌نام دانش‌آموز در کلاس")));
         permissions.put("CLASS_MANAGE", permissionRepository.save(new PermissionEntity("CLASS_MANAGE", "ایجاد و مدیریت کلاس‌ها")));
         permissions.put("CLASS_VIEW", permissionRepository.save(new PermissionEntity("CLASS_VIEW", "مشاهده‌ی فهرست کلاس‌ها")));
+        permissions.put("GUARDIAN_MANAGE", permissionRepository.save(new PermissionEntity("GUARDIAN_MANAGE", "لینک کردن ولی به دانش‌آموز")));
         return permissions;
     }
 
@@ -150,6 +151,10 @@ class IamSeedDataRunner implements ApplicationRunner {
         grant(roles.get("SCHOOL_ADMIN"), permissions.get("CLASS_MANAGE"));
         grant(roles.get("SCHOOL_ADMIN"), permissions.get("CLASS_VIEW"));
         grant(roles.get("SCHOOL_ADMIN"), permissions.get("STUDENT_ENROLL"));
+        // لینک کردن ولی به دانش‌آموز، دسترسی به داده‌ی مالی/تحصیلی آن دانش‌آموز
+        // را به کاربر دیگری می‌دهد - هم‌سطح حساسیتِ MEMBERSHIP_MANAGE، پس فقط
+        // SCHOOL_ADMIN (نه TEACHER، بر خلاف STUDENT_ENROLL)
+        grant(roles.get("SCHOOL_ADMIN"), permissions.get("GUARDIAN_MANAGE"));
 
         // FINANCE_ADMIN: فقط دسترسی مالی - نمونه‌ی واقعی "نقش متفاوت با سطح دسترسی متفاوت"
         grant(roles.get("FINANCE_ADMIN"), permissions.get("FINANCE_VIEW"));

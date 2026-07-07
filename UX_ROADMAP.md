@@ -180,6 +180,14 @@ fallback-name bug found and fixed while building it.
 The existing read-only `/dashboard` only, for now. Grades views are blocked:
 `GRADES_VIEW`/`GRADES_EDIT` permissions exist in the seed data but **no grades
 feature or data model exists yet** — do not build UI ahead of the backend.
+**Explicitly deferred 2026-07-07 (CLAUDE.md §11 Q8)**, not just unscheduled:
+elementary grading in Iranian schools is typically descriptive/qualitative
+(توصیفی) while higher levels use a numeric scale, and no exam plan is chosen
+yet either — both need a real product decision before a `Grade` shape can be
+designed. A PARENT's own self-service data (which children are theirs, their
+tuition status) is available today through the Bale bot instead
+(CLAUDE.md §4's BaleLink note, §7 Done) — a different surface than a `/grades`
+web page, and deliberately not a substitute for one.
 
 ### Explicitly out of scope
 

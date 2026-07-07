@@ -182,14 +182,24 @@ com.example.roshdeandishe
 │   ├── MembershipController.java   (REST: create/list memberships, toggle active,
 │   │                                 issue invite-token —
 │   │                                 @RequiresPermission("MEMBERSHIP_MANAGE"))
-│   ├── MeController.java           (REST: GET /api/me, /api/me/memberships —
-│   │                                 authenticated-only, deliberately NO
-│   │                                 permission/module annotations and NO
-│   │                                 X-School-ID: it's about the user, not a
-│   │                                 school. The "list my memberships" endpoint
-│   │                                 Open Question 2 anticipated.)
+│   ├── MeController.java           (REST: GET /api/me, /api/me/memberships,
+│   │                                 PUT /api/me/phone — authenticated-only,
+│   │                                 deliberately NO permission/module
+│   │                                 annotations and NO X-School-ID: it's about
+│   │                                 the user, not a school. The "list my
+│   │                                 memberships" endpoint Open Question 2
+│   │                                 anticipated. PUT /api/me/phone
+│   │                                 (IamFacade.setPhoneNumber) is the ONLY way
+│   │                                 phoneNumber gets set — deliberately
+│   │                                 requires an authenticated session, not a
+│   │                                 new unauthenticated identity-claim path;
+│   │                                 see the bale module below for why.)
 │   ├── internal/
-│   │   ├── UserEntity / UserRepository        (now includes nullable passwordHash)
+│   │   ├── UserEntity / UserRepository        (now includes nullable passwordHash
+│   │   │                                        and nullable, unique phoneNumber —
+│   │   │                                        an additional identity attribute,
+│   │   │                                        not a login credential; only settable
+│   │   │                                        via MeController.setPhoneNumber above)
 │   │   ├── InviteTokenEntity / InviteTokenRepository  (per-user, single-use,
 │   │   │                                        7-day TTL — backs account activation)
 │   │   ├── InviteEmailSender          (best-effort SMTP delivery of the
@@ -266,16 +276,24 @@ com.example.roshdeandishe
 │   ├── StudentController.java      (REST: enroll/get/list students —
 │   │                                 class-level @RequiresModule("ACADEMIC") +
 │   │                                 @RequiresPermission("STUDENT_ENROLL"),
-│   │                                 SCHOOL_ADMIN + TEACHER)
+│   │                                 SCHOOL_ADMIN + TEACHER. Also POST+GET
+│   │                                 .../students/{studentId}/guardians —
+│   │                                 @RequiresPermission("GUARDIAN_MANAGE"),
+│   │                                 SCHOOL_ADMIN only, see §4's Guardian note)
 │   ├── internal/
 │   │   ├── ClassEntity (schoolId, name, teacherId nullable, section) / ClassRepository
 │   │   ├── StudentEntity (userId, schoolId, classId, enrolledAt) / StudentRepository
 │   │   │   — StudentEntity is NOT an identity; the person is the iam UserEntity.
 │   │   │     enrollStudent() internally calls IamFacade.findOrCreateUser +
 │   │   │     createMembership(..., "STUDENT") before creating the StudentEntity.
+│   │   ├── StudentGuardianEntity (schoolId, studentId — real FK within this
+│   │   │                           module, guardianUserId — opaque Long, same
+│   │   │                           convention as StudentEntity.userId, linkedAt)
+│   │   │                           / StudentGuardianRepository — see §4
 │   │   └── AcademicFacadeImpl
 │   └── shared/
-│       ├── AcademicError.java (sealed: StudentNotFound, ClassNotFound)
+│       ├── AcademicError.java (sealed: StudentNotFound, ClassNotFound,
+│       │                        GuardianNotEligible)
 │       ├── AcademicException.java
 │       └── AcademicExceptionHandler.java   (bean name "academicGlobalExceptionHandler")
 │
@@ -307,7 +325,7 @@ com.example.roshdeandishe
 │       ├── FinanceException.java
 │       └── FinanceExceptionHandler.java   (bean name "financeExceptionHandler")
 │
-└── web/                        ← UI-composition layer (see §2 Frontend): page
+├── web/                        ← UI-composition layer (see §2 Frontend): page
     ├── LandingPageController.java     controllers that need more than one
     ├── DashboardPageController.java   module's Facade. GET / (public landing
     ├── SchoolRegistrationPageController.java  page — see below) composes iam
@@ -352,6 +370,21 @@ com.example.roshdeandishe
                                   codes never reach the UI, UX_ROADMAP.md §2).
                                   No Facade, no entities, no REST, no exception
                                   handler of its own; nothing depends on it.
+│
+└── bale/                       ← Bale (بله) messenger bot integration — outbound
+    ├── BaleFacade.java             notifications + inbound self-service queries.
+    ├── BaleWebhookController.java  Not a subscribable feature: no Module/
+    ├── internal/                  Entitlement row, no @RequiresModule on its
+    │   ├── BaleLinkEntity          controller — same reasoning as
+    │   │    / BaleLinkRepository   MembershipController/SchoolController (§5).
+    │   ├── BaleClient              Deliberately has no shared/BaleError sealed
+    │   ├── BaleUpdateHandler       stack (see BaleFacade's own doc comment) —
+    │   ├── BaleWebhookService      its one exception-worthy case doesn't exist:
+    │   ├── BaleFacadeImpl          "chat not linked" is normal, not an error,
+    │   └── InvoiceIssuedEventListener  modeled as a boolean return instead.
+    └── shared/                    (empty — @NamedInterface("shared") exists for
+                                     symmetry with other modules but nothing is
+                                     exposed through it yet)
 ```
 
 **Adding a new module**: copy the `academic/shared` error-handling pattern
@@ -412,6 +445,14 @@ UserEntity
 │                  Activated via a redeemed InviteToken — see below — which sets
 │                  this field via GET /activate (AccountActivationPageController);
 │                  the activation link is emailed on issue — see InviteToken below)
+├── phoneNumber (nullable, unique — an *additional* identity attribute, not a
+│                 login credential. Only settable via `PUT /api/me/phone`
+│                 (`MeController.setPhoneNumber` → `IamFacade.setPhoneNumber`),
+│                 which requires an authenticated session — deliberately no
+│                 unauthenticated "claim a phone number" path, since that would
+│                 let anyone take over an account by guessing/knowing its phone
+│                 number. Exists to back `bale.BaleLinkEntity` (§3) — the primary
+│                 lookup key when a user shares their contact with the Bale bot.)
 └── status (ACTIVE | SUSPENDED)
 ```
 
@@ -482,7 +523,8 @@ different access levels without any code change.
 PermissionEntity
 ├── id
 ├── code (GRADES_VIEW, GRADES_EDIT, FINANCE_VIEW, FINANCE_MANAGE,
-│         MEMBERSHIP_MANAGE, STUDENT_ENROLL, CLASS_MANAGE, CLASS_VIEW)
+│         MEMBERSHIP_MANAGE, STUDENT_ENROLL, CLASS_MANAGE, CLASS_VIEW,
+│         GUARDIAN_MANAGE)
 └── displayName
 
 RolePermissionEntity  (join table: which roles have which permissions)
@@ -497,8 +539,18 @@ Current grants (seeded in `IamSeedDataRunner`):
 | `STUDENT` | `GRADES_VIEW` |
 | `TEACHER` | `GRADES_VIEW`, `GRADES_EDIT`, `STUDENT_ENROLL`, `CLASS_VIEW` |
 | `PARENT` | `GRADES_VIEW`, `FINANCE_VIEW` |
-| `SCHOOL_ADMIN` | `GRADES_VIEW`, `FINANCE_VIEW`, `FINANCE_MANAGE`, `MEMBERSHIP_MANAGE`, `CLASS_MANAGE`, `CLASS_VIEW`, `STUDENT_ENROLL` |
+| `SCHOOL_ADMIN` | `GRADES_VIEW`, `FINANCE_VIEW`, `FINANCE_MANAGE`, `MEMBERSHIP_MANAGE`, `CLASS_MANAGE`, `CLASS_VIEW`, `STUDENT_ENROLL`, `GUARDIAN_MANAGE` |
 | `FINANCE_ADMIN` | `FINANCE_VIEW`, `FINANCE_MANAGE` |
+
+**`GUARDIAN_MANAGE` (added for the Bale bot integration, §4's Guardian note
+below):** deliberately its own permission, not a reuse of `MEMBERSHIP_MANAGE` —
+linking a guardian to a student grants that guardian visibility into the
+student's data (finance, eventually grades), which is a distinct capability
+from managing memberships, even though both happen to be `SCHOOL_ADMIN`-only
+today. `TEACHER` does **not** get it, unlike `STUDENT_ENROLL` — this is a
+deliberate asymmetry: enrolling is day-to-day, but granting a stranger access
+to a specific child's data is treated as admin-only, same sensitivity tier as
+`MEMBERSHIP_MANAGE`.
 
 Design intent behind the split: **class creation is administrative/scheduling
 (`SCHOOL_ADMIN` only)**, while **student enrollment is a day-to-day task
@@ -641,6 +693,51 @@ them to a different class) rather than erroring or duplicating.
 `AcademicFacade.listStudents(schoolId)` (added for the `/students` UI slice, §7)
 returns every student row for a school, same flat-list shape as `listClasses`.
 
+### StudentGuardian (owned by `academic` — added for the Bale bot integration)
+
+The relationship the original identity model never had: **there was no way to
+express "this `PARENT` is the guardian of that specific `StudentEntity`."**
+`SchoolMembershipEntity` only ever linked `User`↔`School`↔`Role` — a `PARENT`
+role member had permission grants but no modeled link to *which* child was
+theirs. Building the Bale bot's "my children" self-service query forced this
+gap into the open and this is where it was closed — deliberately scoped
+narrowly (this relationship only, not a broader `Family`/`Staff` concept,
+which §10 explicitly rejects).
+
+```
+StudentGuardianEntity
+├── id
+├── schoolId          (denormalized, same convention as StudentEntity/ClassEntity)
+├── studentId          (real FK — academic's own StudentEntity, unlike guardianUserId below)
+├── guardianUserId     (opaque Long → iam User, no FK — same convention as
+│                        StudentEntity.userId/ClassEntity.teacherId)
+└── linkedAt
+```
+
+`AcademicFacade.linkGuardian(schoolId, studentId, guardianUserId)` — idempotent
+(same `(student, guardian)` pair returns the existing link, not a duplicate).
+**Validates that `guardianUserId` holds an active `PARENT` membership at the
+same school** (via `IamFacade.findMembershipsByUser` — deliberately *not*
+`findMembership`, which only returns the first membership and would miss a
+user holding multiple roles at the same school) — otherwise
+`AcademicError.GuardianNotEligible` (409). This is a real security boundary,
+not just data hygiene: without it, any user (e.g. a `TEACHER`) could be linked
+to a student they have no family relationship to, and would then receive that
+student's Bale notifications (see the `bale` module below).
+`AcademicFacade.listGuardians(studentId)` / `listWards(guardianUserId, schoolId)`
+are the read side — `listWards` is what the Bale bot's "my children" command
+and the outbound invoice-notification listener both actually use.
+Exposed at `POST`/`GET /api/admin/schools/{schoolId}/students/{studentId}/guardians`
+(`GUARDIAN_MANAGE`, `SCHOOL_ADMIN`-only — see §4's Permission section).
+**Deliberately not wired into `/finance`'s existing `GET invoices` endpoint** —
+that endpoint still returns every invoice in the school to anyone with
+`FINANCE_VIEW` (including `PARENT`, unscoped by guardian), unchanged by this
+work. Scoping that endpoint to "only this parent's own children's invoices" is
+a separate, real decision about existing shipped behavior — not something to
+change silently as a side effect of adding the bot. The Bale bot itself never
+calls that endpoint; it composes `listWards` + `FinanceFacade.listInvoices`
+directly, filtered to just that guardian's own wards.
+
 ### TuitionFee (owned by `finance`)
 
 ```
@@ -674,6 +771,66 @@ issued (warn log only) and enrollment is never blocked; students enrolled before
 fee was set do not get backfilled invoices — build backfill when a real need shows
 up. After persisting, it publishes `InvoiceIssuedEvent` (audit trail unchanged).
 
+### BaleLink (owned by the `bale` module)
+
+```
+BaleLinkEntity
+├── id
+├── userId       (opaque Long → iam User, unique — one row per User, not per chat)
+├── chatId       (unique — Bale's chat identifier)
+└── linkedAt
+```
+
+One row per `User`, not per chat: if the same user re-shares their contact from
+a different Bale chat, the existing row's `chatId` is overwritten (upsert keyed
+on `userId`), not duplicated. Created by `bale.internal.BaleUpdateHandler` when
+an inbound webhook `Update` carries a shared `Contact` whose `phone_number`
+matches an existing `UserEntity.phoneNumber` (§4 User) — if no match, the bot
+replies asking the person to register that phone number on their account
+first (`PUT /api/me/phone`); there is deliberately no way to link a chat
+without already having a phone number claimed through an authenticated
+session (see the `phoneNumber` note on `UserEntity` — this is the same
+security reasoning applied one level up).
+
+`BaleFacade.sendMessageToUser(userId, text)` — the one public entry point
+other modules use: best-effort, returns `false` (not an exception) if the
+user hasn't linked a chat, since that's an expected, common state, not a
+domain error. `bale.internal.InvoiceIssuedEventListener` is the first real
+consumer — a second `@ApplicationModuleListener` on `finance.InvoiceIssuedEvent`
+alongside `finance.internal.FinanceAuditEventListener` (multiple modules
+listening to the same public event is normal, per §3's audit pattern note on
+why the event lives outside `internal/`) — reacting by notifying both the
+student (if linked) and every linked guardian
+(`AcademicFacade.listGuardians`, §4's StudentGuardian note).
+
+**Bale Bot API** (`bale.internal.BaleClient`) is a thin wrapper over
+`https://tapi.bale.ai/bot<token>/METHOD` — deliberately a near-clone of
+Telegram's Bot API (same JSON shapes, same `sendMessage`/`setWebhook`
+endpoints, same `KeyboardButton(request_contact=true)` → `Contact.phone_number`
+flow for requesting a user's phone number). `roshdeandishe.bale.bot-token` is
+empty by default (dev/test): with no token configured, `BaleClient` only logs
+what it would have sent and makes no HTTP call — registering a real bot with
+Bale and setting the token is deployment config, not missing code, same
+pattern as `roshdeandishe.mail.*` (§7 item 2). The webhook endpoint itself
+(`POST /api/bale/webhook/{secret}`, `BaleWebhookController`) is secured by a
+random secret path segment (`roshdeandishe.bale.webhook-secret`, also empty by
+default — an empty secret means the webhook always 404s, fails closed) rather
+than a cryptographic signature, since Bale's exact webhook-signing story
+wasn't verified against live documentation; compared with
+`MessageDigest.isEqual` to resist timing attacks. Deliberately **not** gated
+by `@RequiresModule`/`@RequiresPermission`: the caller is Bale's server, not a
+browser with a session, so `SecurityContext`/`TenantContext` never get
+populated for this request — `SecurityConfig` `permitAll`s and CSRF-exempts
+`/api/bale/webhook/**`, and `TenantResolverFilter` excludes it the same way it
+excludes `/api/me`. Authorization instead comes from the data model itself:
+every query the bot answers is scoped to the linked `userId`'s own data (or,
+for `listWards`, their *actually-linked* children) — the same trust model
+`MeController` already uses for `/api/me` (§3).
+
+The bot is a fixed set of Persian text commands, not a conversational agent —
+**no AI/LLM is involved anywhere in this module**, consistent with §10's
+"do not build AI features."
+
 ---
 
 ## 5. Access Control — Two Layers
@@ -698,7 +855,12 @@ supports `@Target(TYPE)` via `@within`) plus per-method `@RequiresPermission`.
 `MembershipController` and `SchoolController` deliberately carry **no**
 `@RequiresModule` — membership management and school creation/reading are
 platform capabilities, not subscribable modules (there is no `IAM` or `SCHOOL`
-module code). `IamSeedDataRunner.seedDemoSchoolEntitlements()` seeds an
+module code). `BaleWebhookController` (§4's BaleLink note) carries **neither**
+layer, for a different reason than the two above: the caller is Bale's server,
+not an authenticated browser session, so there's no `SecurityContext`/
+`TenantContext` for either aspect to check against — its authorization comes
+entirely from the data model (every query is scoped to the webhook's own
+resolved `userId`), not from these two aspects. `IamSeedDataRunner.seedDemoSchoolEntitlements()` seeds an
 `ACADEMIC` entitlement for the demo school (id 1) so the academic endpoints
 stay usable in dev; a school created self-service at runtime has zero
 entitlements and will correctly get 403 `ModuleNotEntitled` on them until
@@ -993,6 +1155,40 @@ above.
   the original project scaffold (stale "Demo5" name predates the
   `roshdeandishe` rename) — harmless, not worth touching until something else
   in that file changes.
+- **Bale bot integration, Phase 1 (built 2026-07-07, explicit product decision
+  — grades UI deferred first, see §11 Q8)**: a new `bale` module (§3, §4's
+  BaleLink note) — outbound notifications (`InvoiceIssuedEvent` → notify the
+  student + every linked guardian) and inbound self-service queries via a
+  fixed set of Persian text commands ("مدرسه‌های من", "فرزندان من") over a
+  Bale (بله) messenger webhook. Required two supporting pieces built first:
+  `iam.UserEntity.phoneNumber` (§4 User) as the identity-linking key, and
+  `academic.StudentGuardianEntity`/`AcademicFacade.linkGuardian`/`listWards`
+  (§4's StudentGuardian note) — the first real Parent↔Student relationship
+  this codebase has ever had; previously `PARENT` was a role with permissions
+  but no modeled link to *which* child was theirs, discovered while scoping
+  this exact feature. New `GUARDIAN_MANAGE` permission (`SCHOOL_ADMIN`-only,
+  §4's Permission section) gates linking a guardian — deliberately its own
+  permission, not a reuse of `MEMBERSHIP_MANAGE`, and deliberately not granted
+  to `TEACHER` (unlike `STUDENT_ENROLL`). Verified end-to-end manually against
+  a real local Postgres (no Docker/Testcontainers available in this session):
+  admin links a `PARENT` to a student (rejected 409 for a non-`PARENT` user,
+  idempotent on retry), the parent claims their own phone number via
+  `PUT /api/me/phone` while authenticated, then simulated Bale webhook
+  requests (`/start` → contact-request prompt → contact share → link
+  confirmation → "فرزندان من" → correct child list) and a real
+  `InvoiceIssuedEvent` (via tuition-fee + re-enrollment) confirmed the linked
+  guardian's chat received the expected outbound notification (logged, since
+  no real `roshdeandishe.bale.bot-token` exists in this environment — see
+  §4's BaleLink note on why that's deployment config, not missing code). No
+  new Java integration test added (no Docker available to run
+  `TestcontainersConfiguration`-based tests in this session); this is a real
+  gap — a `BaleFlowIntegrationTest` following the existing
+  `*FlowIntegrationTest` pattern should be added when the suite can next be
+  run against Testcontainers. **Explicitly out of scope for Phase 1**:
+  scoping `/finance`'s existing `GET invoices` endpoint to a guardian's own
+  children (unchanged, pre-existing behavior — §4's StudentGuardian note),
+  admin-management UI for guardian links (curl/API only for now), and any
+  grades-related bot command (grades UI itself remains deferred, §11 Q8).
 
 ### Open / explicitly deferred
 
@@ -1120,6 +1316,17 @@ the same way Enrollment resolves them. See `UX_ROADMAP.md` for the
 FINANCE_ADMIN/TEACHER personas (reuse pages already built) and everything
 still explicitly deferred (grades UI, custom roles, B2C module UI).
 
+**Phase F — Bale bot integration, Phase 1: done.** New `bale` module (§3, §4's
+BaleLink note): outbound invoice notifications + inbound self-service queries
+over a Bale (بله) messenger webhook, gated by a phone-number identity link
+(`iam.UserEntity.phoneNumber`, §4 User) rather than a session. Required
+building the first real Parent↔Student relationship
+(`academic.StudentGuardianEntity`, §4's StudentGuardian note) this codebase
+has had — a genuine domain-model gap, not just a UI slice. Chosen explicitly
+over building a grades feature next (§11 Q8) because grading scheme
+(descriptive vs. numeric) and exam planning are still unresolved product
+decisions, while the Bale integration had a clear, buildable scope.
+
 ---
 
 ## 9. Naming Conventions
@@ -1167,6 +1374,21 @@ still explicitly deferred (grades UI, custom roles, B2C module UI).
   mutation exists — see §3's audit pattern.
 - **Do not assume a `@RequiresPermission`-annotated controller's `schoolId` path
   variable is trustworthy without checking it against `TenantContext`** — see §5.
+- **Do not build a generic `Notification`/messaging abstraction.** The `bale`
+  module is Bale-specific on purpose (§3, §4's BaleLink note) — the same YAGNI
+  reasoning that keeps `InviteEmailSender` inside `iam/internal` instead of a
+  shared `platform` abstraction. Build a second channel's own module when a
+  second channel is actually requested, not before.
+- **Do not build a grades data model or UI** until the descriptive-vs-numeric
+  grading split and exam planning are explicitly resolved — see §11 Q8. The
+  `GRADES_VIEW`/`GRADES_EDIT` permissions already existing in seed data is not
+  license to build the feature they imply.
+- **Do not scope `/finance`'s `GET invoices` (or any other already-shipped
+  endpoint) to `StudentGuardianEntity` as a side effect of unrelated work.**
+  That endpoint's current behavior (any `FINANCE_VIEW` holder sees the whole
+  school) is unchanged by the Bale integration (§7 Done) — revisiting it is a
+  separate, explicit decision about existing behavior, not a free extension of
+  adding the guardian relationship.
 
 ---
 
@@ -1217,3 +1439,18 @@ still explicitly deferred (grades UI, custom roles, B2C module UI).
    is the *B2C module* side: no flow exists for an individual to actually obtain
    a `UserEntitlementEntity` (subscribe to AI Tutor, Exam Prep, …), and no UI
    consumes USER-scoped modules. Still "later maybe" — do not build until asked.
+8. **(raised 2026-07-07, explicit decision):** A grades feature/UI was
+   considered next (`GRADES_VIEW`/`GRADES_EDIT` permissions have existed in
+   the seed data since the start, unused by any real feature or data model —
+   see `UX_ROADMAP.md`'s PARENT/STUDENT section) but **deliberately deferred**
+   in favor of the Bale bot integration (§7 Done) instead: elementary grading
+   in Iranian schools is typically **توصیفی** (descriptive/qualitative — a
+   short written evaluation, not a number), while higher grade levels use a
+   **numeric** scale — a single `Grade` shape can't represent both without a
+   real design decision on how (or whether) one `ClassEntity`/school
+   distinguishes the two. Compounding that, there is no chosen exam plan yet,
+   which a numeric grading model would presumably need to reference. Do not
+   build a grades data model or UI assuming either scheme until both of these
+   are explicitly resolved — this is *not* the same kind of "not scheduled
+   yet" as e.g. the TEACHER roster view was (§7 Done); it's blocked on a real
+   product decision, not just sequencing.

@@ -40,6 +40,11 @@ public class AcademicExceptionHandler {
                     "کلاس یافت نشد",
                     "کلاسی با شناسه " + e.classId() + " یافت نشد."
             );
+            case AcademicError.GuardianNotEligible e -> ProblemDetailFactory.problem(
+                    HttpStatus.CONFLICT, "guardian-not-eligible",
+                    "کاربر واجد شرایط ولی نیست",
+                    "کاربر " + e.guardianUserId() + " عضویت ولیِ فعالی در این مدرسه ندارد."
+            );
         };
     }
 }

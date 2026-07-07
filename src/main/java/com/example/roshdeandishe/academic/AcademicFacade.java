@@ -27,7 +27,36 @@ public interface AcademicFacade {
 
     List<ClassInfo> listClasses(Long schoolId);
 
+    /**
+     * لینک کردن یک کاربر به‌عنوان ولیِ یک دانش‌آموز. Idempotent است: اگر
+     * همین (studentId, guardianUserId) از قبل لینک شده باشد، همان لینک
+     * موجود بازگردانده می‌شود.
+     * <p>
+     * اعتبارسنجی: guardianUserId باید یک Membership فعال با نقش PARENT در
+     * همان schoolId داشته باشد - وگرنه AcademicError.GuardianNotEligible.
+     * این یک بررسی امنیتی است، نه صرفاً داده‌ای: بدون آن هر کاربری
+     * (مثلاً یک TEACHER) می‌توانست به داده‌ی مالی/تحصیلیِ یک دانش‌آموز
+     * لینک شود.
+     */
+    GuardianLinkId linkGuardian(Long schoolId, Long studentId, Long guardianUserId);
+
+    /**
+     * همه‌ی ولی‌های لینک‌شده به یک دانش‌آموز خاص.
+     */
+    List<Long> listGuardians(Long studentId);
+
+    /**
+     * همه‌ی دانش‌آموزانی که این کاربر در این مدرسه ولیِ آن‌هاست - نقطه‌ی
+     * ورودی اصلی برای «سرویس‌دهی خودکار» یک PARENT (مثلاً از طریق ربات
+     * بله): فقط دانش‌آموزان واقعاً لینک‌شده برمی‌گردد، نه کل دانش‌آموزان
+     * مدرسه.
+     */
+    List<StudentInfo> listWards(Long guardianUserId, Long schoolId);
+
     record StudentId(Long value) {
+    }
+
+    record GuardianLinkId(Long value) {
     }
 
     record ClassId(Long value) {

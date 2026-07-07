@@ -93,6 +93,30 @@ class IamFacadeImpl implements IamFacade {
     }
 
     @Override
+    public Optional<UserProfile> findUserByPhoneNumber(String phoneNumber) {
+        return userRepository.findByPhoneNumber(phoneNumber)
+                .map(u -> new UserProfile(new UserId(u.getId()), u.getEmail(), u.getFullName()));
+    }
+
+    @Override
+    @Transactional
+    public void setPhoneNumber(UserId userId, String phoneNumber) {
+        if (phoneNumber == null || phoneNumber.isBlank() || phoneNumber.length() < 7 || phoneNumber.length() > 32) {
+            throw new IamException(new IamError.InvalidPhoneNumber("شماره تلفن باید بین ۷ تا ۳۲ کاراکتر باشد."));
+        }
+
+        Optional<UserEntity> existingClaim = userRepository.findByPhoneNumber(phoneNumber);
+        if (existingClaim.isPresent() && !existingClaim.get().getId().equals(userId.value())) {
+            throw new IamException(new IamError.PhoneNumberAlreadyClaimed(phoneNumber));
+        }
+
+        UserEntity user = userRepository.findById(userId.value())
+                .orElseThrow(() -> new IamException(new IamError.UserNotFound(userId.value())));
+        user.setPhoneNumber(phoneNumber);
+        userRepository.save(user);
+    }
+
+    @Override
     @Transactional
     public UserId findOrCreateUser(String email, String fullName) {
         UserEntity user = userRepository.findByEmail(email)

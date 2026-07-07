@@ -10,12 +10,13 @@ spring:
   #
   # ⚠️ نکته‌ی مهم Postgres: Hibernate با ddl-auto=update فقط جدول‌ها را
   # می‌سازد، نه خود schema را. چون SchoolEntity با schema="school"،
-  # FinanceAuditEntity با schema="finance"، و حالا ClassEntity/StudentEntity
-  # با schema="academic" تعریف شده‌اند، قبل از اجرای اپلیکیشن باید این
-  # schemaها را دستی بسازید:
+  # FinanceAuditEntity با schema="finance"، ClassEntity/StudentEntity با
+  # schema="academic"، و حالا BaleLinkEntity با schema="bale" تعریف
+  # شده‌اند، قبل از اجرای اپلیکیشن باید این schemaها را دستی بسازید:
   #   CREATE SCHEMA IF NOT EXISTS school;
   #   CREATE SCHEMA IF NOT EXISTS finance;
   #   CREATE SCHEMA IF NOT EXISTS academic;
+  #   CREATE SCHEMA IF NOT EXISTS bale;
   datasource:
     url: jdbc:postgresql://localhost:5432/roshdeandishe_iam
     username: postgres
@@ -83,3 +84,15 @@ roshdeandishe:
     # پایه‌ی لینک فعال‌سازی که داخل ایمیل دعوت قرار می‌گیرد
     # (به /activate?token=... ختم می‌شود)
     activation-base-url: http://localhost:8080
+  bale:
+    # Bot API بله - عمداً کلون Telegram Bot API (همان شکل .../bot<token>/METHOD)
+    api-base-url: https://tapi.bale.ai
+    # پیش‌فرض خالی: تا وقتی یک ربات واقعی در بله ثبت نشود (کانفیگ زمان
+    # استقرار)، BaleClient فقط لاگ می‌کند و هیچ تماس HTTPای برقرار نمی‌کند
+    # (رجوع به bale/internal/BaleClient) - بالا نیامدن اپلیکیشن روی این
+    # مقدار وابسته نیست.
+    bot-token: ""
+    # بخش مخفیِ مسیر وب‌هوک (BaleWebhookController) - در dev هم باید یک
+    # مقدار تصادفیِ واقعی در محیط/فایل جداگانه ست شود؛ خالی ماندنش یعنی
+    # وب‌هوک همیشه 404 می‌دهد (رجوع به کامنت‌های BaleWebhookController)
+    webhook-secret: ""
