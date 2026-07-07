@@ -167,8 +167,12 @@ role in the navbar, enforcement stays entirely on the backend permission check.
 
 ### TEACHER
 
-`/students` (has `STUDENT_ENROLL`). A read-only class roster view is a
-plausible next step but not scheduled — build when asked.
+`/students` (has `STUDENT_ENROLL`). **Read-only class roster view — built
+2026-07-07**, on `/classes`: a "مشاهده روستر" toggle per class row opens a
+dismissible panel listing that class's enrolled students, reusing the same
+`academic.StudentController` `GET .../students` endpoint `/students` already
+calls (`STUDENT_ENROLL`, no backend change). See CLAUDE.md §7 for the
+fallback-name bug found and fixed while building it.
 
 ### PARENT / STUDENT
 

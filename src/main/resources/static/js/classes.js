@@ -3,6 +3,9 @@ document.addEventListener('alpine:init', () => {
         schoolId: null,
         classes: [],
         teachers: [],
+        students: [],
+        pupils: [],
+        selectedClassId: null,
         loading: false,
         submitting: false,
         error: '',
@@ -16,6 +19,7 @@ document.addEventListener('alpine:init', () => {
                 this.schoolId = e.detail.id;
                 this.error = '';
                 this.notice = '';
+                this.selectedClassId = null;
                 this.load();
             });
             if (this.schoolId) {
@@ -39,12 +43,50 @@ document.addEventListener('alpine:init', () => {
             return `/api/admin/schools/${this.schoolId}/memberships`;
         },
 
+        // روستر کلاس هم از همان الگوی composition استفاده می‌کند: academic
+        // فقط studentId/userId/classId می‌دهد (بدون نام)، نام/ایمیل از همان
+        // فهرست عضویت‌های STUDENT که برای students.js هم استفاده می‌شود
+        // resolve می‌شود - بدون فراخوانی جدا و بدون تغییر بک‌اند.
+        studentsBase() {
+            return `/api/admin/schools/${this.schoolId}/students`;
+        },
+
         teacherName(teacherId) {
             if (!teacherId) {
                 return 'تخصیص‌نشده';
             }
             const teacher = this.teachers.find(t => t.userId === teacherId);
             return teacher ? teacher.fullName : 'تخصیص‌نشده';
+        },
+
+        rosterFor(classId) {
+            // اگر عضویت‌ها در دسترس نبود (نقش کاربر MEMBERSHIP_MANAGE ندارد -
+            // مثلاً TEACHER)، ردیف حذف نمی‌شود؛ همان الگوی fallback که
+            // finance.js برای نام دانش‌آموز در فاکتورها استفاده می‌کند - وگرنه
+            // تعداد روستر برای TEACHER همیشه صفر نشان داده می‌شد.
+            return this.students
+                .filter(s => s.classId === classId)
+                .map(s => {
+                    const pupil = this.pupils.find(p => p.userId === s.userId);
+                    return {
+                        userId: s.userId,
+                        fullName: pupil ? pupil.fullName : `دانش‌آموز #${s.userId}`,
+                        email: pupil ? pupil.email : '—'
+                    };
+                });
+        },
+
+        rosterForSelected() {
+            return this.selectedClassId ? this.rosterFor(this.selectedClassId) : [];
+        },
+
+        selectedClassName() {
+            const classItem = this.classes.find(c => c.id === this.selectedClassId);
+            return classItem ? classItem.name : '';
+        },
+
+        toggleRoster(classId) {
+            this.selectedClassId = this.selectedClassId === classId ? null : classId;
         },
 
         async showError(response) {
@@ -60,9 +102,10 @@ document.addEventListener('alpine:init', () => {
             this.loading = true;
             this.error = '';
             try {
-                const [classesResponse, membershipsResponse] = await Promise.all([
+                const [classesResponse, membershipsResponse, studentsResponse] = await Promise.all([
                     fetch(this.classesBase(), { headers: { 'X-School-ID': this.schoolId } }),
-                    fetch(this.membershipsBase(), { headers: { 'X-School-ID': this.schoolId } })
+                    fetch(this.membershipsBase(), { headers: { 'X-School-ID': this.schoolId } }),
+                    fetch(this.studentsBase(), { headers: { 'X-School-ID': this.schoolId } })
                 ]);
                 if (!classesResponse.ok) {
                     await this.showError(classesResponse);
@@ -70,13 +113,17 @@ document.addEventListener('alpine:init', () => {
                     return;
                 }
                 this.classes = await classesResponse.json();
-                // فهرست معلم‌ها فقط برای پر کردن دراپ‌داون و نمایش نام است؛
-                // اگر خودِ عضویت‌ها در دسترس نبود (مثلاً نقش کاربر اجازه‌ی
-                // MEMBERSHIP_MANAGE ندارد)، صفحه‌ی کلاس‌ها را نمی‌شکند - فقط
-                // نام معلم‌ها «تخصیص‌نشده» نمایش داده می‌شود.
-                this.teachers = membershipsResponse.ok
-                    ? (await membershipsResponse.json()).filter(m => m.active && m.roleCode === 'TEACHER')
-                    : [];
+                // فهرست معلم‌ها/دانش‌آموزها فقط برای پر کردن دراپ‌داون و نمایش
+                // نام است؛ اگر خودِ عضویت‌ها در دسترس نبود (مثلاً نقش کاربر
+                // اجازه‌ی MEMBERSHIP_MANAGE ندارد)، صفحه‌ی کلاس‌ها را نمی‌شکند -
+                // فقط نام معلم‌ها «تخصیص‌نشده» و روستر خالی نمایش داده می‌شود.
+                const memberships = membershipsResponse.ok ? await membershipsResponse.json() : [];
+                this.teachers = memberships.filter(m => m.active && m.roleCode === 'TEACHER');
+                this.pupils = memberships.filter(m => m.active && m.roleCode === 'STUDENT');
+                // روستر هم به همین شکل best-effort است؛ اگر نقش کاربر
+                // STUDENT_ENROLL نداشت، فهرست خالی می‌ماند و دکمه‌ی «مشاهده
+                // روستر» فقط چیزی نشان نمی‌دهد - صفحه نمی‌شکند.
+                this.students = studentsResponse.ok ? await studentsResponse.json() : [];
             } catch (e) {
                 this.error = 'ارتباط با سرور برقرار نشد.';
             } finally {

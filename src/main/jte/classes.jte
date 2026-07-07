@@ -5,7 +5,7 @@
 @template.layout.main(title = "کلاس‌های مدرسه", scripts = java.util.List.of("/js/navbar.js", "/js/classes.js"), content = @`
 @template.layout.navbar(navbar = navbar)
 
-<section class="section" x-data="classesPage()">
+<section class="section" x-data="classesPage()" @keydown.escape.window="selectedClassId = null">
     <div class="container">
         <h1 class="title is-4">کلاس‌های مدرسه</h1>
 
@@ -56,6 +56,7 @@
                         <th>نام کلاس</th>
                         <th>بخش</th>
                         <th>معلم</th>
+                        <th>روستر</th>
                     </tr>
                     </thead>
                     <tbody>
@@ -64,6 +65,14 @@
                             <td x-text="classItem.name"></td>
                             <td x-text="classItem.section || '—'"></td>
                             <td x-text="teacherName(classItem.teacherId)"></td>
+                            <td>
+                                <button class="button is-small" type="button"
+                                        @click="toggleRoster(classItem.id)"
+                                        :aria-expanded="selectedClassId === classItem.id ? 'true' : 'false'">
+                                    <span x-text="selectedClassId === classItem.id ? 'بستن روستر' : 'مشاهده روستر'"></span>
+                                    <span class="tag is-light ml-2" x-text="rosterFor(classItem.id).length"></span>
+                                </button>
+                            </td>
                         </tr>
                     </template>
                     </tbody>
@@ -71,6 +80,37 @@
 
                 <div class="notification" x-show="!loading && classes.length === 0">
                     هنوز کلاسی در این مدرسه ثبت نشده است.
+                </div>
+
+                <div class="box" x-show="selectedClassId" x-cloak>
+                    <div class="level">
+                        <div class="level-left">
+                            <h2 class="title is-6" x-text="'روستر کلاس: ' + selectedClassName()"></h2>
+                        </div>
+                        <div class="level-right">
+                            <button class="delete" type="button" aria-label="بستن روستر"
+                                    @click="selectedClassId = null"></button>
+                        </div>
+                    </div>
+                    <table class="table is-fullwidth is-narrow" x-show="rosterForSelected().length > 0">
+                        <thead>
+                        <tr>
+                            <th>نام دانش‌آموز</th>
+                            <th>ایمیل</th>
+                        </tr>
+                        </thead>
+                        <tbody>
+                        <template x-for="student in rosterForSelected()" :key="student.userId">
+                            <tr>
+                                <td x-text="student.fullName"></td>
+                                <td dir="ltr" x-text="student.email"></td>
+                            </tr>
+                        </template>
+                        </tbody>
+                    </table>
+                    <p class="has-text-grey" x-show="rosterForSelected().length === 0">
+                        دانش‌آموزی در این کلاس ثبت‌نام نشده است.
+                    </p>
                 </div>
             </div>
         </template>
