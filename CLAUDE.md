@@ -311,24 +311,32 @@ com.example.roshdeandishe
     ├── PeoplePageController.java      memberships + school names; GET /people
     ├── ClassesPageController.java     (first management-UI slice past the
     ├── StudentsPageController.java    dashboard, see UX_ROADMAP.md)
-    ├── NavbarModel.java               lists/adds/toggles a school's
-    ├── NavbarModelAssembler.java      memberships and issues invite tokens;
-    └── RoleLabels.java                GET /classes (second slice) creates/lists
-                                  a school's classes; GET /students (third
-                                  slice) enrolls/lists students into a class —
-                                  all entirely client-side against their
-                                  respective REST controllers (school selection
-                                  lives only in localStorage — see §11 Q2).
-                                  Neither ClassesPageController nor
-                                  StudentsPageController depends on
-                                  AcademicFacade or any academic type — both are
-                                  thin shells like PeoplePageController;
-                                  classes.js/students.js compose
+    ├── FinancePageController.java     lists/adds/toggles a school's
+    ├── NavbarModel.java               memberships and issues invite tokens;
+    ├── NavbarModelAssembler.java      GET /classes (second slice) creates/lists
+    └── RoleLabels.java                a school's classes; GET /students (third
+                                  slice) enrolls/lists students into a class;
+                                  GET /finance (fourth slice) sets/views the
+                                  tuition fee and lists invoices — all entirely
+                                  client-side against their respective REST
+                                  controllers (school selection lives only in
+                                  localStorage — see §11 Q2). None of
+                                  ClassesPageController, StudentsPageController,
+                                  or FinancePageController depend on
+                                  AcademicFacade/FinanceFacade or any
+                                  academic/finance type — all three are thin
+                                  shells like PeoplePageController;
+                                  classes.js/students.js/finance.js compose
                                   iam.MembershipController (for teacher/student
-                                  names) and academic.ClassController/
-                                  StudentController in JavaScript, not the Java
-                                  controller, so `web` gains no new module
-                                  dependency for either slice. NavbarModel/
+                                  names) with academic.ClassController/
+                                  StudentController and finance.FinanceController
+                                  in JavaScript, not the Java controller, so
+                                  `web` gains no new module dependency for any
+                                  of the three slices. finance.js is also the
+                                  first client script that must tell
+                                  ModuleNotEntitled apart from PermissionDenied
+                                  (both 403s) by inspecting the ProblemDetail
+                                  `type` URI suffix (§5). NavbarModel/
                                   NavbarModelAssembler build the shared
                                   school/role switcher navbar (rendered by
                                   layout/navbar.jte: page links in navbar-start
@@ -872,6 +880,35 @@ above.
   `TenantResolverFilter` excludes `/students` the page route for the same
   reason it excludes `/people` and `/classes`. Covered by
   `StudentManagementFlowIntegrationTest`.
+- **Management UI, slice 6 — Finance (`/finance`, built 2026-07-07, see
+  [`UX_ROADMAP.md`](UX_ROADMAP.md) §3 item 5 — last SCHOOL_ADMIN slice)**:
+  set/view the school's tuition fee and list its invoices, entirely
+  client-side against the existing `finance.FinanceController`
+  (`web.FinancePageController` is a thin shell, same pattern as `/students`).
+  No backend changes — `FinanceController` already had `PUT`/`GET
+  tuition-fee` and `GET invoices`. This is the first page that must render
+  the two §5 access-control layers' 403s distinctly:
+  `finance.js.classifyError()` reads the `ProblemDetail.type` URI's suffix
+  (`module-not-entitled` vs `permission-denied`, set by
+  `IamProblemResolver`/`ProblemDetailFactory`) and shows two different
+  Persian messages, blocking the page body in both cases instead of
+  rendering a broken form. Invoice rows carry only an opaque `studentId`
+  (finance has no visibility into student names); `finance.js` resolves
+  names the same way `students.js` resolves teacher/student names —
+  composing `academic.StudentController` (id → userId) with
+  `iam.MembershipController` (userId → name) client-side, both best-effort
+  (falls back to `#id` if the current role lacks `STUDENT_ENROLL`, e.g.
+  `FINANCE_ADMIN`). Navbar link visible while the selected role is
+  `SCHOOL_ADMIN` or `FINANCE_ADMIN`. `TenantResolverFilter` excludes
+  `/finance` the page route for the same reason it excludes `/people`,
+  `/classes`, and `/students`. Covered by
+  `FinanceManagementFlowIntegrationTest`, including both 403 flavors (a
+  TEACHER member of the entitled demo school for `PermissionDenied`; a
+  freshly self-service-created school with zero entitlements for
+  `ModuleNotEntitled`). **This closes out the SCHOOL_ADMIN build order in
+  UX_ROADMAP.md §3** — remaining scheduled work is the FINANCE_ADMIN/TEACHER
+  personas reusing pages already built, and items explicitly deferred until
+  asked (grades UI, custom roles, B2C module UI).
 - Dev-only seed data: roles, modules, permissions, role-permission grants, one demo
   school, one demo admin user with a SCHOOL_ADMIN membership at the demo school
   (without it the demo admin couldn't call any school-scoped API — the demo school
@@ -930,8 +967,9 @@ above.
    `/js/school-new.js` → `POST /api/admin/schools`; no `X-School-ID` sent, the
    school doesn't exist yet — moved off the dashboard 2026-07-06, see §7 Done),
    the public landing page (`GET /`), **People (`/people`)**, **Classes
-   (`/classes`)**, and **Enrollment (`/students`)** — see §7 Done for all five.
-   Remaining: the finance page. New management pages go in the
+   (`/classes`)**, **Enrollment (`/students`)**, and **Finance (`/finance`)**
+   — see §7 Done for all six. The SCHOOL_ADMIN build order is now complete.
+   New management pages go in the
    `web` module, reuse
    `NavbarModelAssembler` + `layout/navbar.jte`, and their JS must send both
    `X-School-ID` (the page's school — omitted only for school-creation itself,
@@ -992,8 +1030,18 @@ dependency added to `web`).
 built against `academic.StudentController`, which gained its first roster-list
 endpoint (`GET .../students`) plus `AcademicFacade.listStudents` to back it;
 student names resolved client-side from `iam.MembershipController`, same
-pattern as Classes' teacher-name resolution. See `UX_ROADMAP.md` for the full
-page inventory and build order for the remaining slice (finance).
+pattern as Classes' teacher-name resolution.
+
+**Phase E.4 — Management UI, slice 6 (Finance): done. SCHOOL_ADMIN build
+order complete.** `GET /finance`, built against the existing
+`finance.FinanceController` (no backend changes needed — `PUT`/`GET
+tuition-fee` and `GET invoices` already existed). First page distinguishing
+the two §5 access-control layers' 403s (`ModuleNotEntitled` vs
+`PermissionDenied`) with different user-facing messages, via the
+`ProblemDetail.type` URI suffix. Invoice student names resolved client-side
+the same way Enrollment resolves them. See `UX_ROADMAP.md` for the
+FINANCE_ADMIN/TEACHER personas (reuse pages already built) and everything
+still explicitly deferred (grades UI, custom roles, B2C module UI).
 
 ---
 
