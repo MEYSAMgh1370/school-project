@@ -98,14 +98,23 @@ coherent as more pages are added by different people/sessions over time.
      invite action confirmed; add/toggle succeeded silently).
 3. **Classes** — `/classes` (`web.ClassesPageController`) — **built.**
    Create/list classes (name, optional section, optional teacher). Backed by
-   `academic.ClassController` (`CLASS_MANAGE`, SCHOOL_ADMIN only per the
-   admin/day-to-day split in CLAUDE.md §4). `academic` has no visibility into
-   `iam` names (module boundary — `teacherId` is an opaque `Long`), so
+   `academic.ClassController` (create: `CLASS_MANAGE`, SCHOOL_ADMIN only per
+   the admin/day-to-day split in CLAUDE.md §4; list: `CLASS_VIEW`,
+   SCHOOL_ADMIN + TEACHER — split out 2026-07-07 after enrollment revealed
+   TEACHER couldn't populate the class picker on `/students` without read
+   access to the class list, see CLAUDE.md §4). `academic` has no visibility
+   into `iam` names (module boundary — `teacherId` is an opaque `Long`), so
    `classes.js` resolves teacher names client-side from the same
    `iam.MembershipController` list `/people` already uses, filtered to active
    `TEACHER` memberships — no backend change, no new `web`→`academic` Java
    dependency (the page composes two existing REST endpoints in JS, not two
-   Facades in the controller).
+   Facades in the controller). Navbar link widened 2026-07-07 to also show
+   for `TEACHER` (now that `CLASS_VIEW` lets them load the page usefully) —
+   read-only in practice, since `CLASS_MANAGE` stays `SCHOOL_ADMIN`-only and
+   the create form falls back to the same generic permission-denied
+   notification every other page already shows; no client-side role-gating
+   of the form itself, consistent with how the rest of the app never hides
+   UI by permission, only by navbar-link visibility.
 4. **Enrollment** — `/students` (`web.StudentsPageController`) — **built.**
    Enroll students into classes, listed with a class picker. Backed by
    `academic.StudentController` (`STUDENT_ENROLL`, SCHOOL_ADMIN + TEACHER) —
