@@ -944,6 +944,37 @@ above.
   Follow-up commit `f31a8c0` widened the `/classes` navbar link itself to
   `TEACHER` (previously `SCHOOL_ADMIN`-only, see the Classes slice above) —
   the permission fix was pointless if TEACHER still couldn't discover the page.
+- **TEACHER persona — read-only class roster view (built 2026-07-07, on
+  `/classes`)**: `UX_ROADMAP.md`'s TEACHER section had flagged this as
+  "plausible but not scheduled"; built on request. Adds a "مشاهده
+  دانش‌آموزان" toggle per class row (`classes.js`/`classes.jte`) — labeled in
+  plain Persian, not a transliteration of "roster" ("روستر"), which isn't a
+  word Persian speakers recognize — that opens a dismissible panel (close
+  button + `Escape`) listing that class's enrolled students —
+  purely additive to the existing Classes slice, **zero backend changes**:
+  it reuses `academic.StudentController`'s existing `GET .../students`
+  (`STUDENT_ENROLL`, already granted to `SCHOOL_ADMIN` + `TEACHER`, the same
+  endpoint `/students` already calls), filtered client-side by `classId`.
+  Deliberately read-only — no enroll/remove controls on this view; enrolling
+  still only happens on `/students`. **Found and fixed a pre-existing bug
+  while building this**: `students.js`'s student-name resolution
+  (`iam.MembershipController`'s list, gated by `MEMBERSHIP_MANAGE`, which
+  `TEACHER` does not have) silently shows "نامشخص" per row for TEACHER on
+  `/students` — a naive port of that same lookup into the roster view instead
+  *dropped* unresolvable rows entirely, making a class with real enrollments
+  look empty to a TEACHER. Fixed in `classes.js`'s `rosterFor()` by falling
+  back to a `#userId` placeholder instead of filtering the row out (same
+  fallback style `finance.js` already uses for invoice student names) — the
+  roster count is now always correct even when names can't be resolved. The
+  underlying `MEMBERSHIP_MANAGE`-only gate on `/students`' own name
+  resolution is unchanged and not addressed here (a real fix would mean
+  either widening `MEMBERSHIP_MANAGE` or adding a narrower read endpoint —
+  a permission-model decision, out of scope for this slice). Verified
+  end-to-end in a real browser (Playwright) as SCHOOL_ADMIN and as TEACHER,
+  covering populated/empty classes and the close/`Escape` dismiss — no new
+  Java integration test added since no controller/facade changed and the
+  existing `ClassManagementFlowIntegrationTest` already covers the page
+  shell.
 - Dev-only seed data: roles, modules, permissions, role-permission grants, one demo
   school, one demo admin user with a SCHOOL_ADMIN membership at the demo school
   (without it the demo admin couldn't call any school-scoped API — the demo school
