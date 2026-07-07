@@ -56,7 +56,7 @@
                         <th>نام کلاس</th>
                         <th>بخش</th>
                         <th>معلم</th>
-                        <th>روستر</th>
+                        <th>دانش‌آموزان کلاس</th>
                     </tr>
                     </thead>
                     <tbody>
@@ -69,7 +69,7 @@
                                 <button class="button is-small" type="button"
                                         @click="toggleRoster(classItem.id)"
                                         :aria-expanded="selectedClassId === classItem.id ? 'true' : 'false'">
-                                    <span x-text="selectedClassId === classItem.id ? 'بستن روستر' : 'مشاهده روستر'"></span>
+                                    <span x-text="selectedClassId === classItem.id ? 'بستن فهرست' : 'مشاهده دانش‌آموزان'"></span>
                                     <span class="tag is-light ml-2" x-text="rosterFor(classItem.id).length"></span>
                                 </button>
                             </td>
@@ -85,10 +85,10 @@
                 <div class="box" x-show="selectedClassId" x-cloak>
                     <div class="level">
                         <div class="level-left">
-                            <h2 class="title is-6" x-text="'روستر کلاس: ' + selectedClassName()"></h2>
+                            <h2 class="title is-6" x-text="'دانش‌آموزان کلاس: ' + selectedClassName()"></h2>
                         </div>
                         <div class="level-right">
-                            <button class="delete" type="button" aria-label="بستن روستر"
+                            <button class="delete" type="button" aria-label="بستن فهرست دانش‌آموزان"
                                     @click="selectedClassId = null"></button>
                         </div>
                     </div>

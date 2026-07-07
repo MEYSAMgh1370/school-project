@@ -946,9 +946,11 @@ above.
   the permission fix was pointless if TEACHER still couldn't discover the page.
 - **TEACHER persona — read-only class roster view (built 2026-07-07, on
   `/classes`)**: `UX_ROADMAP.md`'s TEACHER section had flagged this as
-  "plausible but not scheduled"; built on request. Adds a "مشاهده روستر"
-  toggle per class row (`classes.js`/`classes.jte`) that opens a dismissible
-  panel (close button + `Escape`) listing that class's enrolled students —
+  "plausible but not scheduled"; built on request. Adds a "مشاهده
+  دانش‌آموزان" toggle per class row (`classes.js`/`classes.jte`) — labeled in
+  plain Persian, not a transliteration of "roster" ("روستر"), which isn't a
+  word Persian speakers recognize — that opens a dismissible panel (close
+  button + `Escape`) listing that class's enrolled students —
   purely additive to the existing Classes slice, **zero backend changes**:
   it reuses `academic.StudentController`'s existing `GET .../students`
   (`STUDENT_ENROLL`, already granted to `SCHOOL_ADMIN` + `TEACHER`, the same

@@ -43,10 +43,10 @@ document.addEventListener('alpine:init', () => {
             return `/api/admin/schools/${this.schoolId}/memberships`;
         },
 
-        // روستر کلاس هم از همان الگوی composition استفاده می‌کند: academic
-        // فقط studentId/userId/classId می‌دهد (بدون نام)، نام/ایمیل از همان
-        // فهرست عضویت‌های STUDENT که برای students.js هم استفاده می‌شود
-        // resolve می‌شود - بدون فراخوانی جدا و بدون تغییر بک‌اند.
+        // فهرست دانش‌آموزان کلاس هم از همان الگوی composition استفاده می‌کند:
+        // academic فقط studentId/userId/classId می‌دهد (بدون نام)، نام/ایمیل
+        // از همان فهرست عضویت‌های STUDENT که برای students.js هم استفاده
+        // می‌شود resolve می‌شود - بدون فراخوانی جدا و بدون تغییر بک‌اند.
         studentsBase() {
             return `/api/admin/schools/${this.schoolId}/students`;
         },
@@ -63,7 +63,7 @@ document.addEventListener('alpine:init', () => {
             // اگر عضویت‌ها در دسترس نبود (نقش کاربر MEMBERSHIP_MANAGE ندارد -
             // مثلاً TEACHER)، ردیف حذف نمی‌شود؛ همان الگوی fallback که
             // finance.js برای نام دانش‌آموز در فاکتورها استفاده می‌کند - وگرنه
-            // تعداد روستر برای TEACHER همیشه صفر نشان داده می‌شد.
+            // تعداد دانش‌آموزان کلاس برای TEACHER همیشه صفر نشان داده می‌شد.
             return this.students
                 .filter(s => s.classId === classId)
                 .map(s => {
@@ -116,13 +116,14 @@ document.addEventListener('alpine:init', () => {
                 // فهرست معلم‌ها/دانش‌آموزها فقط برای پر کردن دراپ‌داون و نمایش
                 // نام است؛ اگر خودِ عضویت‌ها در دسترس نبود (مثلاً نقش کاربر
                 // اجازه‌ی MEMBERSHIP_MANAGE ندارد)، صفحه‌ی کلاس‌ها را نمی‌شکند -
-                // فقط نام معلم‌ها «تخصیص‌نشده» و روستر خالی نمایش داده می‌شود.
+                // فقط نام معلم‌ها «تخصیص‌نشده» و فهرست دانش‌آموزان کلاس خالی
+                // نمایش داده می‌شود.
                 const memberships = membershipsResponse.ok ? await membershipsResponse.json() : [];
                 this.teachers = memberships.filter(m => m.active && m.roleCode === 'TEACHER');
                 this.pupils = memberships.filter(m => m.active && m.roleCode === 'STUDENT');
-                // روستر هم به همین شکل best-effort است؛ اگر نقش کاربر
-                // STUDENT_ENROLL نداشت، فهرست خالی می‌ماند و دکمه‌ی «مشاهده
-                // روستر» فقط چیزی نشان نمی‌دهد - صفحه نمی‌شکند.
+                // فهرست دانش‌آموزان کلاس هم به همین شکل best-effort است؛ اگر
+                // نقش کاربر STUDENT_ENROLL نداشت، فهرست خالی می‌ماند و دکمه‌ی
+                // «مشاهده دانش‌آموزان» فقط چیزی نشان نمی‌دهد - صفحه نمی‌شکند.
                 this.students = studentsResponse.ok ? await studentsResponse.json() : [];
             } catch (e) {
                 this.error = 'ارتباط با سرور برقرار نشد.';
