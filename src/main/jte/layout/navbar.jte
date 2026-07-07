@@ -32,6 +32,7 @@
             @if(!navbar.schools().isEmpty())
                 <a class="navbar-item" href="/people" x-cloak x-show="selectedRole === 'SCHOOL_ADMIN'">اعضای مدرسه</a>
                 <a class="navbar-item" href="/classes" x-cloak x-show="selectedRole === 'SCHOOL_ADMIN'">کلاس‌ها</a>
+                <a class="navbar-item" href="/students" x-cloak x-show="selectedRole === 'SCHOOL_ADMIN' || selectedRole === 'TEACHER'">دانش‌آموزان</a>
             @endif
         </div>
         <div class="navbar-end">

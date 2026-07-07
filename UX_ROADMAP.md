@@ -106,9 +106,19 @@ coherent as more pages are added by different people/sessions over time.
    `TEACHER` memberships — no backend change, no new `web`→`academic` Java
    dependency (the page composes two existing REST endpoints in JS, not two
    Facades in the controller).
-4. **Enrollment** — `/students` — enroll/move students into classes. Backed by
-   `academic.StudentController` (`STUDENT_ENROLL`, SCHOOL_ADMIN + TEACHER).
-   Needs the class list from step 3 to populate a picker.
+4. **Enrollment** — `/students` (`web.StudentsPageController`) — **built.**
+   Enroll students into classes, listed with a class picker. Backed by
+   `academic.StudentController` (`STUDENT_ENROLL`, SCHOOL_ADMIN + TEACHER) —
+   required adding `AcademicFacade.listStudents(schoolId)` /
+   `StudentRepository.findBySchoolId` and a `GET` on `StudentController`
+   (previously enroll-only + get-by-id, no roster listing existed). Same
+   composition pattern as Classes: `academic` has no visibility into `iam`
+   names, so `students.js` resolves student name/email client-side from
+   `iam.MembershipController`, filtered to active `STUDENT` memberships; class
+   names are resolved from the existing `academic.ClassController` list
+   (fetched client-side, same as the class picker). Navbar link added,
+   visible while the selected role is `SCHOOL_ADMIN` or `TEACHER` (first link
+   shown to a non-admin role, since `STUDENT_ENROLL` is granted to both).
 5. **Finance** — `/finance` — set/view tuition fee, list invoices. Backed by
    `finance.FinanceController` (`FINANCE_MANAGE`/`FINANCE_VIEW`). First page
    that must render `ModuleNotEntitled` (403, module not subscribed) distinctly

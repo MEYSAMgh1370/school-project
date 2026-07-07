@@ -7,6 +7,8 @@ import com.example.roshdeandishe.iam.shared.RequiresPermission;
 import com.example.roshdeandishe.platform.TenantContext;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.List;
+
 /**
  * ثبت‌نام دانش‌آموز در یک کلاس. طبق تصمیم صریح، این عمل هم برای
  * SCHOOL_ADMIN و هم TEACHER مجاز است (بر خلاف ساخت کلاس که فقط ادمین
@@ -42,6 +44,16 @@ public class StudentController {
         TenantContext.requireMatches(schoolId);
 
         return toResponse(academicFacade.getStudentInfo(studentId));
+    }
+
+    @GetMapping
+    @RequiresPermission("STUDENT_ENROLL")
+    public List<StudentResponse> listStudents(@PathVariable Long schoolId) {
+        TenantContext.requireMatches(schoolId);
+
+        return academicFacade.listStudents(schoolId).stream()
+                .map(StudentController::toResponse)
+                .toList();
     }
 
 
