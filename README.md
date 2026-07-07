@@ -1,93 +1,67 @@
-# Roshdeandishe - School Management System (Modular Monolith)
+# Roshdeandishe — School Management System
 
-## Identity & Entitlement Model (current)
+A multi-tenant SaaS school management platform for Iranian schools, built as a
+**Spring Boot Modular Monolith** (Spring Modulith). See
+[`CLAUDE.md`](CLAUDE.md) for the full, authoritative architecture and domain
+model — this file is intentionally just a quick-start pointer, so it doesn't
+drift out of sync with the real source of truth again.
 
-This was refactored from an early "school owns modules" design into a
-user-centric, multi-scope entitlement model. See the structure below.
+- [`CLAUDE.md`](CLAUDE.md) — architecture, module structure, domain model,
+  access control, roadmap. Read this first for anything beyond "how do I run
+  it locally."
+- [`BEST_PRACTICES.md`](BEST_PRACTICES.md) — working discipline and Java/Spring
+  conventions for this repo.
+- [`UX_ROADMAP.md`](UX_ROADMAP.md) — frontend page inventory, build order, and
+  shared UI conventions for the management UI.
 
-```
-com.example.roshdeandishe
-├── RoshdeandisheApplication.java   ← @Modulithic
-│
-├── iam/
-│   ├── package-info.java            ← @ApplicationModule
-│   ├── IamFacade.java                ← public API (UserId, ModuleCode, AccessContext, AccessDecision)
-│   ├── AccessContext.java            ← sealed: SchoolContext | PlatformContext
-│   ├── AccessDecision.java           ← sealed: Granted | Denied
-│   ├── internal/
-│   │   ├── UserEntity.java               ← single identity root (no Teacher/Student/Parent types)
-│   │   ├── RoleEntity.java               ← roles as data, not user types
-│   │   ├── SchoolMembershipEntity.java   ← (User, School, Role) — replaces old type hierarchy
-│   │   ├── ModuleEntity.java             ← Module + ModuleScope (PLATFORM | SCHOOL | USER)
-│   │   ├── SchoolEntitlementEntity.java  ← B2B: school subscribes to a SCHOOL-scoped module
-│   │   ├── UserEntitlementEntity.java    ← B2C: user subscribes to a USER-scoped module
-│   │   ├── AccessDecisionService.java    ← "can user X access module Y in context Z?"
-│   │   ├── IamFacadeImpl.java
-│   │   ├── IamSeedDataRunner.java        ← dev-only seed data (no Flyway yet)
-│   │   └── *Repository.java
-│   └── shared/                       ← @NamedInterface("shared")
-│       ├── TenantContext.java
-│       ├── TenantResolverFilter.java
-│       ├── RequiresModule.java
-│       ├── ModuleAccessAspect.java       ← now calls IamFacade.checkAccess(...)
-│       ├── IamError.java                 ← sealed domain error hierarchy
-│       ├── IamException.java             ← carries an IamError
-│       └── GlobalExceptionHandler.java   ← ProblemDetail, exhaustive switch over IamError
-│
-├── academic/   (unchanged by this refactor — never depended on iam.internal)
-└── finance/    (unchanged by this refactor — never depended on iam.internal)
-```
+## Stack
 
-## What changed and why
+Java 21, Spring Boot 4.1, Spring Modulith, PostgreSQL, JTE + Alpine.js + Bulma
+(server-rendered, no npm/webpack build), session-based auth via Spring
+Security. One Maven artifact (`com.example:roshdeandishe`) — module boundaries
+are enforced by package structure and `ApplicationModules.verify()`, not by
+separate build artifacts.
 
-**Identity**: `UserEntity` is now the only identity root. Teacher/Student/Parent/
-SchoolAdmin are no longer types — they're `RoleEntity` rows linked through
-`SchoolMembershipEntity`. The same user can be a teacher at one school and a
-student at another, simultaneously, with no schema change needed.
+## Running locally
 
-**Module scope**: `ModuleEntity.scope` (`PLATFORM`/`SCHOOL`/`USER`) decides
-which entitlement table `AccessDecisionService` checks. `ACADEMIC`/`FINANCE`
-are `SCHOOL`-scoped (checked against `SchoolEntitlementEntity` — the direct
-replacement for the old `school_modules` table). `AI_TUTOR`/`TEACHER_MARKETPLACE`
-are `USER`-scoped (checked against `UserEntitlementEntity`, independent of
-any school).
+1. **Postgres**, with the per-module schemas created up front (Hibernate's
+   `ddl-auto: update` creates tables, not schemas):
+   ```sql
+   CREATE DATABASE roshdeandishe_iam;
+   \c roshdeandishe_iam
+   CREATE SCHEMA IF NOT EXISTS school;
+   CREATE SCHEMA IF NOT EXISTS academic;
+   CREATE SCHEMA IF NOT EXISTS finance;
+   ```
+   Connection defaults live in `src/main/resources/application.yml`
+   (`localhost:5432/roshdeandishe_iam`, `postgres`/`postgres`).
 
-**Access check**: `IamFacade.checkAccess(UserId, ModuleCode, AccessContext)`
-replaces `isModuleEnabled(schoolId, moduleName)`. `AccessContext` is sealed
-(`SchoolContext` | `PlatformContext`), so `AccessDecisionService` can branch
-on it with a compiler-checked switch — no module can silently fall through
-unhandled.
+2. **(Optional) local SMTP** for invite/activation emails — dev default is
+   `localhost:1025` (e.g. [Mailpit](https://github.com/axllent/mailpit):
+   `docker run -p 1025:1025 -p 8025:8025 axllent/mailpit`). Email delivery is
+   best-effort; the app works without it (the invite token is also returned
+   in the API response as a manual fallback).
 
-**Errors**: `IamError` is a sealed interface; `GlobalExceptionHandler` switches
-over it exhaustively to build `ProblemDetail` (RFC 7807) responses. Adding a
-new `IamError` variant later is a compile error everywhere it isn't handled.
+3. **Run the app**:
+   ```bash
+   ./mvnw spring-boot:run
+   ```
+   The app starts on `http://localhost:8080`. `IamSeedDataRunner` and
+   `SchoolSeedDataRunner` seed dev-only data on startup, including a demo
+   admin login: `admin@roshdeandishe.test` / `password`.
 
-## Migration approach: big-bang (dev phase, no production data)
+4. **Swagger UI**: `http://localhost:8080/swagger-ui.html`.
 
-Since the project has no production data yet, this was a direct in-place
-replacement — no shadow tables, no dual-write period, no compatibility shim.
-Old `SchoolModuleEntity`/`SchoolModuleRepository`/`ModuleNotEnabledException`
-were deleted outright. `IamSeedDataRunner` inserts the initial Role/Module rows
-on startup; `ddl-auto` is temporarily `update` instead of `validate` to let
-Hibernate create the new tables.
-
-## ⚠️ Still open (deliberately deferred)
-
-1. **Flyway/Liquibase**: `IamSeedDataRunner` and `ddl-auto: update` are dev-only
-   stand-ins. Before production, replace both with versioned migrations and
-   set `ddl-auto` back to `validate`.
-2. **Multi-DataSource**: still a single shared datasource; per-module
-   DataSource routing is a separate, not-yet-done phase.
-3. **Spring Security configuration**: `IamFacadeImpl.currentUserId()` assumes
-   the authenticated principal name is the user's email — this needs a real
-   Security config (JWT/session) to back that assumption.
-4. **`School` as a first-class entity**: `schoolId` is still treated as an
-   opaque `Long` everywhere (matching how `TenantContext` already worked) —
-   no `SchoolEntity` was introduced in this refactor.
-5. **Angular project**: out of scope for this backend repo.
-
-## Running the modularity check
+## Testing
 
 ```bash
-mvn test -Dtest=ModularityTests
+./mvnw test
+```
+
+Integration tests (`*FlowIntegrationTest`) run against a real Postgres via
+Testcontainers — Docker must be available. To check module boundaries and
+regenerate architecture docs (`target/spring-modulith-docs/`, not committed):
+
+```bash
+./mvnw test -Dtest=ModularityTests
 ```
