@@ -46,6 +46,10 @@ public final class IamException extends RuntimeException {
                     "اطلاعات ثبت‌نام نامعتبر است: " + e.reason();
             case IamError.EmailAlreadyRegistered e ->
                     "کاربری با ایمیل '" + e.email() + "' از قبل ثبت شده است.";
+            case IamError.InvalidPhoneNumber e ->
+                    "شماره تلفن نامعتبر است: " + e.reason();
+            case IamError.PhoneNumberAlreadyClaimed e ->
+                    "شماره '" + e.phoneNumber() + "' قبلاً برای حساب کاربری دیگری ثبت شده است.";
         };
     }
 }

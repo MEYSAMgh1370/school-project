@@ -56,4 +56,10 @@ public sealed interface IamError {
 
     record EmailAlreadyRegistered(String email) implements IamError {
     }
+
+    record InvalidPhoneNumber(String reason) implements IamError {
+    }
+
+    record PhoneNumberAlreadyClaimed(String phoneNumber) implements IamError {
+    }
 }

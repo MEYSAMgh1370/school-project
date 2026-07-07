@@ -62,11 +62,17 @@ public class SecurityConfig {
                 .csrf(csrf -> csrf
                         .csrfTokenRepository(CookieCsrfTokenRepository.withHttpOnlyFalse())
                         .csrfTokenRequestHandler(new SpaCsrfTokenRequestHandler())
+                        // وب‌هوک بله را از CSRF مستثنا می‌کند: فراخوان‌کننده سرور
+                        // بله است، نه یک مرورگر با کوکی XSRF-TOKEN - امنیت این
+                        // مسیر از طریق بخش مخفی در خودِ URL تأمین می‌شود
+                        // (BaleWebhookController)، نه CSRF token.
+                        .ignoringRequestMatchers("/api/bale/webhook/**")
                 )
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers(
                                 "/", "/api/auth/**", "/actuator/**", "/error",
                                 "/swagger-ui/**", "/swagger-ui.html", "/v3/api-docs/**",
+                                "/api/bale/webhook/**",
                                 "/activate", "/login", "/register", "/webjars/**",
                                 "/css/**", "/js/**"
                         ).permitAll()

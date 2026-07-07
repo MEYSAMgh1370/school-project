@@ -46,7 +46,11 @@ public class TenantResolverFilter extends OncePerRequestFilter {
             // همان استدلال /people برای صفحه‌ی امور مالی
             "/finance",
             // صفحه‌ی ثبت مدرسه: مدرسه هنوز وجود ندارد که schoolId داشته باشد
-            "/schools/new"
+            "/schools/new",
+            // وب‌هوک بله: فراخوان‌کننده سرور بله است، نه یک مرورگر که بتواند
+            // X-School-ID بفرستد - مدرسه‌ی هدف از روی chatId/userId لینک‌شده
+            // در خودِ ماژول bale تشخیص داده می‌شود
+            "/api/bale/webhook"
     };
 
     /**

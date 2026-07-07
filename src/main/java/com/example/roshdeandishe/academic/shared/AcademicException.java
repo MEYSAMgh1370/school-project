@@ -17,6 +17,8 @@ public final class AcademicException extends RuntimeException {
         return switch (error) {
             case AcademicError.StudentNotFound e -> "دانش‌آموز با شناسه " + e.studentId() + " یافت نشد.";
             case AcademicError.ClassNotFound e -> "کلاسی با شناسه " + e.classId() + " یافت نشد.";
+            case AcademicError.GuardianNotEligible e ->
+                    "کاربر " + e.guardianUserId() + " عضویت ولیِ فعالی در این مدرسه ندارد.";
         };
     }
 }

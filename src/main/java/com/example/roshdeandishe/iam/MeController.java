@@ -4,6 +4,8 @@ import com.example.roshdeandishe.iam.IamFacade.MembershipInfo;
 import com.example.roshdeandishe.iam.IamFacade.UserId;
 import com.example.roshdeandishe.iam.IamFacade.UserProfile;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PutMapping;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
@@ -44,7 +46,21 @@ public class MeController {
                 .toList();
     }
 
+    /**
+     * ثبت شماره تلفن کاربر فعلی - قدم اول برای اتصال به ربات بله (ماژول
+     * bale). عمداً همان‌جا (نه در ماژول bale) قرار دارد چون این یک تغییر
+     * روی خودِ حساب کاربری است، نه چیزی مختص کانال بله.
+     */
+    @PutMapping("/phone")
+    public void setPhoneNumber(@RequestBody SetPhoneRequest request) {
+        UserId userId = iamFacade.currentUserId();
+        iamFacade.setPhoneNumber(userId, request.phoneNumber());
+    }
+
     public record MeResponse(Long userId, String email, String fullName) {
+    }
+
+    public record SetPhoneRequest(String phoneNumber) {
     }
 
     public record MyMembershipResponse(Long membershipId, Long schoolId, String roleCode, boolean active) {

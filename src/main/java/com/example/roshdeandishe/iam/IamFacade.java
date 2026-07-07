@@ -147,6 +147,27 @@ public interface IamFacade {
      */
     void setSchoolEntitlement(Long schoolId, ModuleCode module, boolean active);
 
+    /**
+     * پیدا کردن کاربر بر اساس شماره تلفن - مسیر اصلی «اتصال دوباره»ی ربات
+     * بله: کاربری که قبلاً شماره‌اش را (وقتی با سشن معتبر وارد بود) ثبت
+     * کرده، دفعه‌ی بعد فقط با اشتراک‌گذاری مخاطب در بله شناسایی می‌شود.
+     */
+    Optional<UserProfile> findUserByPhoneNumber(String phoneNumber);
+
+    /**
+     * ثبت/به‌روزرسانی شماره تلفن کاربر فعلی. عمداً هیچ مسیر ورود جدیدی باز
+     * نمی‌کند - این متد فقط برای کاربری صدا زده می‌شود که از قبل با سشن
+     * معتبر وارد شده (مثلاً از طریق {@code PUT /api/me/phone})؛ شماره تلفن
+     * صرفاً یک کانال ارتباطی اضافه به همان حساب است، نه یک راه جدید برای
+     * اثبات هویت. Idempotent برای همان کاربر است.
+     *
+     * @throws com.example.roshdeandishe.iam.shared.exception.IamException با
+     * IamError.InvalidPhoneNumber اگر فرمت شماره نامعتبر باشد، یا
+     * IamError.PhoneNumberAlreadyClaimed اگر همین شماره قبلاً برای کاربر
+     * دیگری ثبت شده باشد
+     */
+    void setPhoneNumber(UserId userId, String phoneNumber);
+
     record UserId(Long value) {
     }
 

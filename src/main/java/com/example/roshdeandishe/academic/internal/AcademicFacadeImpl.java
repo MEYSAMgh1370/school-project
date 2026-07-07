@@ -17,17 +17,20 @@ class AcademicFacadeImpl implements AcademicFacade {
 
     private final StudentRepository studentRepository;
     private final ClassRepository classRepository;
+    private final StudentGuardianRepository studentGuardianRepository;
     private final IamFacade iamFacade;
     private final ApplicationEventPublisher eventPublisher;
 
     AcademicFacadeImpl(
             StudentRepository studentRepository,
             ClassRepository classRepository,
+            StudentGuardianRepository studentGuardianRepository,
             IamFacade iamFacade,
             ApplicationEventPublisher eventPublisher
     ) {
         this.studentRepository = studentRepository;
         this.classRepository = classRepository;
+        this.studentGuardianRepository = studentGuardianRepository;
         this.iamFacade = iamFacade;
         this.eventPublisher = eventPublisher;
     }
@@ -84,6 +87,58 @@ class AcademicFacadeImpl implements AcademicFacade {
         return classRepository.findBySchoolId(schoolId).stream()
                 .map(c -> new ClassInfo(new ClassId(c.getId()), c.getSchoolId(), c.getName(), c.getTeacherId(), c.getSection()))
                 .toList();
+    }
+
+    @Override
+    @Transactional
+    public GuardianLinkId linkGuardian(Long schoolId, Long studentId, Long guardianUserId) {
+        requireStudentInSchool(schoolId, studentId);
+        requireActiveParentMembership(schoolId, guardianUserId);
+
+        // idempotent: همان (student, guardian) دوباره لینک نمی‌شود
+        StudentGuardianEntity link = studentGuardianRepository
+                .findByStudentIdAndGuardianUserId(studentId, guardianUserId)
+                .orElseGet(() -> studentGuardianRepository.save(
+                        new StudentGuardianEntity(schoolId, studentId, guardianUserId, Instant.now())
+                ));
+
+        return new GuardianLinkId(link.getId());
+    }
+
+    @Override
+    public List<Long> listGuardians(Long studentId) {
+        return studentGuardianRepository.findByStudentId(studentId).stream()
+                .map(StudentGuardianEntity::getGuardianUserId)
+                .toList();
+    }
+
+    @Override
+    public List<StudentInfo> listWards(Long guardianUserId, Long schoolId) {
+        return studentGuardianRepository.findByGuardianUserIdAndSchoolId(guardianUserId, schoolId).stream()
+                .map(link -> getStudentInfo(link.getStudentId()))
+                .toList();
+    }
+
+    private void requireStudentInSchool(Long schoolId, Long studentId) {
+        StudentEntity student = studentRepository.findById(studentId)
+                .orElseThrow(() -> new AcademicException(new AcademicError.StudentNotFound(studentId)));
+        if (!student.getSchoolId().equals(schoolId)) {
+            throw new AcademicException(new AcademicError.StudentNotFound(studentId));
+        }
+    }
+
+    // یک User فقط زمانی می‌تواند به یک دانش‌آموز لینک شود که Membership
+    // فعالِ نقش PARENT در همان مدرسه داشته باشد - همان بررسی امنیتی که در
+    // Facade توضیح داده شده. findMembershipsByUser (نه findMembership)
+    // عمداً استفاده شده چون findMembership فقط اولین Membership را
+    // برمی‌گرداند و یک کاربر می‌تواند هم‌زمان چند نقش در همان مدرسه داشته باشد.
+    private void requireActiveParentMembership(Long schoolId, Long guardianUserId) {
+        boolean hasActiveParentMembership = iamFacade.findMembershipsByUser(new IamFacade.UserId(guardianUserId))
+                .stream()
+                .anyMatch(m -> m.schoolId().equals(schoolId) && "PARENT".equals(m.roleCode()) && m.active());
+        if (!hasActiveParentMembership) {
+            throw new AcademicException(new AcademicError.GuardianNotEligible(guardianUserId, schoolId));
+        }
     }
 
     private void requireClassExists(Long schoolId, Long classId) {

@@ -1,5 +1,6 @@
 package com.example.roshdeandishe.academic;
 
+import com.example.roshdeandishe.academic.AcademicFacade.GuardianLinkId;
 import com.example.roshdeandishe.academic.AcademicFacade.StudentId;
 import com.example.roshdeandishe.academic.AcademicFacade.StudentInfo;
 import com.example.roshdeandishe.iam.shared.RequiresModule;
@@ -57,6 +58,32 @@ public class StudentController {
     }
 
 
+    /**
+     * لینک کردن یک کاربر (که باید از قبل Membership فعالِ نقش PARENT در
+     * همین مدرسه داشته باشد - AcademicFacade اعتبارسنجی می‌کند) به‌عنوان
+     * ولیِ این دانش‌آموز. سطح حساسیتِ این عمل هم‌تراز مدیریت عضویت است، نه
+     * ثبت‌نامِ روزمره - پس GUARDIAN_MANAGE عمداً فقط به SCHOOL_ADMIN داده
+     * شده (بر خلاف STUDENT_ENROLL که TEACHER هم دارد).
+     */
+    @PostMapping("/{studentId}/guardians")
+    @RequiresPermission("GUARDIAN_MANAGE")
+    public GuardianLinkResponse linkGuardian(
+            @PathVariable Long schoolId, @PathVariable Long studentId, @RequestBody LinkGuardianRequest request
+    ) {
+        TenantContext.requireMatches(schoolId);
+
+        GuardianLinkId linkId = academicFacade.linkGuardian(schoolId, studentId, request.guardianUserId());
+        return new GuardianLinkResponse(linkId.value(), studentId, request.guardianUserId());
+    }
+
+    @GetMapping("/{studentId}/guardians")
+    @RequiresPermission("GUARDIAN_MANAGE")
+    public List<Long> listGuardians(@PathVariable Long schoolId, @PathVariable Long studentId) {
+        TenantContext.requireMatches(schoolId);
+
+        return academicFacade.listGuardians(studentId);
+    }
+
     private static StudentResponse toResponse(StudentInfo info) {
         return new StudentResponse(info.id().value(), info.userId(), info.schoolId(), info.classId().value());
     }
@@ -65,5 +92,11 @@ public class StudentController {
     }
 
     public record StudentResponse(Long studentId, Long userId, Long schoolId, Long classId) {
+    }
+
+    public record LinkGuardianRequest(Long guardianUserId) {
+    }
+
+    public record GuardianLinkResponse(Long guardianLinkId, Long studentId, Long guardianUserId) {
     }
 }
