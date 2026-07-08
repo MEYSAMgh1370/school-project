@@ -1,6 +1,7 @@
 package com.example.roshdeandishe.academic;
 
 import java.util.List;
+import java.util.Optional;
 
 /**
  * تنها نقطه‌ی ورود عمومی به ماژول Academic.
@@ -53,6 +54,16 @@ public interface AcademicFacade {
      */
     List<StudentInfo> listWards(Long guardianUserId, Long schoolId);
 
+    /**
+     * ثبت‌نامِ خودِ کاربر در یک مدرسه‌ی خاص - برای endpoint خودسرویس
+     * «کلاس من چیست» (academic.MyEnrollmentController، پشتیبان اپ موبایل
+     * دانش‌آموز). Optional، نه throwing: «این کاربر در این مدرسه دانش‌آموز
+     * نیست» یک حالت عادی است (مثلاً یک SCHOOL_ADMIN یا TEACHER که اصلاً
+     * StudentEntity ندارد)، نه یک خطای دامنه - همان قرارداد
+     * issueInviteToken/BaleFacade.sendMessageToUser.
+     */
+    Optional<EnrollmentInfo> findMyEnrollment(Long userId, Long schoolId);
+
     record StudentId(Long value) {
     }
 
@@ -66,5 +77,8 @@ public interface AcademicFacade {
     }
 
     record ClassInfo(ClassId id, Long schoolId, String name, Long teacherId, String section) {
+    }
+
+    record EnrollmentInfo(StudentId studentId, Long schoolId, ClassId classId, String className, String section) {
     }
 }

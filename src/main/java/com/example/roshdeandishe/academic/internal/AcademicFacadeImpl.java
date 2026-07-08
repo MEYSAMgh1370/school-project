@@ -11,6 +11,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Instant;
 import java.util.List;
+import java.util.Optional;
 
 @Service
 class AcademicFacadeImpl implements AcademicFacade {
@@ -117,6 +118,19 @@ class AcademicFacadeImpl implements AcademicFacade {
         return studentGuardianRepository.findByGuardianUserIdAndSchoolId(guardianUserId, schoolId).stream()
                 .map(link -> getStudentInfo(link.getStudentId()))
                 .toList();
+    }
+
+    @Override
+    public Optional<EnrollmentInfo> findMyEnrollment(Long userId, Long schoolId) {
+        return studentRepository.findByUserIdAndSchoolId(userId, schoolId)
+                .flatMap(student -> classRepository.findById(student.getClassId())
+                        .map(classEntity -> new EnrollmentInfo(
+                                new StudentId(student.getId()),
+                                schoolId,
+                                new ClassId(classEntity.getId()),
+                                classEntity.getName(),
+                                classEntity.getSection()
+                        )));
     }
 
     private void requireStudentInSchool(Long schoolId, Long studentId) {

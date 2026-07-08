@@ -62,4 +62,7 @@ public sealed interface IamError {
 
     record PhoneNumberAlreadyClaimed(String phoneNumber) implements IamError {
     }
+
+    record InvalidCredentials(String reason) implements IamError {
+    }
 }

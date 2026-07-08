@@ -94,6 +94,10 @@ public class IamProblemResolver {
                     "شماره تلفن قبلاً ثبت شده",
                     "شماره '" + e.phoneNumber() + "' قبلاً برای حساب کاربری دیگری ثبت شده است."
             );
+            case IamError.InvalidCredentials e -> ProblemDetailFactory.problem(
+                    HttpStatus.UNAUTHORIZED, "invalid-credentials",
+                    "ورود ناموفق", e.reason()
+            );
         };
     }
 }
