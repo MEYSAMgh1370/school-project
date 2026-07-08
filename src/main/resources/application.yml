@@ -96,3 +96,13 @@ roshdeandishe:
     # مقدار تصادفیِ واقعی در محیط/فایل جداگانه ست شود؛ خالی ماندنش یعنی
     # وب‌هوک همیشه 404 می‌دهد (رجوع به کامنت‌های BaleWebhookController)
     webhook-secret: ""
+  jwt:
+    # صدور/اعتبارسنجی توکن Bearer برای اپ موبایل (additive به session cookie
+    # وب - iam.internal.JwtTokenProvider). این مقدار dev-only است؛ در
+    # deployment واقعی باید از طریق env var override شود، همان الگوی
+    # roshdeandishe.bale.bot-token. کلید HMAC-SHA256، حداقل ۲۵۶ بیت.
+    secret: xYpDz1+SLoB2muDdXqrUsLpIKOZyZf1qqZW6hX336PM=
+    # طول عمر توکن: ۱۲ ساعت. عمداً بدون refresh-token در v1 - نبود
+    # sync/push در پس‌زمینه یعنی لاگین مجدد روزانه هزینه‌ی UX پذیرفتنی‌ای
+    # است؛ اگر در عمل مزاحم شد، آن‌وقت refresh token اضافه شود، نه از قبل.
+    expiration-seconds: 43200

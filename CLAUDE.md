@@ -63,12 +63,17 @@ too narrow.
   reacting to an invoice being issued)
 - **Multi-tenancy:** `TenantContext` (ThreadLocal) + `TenantResolverFilter`, both in
   `platform` — populated from the `X-School-ID` request header
-- **Authentication:** session-based (`HttpSession`), resolved — see §7 and the former
-  Open Question in §11 history. Spring Security is used for authentication only;
-  authorization stays entirely with the two-layer `@RequiresModule` /
-  `@RequiresPermission` mechanism in §5. Spring Security's `GrantedAuthority`/
-  `hasRole()` machinery is deliberately unused for authorization, since roles are
-  per-school, not global per principal.
+- **Authentication:** session-based (`HttpSession`) for the web app, resolved — see
+  §7 and the former Open Question in §11 history. **Additive JWT bearer-token
+  auth also exists** (`POST /api/auth/token`, `iam.shared.JwtTokenProvider` +
+  `JwtAuthenticationFilter`), added for the native Android student app (§7,
+  §11 Q1 update) — session auth is unchanged and unaffected; the two mechanisms
+  coexist in one `SecurityFilterChain`, distinguished purely by whether a request
+  carries an `Authorization: Bearer` header. Spring Security is used for
+  authentication only; authorization stays entirely with the two-layer
+  `@RequiresModule` / `@RequiresPermission` mechanism in §5, identically for both
+  auth mechanisms, since both leave `GrantedAuthority`/`hasRole()` deliberately
+  empty — roles are per-school, not global per principal.
 - **ID strategy:** `Long` / `GenerationType.IDENTITY` everywhere (not UUID — a
   deliberate choice to match the project's existing convention; revisit only if a
   concrete need for non-sequential, externally-safe IDs arises)
@@ -228,14 +233,45 @@ com.example.roshdeandishe
 │   └── shared/
 │       ├── RequiresModule.java + ModuleAccessAspect.java     (@Order(10))
 │       ├── RequiresPermission.java + PermissionAccessAspect.java (@Order(11))
-│       ├── SecurityConfig.java        (session auth config; lives here, not
-│       │                                platform, because it wires IamUserDetailsService)
+│       ├── SecurityConfig.java        (session auth config for web, PLUS the
+│       │                                additive JwtAuthenticationFilter registration
+│       │                                for mobile — one SecurityFilterChain, not two;
+│       │                                lives here, not platform, because it wires
+│       │                                IamUserDetailsService)
+│       ├── JwtTokenProvider.java       (package-private: generate/validate mobile
+│       │                                JWTs. Carries only the email claim — same
+│       │                                principal shape session auth already uses
+│       │                                (Authentication.getName()); IamFacade.currentUserId()
+│       │                                resolves userId from that email either way, so
+│       │                                no UserRepository dependency is needed here,
+│       │                                which is why this lives in iam.shared, not
+│       │                                iam.internal — package-private classes in
+│       │                                internal aren't visible to shared at the Java
+│       │                                level, only the public IamFacade is)
+│       ├── JwtAuthenticationFilter.java (OncePerRequestFilter, additive to session
+│       │                                auth: no-ops if there's no Authorization: Bearer
+│       │                                header, so web login is untouched. Deliberately
+│       │                                NOT @Component — constructed manually inside
+│       │                                SecurityConfig and added via addFilterBefore,
+│       │                                so Boot doesn't also auto-register it as a
+│       │                                second, duplicate servlet-container filter)
 │       ├── AuthController.java        (POST /api/auth/login, /api/auth/logout,
-│       │                                /api/auth/activate, /api/auth/register —
-│       │                                JSON, not Spring's default form login;
-│       │                                activate redeems an invite token to set a
-│       │                                first password; register is public
-│       │                                self-service sign-up → IamFacade.registerUser)
+│       │                                /api/auth/activate, /api/auth/register, PLUS
+│       │                                /api/auth/token (mobile JWT issuance, shares
+│       │                                the same authenticate() credential check as
+│       │                                login — both now map a failed
+│       │                                AuthenticationException to IamError.InvalidCredentials
+│       │                                → 401, fixed together since /api/auth/token would
+│       │                                otherwise have inherited login's pre-existing
+│       │                                500-on-bad-credentials gap) — JSON, not Spring's
+│       │                                default form login; activate redeems an invite
+│       │                                token to set a first password; register is public
+│       │                                self-service sign-up → IamFacade.registerUser.
+│       │                                /api/auth/token is also explicitly CSRF-exempt
+│       │                                in SecurityConfig, unlike /api/auth/login: its
+│       │                                response is a JWT in a JSON body, not a cookie,
+│       │                                so CSRF's cross-origin-cookie-riding threat model
+│       │                                doesn't apply the way it does to login)
 │       ├── AccountActivationPageController.java   (GET /activate — renders
 │       │                                src/main/jte/activate.jte, a JTE+Alpine.js
 │       │                                +Bulma page whose JS calls AuthController's
@@ -280,6 +316,23 @@ com.example.roshdeandishe
 │   │                                 .../students/{studentId}/guardians —
 │   │                                 @RequiresPermission("GUARDIAN_MANAGE"),
 │   │                                 SCHOOL_ADMIN only, see §4's Guardian note)
+│   ├── MyEnrollmentController.java (REST: GET /api/me/enrollment?schoolId= —
+│   │                                 "what class am I in at this school", for the
+│   │                                 native Android student app's read-only shell.
+│   │                                 Deliberately its own controller, not a method
+│   │                                 on StudentController: same "about the caller,
+│   │                                 not a school-wide capability" trust model as
+│   │                                 iam.MeController — no @RequiresPermission/
+│   │                                 @RequiresModule, scoped only to
+│   │                                 iamFacade.currentUserId(), never a caller-supplied
+│   │                                 userId. Lives in academic (not iam, next to
+│   │                                 MeController) because iam cannot depend on
+│   │                                 academic — same bale-module precedent (§4's
+│   │                                 BaleLink note) of composing IamFacade +
+│   │                                 AcademicFacade to answer "what can I tell this
+│   │                                 identified user about their own data" without a
+│   │                                 reverse module dependency. 204, not an exception,
+│   │                                 when the caller isn't a student at that school.)
 │   ├── internal/
 │   │   ├── ClassEntity (schoolId, name, teacherId nullable, section) / ClassRepository
 │   │   ├── StudentEntity (userId, schoolId, classId, enrolledAt) / StudentRepository
@@ -1189,6 +1242,36 @@ above.
   children (unchanged, pre-existing behavior — §4's StudentGuardian note),
   admin-management UI for guardian links (curl/API only for now), and any
   grades-related bot command (grades UI itself remains deferred, §11 Q8).
+- **Mobile auth backend + read-only enrollment endpoint (built 2026-07-08,
+  first backend step of the native Android student app — supersedes
+  `MOBILE_ROADMAP.md`'s original Capacitor framing, see that doc's own
+  reconciliation note)**: `POST /api/auth/token` (JWT bearer issuance,
+  `iam.shared.JwtTokenProvider` + `JwtAuthenticationFilter`) additive to the
+  existing session-cookie web login — one `SecurityFilterChain`, not two;
+  the new filter no-ops without an `Authorization: Bearer` header, so web
+  login is provably unaffected (covered by
+  `MobileAuthFlowIntegrationTest.bearerTokenAuthenticatesProtectedMeEndpointWithNoSession`
+  plus re-verifying `LoginDashboardFlowIntegrationTest` stays green). Also
+  fixed, since `/api/auth/token` would otherwise have inherited it: a
+  pre-existing gap where `/api/auth/login` 500'd on bad credentials instead
+  of 401 (`IamError.InvalidCredentials`, new sealed case, applied to both
+  endpoints for consistency). New self-service `GET /api/me/enrollment`
+  (`academic.MyEnrollmentController`, `AcademicFacade.findMyEnrollment`) —
+  "what class am I in at this school," the first real data a student's app
+  can show, since `STUDENT` otherwise only holds the still-deferred
+  `GRADES_VIEW` permission (§11 Q8) and no timetable/announcements backend
+  exists yet. Covered by `MyEnrollmentFlowIntegrationTest`. Token lifetime is
+  12h (`roshdeandishe.jwt.expiration-seconds`), no refresh-token flow —
+  logout is client-side token deletion only; deliberately deferred until a
+  concrete need for silent long-lived sessions shows up, not built
+  speculatively. **The native Android app itself (Kotlin + Jetpack Compose,
+  Android-only for v1) is not built yet** — this is backend enablement only;
+  the client is the next phase. Also fixed in passing: `init-schemas.sql`
+  (used by `TestcontainersConfiguration`) was missing `CREATE SCHEMA bale`,
+  causing `bale.internal.InvoiceIssuedEventListener` to fail (harmlessly,
+  async, no test ever failed because of it) on every test run since the
+  `bale` module was added — a one-line pre-existing gap, unrelated to this
+  work, fixed alongside it since the full suite was being run anyway.
 
 ### Open / explicitly deferred
 
@@ -1394,8 +1477,17 @@ decisions, while the Bale integration had a clear, buildable scope.
 
 ## 11. Open Questions (do not resolve without explicit discussion)
 
-1. ~~Session vs. JWT for authentication~~ — **Resolved: session-based** (§2, §8).
-   Revisit only if/when the KMP mobile client makes session cookies impractical.
+1. ~~Session vs. JWT for authentication~~ — **Resolved: session-based for the web
+   app, additive JWT for mobile** (§2, §7, §8). The "KMP mobile client" this note
+   originally anticipated didn't materialize as such — the mobile client that
+   actually got built is native Android (Kotlin + Jetpack Compose, not Kotlin
+   Multiplatform), decided explicitly in favor of KMP/Compose Multiplatform and
+   Capacitor given no Kotlin exists in this codebase yet and iOS isn't a v1
+   target. That decision made session cookies impractical for it (a
+   `capacitor://`-style webview origin issue never even arose, since there's no
+   webview at all — a native app simply has no cookie jar to share with the
+   backend), which is exactly the condition this note flagged: JWT bearer auth
+   was added additively, session auth for web is unchanged.
 2. ~~How does a user holding multiple memberships switch between schools/roles in
    the UI?~~ — **Resolved (2026-07-05, explicit user decision):** two navbar
    dropdowns. The **school dropdown sits on the school name** (distinct schools

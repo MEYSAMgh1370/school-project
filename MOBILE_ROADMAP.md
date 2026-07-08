@@ -8,15 +8,30 @@ of truth and wins on any conflict. Nothing here should be treated as committed
 until the user says the strategy is settled; do not start backend work off this
 doc without checking in first.
 
-**Reconciliation note (2026-07-08):** the parent-bot half of this plan was
-already built, in a separate session, before this doc's first draft landed —
-see CLAUDE.md's "Bale bot integration, Phase 1" (§7 Done) and §11 Q8. The
-actual implementation differs from what §4/§5 originally proposed here in two
-important ways: it's **Bale-only, deliberately not a generic multi-channel
+**Reconciliation note (2026-07-08, parent bot):** the parent-bot half of this
+plan was already built, in a separate session, before this doc's first draft
+landed — see CLAUDE.md's "Bale bot integration, Phase 1" (§7 Done) and §11 Q8.
+The actual implementation differs from what §4/§5 originally proposed here in
+two important ways: it's **Bale-only, deliberately not a generic multi-channel
 abstraction** (CLAUDE.md §10 now has an explicit rule against building one),
 and identity linking is **phone-number-based**, not `InviteToken`-based. §4/§5
 below have been corrected to match reality; treat the corrected text as current,
 not the original proposal.
+
+**Reconciliation note (2026-07-08, student app technical choices):** the
+STUDENT channel's stack and mobile-auth mechanism, both discussed as open in
+the original draft below, have now been explicitly decided in a planning
+conversation and the backend half is built — see CLAUDE.md's "Mobile auth
+backend + read-only enrollment endpoint" (§7 Done). **Native Android (Kotlin +
+Jetpack Compose), not Capacitor** — Android-only for v1 (iOS deferred), chosen
+over Capacitor for long-term UX ceiling despite Capacitor being faster to ship
+given this codebase's existing web/Alpine skillset; also not Kotlin
+Multiplatform/Compose Multiplatform, since Android-only removes any need for
+cross-platform tooling at all. **Mobile auth is JWT bearer tokens**, additive
+to session auth, not phone+OTP (no SMS gateway integration exists or is
+planned) — see §4/§5/§7 below, corrected to match. The Android app itself
+(UI, networking, offline cache) is **not built yet** — only the backend
+(`POST /api/auth/token`, `GET /api/me/enrollment`) exists so far.
 
 ## 1. Purpose & scope
 
@@ -28,10 +43,11 @@ product** — see §2.
 
 ## 2. Channel strategy by persona (core decision)
 
-- **STUDENT — native/hybrid app via Capacitor.** Students need real
-  interactivity: submitting homework, joining a video class, taking exams,
-  browsing a class feed. None of that works well inside a chat bot, so
-  students get an actual app.
+- **STUDENT — native Android app (Kotlin + Jetpack Compose), not Capacitor.**
+  Students need real interactivity: submitting homework, joining a video
+  class, taking exams, browsing a class feed. None of that works well inside
+  a chat bot, so students get an actual app — decided over Capacitor for
+  long-term UX ceiling, and Android-only for v1 (iOS deferred — see §4).
 - **PARENT — chat-bot channel, not an app.** Parents mostly want passive
   updates (grades, attendance, announcements, invoices) plus the occasional
   reply — exactly what ClassDojo, Remind, and SchoolFox already optimize for
@@ -83,28 +99,40 @@ product** — see §2.
 
 ## 4. Architecture decisions
 
-- **Student app stack.** Capacitor wrapping a separate lightweight SPA
-  (Alpine.js, matching the project's existing zero-npm-build bias), *not* JTE
-  — JTE is server-rendered and Capacitor needs a static bundle shipped on the
-  device. Talks to the existing `/api/**` REST layer; the server-rendered JTE
-  pages stay as-is for admin/teacher desktop use.
-- **Offline storage.** `@capacitor-community/sqlite` for durable data —
-  homework drafts, an outbox for offline-submitted work — because SQLite lives
-  on the device filesystem outside the JS runtime and isn't subject to OS
-  eviction. IndexedDB/simple cache is acceptable *only* for re-fetchable read
-  data (timetable, announcements, cached grades): WKWebView's IndexedDB is
-  best-effort and the OS can evict it under storage pressure or disuse — never
-  put unrecoverable data there.
-- **Mobile auth — explicitly an OPEN QUESTION, not decided.** Session cookies
-  are awkward from the `capacitor://localhost` origin (effectively
-  cross-origin). Likely resolves to an additive token-based auth endpoint for
-  the mobile app only, alongside (not replacing) the existing session-based
-  web auth — this is exactly the "revisit if a mobile client makes session
-  cookies impractical" condition `CLAUDE.md` §11 Q1 already flagged. Treat as a
-  blocking decision before any Capacitor *backend* work starts. Note:
-  `iam.UserEntity` now has a `phoneNumber` field (added for Bale linking, see
-  below) — worth considering whether mobile auth leans on phone+OTP rather
-  than a generic bearer token, though this is not decided either.
+- **Student app stack — decided 2026-07-08: native Android, Kotlin + Jetpack
+  Compose. Not Capacitor, not KMP/Compose Multiplatform.** Android-only for
+  v1 — iOS deferred, common for Iranian consumer apps given App Store
+  distribution friction under sanctions; removes any need for cross-platform
+  tooling at all for now. Capacitor (a static Alpine.js SPA bundle, matching
+  this project's zero-npm-build web bias) was the faster-to-ship option and
+  was seriously considered, but native was chosen for long-term UX ceiling —
+  no WebView tax, first-party offline storage (Room, not a JS↔native SQLite
+  bridge), and better native performance for later phases (video class,
+  homework). This is a real new stack for this codebase (zero Kotlin exists
+  today) and a deliberate trade of short-term speed for long-term quality.
+  Talks to the existing `/api/**` REST layer over HTTP; the server-rendered
+  JTE pages stay as-is for admin/teacher desktop use. The Android project
+  itself is a separate Gradle project (not part of the one-Maven-artifact
+  backend), tracked outside this doc's scope until it exists.
+- **Offline storage.** Room (Android's first-party SQLite ORM) for durable
+  data — homework drafts, an outbox for offline-submitted work — scoped to
+  exactly what each phase needs to cache; no general sync engine, since v1 is
+  read-only with nothing to reconcile.
+- **Mobile auth — RESOLVED 2026-07-08: JWT bearer tokens, additive to session
+  auth.** Built: `POST /api/auth/token` (`iam.shared.JwtTokenProvider` +
+  `JwtAuthenticationFilter`, one `SecurityFilterChain`, not two — the filter
+  no-ops without an `Authorization: Bearer` header, so session-cookie web
+  login is completely unaffected). This is exactly the "revisit if a mobile
+  client makes session cookies impractical" condition `CLAUDE.md` §11 Q1
+  flagged — a native app has no cookie jar to share with the backend at all,
+  which made the call concrete. Not phone+OTP: `iam.UserEntity.phoneNumber`
+  (added for Bale linking) was considered, but would need a new SMS gateway
+  integration that doesn't exist and isn't planned; JWT needed no new
+  external dependency. Token lifetime is 12h, no refresh-token flow (logout
+  is client-side token deletion only) — deferred until a concrete need for
+  silent long-lived sessions shows up. See CLAUDE.md §7 Done for the full
+  backend description, including the new `GET /api/me/enrollment` endpoint
+  this required (STUDENT otherwise has nothing of its own to show — see §6).
 - **Video class.** Integrate self-hosted **BigBlueButton**; do not build a
   custom WebRTC stack. It matches the classroom-shaped feature set (whiteboard,
   breakout rooms, polls) every regional leader converges on, and — critically
@@ -151,16 +179,21 @@ product** — see §2.
    module (see §4). Remaining follow-ups are bug/gap fixes, not roadmap items:
    guardian-link admin UI, scoping invoice list to a guardian's children, and
    a `BaleFlowIntegrationTest`.
-2. **Mobile auth mechanism** (token-based, additive) — prerequisite for any
-   Capacitor backend work.
-3. **Capacitor student app shell** — read-only (timetable, announcements;
-   grades view blocked — not just "doesn't exist yet" but explicitly deferred
-   per `CLAUDE.md` §11 Q8: elementary grading in Iranian schools is
-   **توصیفی** (descriptive/qualitative), higher grades use a numeric scale,
-   and no exam plan exists yet either — a real product decision is needed
-   before any `Grade` shape gets built) with offline cache. Proves the full
-   pipeline (auth from webview, offline cache, push) before adding interactive
-   features.
+2. ~~**Mobile auth mechanism**~~ — **done, 2026-07-08**: `POST /api/auth/token`,
+   additive JWT bearer auth (see §4). Prerequisite for the Android app itself,
+   which is next.
+3. **Native Android student app shell** — read-only (profile, memberships,
+   and the new `GET /api/me/enrollment` — "what class am I in"; timetable/
+   announcements don't exist as backend features yet, and grades view stays
+   blocked — not just "doesn't exist yet" but explicitly deferred per
+   `CLAUDE.md` §11 Q8: elementary grading in Iranian schools is **توصیفی**
+   (descriptive/qualitative), higher grades use a numeric scale, and no exam
+   plan exists yet either — a real product decision is needed before any
+   `Grade` shape gets built) with a Room offline cache. Proves the full
+   pipeline (JWT auth from a native client, offline cache) before adding
+   interactive features; push is explicitly deferred to a later phase, not
+   part of this shell. **Not yet built** — only the backend half (item 2 plus
+   the enrollment endpoint) exists so far.
 4. **`homework`** (or extend `academic`) — class feed + assignment
    hand-out/hand-in. Needs file upload, which doesn't exist anywhere in the
    codebase yet — a real backend prerequisite, not just a UI task. Can likely
@@ -190,9 +223,12 @@ product** — see §2.
 
 ## 7. Open questions (do not resolve without explicit discussion)
 
-1. Mobile auth mechanism — token scheme vs. phone+OTP (now plausible given
-   `UserEntity.phoneNumber` exists), coexistence with session auth.
-2. Push notification provider for the native app.
+1. ~~Mobile auth mechanism~~ — **Resolved 2026-07-08: JWT bearer tokens**, not
+   phone+OTP (see §4). Coexistence with session auth is built and verified
+   (`MobileAuthFlowIntegrationTest`, `LoginDashboardFlowIntegrationTest` still
+   green).
+2. Push notification provider for the native app — still open, deliberately
+   deferred past the read-only shell (§5 item 3).
 3. Is a **second, fully-independent Telegram module** worth building at all,
    given Telegram's own unreliability in Iran and the now-explicit rule
    (`CLAUDE.md` §10) against sharing code with `bale`? Leaning Bale-only
@@ -200,6 +236,7 @@ product** — see §2.
 4. BigBlueButton hosting/ops — self-hosted infra for it doesn't exist yet; who
    runs it and where is unresolved.
 5. Should the Bale-established `phoneNumber` + `StudentGuardianEntity` model
-   become the identity backbone for mobile auth and/or a future parent-facing
-   mobile surface, or stay Bale-specific plumbing? Not decided — surfaced by
-   this reconciliation, not the original session.
+   become the identity backbone for a future parent-facing mobile surface? Not
+   decided. (The student app's own mobile auth is now settled — item 1 — and
+   deliberately does *not* use `phoneNumber`/OTP; this question is now scoped
+   only to a possible future parent-facing mobile surface, not the student app.)

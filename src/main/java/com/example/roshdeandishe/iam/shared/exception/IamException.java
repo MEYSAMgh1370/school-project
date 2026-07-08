@@ -50,6 +50,8 @@ public final class IamException extends RuntimeException {
                     "شماره تلفن نامعتبر است: " + e.reason();
             case IamError.PhoneNumberAlreadyClaimed e ->
                     "شماره '" + e.phoneNumber() + "' قبلاً برای حساب کاربری دیگری ثبت شده است.";
+            case IamError.InvalidCredentials e ->
+                    "ورود ناموفق: " + e.reason();
         };
     }
 }
