@@ -8,6 +8,16 @@ of truth and wins on any conflict. Nothing here should be treated as committed
 until the user says the strategy is settled; do not start backend work off this
 doc without checking in first.
 
+**Reconciliation note (2026-07-08):** the parent-bot half of this plan was
+already built, in a separate session, before this doc's first draft landed —
+see CLAUDE.md's "Bale bot integration, Phase 1" (§7 Done) and §11 Q8. The
+actual implementation differs from what §4/§5 originally proposed here in two
+important ways: it's **Bale-only, deliberately not a generic multi-channel
+abstraction** (CLAUDE.md §10 now has an explicit rule against building one),
+and identity linking is **phone-number-based**, not `InviteToken`-based. §4/§5
+below have been corrected to match reality; treat the corrected text as current,
+not the original proposal.
+
 ## 1. Purpose & scope
 
 Captures the mobile/channel strategy discussed for reaching students and
@@ -27,16 +37,21 @@ product** — see §2.
   reply — exactly what ClassDojo, Remind, and SchoolFox already optimize for
   worldwide (§3). Building and shipping a whole parent app for that is
   disproportionate. Instead:
-  - **Bale bot — primary.** Bale is sanctions-safe and reliably available
-    inside Iran without a VPN.
-  - **Telegram bot — secondary / best-effort.** Bale's Bot API mirrors
-    Telegram's, so this is the *same* integration against a second
-    endpoint/token, not a second build. Telegram itself is unreliable inside
-    Iran (historically blocked, needs a VPN), so treat it as a bonus channel
-    for diaspora/VPN-using parents, not the dependable path.
-  - **Scope for both bots**: broadcast notifications + minimal replies (e.g.
-    confirming an absence excuse). Rich back-and-forth messaging is out of
-    scope for v1 — see §6.
+  - **Bale bot — built.** Shipped 2026-07-07 as the `bale` module (CLAUDE.md
+    §7 Done): outbound invoice notifications plus inbound self-service Persian
+    text commands ("مدرسه‌های من" / "فرزندان من"). Bale is sanctions-safe and
+    reliably available inside Iran without a VPN, which is why it went first.
+  - **Telegram bot — not built, and not a drop-in second endpoint.**
+    `CLAUDE.md` §10 now has an explicit rule against a generic
+    `Notification`/multi-channel abstraction — the `bale` module is
+    intentionally Bale-specific. A Telegram channel, if ever wanted, means a
+    **second, independent module** (its own webhook, its own linking flow),
+    not reusing `BaleFacade` against a second token. Given Telegram's own
+    unreliability inside Iran, whether that's worth the maintenance cost at
+    all is an open question — see §7.
+  - **Scope, as built**: broadcast notifications + minimal self-service replies
+    (fixed Persian-text commands, not free-form chat). Rich back-and-forth
+    messaging is out of scope — see §6.
 - **TEACHER / SCHOOL_ADMIN — unchanged.** They stay on the existing JTE
   server-rendered management UI (`UX_ROADMAP.md`). No separate mobile app is
   planned for them unless explicitly requested later.
@@ -86,49 +101,84 @@ product** — see §2.
   the mobile app only, alongside (not replacing) the existing session-based
   web auth — this is exactly the "revisit if a mobile client makes session
   cookies impractical" condition `CLAUDE.md` §11 Q1 already flagged. Treat as a
-  blocking decision before any Capacitor *backend* work starts.
+  blocking decision before any Capacitor *backend* work starts. Note:
+  `iam.UserEntity` now has a `phoneNumber` field (added for Bale linking, see
+  below) — worth considering whether mobile auth leans on phone+OTP rather
+  than a generic bearer token, though this is not decided either.
 - **Video class.** Integrate self-hosted **BigBlueButton**; do not build a
   custom WebRTC stack. It matches the classroom-shaped feature set (whiteboard,
   breakout rooms, polls) every regional leader converges on, and — critically
   for this project — it's self-hostable on Iranian infrastructure, unlike
   Zoom/Google Meet which are sanctions-blocked.
-- **Parent bot channel — new `notifications` module.** Bot Gateway integration
-  (Bale Bot API primary, Telegram Bot API secondary, same integration code
-  against two endpoints/tokens). Identity linking reuses the existing
-  `InviteToken` pattern (`CLAUDE.md` §4): a parent sends `/start <code>` where
-  the code comes from a linking token bound to their `SchoolMembership` — the
-  bot-channel analogue of redeeming an invite token, except it binds a
-  `chat_id` instead of setting a password. Other modules publish
-  notification-worthy events (finance → invoice issued, academic → absence
-  recorded, iam → invite issued) the same way `FinanceAuditEventListener`
-  already reacts to `InvoiceIssuedEvent` (`CLAUDE.md` §3's audit-listener
-  pattern); the `notifications` module's listener pushes via the bot instead of
-  writing an audit row.
+- **Parent bot channel — `bale` module (built, corrected from this doc's
+  original proposal).** *Originally proposed here as a generic `notifications`
+  module reusing the `InviteToken` pattern; the actual build, done in a
+  separate session, took a different and now-authoritative shape:*
+  - The module is named `bale` and is deliberately Bale-specific, not a
+    generic gateway — `CLAUDE.md` §10 explicitly forbids building a
+    `Notification`/multi-channel abstraction (same YAGNI reasoning as keeping
+    `InviteEmailSender` inside `iam/internal`). A second channel gets its own
+    module when actually requested, not a shared abstraction built ahead of need.
+  - Identity linking is **phone-number-based**, not `InviteToken`-based: a
+    parent claims their phone via authenticated `PUT /api/me/phone`
+    (`iam.UserEntity.phoneNumber`), then Bale's native "share contact" flow
+    resolves an incoming chat to that phone number, linking `chat_id` → user
+    (`bale.internal.BaleLinkEntity`, upserted on re-link).
+  - This forced a real prerequisite that didn't exist before:
+    **`academic.StudentGuardianEntity`** + `AcademicFacade.linkGuardian` /
+    `listGuardians` / `listWards`, gated by a new `GUARDIAN_MANAGE` permission
+    (`SCHOOL_ADMIN`-only) — the first modeled Parent↔Student relationship in
+    the codebase (previously `PARENT` was just a role with no link to *which*
+    child). This is reusable by any future parent-facing feature, not just the
+    bot — worth keeping in mind for §5 item 4 (`homework`) and beyond.
+  - Outbound flow: `finance.InvoiceIssuedEvent` → `bale.internal.
+    InvoiceIssuedEventListener` notifies the student and every linked guardian
+    — same audit-listener shape as `FinanceAuditEventListener` (`CLAUDE.md`
+    §3), just pushing via the bot instead of writing an audit row.
+  - The webhook (`POST /api/bale/webhook/{secret}`) is secured by a random
+    secret path segment, not `@RequiresModule`/`@RequiresPermission` — the
+    caller is Bale's server, not a browser session; authorization instead
+    comes from every query being scoped to the linked user's own data.
+  - **Known gaps, not this doc's to schedule** (tracked in `CLAUDE.md` §7/§11):
+    admin UI for guardian linking is curl/API-only so far; `/finance`'s
+    existing `GET invoices` is *not* yet scoped to a guardian's own children;
+    no `BaleFlowIntegrationTest` exists yet (blocked on Testcontainers/Docker
+    availability in the session that built it).
 
 ## 5. Build order (roadmap-level, not committed dates)
 
-1. **`notifications` module** (bot gateway) — lowest complexity, standalone
-   value, doesn't block on any mobile app work.
+1. ~~`notifications` module~~ — **done, 2026-07-07**, shipped as the `bale`
+   module (see §4). Remaining follow-ups are bug/gap fixes, not roadmap items:
+   guardian-link admin UI, scoping invoice list to a guardian's children, and
+   a `BaleFlowIntegrationTest`.
 2. **Mobile auth mechanism** (token-based, additive) — prerequisite for any
    Capacitor backend work.
 3. **Capacitor student app shell** — read-only (timetable, announcements;
-   grades view blocked on the grades feature not existing yet, per
-   `UX_ROADMAP.md` §3's PARENT/STUDENT section) with offline cache. Proves the
-   full pipeline (auth from webview, offline cache, push) before adding
-   interactive features.
+   grades view blocked — not just "doesn't exist yet" but explicitly deferred
+   per `CLAUDE.md` §11 Q8: elementary grading in Iranian schools is
+   **توصیفی** (descriptive/qualitative), higher grades use a numeric scale,
+   and no exam plan exists yet either — a real product decision is needed
+   before any `Grade` shape gets built) with offline cache. Proves the full
+   pipeline (auth from webview, offline cache, push) before adding interactive
+   features.
 4. **`homework`** (or extend `academic`) — class feed + assignment
    hand-out/hand-in. Needs file upload, which doesn't exist anywhere in the
-   codebase yet — a real backend prerequisite, not just a UI task.
+   codebase yet — a real backend prerequisite, not just a UI task. Can likely
+   reuse `StudentGuardianEntity`/`listWards` (§4) if a parent-visible homework
+   status is ever wanted.
 5. **Video class integration** (BigBlueButton, tied to class/timetable).
 6. **`messaging` module** — real-time student-teacher chat (WebSocket/STOMP),
    in-app only; parents stay on the bot channel, not this module.
 7. **Exams** — last, and the largest individual scope (question banks, timing,
-   anti-cheat expectations).
+   anti-cheat expectations). Also blocked on the same grading-scheme decision
+   as item 3.
 
 ## 6. Explicitly deferred / out of scope for now
 
-- **Grades feature/data model** — doesn't exist at all yet; several mobile
-  features (grades view) block on it (already noted in `UX_ROADMAP.md` §3).
+- **Grades feature/data model** — deliberately deferred, not just unbuilt: see
+  `CLAUDE.md` §11 Q8 (descriptive-vs-numeric grading split + unresolved exam
+  plan). Several mobile features (grades view) block on it (`UX_ROADMAP.md`
+  §3). Do not build ahead of that decision.
 - **Push notification provider for the native app** — FCM reliability inside
   Iran is questionable; local alternatives (e.g. Pushe) need evaluation, not
   decided.
@@ -140,9 +190,16 @@ product** — see §2.
 
 ## 7. Open questions (do not resolve without explicit discussion)
 
-1. Mobile auth mechanism — token scheme, coexistence with session auth.
+1. Mobile auth mechanism — token scheme vs. phone+OTP (now plausible given
+   `UserEntity.phoneNumber` exists), coexistence with session auth.
 2. Push notification provider for the native app.
-3. Is a Telegram bot worth building at all given its unreliability in Iran, or
-   should v1 be Bale-only?
+3. Is a **second, fully-independent Telegram module** worth building at all,
+   given Telegram's own unreliability in Iran and the now-explicit rule
+   (`CLAUDE.md` §10) against sharing code with `bale`? Leaning Bale-only
+   unless a concrete need surfaces.
 4. BigBlueButton hosting/ops — self-hosted infra for it doesn't exist yet; who
    runs it and where is unresolved.
+5. Should the Bale-established `phoneNumber` + `StudentGuardianEntity` model
+   become the identity backbone for mobile auth and/or a future parent-facing
+   mobile surface, or stay Bale-specific plumbing? Not decided — surfaced by
+   this reconciliation, not the original session.
