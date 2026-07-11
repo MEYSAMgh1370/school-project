@@ -43,11 +43,17 @@ product** — see §2.
 
 ## 2. Channel strategy by persona (core decision)
 
-- **STUDENT — native Android app (Kotlin + Jetpack Compose), not Capacitor.**
-  Students need real interactivity: submitting homework, joining a video
-  class, taking exams, browsing a class feed. None of that works well inside
-  a chat bot, so students get an actual app — decided over Capacitor for
-  long-term UX ceiling, and Android-only for v1 (iOS deferred — see §4).
+- **STUDENT — native Android app (Kotlin + Jetpack Compose), not Capacitor,
+  PLUS a JTE+Alpine web channel (added 2026-07-11 — see §4).** Students need
+  real interactivity: submitting homework, joining a video class, taking
+  exams, browsing a class feed. None of that works well inside a chat bot, so
+  students get an actual app — decided over Capacitor for long-term UX
+  ceiling, and Android-only for v1 (iOS deferred — see §4). The web channel is
+  **additive, not a replacement**: it exists for students on shared school
+  computers or non-Android devices, reusing the exact same `/api/**` REST
+  surface (and, once built, the `exam` module's scoped exam-take token — see
+  `MOSHAVERE_PORT_SPEC.md`) rather than introducing a second rich-client
+  technology alongside native.
 - **PARENT — chat-bot channel, not an app.** Parents mostly want passive
   updates (grades, attendance, announcements, invoices) plus the occasional
   reply — exactly what ClassDojo, Remind, and SchoolFox already optimize for
@@ -133,6 +139,27 @@ product** — see §2.
   silent long-lived sessions shows up. See CLAUDE.md §7 Done for the full
   backend description, including the new `GET /api/me/enrollment` endpoint
   this required (STUDENT otherwise has nothing of its own to show — see §6).
+- **Student web channel — RESOLVED 2026-07-11: JTE+Alpine, additive to the
+  native app, not a rival technology.** Raised while scoping the moshavere
+  port (`MOSHAVERE_PORT_SPEC.md`): does porting an interactive feature like
+  exam-taking mean students need a SPA or the native app specifically? No —
+  an exam-taking screen (timer, question list, section navigation,
+  fetch-based submit) is well within what this project's existing
+  Alpine.js pattern already does elsewhere (`finance.js`, `students.js`), so
+  it gets the same treatment as the admin/teacher management pages: new
+  student-facing JTE pages (e.g. a `take-exam.jte`) plus an `Alpine.data`
+  component, calling the same REST + scoped exam-token API the native app
+  will also call. This keeps the project at two frontend paradigms
+  (JTE+Alpine for every web-facing surface, native Android for mobile), not
+  three — no new build tooling, no separate SPA project. Explicitly **not**
+  a reason to reconsider the native-app decision above: video class,
+  offline homework drafts, and push notifications still need a real native
+  app; only the fully-REST-already features (exam-taking today, anything
+  else built REST-first later) get a web page for free this way. Student
+  web pages live in the `web` module (or, if a feature's controller needs
+  student-only data no other page composes, alongside that module's own
+  admin controller) — same placement rule `CLAUDE.md` §3 already uses for
+  `web`.
 - **Video class.** Integrate self-hosted **BigBlueButton**; do not build a
   custom WebRTC stack. It matches the classroom-shaped feature set (whiteboard,
   breakout rooms, polls) every regional leader converges on, and — critically
