@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- تم پایه فقط برای پنجره‌ی اندروید قبل از این‌که Compose کنترل را
+         بگیرد لازم است - رنگ‌ها/تایپوگرافی واقعی در ui/theme (Compose
+         Material3) تعریف شده‌اند، نه اینجا. -->
+    <style name="Theme.Roshdeandishe" parent="android:Theme.Material.Light.NoActionBar" />
+</resources>
