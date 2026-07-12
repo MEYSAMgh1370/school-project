@@ -49,6 +49,15 @@ spring:
       mail.smtp.timeout: 5000
       mail.smtp.writetimeout: 5000
 
+  servlet:
+    multipart:
+      # سقف واقعیِ ۵ مگابایتیِ پیوست هزینه (ExpenseFacadeImpl) عمداً پایین‌تر
+      # از این مقدارهاست: رد شدن از این سقف باید یک 400 دامنه‌ای
+      # (invalid-attachment) بدهد، نه یک 500 خام از MaxUploadSizeExceededException
+      # که این حد پایین‌تر از سقف container جلوی آن را می‌گیرد.
+      max-file-size: 6MB
+      max-request-size: 8MB
+
   modulith:
     events:
       # ثبت رویدادهای منتشرشده در دیتابیس برای قابلیت Retry/Audit
@@ -78,6 +87,10 @@ springdoc:
       enabled: true
 
 roshdeandishe:
+  finance:
+    # سررسید پیش‌فرض فاکتور شهریه: صدور + این تعداد روز. عمداً سراسری، نه
+    # per-school - سررسید مدرسه‌به‌مدرسه هنوز توسط کسی خواسته نشده (YAGNI).
+    default-due-days: 14
   mail:
     # آدرس فرستنده‌ی ایمیل‌های سیستم
     from: no-reply@roshdeandishe.test

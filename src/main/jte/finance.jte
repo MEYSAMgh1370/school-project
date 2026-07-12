@@ -43,13 +43,26 @@
                             </form>
                         </div>
 
-                        <h2 class="title is-6">فاکتورها</h2>
+                        <div class="level mb-2">
+                            <div class="level-left">
+                                <h2 class="title is-6 mb-0">فاکتورها</h2>
+                            </div>
+                            <div class="level-right">
+                                <button class="button is-small" @click="backfill" :class="{ 'is-loading': backfilling }">
+                                    صدور فاکتور برای دانش‌آموزان بدون فاکتور
+                                </button>
+                            </div>
+                        </div>
                         <table class="table is-fullwidth is-striped">
                             <thead>
                             <tr>
                                 <th>دانش‌آموز</th>
                                 <th>مبلغ</th>
+                                <th>پرداخت‌شده</th>
+                                <th>وضعیت</th>
                                 <th>تاریخ صدور</th>
+                                <th>سررسید</th>
+                                <th></th>
                             </tr>
                             </thead>
                             <tbody>
@@ -57,11 +70,90 @@
                                 <tr>
                                     <td x-text="studentName(invoice.studentId)"></td>
                                     <td dir="ltr" x-text="invoice.amount"></td>
+                                    <td dir="ltr" x-text="invoice.amountPaid"></td>
+                                    <td>
+                                        <span class="tag" :class="statusClass(invoice.status)"
+                                              x-text="statusLabel(invoice.status)"></span>
+                                    </td>
                                     <td dir="ltr" x-text="new Date(invoice.issuedAt).toLocaleDateString('fa-IR')"></td>
+                                    <td dir="ltr" x-text="invoice.dueDate ? new Date(invoice.dueDate).toLocaleDateString('fa-IR') : '—'"></td>
+                                    <td>
+                                        <button class="button is-small"
+                                                :class="{ 'is-link': expandedInvoiceId === invoice.id }"
+                                                @click="togglePayments(invoice)">
+                                            پرداخت‌ها
+                                        </button>
+                                    </td>
                                 </tr>
                             </template>
                             </tbody>
                         </table>
+
+                        <template x-for="invoice in invoices" :key="'payments-' + invoice.id">
+                            <div class="box" x-show="expandedInvoiceId === invoice.id" x-cloak>
+                                <h3 class="title is-6">
+                                    پرداخت‌های فاکتور <span x-text="studentName(invoice.studentId)"></span>
+                                    (مانده: <span dir="ltr" x-text="remaining(invoice)"></span>)
+                                </h3>
+
+                                <p x-show="paymentsLoading">در حال بارگذاری...</p>
+                                <table class="table is-fullwidth" x-show="!paymentsLoading && payments.length > 0">
+                                    <thead>
+                                    <tr>
+                                        <th>مبلغ</th>
+                                        <th>روش</th>
+                                        <th>توضیح</th>
+                                        <th>تاریخ</th>
+                                    </tr>
+                                    </thead>
+                                    <tbody>
+                                    <template x-for="payment in payments" :key="payment.id">
+                                        <tr>
+                                            <td dir="ltr" x-text="payment.amount"></td>
+                                            <td x-text="methodLabel(payment.method)"></td>
+                                            <td x-text="payment.note || '—'"></td>
+                                            <td dir="ltr" x-text="new Date(payment.paidAt).toLocaleDateString('fa-IR')"></td>
+                                        </tr>
+                                    </template>
+                                    </tbody>
+                                </table>
+                                <p x-show="!paymentsLoading && payments.length === 0">
+                                    هنوز پرداختی برای این فاکتور ثبت نشده است.
+                                </p>
+
+                                <form @submit.prevent="recordPayment(invoice)" x-show="invoice.status !== 'PAID'">
+                                    <div class="field is-grouped is-grouped-multiline">
+                                        <div class="control">
+                                            <label class="label" for="paymentAmount">مبلغ (تومان)</label>
+                                            <input class="input" dir="ltr" id="paymentAmount" type="number" min="1"
+                                                   step="1" x-model="paymentForm.amount" required>
+                                        </div>
+                                        <div class="control">
+                                            <label class="label" for="paymentMethod">روش پرداخت</label>
+                                            <div class="select">
+                                                <select id="paymentMethod" x-model="paymentForm.method">
+                                                    <option value="CASH">نقدی</option>
+                                                    <option value="CARD">کارت</option>
+                                                    <option value="BANK_TRANSFER">انتقال بانکی</option>
+                                                    <option value="CHEQUE">چک</option>
+                                                    <option value="OTHER">سایر</option>
+                                                </select>
+                                            </div>
+                                        </div>
+                                        <div class="control is-expanded">
+                                            <label class="label" for="paymentNote">توضیح (اختیاری)</label>
+                                            <input class="input" id="paymentNote" type="text" x-model="paymentForm.note">
+                                        </div>
+                                        <div class="control" style="align-self: flex-end">
+                                            <button class="button is-link" type="submit"
+                                                    :class="{ 'is-loading': submitting }">
+                                                ثبت پرداخت
+                                            </button>
+                                        </div>
+                                    </div>
+                                </form>
+                            </div>
+                        </template>
 
                         <div class="notification" x-show="!loading && invoices.length === 0">
                             هنوز فاکتوری برای این مدرسه صادر نشده است.

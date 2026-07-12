@@ -13,9 +13,10 @@ import java.time.Instant;
  * منتشر می‌کرد. audit trail (FinanceAuditEntity) همچنان جدا و append-only
  * می‌ماند: این جدول «فاکتور چیست»، آن جدول «چه کسی چه زمانی چه کرد».
  * <p>
- * عمداً فیلد status/پرداخت ندارد - پرداخت‌ها هنوز ساخته نشده‌اند (CLAUDE.md
- * §1 آن‌ها را در scope ماژول finance می‌داند ولی هنوز خواسته نشده‌اند)؛
- * وقتی پرداخت واقعی اضافه شد، status هم همراه آن می‌آید، نه زودتر.
+ * عمداً ستون status ندارد - وضعیت (InvoiceStatus) در لحظه‌ی خواندن از روی
+ * (amount, amountPaid, dueDate) مشتق می‌شود، نه persist؛ رجوع به doc خود
+ * InvoiceStatus برای دلیل. amountPaid جمعِ نگه‌داشته‌شده‌ی PaymentEntity های
+ * این فاکتور است و فقط داخل تراکنش recordPayment جلو می‌رود.
  */
 @Entity
 @Table(name = "invoices", schema = "finance")
@@ -40,10 +41,29 @@ class InvoiceEntity {
     @Column(name = "issued_at", nullable = false)
     private Instant issuedAt;
 
-    InvoiceEntity(Long schoolId, Long studentId, BigDecimal amount, Instant issuedAt) {
+    /**
+     * سررسید پرداخت (issuedAt + roshdeandishe.finance.default-due-days).
+     * در DB عمداً nullable: فاکتورهای صادرشده در dev قبل از این فیلد سررسید
+     * ندارند (ddl-auto=update نمی‌تواند ستون not-null بدون default به جدول
+     * پر اضافه کند)؛ null یعنی «بدون سررسید» - هرگز OVERDUE نمی‌شود.
+     */
+    @Column(name = "due_date")
+    private Instant dueDate;
+
+    /**
+     * default 0 در سطح DB تا ردیف‌های موجود dev هنگام اضافه شدن ستون مقدار
+     * درست بگیرند و not-null بماند.
+     */
+    @Column(name = "amount_paid", nullable = false, precision = 12, scale = 2,
+            columnDefinition = "numeric(12,2) default 0 not null")
+    private BigDecimal amountPaid;
+
+    InvoiceEntity(Long schoolId, Long studentId, BigDecimal amount, Instant issuedAt, Instant dueDate) {
         this.schoolId = schoolId;
         this.studentId = studentId;
         this.amount = amount;
         this.issuedAt = issuedAt;
+        this.dueDate = dueDate;
+        this.amountPaid = BigDecimal.ZERO;
     }
 }

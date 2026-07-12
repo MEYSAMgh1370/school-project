@@ -118,8 +118,11 @@ too narrow.
   holds `school-new.js` (`createSchoolForm` — self-service school creation, §1,
   moved off the dashboard onto its own page 2026-07-06 — see §7 Done), `navbar.js`
   (the shared school/role switcher, see below), `people.js`, `classes.js`,
-  `students.js`, and `finance.js` (one `Alpine.data` component per management
-  page, see `web` module below); `src/main/resources/static/css/app.css` is the one global
+  `students.js`, `finance.js`, and `expenses.js` (one `Alpine.data` component per
+  management page, see `web` module below), plus `jalali.js` (a standalone,
+  dependency-free Jalali/Gregorian date conversion helper used only by
+  `expenses.js`'s report-period picker — not an `Alpine.data` component itself);
+  `src/main/resources/static/css/app.css` is the one global
   stylesheet so far (holds the `[x-cloak]` rule, used to keep closed
   `x-show`-gated forms from flashing open before Alpine initializes). `/js/**`
   and `/css/**` are `permitAll` in `SecurityConfig` and excluded in
@@ -350,33 +353,167 @@ com.example.roshdeandishe
 │       ├── AcademicException.java
 │       └── AcademicExceptionHandler.java   (bean name "academicGlobalExceptionHandler")
 │
-├── finance/                    ← tuition, invoices, payments, audit
-    ├── FinanceFacade.java           (issueTuitionInvoice — real persistence now;
-    │                                  amount comes from the school's TuitionFee,
-    │                                  no longer a parameter. Plus setTuitionFee /
-    │                                  getTuitionFee / listInvoices)
-    ├── FinanceController.java       (REST: PUT+GET tuition-fee, GET invoices —
-    │                                  first controller carrying BOTH layers:
+├── finance/                    ← tuition, invoices, payments, expenses, audit.
+│                                  Two public Facades at the module root
+│                                  (FinanceFacade for tuition/invoices/payments,
+│                                  ExpenseFacade for the school's own outgoing
+│                                  spending) — an extension of this module, not
+│                                  a new one; both stay behind the same FINANCE
+│                                  entitlement and finance schema.
+    ├── FinanceFacade.java           (issueTuitionInvoice — real persistence;
+    │                                  amount comes from the school's TuitionFee.
+    │                                  Plus setTuitionFee / getTuitionFee /
+    │                                  listInvoices / listInvoicesForStudents
+    │                                  (guardian/student self-view support) /
+    │                                  recordPayment / listPayments /
+    │                                  backfillInvoices)
+    ├── FinanceController.java       (REST: PUT+GET tuition-fee, GET invoices,
+    │                                  POST/GET invoices/{id}/payments, POST
+    │                                  invoices/backfill — first controller
+    │                                  carrying BOTH §5 layers:
     │                                  @RequiresModule("FINANCE") class-level +
     │                                  @RequiresPermission per method)
+    ├── MyInvoicesController.java    (GET /api/me/schools/{schoolId}/invoices —
+    │                                  same trust model as iam.MeController/
+    │                                  academic.MyEnrollmentController: no
+    │                                  @RequiresPermission/@RequiresModule,
+    │                                  scoped only to the caller's own
+    │                                  enrollment + StudentGuardianEntity-linked
+    │                                  wards, composed via AcademicFacade. The
+    │                                  existing admin GET .../invoices stays
+    │                                  unscoped by guardian, unchanged, per §10)
+    ├── ExpenseController.java       (REST: expense-categories, vendors,
+    │                                  expenses (CRUD + approve/pay/cancel
+    │                                  transitions), attachments (multipart
+    │                                  upload/list/download/delete), summary +
+    │                                  finance-summary reports — same
+    │                                  @RequiresModule("FINANCE") class-level +
+    │                                  per-method @RequiresPermission pattern,
+    │                                  every method calls
+    │                                  TenantContext.requireMatches)
     ├── InvoiceIssuedEvent.java      (schoolId, studentId, amount, actorUserId
     │                                  nullable, occurredAt)
+    ├── PaymentRecordedEvent.java    (schoolId, invoiceId, studentId, amount,
+    │                                  actorUserId nullable, occurredAt)
+    ├── ExpenseStatusChangedEvent.java  (schoolId, expenseId, previousStatus
+    │                                  nullable (null = created), newStatus,
+    │                                  amount, actorUserId nullable, occurredAt —
+    │                                  one event for every lifecycle transition,
+    │                                  not four, since the only consumer so far
+    │                                  is the audit listener switching on
+    │                                  newStatus)
+    ├── InvoiceStatus.java           (enum PAID | PARTIAL | UNPAID | OVERDUE —
+    │                                  derived at read time from amount/
+    │                                  amountPaid/dueDate, never persisted: a
+    │                                  stored column could go stale as time
+    │                                  passes without any mutation (OVERDUE))
+    ├── ExpenseStatus.java           (enum DRAFT | APPROVED | PAID | CANCELLED —
+    │                                  unlike InvoiceStatus this genuinely is
+    │                                  persisted, since transitions are explicit
+    │                                  human actions, not derivable from other
+    │                                  columns)
+    ├── PaymentMethod.java           (enum CASH | CARD | BANK_TRANSFER | CHEQUE
+    │                                  | OTHER — shared by both PaymentEntity
+    │                                  (tuition) and ExpenseEntity; one enum,
+    │                                  not two identical copies)
     ├── internal/
     │   ├── TuitionFeeEntity / TuitionFeeRepository   (one row per school —
     │   │                                  unique school_id; the pricing source)
-    │   ├── InvoiceEntity / InvoiceRepository   (persisted invoices; deliberately
-    │   │                                  no status/payment fields until payments
-    │   │                                  are actually built)
+    │   ├── InvoiceEntity / InvoiceRepository   (persisted invoices; gained
+    │   │                                  dueDate (issuedAt + configurable
+    │   │                                  roshdeandishe.finance.default-due-days,
+    │   │                                  default 14) and amountPaid (running
+    │   │                                  total kept in sync inside
+    │   │                                  recordPayment's transaction) — status
+    │   │                                  itself stays derived, see
+    │   │                                  InvoiceStatus above)
+    │   ├── PaymentEntity / PaymentRepository   (a manually-recorded payment
+    │   │                                  against an invoice — partial/
+    │   │                                  installment payments allowed;
+    │   │                                  overpayment past the invoice amount
+    │   │                                  is rejected outright, no credit
+    │   │                                  balances. No online payment gateway
+    │   │                                  exists — recording is always manual,
+    │   │                                  admin/finance-admin only)
+    │   ├── ExpenseCategoryEntity / ExpenseCategoryRepository   (per-school,
+    │   │                                  unique (school_id, name); a school
+    │   │                                  can define its own alongside the 14
+    │   │                                  standard Persian categories seeded
+    │   │                                  on demand via
+    │   │                                  ExpenseFacade.seedDefaultCategories —
+    │   │                                  idempotent by name, not a global table)
+    │   ├── VendorEntity / VendorRepository   (per-school; only name required,
+    │   │                                  phone/nationalId/economicCode/address
+    │   │                                  optional)
+    │   ├── ExpenseEntity / ExpenseRepository   (a school expense: date,
+    │   │                                  amount, required categoryId,
+    │   │                                  optional vendorId — both opaque
+    │   │                                  Longs with facade-level tenant
+    │   │                                  validation, same convention as
+    │   │                                  teacherId/studentId elsewhere —
+    │   │                                  paymentMethod, status, description,
+    │   │                                  receipt/invoice/document numbers,
+    │   │                                  createdByUserId nullable. No hard
+    │   │                                  delete — CANCELLED is the only way
+    │   │                                  to void one. ExpenseRepository also
+    │   │                                  carries the three report
+    │   │                                  aggregation queries (by category/
+    │   │                                  vendor/paymentMethod) plus the
+    │   │                                  income-comparison total — all fixed
+    │   │                                  to count only APPROVED+PAID, never
+    │   │                                  DRAFT or CANCELLED)
+    │   ├── ExpenseAttachmentEntity / ExpenseAttachmentRepository   (metadata
+    │   │                                  only — fileName, contentType,
+    │   │                                  sizeBytes, uploadedByUserId nullable)
+    │   ├── ExpenseAttachmentContentEntity / ExpenseAttachmentContentRepository
+    │   │                                  (the actual bytes, in their own
+    │   │                                  table so listing attachments never
+    │   │                                  loads a blob — this project has no
+    │   │                                  bytecode enhancement configured for
+    │   │                                  lazy @Basic loading. Plain byte[],
+    │   │                                  deliberately NOT @Lob: Hibernate 6+
+    │   │                                  maps plain byte[] to Postgres
+    │   │                                  bytea correctly; @Lob would produce
+    │   │                                  oid large objects instead, which
+    │   │                                  break dump/restore. 5MB domain cap
+    │   │                                  enforced in ExpenseFacadeImpl, below
+    │   │                                  the servlet's multipart limits in
+    │   │                                  application.yml so an oversize file
+    │   │                                  gets a proper 400 ProblemDetail
+    │   │                                  instead of a container-level 500)
     │   ├── StudentEnrolledEventListener   (reacts to academic's enrollment event,
     │   │                                    calls issueTuitionInvoice — amount now
     │   │                                    resolved from TuitionFee internally)
-    │   ├── FinanceAuditEntity / FinanceAuditRepository   (append-only audit trail)
-    │   └── FinanceAuditEventListener      (@ApplicationModuleListener, writes one
-    │                                        audit row per InvoiceIssuedEvent)
+    │   ├── FinanceAuditEntity / FinanceAuditRepository   (append-only audit trail;
+    │   │                                  gained a nullable expense_id column
+    │   │                                  alongside the existing nullable
+    │   │                                  student_id — one shared timeline for
+    │   │                                  every financial action at a school,
+    │   │                                  not two half-tables)
+    │   └── FinanceAuditEventListener      (@ApplicationModuleListener; one
+    │                                        listener method per event type —
+    │                                        InvoiceIssuedEvent → INVOICE_ISSUED,
+    │                                        PaymentRecordedEvent →
+    │                                        PAYMENT_RECORDED,
+    │                                        ExpenseStatusChangedEvent →
+    │                                        EXPENSE_RECORDED/APPROVED/PAID/
+    │                                        CANCELLED depending on newStatus)
 │   └── shared/
-│       ├── FinanceError.java (sealed: TuitionFeeNotSet, InvalidTuitionFee)
+│       ├── FinanceError.java (sealed: TuitionFeeNotSet, InvalidTuitionFee,
+│       │                       InvoiceNotFound, InvalidPaymentAmount,
+│       │                       PaymentExceedsBalance, ExpenseNotFound,
+│       │                       ExpenseCategoryNotFound, VendorNotFound,
+│       │                       InvalidExpense, ExpenseNotEditable,
+│       │                       InvalidExpenseStatusTransition,
+│       │                       AttachmentNotFound, InvalidAttachment)
 │       ├── FinanceException.java
-│       └── FinanceExceptionHandler.java   (bean name "financeExceptionHandler")
+│       ├── FinanceProblemResolver.java   (extracted once the sealed switch
+│       │                       passed the "trivial number of cases" threshold
+│       │                       in §6 — same pattern as
+│       │                       iam.shared.exception.IamProblemResolver)
+│       └── FinanceExceptionHandler.java   (bean name "financeExceptionHandler";
+│                                            now just routes to
+│                                            FinanceProblemResolver)
 │
 ├── web/                        ← UI-composition layer (see §2 Frontend): page
     ├── LandingPageController.java     controllers that need more than one
@@ -386,31 +523,46 @@ com.example.roshdeandishe
     ├── ClassesPageController.java     (first management-UI slice past the
     ├── StudentsPageController.java    dashboard, see UX_ROADMAP.md)
     ├── FinancePageController.java     lists/adds/toggles a school's
-    ├── NavbarModel.java               memberships and issues invite tokens;
-    ├── NavbarModelAssembler.java      GET /classes (second slice) creates/lists
-    └── RoleLabels.java                a school's classes; GET /students (third
-                                  slice) enrolls/lists students into a class;
+    ├── ExpensesPageController.java    memberships and issues invite tokens;
+    ├── NavbarModel.java               GET /classes (second slice) creates/lists
+    ├── NavbarModelAssembler.java      a school's classes; GET /students (third
+    └── RoleLabels.java                slice) enrolls/lists students into a class;
                                   GET /finance (fourth slice) sets/views the
-                                  tuition fee and lists invoices — all entirely
+                                  tuition fee, lists invoices, records payments,
+                                  and runs invoice backfill; GET /expenses
+                                  (finance-module extension, not a separate UI
+                                  slice number) manages expense categories/
+                                  vendors/expenses/attachments and shows the
+                                  Jalali-period expense report — all entirely
                                   client-side against their respective REST
                                   controllers (school selection lives only in
                                   localStorage — see §11 Q2). None of
                                   ClassesPageController, StudentsPageController,
-                                  or FinancePageController depend on
-                                  AcademicFacade/FinanceFacade or any
-                                  academic/finance type — all three are thin
+                                  FinancePageController, or
+                                  ExpensesPageController depend on
+                                  AcademicFacade/FinanceFacade/ExpenseFacade or
+                                  any academic/finance type — all four are thin
                                   shells like PeoplePageController;
-                                  classes.js/students.js/finance.js compose
-                                  iam.MembershipController (for teacher/student
-                                  names) with academic.ClassController/
-                                  StudentController and finance.FinanceController
-                                  in JavaScript, not the Java controller, so
-                                  `web` gains no new module dependency for any
-                                  of the three slices. finance.js is also the
-                                  first client script that must tell
-                                  ModuleNotEntitled apart from PermissionDenied
-                                  (both 403s) by inspecting the ProblemDetail
-                                  `type` URI suffix (§5). NavbarModel/
+                                  classes.js/students.js/finance.js/expenses.js
+                                  compose iam.MembershipController (for
+                                  teacher/student names) with
+                                  academic.ClassController/StudentController
+                                  and finance.FinanceController/
+                                  ExpenseController in JavaScript, not the Java
+                                  controller, so `web` gains no new module
+                                  dependency for any of the four slices.
+                                  finance.js was the first client script that
+                                  had to tell ModuleNotEntitled apart from
+                                  PermissionDenied (both 403s) by inspecting the
+                                  ProblemDetail `type` URI suffix (§5);
+                                  expenses.js reuses the same classifyError
+                                  pattern verbatim. expenses.js also loads
+                                  static/js/jalali.js (a small dependency-free
+                                  Jalali↔Gregorian conversion utility — no such
+                                  library existed anywhere in this codebase
+                                  before) purely for its report-period picker;
+                                  the server only ever sees Gregorian
+                                  LocalDate query params. NavbarModel/
                                   NavbarModelAssembler build the shared
                                   school/role switcher navbar (rendered by
                                   layout/navbar.jte: page links in navbar-start
@@ -577,7 +729,7 @@ PermissionEntity
 ├── id
 ├── code (GRADES_VIEW, GRADES_EDIT, FINANCE_VIEW, FINANCE_MANAGE,
 │         MEMBERSHIP_MANAGE, STUDENT_ENROLL, CLASS_MANAGE, CLASS_VIEW,
-│         GUARDIAN_MANAGE)
+│         GUARDIAN_MANAGE, EXPENSE_VIEW, EXPENSE_MANAGE, EXPENSE_APPROVE)
 └── displayName
 
 RolePermissionEntity  (join table: which roles have which permissions)
@@ -592,8 +744,22 @@ Current grants (seeded in `IamSeedDataRunner`):
 | `STUDENT` | `GRADES_VIEW` |
 | `TEACHER` | `GRADES_VIEW`, `GRADES_EDIT`, `STUDENT_ENROLL`, `CLASS_VIEW` |
 | `PARENT` | `GRADES_VIEW`, `FINANCE_VIEW` |
-| `SCHOOL_ADMIN` | `GRADES_VIEW`, `FINANCE_VIEW`, `FINANCE_MANAGE`, `MEMBERSHIP_MANAGE`, `CLASS_MANAGE`, `CLASS_VIEW`, `STUDENT_ENROLL`, `GUARDIAN_MANAGE` |
-| `FINANCE_ADMIN` | `FINANCE_VIEW`, `FINANCE_MANAGE` |
+| `SCHOOL_ADMIN` | `GRADES_VIEW`, `FINANCE_VIEW`, `FINANCE_MANAGE`, `MEMBERSHIP_MANAGE`, `CLASS_MANAGE`, `CLASS_VIEW`, `STUDENT_ENROLL`, `GUARDIAN_MANAGE`, `EXPENSE_VIEW`, `EXPENSE_MANAGE`, `EXPENSE_APPROVE` |
+| `FINANCE_ADMIN` | `FINANCE_VIEW`, `FINANCE_MANAGE`, `EXPENSE_VIEW`, `EXPENSE_MANAGE` |
+
+**`EXPENSE_VIEW`/`EXPENSE_MANAGE`/`EXPENSE_APPROVE` (added for expense
+management, §4's Expense note):** `EXPENSE_APPROVE` is deliberately withheld
+from `FINANCE_ADMIN` — segregation of duties: the person who records and pays
+an expense should not be the same person who approved it. Only `SCHOOL_ADMIN`
+holds all three. Adding these three codes also surfaced and fixed a latent bug
+in `IamSeedDataRunner`: `seedPermissions()`/`seedRolePermissions()` used to
+early-return on `count() > 0`, so on any already-seeded dev database new
+permission codes (and their role grants) would silently never arrive — tests
+always passed (Testcontainers is always fresh) while every real dev database
+would 403 on the new feature. Both methods are now per-code/per-grant
+idempotent instead of guarded by a single row-count check; `CLASS_VIEW` and
+`GUARDIAN_MANAGE` before this had only dodged the same trap by luck (a database
+reset happened to occur before or alongside their addition).
 
 **`GUARDIAN_MANAGE` (added for the Bale bot integration, §4's Guardian note
 below):** deliberately its own permission, not a reuse of `MEMBERSHIP_MANAGE` —
@@ -813,16 +979,132 @@ InvoiceEntity
 ├── schoolId
 ├── studentId       (references academic's StudentEntity id, opaque to finance)
 ├── amount          (copied from the school's TuitionFee at issue time)
-└── issuedAt
+├── issuedAt
+├── dueDate         (nullable — issuedAt + roshdeandishe.finance.default-due-days,
+│                     a global config property, default 14; nullable so rows
+│                     issued before this column existed never spuriously
+│                     become OVERDUE)
+└── amountPaid      (BigDecimal, default 0 — running total, only ever moved
+                      forward inside FinanceFacade.recordPayment's transaction)
 ```
 
-Deliberately no `status`/payment fields — payments aren't built yet; the field
-arrives with them, not speculatively. `FinanceFacade.issueTuitionInvoice(schoolId,
+**No `status` column** — `InvoiceStatus` (`PAID` / `PARTIAL` / `UNPAID` / `OVERDUE`)
+is derived at read time in `FinanceFacadeImpl` from `amount`/`amountPaid`/`dueDate`,
+never persisted (a stored value could go stale purely from time passing — OVERDUE
+has no mutation that would trigger updating it). `FinanceFacade.issueTuitionInvoice(schoolId,
 studentId)` reads the amount from `TuitionFeeEntity` itself (no longer a parameter).
 **Explicit decision:** if the school has no tuition fee configured, no invoice is
 issued (warn log only) and enrollment is never blocked; students enrolled before the
-fee was set do not get backfilled invoices — build backfill when a real need shows
-up. After persisting, it publishes `InvoiceIssuedEvent` (audit trail unchanged).
+fee was set do not get backfilled invoices automatically — `FinanceFacade.backfillInvoices(schoolId)`
+now exists as an explicit admin action (idempotent, priced at the *current* fee, not
+a historical one — fee history isn't tracked) for exactly this case, but it must be
+triggered on purpose; it throws `TuitionFeeNotSet` rather than silently no-op'ing,
+since a deliberate admin action deserves a real error, unlike the silent skip during
+ordinary enrollment. After persisting, `issueTuitionInvoice` publishes
+`InvoiceIssuedEvent` (audit trail unchanged).
+
+`FinanceFacade.recordPayment(schoolId, invoiceId, amount, method, note)` — manual
+payment recording only (no online gateway anywhere in this codebase); partial/
+installment payments are allowed, but a payment that would push `amountPaid` past
+`amount` is rejected with `FinanceError.PaymentExceedsBalance` — deliberately no
+credit-balance concept. Each call saves a `PaymentEntity` (`finance/internal`:
+`invoiceId, schoolId, amount, method, note nullable, recordedByUserId nullable,
+paidAt`) and publishes `PaymentRecordedEvent` for the audit trail.
+`FinanceFacade.listInvoicesForStudents(schoolId, studentIds)` backs the guardian/
+student self-view (`MyInvoicesController`, §3) — deliberately separate from the
+existing admin `GET .../invoices`, which stays unscoped by guardian per §10.
+
+### Expense, ExpenseCategory, Vendor, ExpenseAttachment (owned by `finance`)
+
+The school's *outgoing* money — salaries, utilities, equipment — as opposed to
+`Invoice`'s incoming tuition. A genuine extension of `finance`, not a new module
+(reuses the `FINANCE` entitlement and schema).
+
+```
+ExpenseCategoryEntity          (per school, unique (schoolId, name))
+├── id
+├── schoolId
+├── name
+└── active
+
+VendorEntity                   (per school; only name required)
+├── id
+├── schoolId
+├── name
+├── phone / nationalId / economicCode / address   (all nullable)
+└── active
+
+ExpenseEntity
+├── id
+├── schoolId
+├── expenseDate     (LocalDate — the calendar day the expense happened, not a
+│                     timestamp)
+├── amount
+├── categoryId      (required — opaque Long, facade-validated against schoolId,
+│                     same convention as teacherId/studentId elsewhere)
+├── vendorId        (nullable — same opaque-Long convention)
+├── paymentMethod   (PaymentMethod — shared enum with tuition PaymentEntity)
+├── status          (ExpenseStatus — DRAFT | APPROVED | PAID | CANCELLED;
+│                     genuinely persisted, unlike InvoiceStatus, since these
+│                     transitions are explicit human actions)
+├── description / receiptNumber / invoiceNumber / documentNumber   (all nullable)
+├── createdByUserId (nullable)
+├── createdAt
+└── updatedAt
+
+ExpenseAttachmentEntity         (metadata only)
+├── id
+├── schoolId
+├── expenseId
+├── fileName / contentType / sizeBytes
+├── uploadedByUserId (nullable)
+└── uploadedAt
+
+ExpenseAttachmentContentEntity  (the actual bytes — separate table on purpose,
+├── id                           see §3's note on why)
+├── attachmentId (unique)
+└── content (byte[], not @Lob)
+```
+
+**Lifecycle** (`ExpenseFacadeImpl.transition`, a single private state machine):
+`DRAFT → APPROVED` (requires `EXPENSE_APPROVE`) → `PAID` (requires
+`EXPENSE_MANAGE`, terminal); `DRAFT` or `APPROVED` → `CANCELLED` (requires
+`EXPENSE_MANAGE`, terminal). Field edits (`ExpenseFacade.updateExpense`) are only
+allowed while `DRAFT` — otherwise `FinanceError.ExpenseNotEditable`. No hard
+delete anywhere — `CANCELLED` is the only way to void an expense, consistent
+with this codebase's `active`-flag discipline elsewhere. Multi-step approval
+chains, budgets/spend ceilings, and installment expense payments were explicitly
+scoped out (they were in the originating design doc's own "future" section) —
+do not build them speculatively.
+
+**Categories**: `ExpenseFacade.seedDefaultCategories(schoolId)` inserts the 14
+standard Persian categories (حقوق و دستمزد، قبوض، تعمیرات، تجهیزات آموزشی، مواد
+مصرفی، خدمات نظافت، پذیرایی، سرویس مدرسه، تبلیغات، مالیات، بیمه، اجاره، فوق
+برنامه، سایر) — idempotent by name, not a one-time migration; a school can also
+define its own custom categories freely.
+
+**Attachments**: `ExpenseFacade.addAttachment` enforces a 5MB domain cap
+(`FinanceError.InvalidAttachment` otherwise) and is allowed in any status except
+`CANCELLED` — receipts routinely arrive at or after payment, so this is
+deliberately *not* gated by the DRAFT-only edit lock. Multipart upload via
+`ExpenseController` (`consumes = MULTIPART_FORM_DATA_VALUE`); download returns
+raw bytes with an RFC 5987 `filename*=UTF-8''...` `Content-Disposition` header
+(Persian filenames aren't valid in the plain ASCII `filename=` form). This is
+the first file-upload feature anywhere in this codebase — `spring.servlet.multipart.max-file-size`/`max-request-size`
+in `application.yml` are set just above the 5MB domain cap so an oversize file
+still gets the domain's own `ProblemDetail`, not a container-level 500.
+
+**Reports**: `ExpenseFacade.summaryByCategory` / `summaryByVendor` /
+`summaryByMethod` (grouped sums over a date range, names resolved server-side
+since category/vendor and expense all live in the same module) and
+`financeSummary` (income — tuition `PaymentEntity` sum — vs. expense, same
+range) all share one fixed, undocumented-as-a-parameter rule: **only `APPROVED`
+and `PAID` expenses count** — `DRAFT` (unverified data entry) and `CANCELLED`
+(voided) are always excluded, with no status filter parameter until a real need
+for one shows up. The `/expenses` page's report section converts a Jalali
+month/quarter/year picker to a Gregorian date range client-side
+(`static/js/jalali.js`) before calling these endpoints — the server only ever
+sees `LocalDate` query params, no Jalali awareness on the backend.
 
 ### BaleLink (owned by the `bale` module)
 
@@ -1272,6 +1554,64 @@ above.
   async, no test ever failed because of it) on every test run since the
   `bale` module was added — a one-line pre-existing gap, unrelated to this
   work, fixed alongside it since the full suite was being run anyway.
+- **Finance deepening, phase 1 — payments (built 2026-07-12)**: manual payment
+  recording against invoices (`FinanceFacade.recordPayment`/`listPayments`),
+  partial/installment payments with overpayment rejected outright (no credit
+  balances), a derived (never persisted) `InvoiceStatus` (`PAID`/`PARTIAL`/
+  `UNPAID`/`OVERDUE`) computed from `amount`/`amountPaid`/`dueDate`, invoice due
+  dates (`roshdeandishe.finance.default-due-days`, global config, default 14),
+  admin-triggered idempotent invoice backfill (`FinanceFacade.backfillInvoices`,
+  priced at the current fee), and a guardian/student self-view
+  (`GET /api/me/schools/{schoolId}/invoices`, `MyInvoicesController`) —
+  see §4's `Invoice` subsection for the full model. `/finance` gained a status
+  tag, an expandable payment-history/record-payment panel per invoice, and a
+  backfill button — no new page. Covered by `FinancePaymentFlowIntegrationTest`
+  (partial→PARTIAL, full→PAID, overpayment 409, overdue derivation, backfill
+  idempotency, guardian/student/stranger scoping on the new `/api/me/...`
+  endpoint, audit row via awaitility).
+- **Finance deepening, phase 2 — expense management (built 2026-07-12, from a
+  user-supplied Persian design document)**: schools can now record, categorize,
+  and report their *outgoing* money (salaries, utilities, equipment, ...), not
+  just incoming tuition — see §4's `Expense`/`ExpenseCategory`/`Vendor`/
+  `ExpenseAttachment` subsection for the full model, lifecycle, and report
+  semantics. A genuine extension of the `finance` module (new `ExpenseFacade`
+  alongside the existing `FinanceFacade`, both public at the module root), not
+  a new module — the `new-module` skill's trigger does not apply. New
+  `ExpenseController` (`/api/admin/schools/{schoolId}/expense-categories`,
+  `/vendors`, `/expenses`, including multipart attachment upload/download and
+  two report endpoints), new `EXPENSE_VIEW`/`EXPENSE_MANAGE`/`EXPENSE_APPROVE`
+  permissions (§4), 8 new `FinanceError` cases past the point where the sealed
+  switch needed extracting into `FinanceProblemResolver` (§6 pattern, mirrors
+  `IamProblemResolver`). **First file-upload feature in this codebase**
+  (`ExpenseAttachmentEntity`/`ExpenseAttachmentContentEntity`, plain `byte[]`
+  not `@Lob` — see §4 for the Postgres `bytea` vs. `oid` reasoning — 5MB domain
+  cap, multipart servlet limits in `application.yml`). New `/expenses` page
+  (`web.ExpensesPageController`, thin shell like `/finance`) plus the first
+  Jalali-calendar handling anywhere in this project (`static/js/jalali.js`, a
+  small dependency-free conversion utility — no Jalali library existed before;
+  used only by the report-period picker, the server stays Gregorian-only). Also
+  fixed in passing: the `IamSeedDataRunner` permission-seeding gap described in
+  §4's `EXPENSE_*` note, found while adding these three codes. Explicitly out
+  of scope per the design doc and CLAUDE.md §10: OCR/AI receipt scanning
+  (rejected permanently, not just deferred), budgets/spend ceilings,
+  multi-step approval chains, installment expense payments, accounting/
+  inventory-system integration, BI dashboards. Covered by
+  `ExpenseManagementFlowIntegrationTest` (full DRAFT→APPROVED→PAID lifecycle,
+  invalid transitions rejected, `FINANCE_ADMIN` can manage but not approve —
+  segregation of duties, `TEACHER`/fresh-school 403 flavors, seed-defaults
+  idempotency, audit rows), `ExpenseAttachmentFlowIntegrationTest` (Persian-filename
+  upload/download round-trip, oversize rejection, upload-to-`CANCELLED`
+  rejection), and `ExpenseReportFlowIntegrationTest` (DRAFT/CANCELLED/
+  out-of-range exclusion, per-category/vendor/method sums, null-vendor
+  grouping, income-vs-expense). Manually verified end-to-end in a real browser
+  (Playwright): full category/vendor/expense/approve/pay/attachment/report
+  flow against the dev seed data, screenshots confirmed correct rendering and
+  Jalali period conversion. **Found in passing, not fixed (pre-existing, unrelated
+  to this work, flagged separately per repo discipline):** every WebJar-served
+  `.map` sourcemap request (e.g. `/webjars/alpinejs/.../cdn.min.js.map`)
+  returns HTTP 500 instead of 404 — reproduces on every page that loads
+  Alpine/Bulma via WebJars, including pages that predate this change (e.g.
+  `/finance`), not something introduced here.
 
 ### Open / explicitly deferred
 
@@ -1409,6 +1749,19 @@ has had — a genuine domain-model gap, not just a UI slice. Chosen explicitly
 over building a grades feature next (§11 Q8) because grading scheme
 (descriptive vs. numeric) and exam planning are still unresolved product
 decisions, while the Bale integration had a clear, buildable scope.
+
+**Phase G — Finance deepening, phase 1 (payments): done.** Manual payment
+recording, partial payments, derived (never persisted) invoice status, due
+dates, admin-triggered idempotent backfill, and a guardian/student self-view —
+see §7 Done and §4's `Invoice` subsection.
+
+**Phase H — Finance deepening, phase 2 (expense management): done.** A new
+`ExpenseFacade` alongside `FinanceFacade` in the same `finance` module —
+categories, vendors, expenses with a DRAFT→APPROVED→PAID/CANCELLED lifecycle,
+receipt attachments (this codebase's first file-upload feature), and
+Jalali-period reports. Built from a user-supplied Persian design document; see
+§7 Done and §4's `Expense` subsection for what shipped and what was explicitly
+scoped out (OCR/AI, budgets, multi-step approval, accounting integration).
 
 ---
 

@@ -36,6 +36,14 @@ class FinanceAuditEntity {
     @Column(name = "student_id")
     private Long studentId;
 
+    /**
+     * فقط برای اقدام‌های EXPENSE_* پر می‌شود - nullable مثل studentId (که
+     * فقط برای اقدام‌های فاکتور/پرداخت پر است): یک جدول audit واحد برای همه‌ی
+     * اقدام‌های مالی مدرسه، نه دو timeline نصفه.
+     */
+    @Column(name = "expense_id")
+    private Long expenseId;
+
     @Column(precision = 12, scale = 2)
     private BigDecimal amount;
 
@@ -49,5 +57,12 @@ class FinanceAuditEntity {
         this.studentId = studentId;
         this.amount = amount;
         this.occurredAt = occurredAt;
+    }
+
+    static FinanceAuditEntity forExpense(Long schoolId, Long actorUserId, String action,
+                                         Long expenseId, BigDecimal amount, Instant occurredAt) {
+        FinanceAuditEntity entity = new FinanceAuditEntity(schoolId, actorUserId, action, null, amount, occurredAt);
+        entity.expenseId = expenseId;
+        return entity;
     }
 }
