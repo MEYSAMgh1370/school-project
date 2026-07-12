@@ -65,4 +65,13 @@ public sealed interface IamError {
 
     record InvalidCredentials(String reason) implements IamError {
     }
+
+    record PhoneNotRegistered(String phoneNumber) implements IamError {
+    }
+
+    record OtpIncorrect(String phoneNumber) implements IamError {
+    }
+
+    record OtpExpired(String phoneNumber) implements IamError {
+    }
 }

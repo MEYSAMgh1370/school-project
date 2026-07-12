@@ -52,6 +52,12 @@ public final class IamException extends RuntimeException {
                     "شماره '" + e.phoneNumber() + "' قبلاً برای حساب کاربری دیگری ثبت شده است.";
             case IamError.InvalidCredentials e ->
                     "ورود ناموفق: " + e.reason();
+            case IamError.PhoneNotRegistered e ->
+                    "هیچ کاربری با شماره تلفن '" + e.phoneNumber() + "' ثبت نشده است.";
+            case IamError.OtpIncorrect e ->
+                    "کد تأیید وارد‌شده برای شماره '" + e.phoneNumber() + "' نادرست است.";
+            case IamError.OtpExpired e ->
+                    "کد تأیید فعالی برای شماره '" + e.phoneNumber() + "' وجود ندارد یا منقضی شده است.";
         };
     }
 }

@@ -18,6 +18,8 @@ import org.springframework.web.bind.annotation.RestController;
 
 import jakarta.servlet.http.HttpServletResponse;
 
+import java.util.Collections;
+
 /**
  * لاگین/لاگ‌اوت صریح از طریق JSON، به‌جای فرم HTML پیش‌فرض Spring Security
  * (که برای یک بک‌اند API-first معنا ندارد).
@@ -111,6 +113,40 @@ public class AuthController {
         return new RegisterResponse("ثبت‌نام با موفقیت انجام شد. اکنون می‌توانید وارد شوید.");
     }
 
+    /**
+     * درخواست کد تأیید پیامکی - فاکتور دوم ورود برای کاربری که قبلاً (با
+     * سشن معتبر) شماره تلفنش را ثبت کرده. عمداً بدون احراز هویت، همان مدل
+     * اعتماد /api/auth/login: خودِ کد پیامکی اثبات مالکیت شماره است.
+     */
+    @PostMapping("/api/auth/otp/request")
+    public OtpRequestResponse requestOtp(@RequestBody OtpRequestRequest request) {
+        iamFacade.requestOtp(request.phoneNumber());
+        return new OtpRequestResponse("کد تأیید ارسال شد.");
+    }
+
+    /**
+     * تکمیل ورود با کد تأیید. برخلاف login (که credential را از طریق
+     * AuthenticationManager اعتبارسنجی می‌کند)، اینجا IamFacade.verifyOtp
+     * خودِ اعتبارسنجی دامنه را انجام می‌دهد؛ این متد فقط - دقیقاً مثل login -
+     * یک Authentication معتبر می‌سازد و در Session ذخیره می‌کند. بدون رمز
+     * عبور، چون کد پیامکی خودش اثبات هویت است - AuthenticationManager هیچ
+     * نقشی در این مسیر ندارد.
+     */
+    @PostMapping("/api/auth/otp/verify")
+    public LoginResponse verifyOtp(@RequestBody OtpVerifyRequest request, HttpServletRequest httpRequest, HttpServletResponse httpResponse) {
+        IamFacade.UserProfile profile = iamFacade.verifyOtp(request.phoneNumber(), request.code());
+
+        Authentication authenticationResult =
+                new UsernamePasswordAuthenticationToken(profile.email(), null, Collections.emptyList());
+
+        SecurityContext context = SecurityContextHolder.createEmptyContext();
+        context.setAuthentication(authenticationResult);
+        SecurityContextHolder.setContext(context);
+        securityContextRepository.saveContext(context, httpRequest, httpResponse);
+
+        return new LoginResponse(authenticationResult.getName());
+    }
+
     public record LoginRequest(String email, String password) {
     }
 
@@ -130,5 +166,14 @@ public class AuthController {
     }
 
     public record RegisterResponse(String message) {
+    }
+
+    public record OtpRequestRequest(String phoneNumber) {
+    }
+
+    public record OtpRequestResponse(String message) {
+    }
+
+    public record OtpVerifyRequest(String phoneNumber, String code) {
     }
 }
