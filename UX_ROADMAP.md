@@ -128,23 +128,42 @@ coherent as more pages are added by different people/sessions over time.
    (fetched client-side, same as the class picker). Navbar link added,
    visible while the selected role is `SCHOOL_ADMIN` or `TEACHER` (first link
    shown to a non-admin role, since `STUDENT_ENROLL` is granted to both).
-5. **Finance** — `/finance` (`web.FinancePageController`) — **built.** Set/view
-   the school's tuition fee and list its invoices, entirely client-side
-   against the existing `finance.FinanceController` (`FINANCE_MANAGE`/
-   `FINANCE_VIEW`). First page that renders `ModuleNotEntitled` (403, school
-   hasn't subscribed to FINANCE) distinctly from `PermissionDenied` (403, role
-   lacks the permission) — `finance.js` inspects the `ProblemDetail.type` URI
-   suffix (`module-not-entitled` vs `permission-denied`, set by
-   `IamProblemResolver`) and shows two different Persian messages, blocking
-   the whole page body in both cases rather than rendering a broken form.
-   Invoice rows only carry an opaque `studentId` (finance has no visibility
-   into student names, same module-boundary reason as teacher/student names
-   elsewhere), so `finance.js` resolves names the same way `students.js`
-   does: `academic.StudentController` (id → userId) composed with
-   `iam.MembershipController` (userId → name), both best-effort — if the
-   current role lacks `STUDENT_ENROLL`, invoices just show `#id` instead of
-   breaking. Navbar link visible while the selected role is `SCHOOL_ADMIN` or
-   `FINANCE_ADMIN` (§3's FINANCE_ADMIN persona reuses this same page).
+5. **Finance** — `/finance` (`web.FinancePageController`) — **built, deepened
+   2026-07-12.** Set/view the school's tuition fee and list its invoices,
+   entirely client-side against the existing `finance.FinanceController`
+   (`FINANCE_MANAGE`/`FINANCE_VIEW`). First page that renders
+   `ModuleNotEntitled` (403, school hasn't subscribed to FINANCE) distinctly
+   from `PermissionDenied` (403, role lacks the permission) — `finance.js`
+   inspects the `ProblemDetail.type` URI suffix (`module-not-entitled` vs
+   `permission-denied`, set by `IamProblemResolver`) and shows two different
+   Persian messages, blocking the whole page body in both cases rather than
+   rendering a broken form. Invoice rows only carry an opaque `studentId`
+   (finance has no visibility into student names, same module-boundary reason
+   as teacher/student names elsewhere), so `finance.js` resolves names the
+   same way `students.js` does: `academic.StudentController` (id → userId)
+   composed with `iam.MembershipController` (userId → name), both
+   best-effort — if the current role lacks `STUDENT_ENROLL`, invoices just
+   show `#id` instead of breaking. Navbar link visible while the selected
+   role is `SCHOOL_ADMIN` or `FINANCE_ADMIN` (§3's FINANCE_ADMIN persona
+   reuses this same page). **Deepened 2026-07-12 (CLAUDE.md §7 Done,
+   "Finance deepening, phase 1"):** each invoice row now shows a derived
+   status tag (PAID/PARTIAL/UNPAID/OVERDUE) with an expandable payment-history
+   panel and a record-payment form, plus a backfill button for students
+   enrolled before a fee was ever set — no new page, same `/finance`.
+8. **Expenses** — `/expenses` (`web.ExpensesPageController`) — **built
+   2026-07-12**, from a user-supplied Persian design document (CLAUDE.md §7
+   Done, "Finance deepening, phase 2"). Manage expense categories/vendors,
+   record/approve/pay/cancel expenses, attach receipts, and view a
+   Jalali-period expense report — entirely client-side against the new
+   `finance.ExpenseController` (`EXPENSE_VIEW`/`EXPENSE_MANAGE`/
+   `EXPENSE_APPROVE`). Same `classifyError`/two-layer-403 pattern as
+   `finance.js`, reused verbatim. First page in this codebase to handle file
+   upload (receipt attachments) and the first to use a Jalali calendar
+   (`static/js/jalali.js`, client-side only — the report-period picker
+   converts a Persian month/quarter/year to a Gregorian date range before
+   calling the server). Navbar link visible for the same roles as `/finance`
+   (`SCHOOL_ADMIN`/`FINANCE_ADMIN`) — see CLAUDE.md §4's `Expense` subsection
+   for the full domain model and lifecycle.
 6. **School registration** — `/schools/new` — **built.** First shipped (PR #16)
    as an inline form on the dashboard; moved to this dedicated page 2026-07-06
    because real people don't casually "create a school" from their own
@@ -162,8 +181,11 @@ coherent as more pages are added by different people/sessions over time.
 
 ### FINANCE_ADMIN
 
-Same `/finance` page as SCHOOL_ADMIN — visibility is driven by the selected
-role in the navbar, enforcement stays entirely on the backend permission check.
+Same `/finance` and `/expenses` pages as SCHOOL_ADMIN — visibility is driven by
+the selected role in the navbar, enforcement stays entirely on the backend
+permission check. One real difference: `FINANCE_ADMIN` does **not** hold
+`EXPENSE_APPROVE` (segregation of duties, CLAUDE.md §4) — the approve button
+on `/expenses` 403s for this role even though the rest of the page works.
 
 ### TEACHER
 
@@ -185,9 +207,13 @@ elementary grading in Iranian schools is typically descriptive/qualitative
 (توصیفی) while higher levels use a numeric scale, and no exam plan is chosen
 yet either — both need a real product decision before a `Grade` shape can be
 designed. A PARENT's own self-service data (which children are theirs, their
-tuition status) is available today through the Bale bot instead
-(CLAUDE.md §4's BaleLink note, §7 Done) — a different surface than a `/grades`
-web page, and deliberately not a substitute for one.
+tuition status) is available today through the Bale bot, and — since the
+2026-07-12 payments deepening — also via `GET /api/me/schools/{schoolId}/invoices`
+(`finance.MyInvoicesController`, CLAUDE.md §4's `Invoice` subsection): the API
+exists for both STUDENT (own invoices) and PARENT (linked wards' invoices), but
+no dedicated web page consumes it yet — a `/my-invoices`-style page is a natural
+next slice, not built speculatively ahead of being asked. Neither surface is a
+substitute for a real `/grades` web page.
 
 ### Explicitly out of scope
 

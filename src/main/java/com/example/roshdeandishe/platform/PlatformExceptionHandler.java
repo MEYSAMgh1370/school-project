@@ -5,6 +5,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ProblemDetail;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.servlet.resource.NoResourceFoundException;
 
 /**
  * Fallback نهایی برای هر Exceptionی که توسط handler مختص هیچ ماژولی
@@ -19,6 +20,26 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
 @RestControllerAdvice
 @Order(Integer.MAX_VALUE)
 public class PlatformExceptionHandler {
+
+    /**
+     * {@code NoResourceFoundException} (که {@code ResourceHttpRequestHandler}
+     * برای هر فایل استاتیک نامعتبر/گم‌شده زیر {@code /css/**}، {@code /js/**}،
+     * {@code /webjars/**} پرتاب می‌کند - مثلاً یک درخواست {@code .map} برای
+     * سورس‌مپ که هیچ‌وقت وجود نداشته) بدون این متد به handleUnhandled زیر
+     * می‌افتاد و ۴۰۴ صحیح آن به ۵۰۰ عمومی تبدیل می‌شد - چون
+     * {@code @ExceptionHandler(Exception.class)} همه‌چیز را می‌گیرد، حتی
+     * Exceptionهایی که خودشان از قبل کد وضعیت درست را می‌دانند. باگی که روی
+     * هر صفحه‌ای که Alpine/Bulma را از WebJar بارگذاری می‌کند تکرار می‌شد
+     * (مرورگرها/DevTools همیشه فایل sourcemap را درخواست می‌کنند)، نه فقط
+     * صفحه‌ی خاصی؛ اینجا thrown شده pathش را هم دارد، همان را در پیام می‌گذاریم.
+     */
+    @ExceptionHandler(NoResourceFoundException.class)
+    public ProblemDetail handleNoResourceFound(NoResourceFoundException ex) {
+        return ProblemDetailFactory.problem(
+                HttpStatus.NOT_FOUND, "resource-not-found",
+                "منبع یافت نشد", "فایلی در مسیر '" + ex.getResourcePath() + "' وجود ندارد."
+        );
+    }
 
     @ExceptionHandler(Exception.class)
     public ProblemDetail handleUnhandled(Exception ex) {

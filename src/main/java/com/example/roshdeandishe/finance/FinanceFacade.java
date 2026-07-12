@@ -38,9 +38,53 @@ public interface FinanceFacade {
      */
     List<InvoiceInfo> listInvoices(Long schoolId);
 
+    /**
+     * فاکتورهای زیرمجموعه‌ای از دانش‌آموزانِ یک مدرسه - پشتیبان endpoint
+     * خودسرویس {@code GET /api/me/schools/{schoolId}/invoices}
+     * (MyInvoicesController): ترکیبِ «این کاربر کدام دانش‌آموزهاست/ولیِ
+     * کدام‌هاست» در کنترلر و از روی AcademicFacade انجام می‌شود، این متد
+     * فقط داده‌ی مالی را برمی‌گرداند. لیست خالی برای مجموعه‌ی خالی.
+     */
+    List<InvoiceInfo> listInvoicesForStudents(Long schoolId, List<Long> studentIds);
+
+    /**
+     * ثبت دستی یک پرداخت روی یک فاکتور (ادمین/مدیر مالی - هیچ درگاه
+     * آنلاینی در کار نیست). پرداخت جزئی/قسطی مجاز است؛ جمع پرداخت‌ها روی
+     * InvoiceEntity.amountPaid تراکنشی جلو می‌رود و وضعیت فاکتور از همان
+     * مشتق می‌شود.
+     *
+     * @throws com.example.roshdeandishe.finance.shared.FinanceException با
+     * InvoiceNotFound اگر فاکتور در این مدرسه نباشد، InvalidPaymentAmount
+     * برای مبلغ null/نامثبت، PaymentExceedsBalance اگر از مانده بیشتر شود
+     * (اضافه‌پرداخت/بستانکاری عمداً پشتیبانی نمی‌شود).
+     */
+    PaymentInfo recordPayment(Long schoolId, Long invoiceId, BigDecimal amount, PaymentMethod method, String note);
+
+    /**
+     * پرداخت‌های یک فاکتور، قدیمی‌ترین اول (ترتیب وقوع).
+     */
+    List<PaymentInfo> listPayments(Long schoolId, Long invoiceId);
+
+    /**
+     * صدور فاکتور برای دانش‌آموزانی که هیچ فاکتوری ندارند (مثلاً قبل از
+     * تنظیم شهریه ثبت‌نام شده‌اند) - به مبلغ شهریه‌ی *فعلی* مدرسه، نه نرخ
+     * تاریخی (تاریخچه‌ی شهریه نگه داشته نمی‌شود). Idempotent: اجرای دوباره
+     * چیزی صادر نمی‌کند. برخلاف issueTuitionInvoice که بدون شهریه فقط warn
+     * می‌کند، اینجا TuitionFeeNotSet پرتاب می‌شود - این یک اقدام صریح ادمین
+     * است و سکوت گمراه‌کننده بود.
+     *
+     * @return تعداد فاکتورهای صادرشده
+     */
+    int backfillInvoices(Long schoolId);
+
     record TuitionFeeInfo(Long schoolId, BigDecimal amount) {
     }
 
-    record InvoiceInfo(Long id, Long schoolId, Long studentId, BigDecimal amount, Instant issuedAt) {
+    record InvoiceInfo(Long id, Long schoolId, Long studentId, BigDecimal amount, BigDecimal amountPaid,
+                       Instant issuedAt, Instant dueDate, InvoiceStatus status) {
+    }
+
+    record PaymentInfo(Long id, Long invoiceId, BigDecimal amount, PaymentMethod method, String note,
+                       Long recordedByUserId, Instant paidAt) {
     }
 }

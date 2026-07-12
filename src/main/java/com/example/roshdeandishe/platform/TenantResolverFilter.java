@@ -45,6 +45,8 @@ public class TenantResolverFilter extends OncePerRequestFilter {
             "/students",
             // همان استدلال /people برای صفحه‌ی امور مالی
             "/finance",
+            // همان استدلال /people برای صفحه‌ی هزینه‌های مدرسه
+            "/expenses",
             // صفحه‌ی ثبت مدرسه: مدرسه هنوز وجود ندارد که schoolId داشته باشد
             "/schools/new",
             // وب‌هوک بله: فراخوان‌کننده سرور بله است، نه یک مرورگر که بتواند

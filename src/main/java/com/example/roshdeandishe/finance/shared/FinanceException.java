@@ -18,6 +18,25 @@ public final class FinanceException extends RuntimeException {
             case FinanceError.TuitionFeeNotSet e ->
                     "برای مدرسه‌ی با شناسه " + e.schoolId() + " هنوز شهریه‌ای تنظیم نشده است.";
             case FinanceError.InvalidTuitionFee e -> e.reason();
+            case FinanceError.InvoiceNotFound e ->
+                    "فاکتوری با شناسه " + e.invoiceId() + " در این مدرسه وجود ندارد.";
+            case FinanceError.InvalidPaymentAmount e -> e.reason();
+            case FinanceError.PaymentExceedsBalance e ->
+                    "مانده‌ی قابل پرداخت فاکتور " + e.invoiceId() + " برابر " + e.remaining() + " است.";
+            case FinanceError.ExpenseNotFound e ->
+                    "هزینه‌ای با شناسه " + e.expenseId() + " در این مدرسه وجود ندارد.";
+            case FinanceError.ExpenseCategoryNotFound e ->
+                    "دسته‌ای با شناسه " + e.categoryId() + " در این مدرسه وجود ندارد.";
+            case FinanceError.VendorNotFound e ->
+                    "طرف حسابی با شناسه " + e.vendorId() + " در این مدرسه وجود ندارد.";
+            case FinanceError.InvalidExpense e -> e.reason();
+            case FinanceError.ExpenseNotEditable e ->
+                    "هزینه‌ی " + e.expenseId() + " در وضعیت " + e.status() + " قابل ویرایش نیست.";
+            case FinanceError.InvalidExpenseStatusTransition e ->
+                    "هزینه‌ی " + e.expenseId() + " را نمی‌توان از " + e.from() + " به " + e.to() + " برد.";
+            case FinanceError.AttachmentNotFound e ->
+                    "پیوستی با شناسه " + e.attachmentId() + " برای این هزینه وجود ندارد.";
+            case FinanceError.InvalidAttachment e -> e.reason();
         };
     }
 }

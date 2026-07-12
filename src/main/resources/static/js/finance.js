@@ -11,6 +11,12 @@ document.addEventListener('alpine:init', () => {
         error: '',
         notice: '',
         form: { amount: '' },
+        // پرداخت‌های فاکتورِ باز‌شده (یک فاکتور در هر لحظه، مثل روستر classes.js)
+        expandedInvoiceId: null,
+        payments: [],
+        paymentsLoading: false,
+        paymentForm: { amount: '', method: 'CASH', note: '' },
+        backfilling: false,
 
         init() {
             const saved = parseInt(localStorage.getItem('selectedSchoolId') || '', 10);
@@ -59,6 +65,39 @@ document.addEventListener('alpine:init', () => {
             }
             const pupil = this.pupils.find(p => p.userId === student.userId);
             return pupil ? pupil.fullName : 'دانش‌آموز #' + studentId;
+        },
+
+        // وضعیت مشتق‌شده‌ی فاکتور (InvoiceStatus سمت سرور - هرگز persist نمی‌شود)
+        statusLabel(status) {
+            return {
+                PAID: 'تسویه‌شده',
+                PARTIAL: 'پرداخت جزئی',
+                UNPAID: 'پرداخت‌نشده',
+                OVERDUE: 'دیرکرد'
+            }[status] || status;
+        },
+
+        statusClass(status) {
+            return {
+                PAID: 'is-success',
+                PARTIAL: 'is-info',
+                UNPAID: 'is-warning',
+                OVERDUE: 'is-danger'
+            }[status] || '';
+        },
+
+        methodLabel(method) {
+            return {
+                CASH: 'نقدی',
+                CARD: 'کارت',
+                BANK_TRANSFER: 'انتقال بانکی',
+                CHEQUE: 'چک',
+                OTHER: 'سایر'
+            }[method] || method;
+        },
+
+        remaining(invoice) {
+            return invoice.amount - invoice.amountPaid;
         },
 
         // نوع خطای دولایه‌ی §5 را از URI فیلد type در ProblemDetail تشخیص
@@ -120,6 +159,101 @@ document.addEventListener('alpine:init', () => {
                 this.error = 'ارتباط با سرور برقرار نشد.';
             } finally {
                 this.loading = false;
+            }
+        },
+
+        async togglePayments(invoice) {
+            if (this.expandedInvoiceId === invoice.id) {
+                this.expandedInvoiceId = null;
+                this.payments = [];
+                return;
+            }
+            this.expandedInvoiceId = invoice.id;
+            this.payments = [];
+            this.paymentForm = { amount: '', method: 'CASH', note: '' };
+            this.paymentsLoading = true;
+            try {
+                const response = await fetch(`${this.invoicesBase()}/${invoice.id}/payments`,
+                    { headers: { 'X-School-ID': this.schoolId } });
+                if (response.ok) {
+                    this.payments = await response.json();
+                } else {
+                    const classified = await this.classifyError(response);
+                    this.error = classified.message;
+                }
+            } catch (e) {
+                this.error = 'ارتباط با سرور برقرار نشد.';
+            } finally {
+                this.paymentsLoading = false;
+            }
+        },
+
+        async recordPayment(invoice) {
+            this.submitting = true;
+            this.error = '';
+            this.notice = '';
+            try {
+                const response = await fetch(`${this.invoicesBase()}/${invoice.id}/payments`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-School-ID': this.schoolId,
+                        'X-XSRF-TOKEN': this.csrfToken()
+                    },
+                    body: JSON.stringify({
+                        amount: this.paymentForm.amount,
+                        method: this.paymentForm.method,
+                        note: this.paymentForm.note || null
+                    })
+                });
+                if (!response.ok) {
+                    const classified = await this.classifyError(response);
+                    this.error = classified.message;
+                    return;
+                }
+                this.notice = 'پرداخت با موفقیت ثبت شد.';
+                await this.load();
+                // بعد از load، پنل باز را با پرداخت‌های تازه به‌روزرسانی کن
+                const refreshed = this.invoices.find(i => i.id === invoice.id);
+                this.expandedInvoiceId = null;
+                if (refreshed) {
+                    await this.togglePayments(refreshed);
+                }
+            } catch (e) {
+                this.error = 'ارتباط با سرور برقرار نشد.';
+            } finally {
+                this.submitting = false;
+            }
+        },
+
+        // صدور فاکتور برای دانش‌آموزانی که فاکتوری ندارند (مثلاً قبل از تنظیم
+        // شهریه ثبت‌نام شده‌اند) - backfill سمت سرور idempotent است
+        async backfill() {
+            this.backfilling = true;
+            this.error = '';
+            this.notice = '';
+            try {
+                const response = await fetch(`${this.invoicesBase()}/backfill`, {
+                    method: 'POST',
+                    headers: {
+                        'X-School-ID': this.schoolId,
+                        'X-XSRF-TOKEN': this.csrfToken()
+                    }
+                });
+                if (!response.ok) {
+                    const classified = await this.classifyError(response);
+                    this.error = classified.message;
+                    return;
+                }
+                const result = await response.json();
+                this.notice = result.issuedCount > 0
+                    ? `${result.issuedCount} فاکتور جدید صادر شد.`
+                    : 'همه‌ی دانش‌آموزان از قبل فاکتور دارند - چیزی صادر نشد.';
+                await this.load();
+            } catch (e) {
+                this.error = 'ارتباط با سرور برقرار نشد.';
+            } finally {
+                this.backfilling = false;
             }
         },
 

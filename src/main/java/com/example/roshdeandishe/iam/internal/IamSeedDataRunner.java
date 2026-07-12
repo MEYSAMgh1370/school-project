@@ -103,30 +103,37 @@ class IamSeedDataRunner implements ApplicationRunner {
         return roles;
     }
 
+    /**
+     * برخلاف seedModules/seedRoles (که early-return روی count دارند)، این
+     * متد به‌ازای هر کد idempotent است: early-return قبلی یعنی هر Permission
+     * جدید هرگز به یک دیتابیس dev از قبل seed شده نمی‌رسید - تست‌ها سبز
+     * (Testcontainers همیشه تازه است) ولی هر dev واقعی 403 می‌گرفت. این تله
+     * دقیقاً موقع اضافه شدن EXPENSE_* پیدا و بسته شد؛ CLASS_VIEW و
+     * GUARDIAN_MANAGE قبلی فقط با reset دیتابیس از آن جان به در برده بودند.
+     */
     private Map<String, PermissionEntity> seedPermissions() {
-        if (permissionRepository.count() > 0) {
-            return permissionRepository.findAll().stream()
-                    .collect(java.util.stream.Collectors.toMap(PermissionEntity::getCode, p -> p));
-        }
-
         Map<String, PermissionEntity> permissions = new java.util.LinkedHashMap<>();
-        permissions.put("GRADES_VIEW", permissionRepository.save(new PermissionEntity("GRADES_VIEW", "مشاهده نمرات")));
-        permissions.put("GRADES_EDIT", permissionRepository.save(new PermissionEntity("GRADES_EDIT", "ثبت/ویرایش نمرات")));
-        permissions.put("FINANCE_VIEW", permissionRepository.save(new PermissionEntity("FINANCE_VIEW", "مشاهده وضعیت مالی")));
-        permissions.put("FINANCE_MANAGE", permissionRepository.save(new PermissionEntity("FINANCE_MANAGE", "صدور/مدیریت فاکتور")));
-        permissions.put("MEMBERSHIP_MANAGE", permissionRepository.save(new PermissionEntity("MEMBERSHIP_MANAGE", "مدیریت عضویت‌ها (فعال/غیرفعال‌سازی دسترسی)")));
-        permissions.put("STUDENT_ENROLL", permissionRepository.save(new PermissionEntity("STUDENT_ENROLL", "ثبت‌نام دانش‌آموز در کلاس")));
-        permissions.put("CLASS_MANAGE", permissionRepository.save(new PermissionEntity("CLASS_MANAGE", "ایجاد و مدیریت کلاس‌ها")));
-        permissions.put("CLASS_VIEW", permissionRepository.save(new PermissionEntity("CLASS_VIEW", "مشاهده‌ی فهرست کلاس‌ها")));
-        permissions.put("GUARDIAN_MANAGE", permissionRepository.save(new PermissionEntity("GUARDIAN_MANAGE", "لینک کردن ولی به دانش‌آموز")));
+        permission(permissions, "GRADES_VIEW", "مشاهده نمرات");
+        permission(permissions, "GRADES_EDIT", "ثبت/ویرایش نمرات");
+        permission(permissions, "FINANCE_VIEW", "مشاهده وضعیت مالی");
+        permission(permissions, "FINANCE_MANAGE", "صدور/مدیریت فاکتور");
+        permission(permissions, "MEMBERSHIP_MANAGE", "مدیریت عضویت‌ها (فعال/غیرفعال‌سازی دسترسی)");
+        permission(permissions, "STUDENT_ENROLL", "ثبت‌نام دانش‌آموز در کلاس");
+        permission(permissions, "CLASS_MANAGE", "ایجاد و مدیریت کلاس‌ها");
+        permission(permissions, "CLASS_VIEW", "مشاهده‌ی فهرست کلاس‌ها");
+        permission(permissions, "GUARDIAN_MANAGE", "لینک کردن ولی به دانش‌آموز");
+        permission(permissions, "EXPENSE_VIEW", "مشاهده‌ی هزینه‌های مدرسه");
+        permission(permissions, "EXPENSE_MANAGE", "ثبت/مدیریت هزینه‌های مدرسه");
+        permission(permissions, "EXPENSE_APPROVE", "تأیید هزینه‌های مدرسه");
         return permissions;
     }
 
-    private void seedRolePermissions(Map<String, RoleEntity> roles, Map<String, PermissionEntity> permissions) {
-        if (rolePermissionRepository.count() > 0) {
-            return;
-        }
+    private void permission(Map<String, PermissionEntity> permissions, String code, String displayName) {
+        permissions.put(code, permissionRepository.findByCode(code)
+                .orElseGet(() -> permissionRepository.save(new PermissionEntity(code, displayName))));
+    }
 
+    private void seedRolePermissions(Map<String, RoleEntity> roles, Map<String, PermissionEntity> permissions) {
         grant(roles.get("STUDENT"), permissions.get("GRADES_VIEW"));
 
         grant(roles.get("TEACHER"), permissions.get("GRADES_VIEW"));
@@ -155,14 +162,24 @@ class IamSeedDataRunner implements ApplicationRunner {
         // را به کاربر دیگری می‌دهد - هم‌سطح حساسیتِ MEMBERSHIP_MANAGE، پس فقط
         // SCHOOL_ADMIN (نه TEACHER، بر خلاف STUDENT_ENROLL)
         grant(roles.get("SCHOOL_ADMIN"), permissions.get("GUARDIAN_MANAGE"));
+        grant(roles.get("SCHOOL_ADMIN"), permissions.get("EXPENSE_VIEW"));
+        grant(roles.get("SCHOOL_ADMIN"), permissions.get("EXPENSE_MANAGE"));
+        grant(roles.get("SCHOOL_ADMIN"), permissions.get("EXPENSE_APPROVE"));
 
-        // FINANCE_ADMIN: فقط دسترسی مالی - نمونه‌ی واقعی "نقش متفاوت با سطح دسترسی متفاوت"
+        // FINANCE_ADMIN: فقط دسترسی مالی - نمونه‌ی واقعی "نقش متفاوت با سطح دسترسی متفاوت".
+        // عمداً بدون EXPENSE_APPROVE: تفکیک وظایف - کسی که هزینه را ثبت/پرداخت
+        // می‌کند، تأییدکننده‌اش نیست (فقط SCHOOL_ADMIN تأیید می‌کند).
         grant(roles.get("FINANCE_ADMIN"), permissions.get("FINANCE_VIEW"));
         grant(roles.get("FINANCE_ADMIN"), permissions.get("FINANCE_MANAGE"));
+        grant(roles.get("FINANCE_ADMIN"), permissions.get("EXPENSE_VIEW"));
+        grant(roles.get("FINANCE_ADMIN"), permissions.get("EXPENSE_MANAGE"));
     }
 
     private void grant(RoleEntity role, PermissionEntity permission) {
-        rolePermissionRepository.save(new RolePermissionEntity(role.getId(), permission.getId()));
+        // idempotent به‌ازای هر جفت - همان دلیل seedPermissions بالا
+        if (!rolePermissionRepository.existsByRoleIdAndPermissionId(role.getId(), permission.getId())) {
+            rolePermissionRepository.save(new RolePermissionEntity(role.getId(), permission.getId()));
+        }
     }
 
     private void seedDemoAdminUser() {

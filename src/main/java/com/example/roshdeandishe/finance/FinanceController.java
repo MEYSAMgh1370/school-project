@@ -1,6 +1,7 @@
 package com.example.roshdeandishe.finance;
 
 import com.example.roshdeandishe.finance.FinanceFacade.InvoiceInfo;
+import com.example.roshdeandishe.finance.FinanceFacade.PaymentInfo;
 import com.example.roshdeandishe.finance.FinanceFacade.TuitionFeeInfo;
 import com.example.roshdeandishe.finance.shared.FinanceError;
 import com.example.roshdeandishe.finance.shared.FinanceException;
@@ -62,8 +63,46 @@ public class FinanceController {
                 .toList();
     }
 
+    @PostMapping("/invoices/{invoiceId}/payments")
+    @RequiresPermission("FINANCE_MANAGE")
+    public PaymentResponse recordPayment(
+            @PathVariable Long schoolId,
+            @PathVariable Long invoiceId,
+            @RequestBody RecordPaymentRequest request
+    ) {
+        TenantContext.requireMatches(schoolId);
+
+        PaymentInfo payment = financeFacade.recordPayment(
+                schoolId, invoiceId, request.amount(), request.method(), request.note());
+        return toResponse(payment);
+    }
+
+    @GetMapping("/invoices/{invoiceId}/payments")
+    @RequiresPermission("FINANCE_VIEW")
+    public List<PaymentResponse> listPayments(@PathVariable Long schoolId, @PathVariable Long invoiceId) {
+        TenantContext.requireMatches(schoolId);
+
+        return financeFacade.listPayments(schoolId, invoiceId).stream()
+                .map(FinanceController::toResponse)
+                .toList();
+    }
+
+    @PostMapping("/invoices/backfill")
+    @RequiresPermission("FINANCE_MANAGE")
+    public BackfillResponse backfillInvoices(@PathVariable Long schoolId) {
+        TenantContext.requireMatches(schoolId);
+
+        return new BackfillResponse(financeFacade.backfillInvoices(schoolId));
+    }
+
     private static InvoiceResponse toResponse(InvoiceInfo info) {
-        return new InvoiceResponse(info.id(), info.schoolId(), info.studentId(), info.amount(), info.issuedAt());
+        return new InvoiceResponse(info.id(), info.schoolId(), info.studentId(), info.amount(),
+                info.amountPaid(), info.issuedAt(), info.dueDate(), info.status());
+    }
+
+    private static PaymentResponse toResponse(PaymentInfo info) {
+        return new PaymentResponse(info.id(), info.invoiceId(), info.amount(), info.method(),
+                info.note(), info.paidAt());
     }
 
     public record SetTuitionFeeRequest(BigDecimal amount) {
@@ -72,6 +111,18 @@ public class FinanceController {
     public record TuitionFeeResponse(Long schoolId, BigDecimal amount) {
     }
 
-    public record InvoiceResponse(Long id, Long schoolId, Long studentId, BigDecimal amount, Instant issuedAt) {
+    public record InvoiceResponse(Long id, Long schoolId, Long studentId, BigDecimal amount,
+                                  BigDecimal amountPaid, Instant issuedAt, Instant dueDate,
+                                  InvoiceStatus status) {
+    }
+
+    public record RecordPaymentRequest(BigDecimal amount, PaymentMethod method, String note) {
+    }
+
+    public record PaymentResponse(Long id, Long invoiceId, BigDecimal amount, PaymentMethod method,
+                                  String note, Instant paidAt) {
+    }
+
+    public record BackfillResponse(int issuedCount) {
     }
 }

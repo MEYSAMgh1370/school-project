@@ -1,0 +1,320 @@
+@import com.example.roshdeandishe.web.NavbarModel
+
+@param NavbarModel navbar
+
+@template.layout.main(title = "هزینه‌های مدرسه", scripts = java.util.List.of("/js/navbar.js", "/js/jalali.js", "/js/expenses.js"), content = @`
+@template.layout.navbar(navbar = navbar)
+
+<section class="section" x-data="expensesPage()">
+    <div class="container">
+        <h1 class="title is-4">هزینه‌های مدرسه</h1>
+
+        <div class="notification is-warning" x-show="!schoolId">
+            برای مدیریت هزینه‌ها، یک مدرسه از سوییچر بالا انتخاب کنید.
+        </div>
+
+        <template x-if="schoolId">
+            <div>
+                <div class="notification is-danger" x-show="error" x-text="error"></div>
+                <div class="notification is-success" x-show="notice" x-text="notice"></div>
+
+                <template x-if="!blocked">
+                    <div>
+                        <div class="columns">
+                            <div class="column">
+                                <div class="box">
+                                    <h2 class="title is-6">دسته‌های هزینه</h2>
+                                    <button class="button is-small mb-3" @click="seedDefaults" :class="{ 'is-loading': seeding }">
+                                        ساخت دسته‌های پیش‌فرض
+                                    </button>
+                                    <table class="table is-fullwidth is-narrow">
+                                        <tbody>
+                                        <template x-for="category in categories" :key="category.id">
+                                            <tr>
+                                                <td x-text="category.name"></td>
+                                                <td>
+                                                    <button class="button is-small"
+                                                            :class="category.active ? 'is-success' : 'is-light'"
+                                                            @click="toggleCategoryActive(category)">
+                                                        <span x-text="category.active ? 'فعال' : 'غیرفعال'"></span>
+                                                    </button>
+                                                </td>
+                                            </tr>
+                                        </template>
+                                        </tbody>
+                                    </table>
+                                    <form @submit.prevent="createCategory">
+                                        <div class="field has-addons">
+                                            <div class="control is-expanded">
+                                                <input class="input" type="text" placeholder="نام دسته‌ی تازه"
+                                                       x-model="categoryForm.name" required>
+                                            </div>
+                                            <div class="control">
+                                                <button class="button is-link" type="submit"
+                                                        :class="{ 'is-loading': submitting }">افزودن</button>
+                                            </div>
+                                        </div>
+                                    </form>
+                                </div>
+                            </div>
+
+                            <div class="column">
+                                <div class="box">
+                                    <h2 class="title is-6">طرف‌حساب‌ها</h2>
+                                    <table class="table is-fullwidth is-narrow">
+                                        <tbody>
+                                        <template x-for="vendor in vendors" :key="vendor.id">
+                                            <tr>
+                                                <td x-text="vendor.name"></td>
+                                                <td>
+                                                    <button class="button is-small"
+                                                            :class="vendor.active ? 'is-success' : 'is-light'"
+                                                            @click="toggleVendorActive(vendor)">
+                                                        <span x-text="vendor.active ? 'فعال' : 'غیرفعال'"></span>
+                                                    </button>
+                                                </td>
+                                            </tr>
+                                        </template>
+                                        </tbody>
+                                    </table>
+                                    <form @submit.prevent="createVendor">
+                                        <div class="field has-addons">
+                                            <div class="control is-expanded">
+                                                <input class="input" type="text" placeholder="نام طرف حساب تازه"
+                                                       x-model="vendorForm.name" required>
+                                            </div>
+                                            <div class="control">
+                                                <button class="button is-link" type="submit"
+                                                        :class="{ 'is-loading': submitting }">افزودن</button>
+                                            </div>
+                                        </div>
+                                    </form>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="box">
+                            <h2 class="title is-6">ثبت هزینه‌ی تازه</h2>
+                            <form @submit.prevent="createExpense">
+                                <div class="field is-grouped is-grouped-multiline">
+                                    <div class="control">
+                                        <label class="label">تاریخ</label>
+                                        <input class="input" dir="ltr" type="date" x-model="expenseForm.expenseDate" required>
+                                    </div>
+                                    <div class="control">
+                                        <label class="label">مبلغ (تومان)</label>
+                                        <input class="input" dir="ltr" type="number" min="1" x-model="expenseForm.amount" required>
+                                    </div>
+                                    <div class="control">
+                                        <label class="label">دسته</label>
+                                        <div class="select">
+                                            <select x-model="expenseForm.categoryId" required>
+                                                <option value="">— انتخاب کنید —</option>
+                                                <template x-for="category in categories.filter(c => c.active)" :key="category.id">
+                                                    <option :value="category.id" x-text="category.name"></option>
+                                                </template>
+                                            </select>
+                                        </div>
+                                    </div>
+                                    <div class="control">
+                                        <label class="label">طرف حساب (اختیاری)</label>
+                                        <div class="select">
+                                            <select x-model="expenseForm.vendorId">
+                                                <option value="">—</option>
+                                                <template x-for="vendor in vendors.filter(v => v.active)" :key="vendor.id">
+                                                    <option :value="vendor.id" x-text="vendor.name"></option>
+                                                </template>
+                                            </select>
+                                        </div>
+                                    </div>
+                                    <div class="control">
+                                        <label class="label">روش پرداخت</label>
+                                        <div class="select">
+                                            <select x-model="expenseForm.paymentMethod">
+                                                <option value="CASH">نقدی</option>
+                                                <option value="CARD">کارت</option>
+                                                <option value="BANK_TRANSFER">انتقال بانکی</option>
+                                                <option value="CHEQUE">چک</option>
+                                                <option value="OTHER">سایر</option>
+                                            </select>
+                                        </div>
+                                    </div>
+                                    <div class="control is-expanded">
+                                        <label class="label">شرح</label>
+                                        <input class="input" type="text" x-model="expenseForm.description">
+                                    </div>
+                                    <div class="control" style="align-self: flex-end">
+                                        <button class="button is-link" type="submit" :class="{ 'is-loading': submitting }">
+                                            ثبت هزینه
+                                        </button>
+                                    </div>
+                                </div>
+                            </form>
+                        </div>
+
+                        <div class="box">
+                            <h2 class="title is-6">فیلتر</h2>
+                            <div class="field is-grouped is-grouped-multiline">
+                                <div class="control">
+                                    <div class="select">
+                                        <select x-model="filters.categoryId" @change="load">
+                                            <option value="">همه‌ی دسته‌ها</option>
+                                            <template x-for="category in categories" :key="category.id">
+                                                <option :value="category.id" x-text="category.name"></option>
+                                            </template>
+                                        </select>
+                                    </div>
+                                </div>
+                                <div class="control">
+                                    <div class="select">
+                                        <select x-model="filters.status" @change="load">
+                                            <option value="">همه‌ی وضعیت‌ها</option>
+                                            <option value="DRAFT">پیش‌نویس</option>
+                                            <option value="APPROVED">تأییدشده</option>
+                                            <option value="PAID">پرداخت‌شده</option>
+                                            <option value="CANCELLED">لغوشده</option>
+                                        </select>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <h2 class="title is-6">فهرست هزینه‌ها</h2>
+                        <table class="table is-fullwidth is-striped">
+                            <thead>
+                            <tr>
+                                <th>تاریخ</th>
+                                <th>دسته</th>
+                                <th>طرف حساب</th>
+                                <th>مبلغ</th>
+                                <th>وضعیت</th>
+                                <th></th>
+                            </tr>
+                            </thead>
+                            <tbody>
+                            <template x-for="expense in expenses" :key="expense.id">
+                                <tr>
+                                    <td dir="ltr" x-text="expense.expenseDate"></td>
+                                    <td x-text="categoryName(expense.categoryId)"></td>
+                                    <td x-text="vendorName(expense.vendorId)"></td>
+                                    <td dir="ltr" x-text="expense.amount"></td>
+                                    <td>
+                                        <span class="tag" :class="statusClass(expense.status)" x-text="statusLabel(expense.status)"></span>
+                                    </td>
+                                    <td>
+                                        <div class="buttons are-small">
+                                            <button class="button" x-show="expense.status === 'DRAFT'"
+                                                    @click="approveExpense(expense)">تأیید</button>
+                                            <button class="button" x-show="expense.status === 'APPROVED'"
+                                                    @click="payExpense(expense)">پرداخت</button>
+                                            <button class="button is-danger is-light"
+                                                    x-show="expense.status === 'DRAFT' || expense.status === 'APPROVED'"
+                                                    @click="cancelExpense(expense)">لغو</button>
+                                            <button class="button" :class="{ 'is-link': expandedExpenseId === expense.id }"
+                                                    @click="toggleAttachments(expense)">پیوست‌ها</button>
+                                        </div>
+                                    </td>
+                                </tr>
+                            </template>
+                            </tbody>
+                        </table>
+                        <div class="notification" x-show="!loading && expenses.length === 0">
+                            هیچ هزینه‌ای با این فیلترها ثبت نشده است.
+                        </div>
+
+                        <template x-for="expense in expenses" :key="'attachments-' + expense.id">
+                            <div class="box" x-show="expandedExpenseId === expense.id" x-cloak>
+                                <h3 class="title is-6">پیوست‌های هزینه (<span x-text="categoryName(expense.categoryId)"></span>)</h3>
+                                <p x-show="attachmentsLoading">در حال بارگذاری...</p>
+                                <table class="table is-fullwidth" x-show="!attachmentsLoading && attachments.length > 0">
+                                    <tbody>
+                                    <template x-for="attachment in attachments" :key="attachment.id">
+                                        <tr>
+                                            <td x-text="attachment.fileName"></td>
+                                            <td dir="ltr" x-text="Math.round(attachment.sizeBytes / 1024) + ' KB'"></td>
+                                            <td>
+                                                <div class="buttons are-small">
+                                                    <button class="button" @click="downloadAttachment(expense, attachment)">دانلود</button>
+                                                    <button class="button is-danger is-light"
+                                                            @click="deleteAttachment(expense, attachment)">حذف</button>
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    </template>
+                                    </tbody>
+                                </table>
+                                <p x-show="!attachmentsLoading && attachments.length === 0">هنوز پیوستی ثبت نشده است.</p>
+                                <div class="field" x-show="expense.status !== 'CANCELLED'">
+                                    <label class="label">افزودن پیوست (رسید/فاکتور - حداکثر ۵ مگابایت)</label>
+                                    <input class="input" type="file" @change="uploadAttachment(expense, $event)">
+                                </div>
+                            </div>
+                        </template>
+
+                        <div class="box">
+                            <h2 class="title is-6">گزارش هزینه‌ها (بازه‌ی جلالی)</h2>
+                            <div class="field is-grouped is-grouped-multiline">
+                                <div class="control">
+                                    <label class="label">سال</label>
+                                    <input class="input" dir="ltr" type="number" x-model="summaryYear" style="width: 6rem">
+                                </div>
+                                <div class="control">
+                                    <label class="label">بازه</label>
+                                    <div class="select">
+                                        <select x-model="summaryPeriodKind">
+                                            <option value="month">ماه</option>
+                                            <option value="quarter">فصل</option>
+                                            <option value="year">کل سال</option>
+                                        </select>
+                                    </div>
+                                </div>
+                                <div class="control" x-show="summaryPeriodKind !== 'year'">
+                                    <label class="label" x-text="summaryPeriodKind === 'month' ? 'شماره‌ی ماه (۱ تا ۱۲)' : 'شماره‌ی فصل (۱ تا ۴)'"></label>
+                                    <input class="input" dir="ltr" type="number" min="1"
+                                           :max="summaryPeriodKind === 'month' ? 12 : 4"
+                                           x-model="summaryPeriodIndex" style="width: 6rem">
+                                </div>
+                                <div class="control">
+                                    <label class="label">گروه‌بندی</label>
+                                    <div class="select">
+                                        <select x-model="summaryGroupBy">
+                                            <option value="category">دسته</option>
+                                            <option value="vendor">طرف حساب</option>
+                                            <option value="paymentMethod">روش پرداخت</option>
+                                        </select>
+                                    </div>
+                                </div>
+                                <div class="control" style="align-self: flex-end">
+                                    <button class="button is-link" @click="loadSummary" :class="{ 'is-loading': summaryLoading }">
+                                        نمایش گزارش
+                                    </button>
+                                </div>
+                            </div>
+
+                            <table class="table is-fullwidth" x-show="summaryRows.length > 0">
+                                <thead>
+                                <tr><th>مورد</th><th>مبلغ</th><th>تعداد</th></tr>
+                                </thead>
+                                <tbody>
+                                <template x-for="(row, index) in summaryRows" :key="index">
+                                    <tr>
+                                        <td x-text="summaryRowLabel(row)"></td>
+                                        <td dir="ltr" x-text="row.total"></td>
+                                        <td dir="ltr" x-text="row.count"></td>
+                                    </tr>
+                                </template>
+                                </tbody>
+                            </table>
+
+                            <div class="notification is-info" x-show="financeSummaryResult" x-cloak>
+                                درآمد بازه: <strong dir="ltr" x-text="financeSummaryResult ? financeSummaryResult.income : ''"></strong> تومان -
+                                هزینه‌ی بازه: <strong dir="ltr" x-text="financeSummaryResult ? financeSummaryResult.expense : ''"></strong> تومان
+                            </div>
+                        </div>
+                    </div>
+                </template>
+            </div>
+        </template>
+    </div>
+</section>
+`)
