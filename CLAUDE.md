@@ -1606,12 +1606,27 @@ above.
   grouping, income-vs-expense). Manually verified end-to-end in a real browser
   (Playwright): full category/vendor/expense/approve/pay/attachment/report
   flow against the dev seed data, screenshots confirmed correct rendering and
-  Jalali period conversion. **Found in passing, not fixed (pre-existing, unrelated
-  to this work, flagged separately per repo discipline):** every WebJar-served
-  `.map` sourcemap request (e.g. `/webjars/alpinejs/.../cdn.min.js.map`)
-  returns HTTP 500 instead of 404 — reproduces on every page that loads
-  Alpine/Bulma via WebJars, including pages that predate this change (e.g.
-  `/finance`), not something introduced here.
+  Jalali period conversion. **Found in passing, then fixed on request:** every
+  missing static resource under `/css/**`, `/js/**`, `/webjars/**` (most
+  visibly a WebJar `.map` sourcemap request, e.g.
+  `/webjars/alpinejs/.../cdn.min.js.map` — browsers/DevTools request these
+  automatically for any page that loads Alpine/Bulma, so this reproduced on
+  every page, not just `/expenses`) was returning HTTP 500 instead of 404.
+  Root cause: `platform.PlatformExceptionHandler`'s fallback
+  `@ExceptionHandler(Exception.class)` caught Spring's
+  `NoResourceFoundException` (thrown by `ResourceHttpRequestHandler` for any
+  unmatched static path) before Spring's own correct 404 handling could run —
+  the catch-all doesn't discriminate exceptions that already know their real
+  HTTP status from genuinely-unexpected ones. Fixed by adding a specific
+  `@ExceptionHandler(NoResourceFoundException.class)` returning a proper 404
+  ProblemDetail (`type` suffix `resource-not-found`) ahead of the generic
+  handler — Spring dispatches to the more specific method automatically, no
+  ordering annotation needed within the same `@RestControllerAdvice`. Covered
+  by `PlatformExceptionHandlerFlowIntegrationTest` (missing static file → 404,
+  missing WebJar sourcemap → 404, existing static file still 200 — this last
+  one guards against the fix accidentally widening to swallow real resources).
+  Pre-existing bug, unrelated to the finance/expense work above other than
+  being noticed while manually verifying `/expenses` in a browser.
 
 ### Open / explicitly deferred
 
