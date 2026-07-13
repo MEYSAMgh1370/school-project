@@ -742,6 +742,69 @@ don't treat its presence as license to sprinkle `@Valid` in ad hoc; if/when
 declarative validation is actually adopted, do it as one deliberate pass across
 all modules, not incrementally per endpoint.)
 
+### VerificationCode
+
+Backs phone/OTP login (a **second login factor**, not a new registration path —
+`MOSHAVERE_PORT_SPEC.md` §3, the first piece ported from the older moshavere
+codebase). Same one-time-use/TTL/nullable-consumed-marker shape as `InviteToken`
+above, deliberately *not* moshavere's `OneToOne` version: a user must be able to
+request a fresh code before an old one expires, which a `OneToOne` row can't
+represent cleanly.
+
+```
+VerificationCodeEntity
+├── id
+├── userId
+├── code          (6 digits)
+├── createdAt
+├── expiresAt     (createdAt + 5 minutes)
+└── consumedAt    (nullable — null means still unredeemed)
+```
+
+Unlike `issueInviteToken` (which reuses a still-valid unredeemed token),
+`IamFacade.requestOtp(phoneNumber)` **always inserts a new row** — and
+`verifyOtp` only ever looks at the single most-recently-created unconsumed row
+for that user, so requesting a fresh code silently supersedes any earlier one
+even if it hasn't expired yet. `requestOtp` 404s with `IamError.PhoneNotRegistered`
+if no `UserEntity` carries that phone number — **this never creates a user or a
+new login path**; a phone number only gets onto an account via the existing
+authenticated `PUT /api/me/phone` (`MeController`/`setPhoneNumber`, §4 User),
+exactly the same security boundary that field already had before OTP existed.
+`verifyOtp(phoneNumber, code)` validates the code (`IamError.OtpExpired` if no
+active code exists or it's past `expiresAt`; `IamError.OtpIncorrect` if it exists
+but doesn't match — deliberately *not* marked consumed on a wrong guess, so the
+user can retry until expiry), marks it consumed, and returns the matched
+`UserProfile`. The Facade stops there — it knows nothing about
+`SecurityContext`/`HttpSession`; establishing the session is `AuthController`'s
+job, the same separation `login`/`authenticate` already has.
+
+Exposed at `POST /api/auth/otp/request` / `POST /api/auth/otp/verify`
+(`iam.shared.AuthController`), both intentionally unauthenticated — same trust
+model as `/api/auth/login`/`/api/auth/activate` (the code itself is the
+credential), and consequently **not** in `SecurityConfig`'s CSRF-exempt list
+(only the Bale webhook, mobile token issuance, and Bearer-authenticated calls are
+exempt — see §7's Mobile Auth entry). `verifyOtp` builds a pre-authenticated
+`UsernamePasswordAuthenticationToken` directly (no password to check —
+`AuthenticationManager` plays no role in this path) and saves it to
+`SecurityContext`/`HttpSession` exactly like `login` does; it does **not** issue
+a JWT — the spec ties OTP to the *session* path specifically, a mobile/JWT
+variant would be a separate, not-yet-asked-for decision.
+
+Delivery is `iam.internal.SmsDriver` — a **concrete class**, not the interface
+the port spec sketched: this codebase's actual convention for a best-effort
+external side-channel is one concrete class that no-ops-and-logs when
+unconfigured (`BaleClient`, `InviteEmailSender`), never a speculative
+interface for a single implementation (§10). Tests reach the generated code via
+`JdbcTemplate` against `iam.verification_codes` directly (same pattern
+`ExpenseManagementFlowIntegrationTest`/`FinancePaymentFlowIntegrationTest` use
+to reach data a Facade deliberately doesn't return), not via a swapped test
+double — the code is never returned in any HTTP response, unauthenticated or
+not. `roshdeandishe.sms.api-key` defaults empty, same convention as
+`roshdeandishe.bale.bot-token`: a real SMS provider is deployment config, not
+missing code. **Not built, per the spec's own explicit flag**: rate-limiting
+repeated OTP requests — a conscious skip (moshavere had none either), not an
+oversight.
+
 ### Role
 
 A named, assignable bundle of permissions — not a user type. Adding a new access
@@ -1748,6 +1811,31 @@ above.
   one guards against the fix accidentally widening to swallow real resources).
   Pre-existing bug, unrelated to the finance/expense work above other than
   being noticed while manually verifying `/expenses` in a browser.
+- **`iam` phone/OTP login extension (built 2026-07-12, `MOSHAVERE_PORT_SPEC.md`
+  §3, step 1 of the moshavere port, build order §8 of that doc)**: a second
+  login factor for a user who already has a phone number on file — see §4's new
+  `VerificationCode` subsection for the full model. `IamFacade.requestOtp`/
+  `verifyOtp`, `POST /api/auth/otp/request`/`/verify`
+  (`iam.shared.AuthController`), new `IamError` cases `PhoneNotRegistered`/
+  `OtpIncorrect`/`OtpExpired`, `iam.internal.SmsDriver` (best-effort,
+  logs-only until `roshdeandishe.sms.api-key` is configured — same convention
+  as `BaleClient`/`InviteEmailSender`, added as a concrete class rather than
+  the interface the port spec sketched, since no second implementation exists
+  yet — §10). **Does not weaken the existing phone-number security model**:
+  `PUT /api/me/phone` remains the only way a phone number gets onto an
+  account (requires an authenticated session), so `requestOtp`/`verifyOtp`
+  can never create a user or a new unauthenticated registration path — only
+  authenticate an existing one, exactly the constraint
+  `MOSHAVERE_PORT_SPEC.md` §2 called out as already-decided. Covered by
+  `OtpLoginFlowIntegrationTest` (happy path establishes a session; both 404
+  `PhoneNotRegistered` paths — request and verify; `OtpIncorrect` does not
+  consume the code, so a correct retry still succeeds; `OtpExpired` for both
+  "no code ever requested" and "code aged past its TTL"). Full suite
+  (90 tests) and `ModularityTests` re-verified green after this change.
+  **Not built, per the spec's own explicit flag**: rate-limiting repeated OTP
+  requests (moshavere had none either — a conscious skip, not an oversight).
+  Remaining build order from the spec: `curriculum` → `studyplan` → `exam`
+  (each a genuinely new module, each requiring its own `new-module` pass).
 - **Finance deepening, phase 3 — parent/student self-view page + admin
   invoices scoping (built 2026-07-13, both on explicit user request)**:
   - **`GET /my-invoices`** (`web.MyInvoicesPageController`, JTE
@@ -1983,7 +2071,16 @@ Jalali-period reports. Built from a user-supplied Persian design document; see
 §7 Done and §4's `Expense` subsection for what shipped and what was explicitly
 scoped out (OCR/AI, budgets, multi-step approval, accounting integration).
 
-**Phase I — Finance deepening, phase 3 (parent/student self-view + guardian
+**Phase I — Moshavere port, step 1 (`iam` phone/OTP login): done.** The first
+of four pieces `MOSHAVERE_PORT_SPEC.md` lays out for porting logic from the
+older moshavere codebase — chosen first per that spec's §8 build order
+because it's the smallest and unblocks nothing else. A second login factor
+for a user with an already-registered phone number, not a new registration
+path — see §4's `VerificationCode` subsection and §7 Done. Remaining steps
+(`curriculum` → `studyplan` → `exam`) are each a genuinely new module and each
+needs its own `new-module` pass before building.
+
+**Phase J — Finance deepening, phase 3 (parent/student self-view + guardian
 invoice scoping): done.** `GET /my-invoices` (the page UX_ROADMAP.md's
 PARENT/STUDENT section had flagged as a natural next slice) plus the
 explicit decision, deferred since the Bale integration (§7 Done, §10), to
@@ -1991,7 +2088,7 @@ scope the admin `GET .../invoices` endpoint to a `PARENT`-only caller's own
 linked children — `SCHOOL_ADMIN`/`FINANCE_ADMIN` visibility is unchanged. See
 §7 Done for the full detail and test coverage.
 
-**Phase J — Custom role management: done.** Resolves §11 Q3. A `SCHOOL_ADMIN`
+**Phase K — Custom role management: done.** Resolves §11 Q3. A `SCHOOL_ADMIN`
 can define a school-scoped custom role as a named subset of the existing fixed
 permission catalog, via a new `iam.RoleController` + `GET /roles` management
 page. `PermissionDecisionService` needed no changes at all — it was already

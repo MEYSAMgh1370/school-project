@@ -109,6 +109,12 @@ roshdeandishe:
     # مقدار تصادفیِ واقعی در محیط/فایل جداگانه ست شود؛ خالی ماندنش یعنی
     # وب‌هوک همیشه 404 می‌دهد (رجوع به کامنت‌های BaleWebhookController)
     webhook-secret: ""
+  sms:
+    # ارسال کد تأیید پیامکی برای ورود با شماره تلفن (iam.internal.SmsDriver).
+    # پیش‌فرض خالی: تا وقتی یک ارائه‌دهنده‌ی واقعی پیامک انتخاب/پیکربندی
+    # نشود (کانفیگ زمان استقرار، نه کد گم‌شده)، SmsDriver فقط لاگ می‌کند و
+    # هیچ تماس HTTPای برقرار نمی‌کند - همان الگوی roshdeandishe.bale.bot-token.
+    api-key: ""
   jwt:
     # صدور/اعتبارسنجی توکن Bearer برای اپ موبایل (additive به session cookie
     # وب - iam.internal.JwtTokenProvider). این مقدار dev-only است؛ در

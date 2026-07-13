@@ -203,6 +203,33 @@ public interface IamFacade {
      */
     RoleInfo createCustomRole(Long schoolId, String code, String displayName, List<String> permissionCodes);
 
+    /**
+     * درخواست یک کد تأیید پیامکی برای شماره‌ی از قبل ثبت‌شده - فاکتور دوم
+     * ورود، نه یک مسیر ثبت‌نام جدید. عمداً هیچ کاربری با این متد ساخته
+     * نمی‌شود؛ شماره تلفن فقط از طریق {@link #setPhoneNumber} (با سشن معتبر)
+     * قابل ثبت است - همان مرز امنیتی‌ای که آن متد از قبل دارد.
+     *
+     * @throws com.example.roshdeandishe.iam.shared.exception.IamException با
+     * IamError.PhoneNotRegistered اگر هیچ کاربری با این شماره ثبت نشده باشد
+     */
+    void requestOtp(String phoneNumber);
+
+    /**
+     * اعتبارسنجی کد تأیید پیامکی. فقط آخرین کدِ مصرف‌نشده‌ی کاربر بررسی
+     * می‌شود (رجوع به VerificationCodeRepository) - درخواست یک کد تازه،
+     * کدهای قبلی را عملاً بی‌اثر می‌کند. این متد فقط دامنه را اعتبارسنجی و
+     * کد را مصرف‌شده علامت می‌زند؛ برقراری Authentication/Session یا صدور
+     * JWT برعهده‌ی caller است (همان تفکیکی که AuthController.login/authenticate
+     * از قبل بین اعتبارسنجی credential و برقراری session دارد) - این Facade
+     * از SecurityContext/HttpSession چیزی نمی‌داند.
+     *
+     * @throws com.example.roshdeandishe.iam.shared.exception.IamException با
+     * IamError.PhoneNotRegistered اگر هیچ کاربری با این شماره ثبت نشده باشد،
+     * IamError.OtpExpired اگر کد فعالی برای این کاربر وجود نداشته باشد یا
+     * منقضی شده باشد، یا IamError.OtpIncorrect اگر کد وارد‌شده نادرست باشد
+     */
+    UserProfile verifyOtp(String phoneNumber, String code);
+
     record UserId(Long value) {
     }
 

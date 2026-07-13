@@ -58,6 +58,12 @@ public final class IamException extends RuntimeException {
                     "Permission ای با کد '" + e.permissionCode() + "' در سیستم تعریف نشده است.";
             case IamError.RoleCodeAlreadyExists e ->
                     "کد نقش '" + e.code() + "' تکراری است.";
+            case IamError.PhoneNotRegistered e ->
+                    "هیچ کاربری با شماره تلفن '" + e.phoneNumber() + "' ثبت نشده است.";
+            case IamError.OtpIncorrect e ->
+                    "کد تأیید وارد‌شده برای شماره '" + e.phoneNumber() + "' نادرست است.";
+            case IamError.OtpExpired e ->
+                    "کد تأیید فعالی برای شماره '" + e.phoneNumber() + "' وجود ندارد یا منقضی شده است.";
         };
     }
 }

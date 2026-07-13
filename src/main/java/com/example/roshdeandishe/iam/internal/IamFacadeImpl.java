@@ -28,6 +28,8 @@ class IamFacadeImpl implements IamFacade {
     private static final int INVITE_TOKEN_BYTES = 32;
     private static final long INVITE_TOKEN_TTL_DAYS = 7;
     private static final int MIN_PASSWORD_LENGTH = 8;
+    private static final int OTP_LENGTH = 6;
+    private static final long OTP_TTL_MINUTES = 5;
     private static final SecureRandom SECURE_RANDOM = new SecureRandom();
     // §9: کدهای نقش UPPER_SNAKE_CASE هستند - همین قرارداد روی نقش‌های
     // سفارشی هم اجباری می‌شود تا در کنار نقش‌های سیستمی یکدست بمانند
@@ -41,10 +43,12 @@ class IamFacadeImpl implements IamFacade {
     private final SchoolMembershipRepository schoolMembershipRepository;
     private final SchoolEntitlementRepository schoolEntitlementRepository;
     private final InviteTokenRepository inviteTokenRepository;
+    private final VerificationCodeRepository verificationCodeRepository;
     private final AccessDecisionService accessDecisionService;
     private final PermissionDecisionService permissionDecisionService;
     private final PasswordEncoder passwordEncoder;
     private final InviteEmailSender inviteEmailSender;
+    private final SmsDriver smsDriver;
 
     IamFacadeImpl(
             UserRepository userRepository,
@@ -55,10 +59,12 @@ class IamFacadeImpl implements IamFacade {
             SchoolMembershipRepository schoolMembershipRepository,
             SchoolEntitlementRepository schoolEntitlementRepository,
             InviteTokenRepository inviteTokenRepository,
+            VerificationCodeRepository verificationCodeRepository,
             AccessDecisionService accessDecisionService,
             PermissionDecisionService permissionDecisionService,
             PasswordEncoder passwordEncoder,
-            InviteEmailSender inviteEmailSender
+            InviteEmailSender inviteEmailSender,
+            SmsDriver smsDriver
     ) {
         this.userRepository = userRepository;
         this.roleRepository = roleRepository;
@@ -68,10 +74,12 @@ class IamFacadeImpl implements IamFacade {
         this.schoolMembershipRepository = schoolMembershipRepository;
         this.schoolEntitlementRepository = schoolEntitlementRepository;
         this.inviteTokenRepository = inviteTokenRepository;
+        this.verificationCodeRepository = verificationCodeRepository;
         this.accessDecisionService = accessDecisionService;
         this.permissionDecisionService = permissionDecisionService;
         this.passwordEncoder = passwordEncoder;
         this.inviteEmailSender = inviteEmailSender;
+        this.smsDriver = smsDriver;
     }
 
     @Override
@@ -126,6 +134,55 @@ class IamFacadeImpl implements IamFacade {
                 .orElseThrow(() -> new IamException(new IamError.UserNotFound(userId.value())));
         user.setPhoneNumber(phoneNumber);
         userRepository.save(user);
+    }
+
+    @Override
+    @Transactional
+    public void requestOtp(String phoneNumber) {
+        UserEntity user = userRepository.findByPhoneNumber(phoneNumber)
+                .orElseThrow(() -> new IamException(new IamError.PhoneNotRegistered(phoneNumber)));
+
+        Instant now = Instant.now();
+        String code = generateOtp();
+        verificationCodeRepository.save(
+                new VerificationCodeEntity(user.getId(), code, now, now.plus(OTP_TTL_MINUTES, ChronoUnit.MINUTES))
+        );
+
+        // best-effort، مثل ایمیل دعوت: شکست ارسال، ردیف کد را باطل نمی‌کند -
+        // در dev، کد از لاگ SmsDriver خوانده می‌شود
+        smsDriver.sendOtp(phoneNumber, code);
+    }
+
+    @Override
+    @Transactional
+    public UserProfile verifyOtp(String phoneNumber, String code) {
+        UserEntity user = userRepository.findByPhoneNumber(phoneNumber)
+                .orElseThrow(() -> new IamException(new IamError.PhoneNotRegistered(phoneNumber)));
+
+        // فقط آخرین کدِ مصرف‌نشده معتبر است - رجوع به VerificationCodeRepository
+        VerificationCodeEntity verificationCode = verificationCodeRepository
+                .findFirstByUserIdAndConsumedAtIsNullOrderByCreatedAtDesc(user.getId())
+                .orElseThrow(() -> new IamException(new IamError.OtpExpired(phoneNumber)));
+
+        if (verificationCode.isExpired(Instant.now())) {
+            throw new IamException(new IamError.OtpExpired(phoneNumber));
+        }
+        if (!verificationCode.getCode().equals(code)) {
+            // عمداً مصرف‌شده علامت زده نمی‌شود - کاربر می‌تواند تا قبل از
+            // انقضا دوباره تلاش کند
+            throw new IamException(new IamError.OtpIncorrect(phoneNumber));
+        }
+
+        verificationCode.setConsumedAt(Instant.now());
+        verificationCodeRepository.save(verificationCode);
+
+        return new UserProfile(new UserId(user.getId()), user.getEmail(), user.getFullName());
+    }
+
+    private static String generateOtp() {
+        int bound = (int) Math.pow(10, OTP_LENGTH);
+        int value = SECURE_RANDOM.nextInt(bound);
+        return String.format("%0" + OTP_LENGTH + "d", value);
     }
 
     @Override
