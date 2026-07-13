@@ -52,6 +52,12 @@ public final class IamException extends RuntimeException {
                     "شماره '" + e.phoneNumber() + "' قبلاً برای حساب کاربری دیگری ثبت شده است.";
             case IamError.InvalidCredentials e ->
                     "ورود ناموفق: " + e.reason();
+            case IamError.InvalidRoleDefinition e ->
+                    "تعریف نقش نامعتبر است: " + e.reason();
+            case IamError.InvalidPermissionCode e ->
+                    "Permission ای با کد '" + e.permissionCode() + "' در سیستم تعریف نشده است.";
+            case IamError.RoleCodeAlreadyExists e ->
+                    "کد نقش '" + e.code() + "' تکراری است.";
         };
     }
 }

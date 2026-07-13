@@ -66,11 +66,14 @@ coherent as more pages are added by different people/sessions over time.
   but never what the backend permits — permission checks always evaluate all of
   the user's active roles server-side (CLAUDE.md §11 Q2). Never build
   per-request "acting as role" logic off the back of it.
-- **Assignable roles.** Any UI offering a role picker lists exactly
-  `STUDENT`, `TEACHER`, `PARENT`, `SCHOOL_ADMIN`, `FINANCE_ADMIN` with Persian
-  labels. `PLATFORM_ADMIN` never appears — it has no working permission-check
-  path (CLAUDE.md §7 item 1) and granting it would silently do nothing
-  enforceable.
+- **Assignable roles.** Any UI offering a role picker lists the five system
+  roles — `STUDENT`, `TEACHER`, `PARENT`, `SCHOOL_ADMIN`, `FINANCE_ADMIN` —
+  with Persian labels, **plus** (since 2026-07-13) any custom roles the
+  school itself has created via `/roles` (CLAUDE.md §4's Role subsection).
+  `PLATFORM_ADMIN` never appears — it has no working permission-check path
+  (CLAUDE.md §7 item 1) and granting it would silently do nothing
+  enforceable; it's also filtered out of `GET .../roles` server-side, not
+  just hidden client-side.
 
 ## 3. Page inventory per persona
 
@@ -164,6 +167,17 @@ coherent as more pages are added by different people/sessions over time.
    calling the server). Navbar link visible for the same roles as `/finance`
    (`SCHOOL_ADMIN`/`FINANCE_ADMIN`) — see CLAUDE.md §4's `Expense` subsection
    for the full domain model and lifecycle.
+9. **Roles & permissions** — `/roles` (`web.RolesPageController`) — **built
+   2026-07-13**, resolving CLAUDE.md §11 Q3. Lists every role visible to the
+   school (five system roles, read-only, plus any custom roles already
+   created) with its permission set, and a form to create a new custom role
+   from a checklist of the existing fixed permission catalog — entirely
+   client-side against the new `iam.RoleController` (`ROLE_MANAGE`,
+   `SCHOOL_ADMIN`-only). `/people`'s role-assignment dropdown was extended to
+   fetch the same role list, so a freshly-created custom role is immediately
+   assignable there too — see CLAUDE.md §4's Role subsection for the full
+   model and the three explicit scoping decisions. Navbar link visible for
+   `SCHOOL_ADMIN` only, same as `/people`.
 6. **School registration** — `/schools/new` — **built.** First shipped (PR #16)
    as an inline form on the dashboard; moved to this dedicated page 2026-07-06
    because real people don't casually "create a school" from their own
@@ -209,18 +223,31 @@ yet either — both need a real product decision before a `Grade` shape can be
 designed. A PARENT's own self-service data (which children are theirs, their
 tuition status) is available today through the Bale bot, and — since the
 2026-07-12 payments deepening — also via `GET /api/me/schools/{schoolId}/invoices`
-(`finance.MyInvoicesController`, CLAUDE.md §4's `Invoice` subsection): the API
-exists for both STUDENT (own invoices) and PARENT (linked wards' invoices), but
-no dedicated web page consumes it yet — a `/my-invoices`-style page is a natural
-next slice, not built speculatively ahead of being asked. Neither surface is a
+(`finance.MyInvoicesController`, CLAUDE.md §4's `Invoice` subsection). **A
+dedicated page now exists: `/my-invoices`** (`web.MyInvoicesPageController`,
+built 2026-07-13 on explicit request) — read-only, for both STUDENT (own
+invoices) and PARENT (linked wards' invoices), no new REST behind it. Navbar
+link visible while the selected role is `STUDENT` or `PARENT`. See CLAUDE.md
+§7 Done ("Finance deepening, phase 3"). Neither this nor the Bale bot is a
 substitute for a real `/grades` web page.
+
+**Also as of 2026-07-13:** the admin `GET .../invoices` endpoint (used by
+`/finance`, item 5 above) is no longer unscoped for `PARENT` callers — a
+`PARENT` with no `SCHOOL_ADMIN`/`FINANCE_ADMIN` role at the school now sees
+only their own linked children's invoices there too, closing the gap this
+section previously left open (a parent could otherwise see the whole
+school's tuition data via `/finance` even without `/my-invoices` existing).
+`SCHOOL_ADMIN`/`FINANCE_ADMIN` visibility on `/finance` is unchanged.
 
 ### Explicitly out of scope
 
 `PLATFORM_ADMIN` UI, entitlement-toggling/school-suspension UI (no REST
-endpoint exists for either — CLAUDE.md §7 item 1, §10), custom-role management,
-any B2C module UI (AI Tutor, Exam Prep, etc. — CLAUDE.md §11 Q7). All gated
-behind explicit backend work that hasn't happened.
+endpoint exists for either — CLAUDE.md §7 item 1, §10), any B2C module UI
+(AI Tutor, Exam Prep, etc. — CLAUDE.md §11 Q7). All gated behind explicit
+backend work that hasn't happened. (Custom-role management shipped
+2026-07-13 — see item 9 above and CLAUDE.md §11 Q3 — and is no longer on
+this list; editing an *existing* system role's permissions through the UI
+remains out of scope, a deliberate part of that same decision.)
 
 ## 4. Slicing rationale
 

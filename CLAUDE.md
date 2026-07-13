@@ -190,6 +190,15 @@ com.example.roshdeandishe
 │   ├── MembershipController.java   (REST: create/list memberships, toggle active,
 │   │                                 issue invite-token —
 │   │                                 @RequiresPermission("MEMBERSHIP_MANAGE"))
+│   ├── RoleController.java         (REST: GET permissions (full fixed catalog),
+│   │                                 GET/POST roles (system + this school's
+│   │                                 custom roles; POST creates a new custom
+│   │                                 role) — @RequiresPermission("ROLE_MANAGE"),
+│   │                                 SCHOOL_ADMIN only, same sensitivity tier
+│   │                                 as MEMBERSHIP_MANAGE. Built 2026-07-13,
+│   │                                 resolving §11 Q3 — see §4's Role
+│   │                                 subsection for the three explicit
+│   │                                 decisions behind it)
 │   ├── MeController.java           (REST: GET /api/me, /api/me/memberships,
 │   │                                 PUT /api/me/phone — authenticated-only,
 │   │                                 deliberately NO permission/module
@@ -214,7 +223,10 @@ com.example.roshdeandishe
 │   │   │                                activation link; deliberately in
 │   │   │                                iam/internal, not platform — only iam
 │   │   │                                sends email, no generic abstraction)
-│   │   ├── RoleEntity / RoleRepository
+│   │   ├── RoleEntity / RoleRepository (schoolId nullable — null = system
+│   │   │                                role, non-null = a specific school's
+│   │   │                                custom role; unique(code, school_id),
+│   │   │                                see §4's Role subsection)
 │   │   ├── PermissionEntity / PermissionRepository
 │   │   ├── RolePermissionEntity / RolePermissionRepository
 │   │   ├── SchoolMembershipEntity / SchoolMembershipRepository
@@ -372,7 +384,15 @@ com.example.roshdeandishe
     │                                  invoices/backfill — first controller
     │                                  carrying BOTH §5 layers:
     │                                  @RequiresModule("FINANCE") class-level +
-    │                                  @RequiresPermission per method)
+    │                                  @RequiresPermission per method. GET
+    │                                  invoices now also depends on IamFacade +
+    │                                  AcademicFacade (2026-07-13, explicit
+    │                                  decision — see §4's StudentGuardian note):
+    │                                  a caller whose only active role at the
+    │                                  school is PARENT sees only their linked
+    │                                  wards' invoices; SCHOOL_ADMIN/
+    │                                  FINANCE_ADMIN keep full school-wide
+    │                                  visibility)
     ├── MyInvoicesController.java    (GET /api/me/schools/{schoolId}/invoices —
     │                                  same trust model as iam.MeController/
     │                                  academic.MyEnrollmentController: no
@@ -380,8 +400,10 @@ com.example.roshdeandishe
     │                                  scoped only to the caller's own
     │                                  enrollment + StudentGuardianEntity-linked
     │                                  wards, composed via AcademicFacade. The
-    │                                  existing admin GET .../invoices stays
-    │                                  unscoped by guardian, unchanged, per §10)
+    │                                  path/header split explained there is
+    │                                  unchanged; only the admin endpoint's own
+    │                                  scoping changed, see FinanceController
+    │                                  above)
     ├── ExpenseController.java       (REST: expense-categories, vendors,
     │                                  expenses (CRUD + approve/pay/cancel
     │                                  transitions), attachments (multipart
@@ -524,10 +546,12 @@ com.example.roshdeandishe
     ├── StudentsPageController.java    dashboard, see UX_ROADMAP.md)
     ├── FinancePageController.java     lists/adds/toggles a school's
     ├── ExpensesPageController.java    memberships and issues invite tokens;
-    ├── NavbarModel.java               GET /classes (second slice) creates/lists
-    ├── NavbarModelAssembler.java      a school's classes; GET /students (third
-    └── RoleLabels.java                slice) enrolls/lists students into a class;
-                                  GET /finance (fourth slice) sets/views the
+    ├── MyInvoicesPageController.java  GET /classes (second slice) creates/lists
+    ├── RolesPageController.java       a school's classes; GET /students (third
+    ├── NavbarModel.java               slice) enrolls/lists students into a class;
+    ├── NavbarModelAssembler.java      GET /my-invoices and GET /roles are both
+    └── RoleLabels.java                described separately below; GET /finance
+                                  (fourth slice) sets/views the
                                   tuition fee, lists invoices, records payments,
                                   and runs invoice backfill; GET /expenses
                                   (finance-module extension, not a separate UI
@@ -575,6 +599,22 @@ com.example.roshdeandishe
                                   codes never reach the UI, UX_ROADMAP.md §2).
                                   No Facade, no entities, no REST, no exception
                                   handler of its own; nothing depends on it.
+                                  MyInvoicesPageController (GET /my-invoices,
+                                  built 2026-07-13) is a thin shell like the
+                                  rest — STUDENT's own invoices + PARENT's
+                                  linked wards' invoices, entirely client-side
+                                  against the pre-existing
+                                  finance.MyInvoicesController (no new REST,
+                                  no new `web`→finance/academic Java
+                                  dependency). See CLAUDE.md §7 Done, "Finance
+                                  deepening, phase 3". RolesPageController
+                                  (GET /roles, also built 2026-07-13) is
+                                  another thin shell — lists every role
+                                  visible to the school plus a custom-role
+                                  creation form, entirely client-side against
+                                  the new iam.RoleController (§4's Role
+                                  subsection, §11 Q3). Navbar link visible
+                                  for SCHOOL_ADMIN only.
 │
 └── bale/                       ← Bale (بله) messenger bot integration — outbound
     ├── BaleFacade.java             notifications + inbound self-service queries.
@@ -706,18 +746,84 @@ all modules, not incrementally per endpoint.)
 
 A named, assignable bundle of permissions — not a user type. Adding a new access
 level is a data change (insert a `RoleEntity` + `RolePermissionEntity` rows), not a
-code change.
+code change. This is also, since 2026-07-13, literally true for schools themselves:
+a `SCHOOL_ADMIN` can insert their own `RoleEntity` + `RolePermissionEntity` rows
+through `iam.RoleController` (§3) without any code change — see **Custom roles**
+below.
 
 ```
 RoleEntity
 ├── id
-├── code (STUDENT, TEACHER, PARENT, SCHOOL_ADMIN, FINANCE_ADMIN, PLATFORM_ADMIN)
-└── displayName
+├── code (STUDENT, TEACHER, PARENT, SCHOOL_ADMIN, FINANCE_ADMIN, PLATFORM_ADMIN —
+│         these six are the *system* roles; a school's own custom role codes
+│         also live in this same column/table, see below)
+├── displayName
+└── schoolId (nullable — null means a system role, shared by every school;
+              non-null means a custom role belonging to exactly that school)
 ```
 
 `PLATFORM_ADMIN` is seeded as a role but has **no working permission-check path** —
 see §7. Don't assume granting someone `PLATFORM_ADMIN` today does anything
-enforceable.
+enforceable. It's also filtered out of every role listing exposed to a school
+(`IamFacade.listRoles`, same convention as `web.RoleLabels` never rendering it).
+
+#### Custom roles
+
+Resolves **Open Question 3** (§11): *"Can a school define custom roles, or only
+choose from system-defined ones?"* Answered 2026-07-13 with three explicit,
+narrow decisions (each was a real fork, not a default — see §11 Q3 for the
+options considered and rejected):
+
+1. **Per-school, not global.** A custom role's `schoolId` scopes it to exactly
+   the school that created it — `IamFacade.listRoles(schoolId)` only returns
+   system roles (`schoolId = null`) plus that one school's own custom roles.
+   Two different schools can each create a role coded `LIBRARIAN` without any
+   collision — the DB's `unique(code, school_id)` constraint (§3's `RoleEntity`
+   note) permits that, since neither `code` is null in either row. What the
+   constraint can't express is "a custom code must never collide with a
+   *system* role's code" (system rows all share `schoolId = null`, and SQL
+   unique constraints never treat two `NULL`s as equal to each other) — that
+   check is application-level, in `IamFacadeImpl.createCustomRole`.
+2. **Existing permissions only, never invented ones.** `createCustomRole`'s
+   `permissionCodes` must each resolve to a real row in `iam.permissions` —
+   `IamError.InvalidPermissionCode` otherwise. A school cannot type in a
+   permission code that doesn't correspond to any `@RequiresPermission(...)`
+   check anywhere in the code; doing so would look like it restricts/grants
+   something in the UI while actually being a no-op everywhere.
+3. **System roles are immutable through this path.** There is no "edit an
+   existing role's permissions" operation — only `createCustomRole` (insert a
+   new row). `SCHOOL_ADMIN`'s own grants can't be weakened by mistake through
+   this UI, and no hardcoded role-code check elsewhere in the codebase (the
+   guardian-eligibility check requires literally `PARENT`, the invoice-scoping
+   in `finance.FinanceController` checks literally `SCHOOL_ADMIN`/`FINANCE_ADMIN`
+   — §4's StudentGuardian note, §3's `FinanceController` entry) is affected by
+   custom roles at all: a custom role only ever unlocks whatever its selected
+   permission codes gate through the generic `@RequiresPermission` mechanism
+   (§5) — `PermissionDecisionService` (§3) was already fully data-driven, with
+   zero role-code awareness, so this "just worked" the moment `RolePermissionEntity`
+   rows existed for a custom role; no change was needed there.
+
+`IamFacade.createCustomRole(schoolId, code, displayName, permissionCodes)` —
+`code` must match `^[A-Z][A-Z0-9_]*$` (§9's `UPPER_SNAKE_CASE` convention,
+enforced here too) and not collide with any system role code or this school's
+own existing custom role codes (`IamError.RoleCodeAlreadyExists`, 409);
+`displayName` and `permissionCodes` must be non-blank/non-empty
+(`IamError.InvalidRoleDefinition`, 400). Exposed at
+`POST /api/admin/schools/{schoolId}/roles`; `GET` on the same path lists roles,
+`GET .../permissions` lists the full fixed permission catalog (for building a
+checklist UI) — all three gated by the new `ROLE_MANAGE` permission (below),
+`SCHOOL_ADMIN`-only, same sensitivity tier as `MEMBERSHIP_MANAGE`.
+`IamFacade.createMembership`'s role lookup (used by `MembershipController`,
+`AcademicFacade.enrollStudent`, etc.) now resolves a `roleCode` against *this
+school's own* custom roles first, falling back to system roles — never another
+school's custom role, so a role created for School A can never be assigned at
+School B (`IamError.RoleNotFound` if attempted).
+**Management UI:** `GET /roles` (`web.RolesPageController`, §7 Done) — lists
+every role visible to the school with its permission set, and a form to create
+a new custom role from a permission checklist. `/people`'s own role-assignment
+dropdown (`people.js`) fetches the same `GET .../roles` endpoint and merges
+custom roles in alongside the five hardcoded system-role options, so a
+freshly-created custom role is immediately assignable, not just visible.
 
 ### Permission
 
@@ -729,12 +835,13 @@ PermissionEntity
 ├── id
 ├── code (GRADES_VIEW, GRADES_EDIT, FINANCE_VIEW, FINANCE_MANAGE,
 │         MEMBERSHIP_MANAGE, STUDENT_ENROLL, CLASS_MANAGE, CLASS_VIEW,
-│         GUARDIAN_MANAGE, EXPENSE_VIEW, EXPENSE_MANAGE, EXPENSE_APPROVE)
+│         GUARDIAN_MANAGE, EXPENSE_VIEW, EXPENSE_MANAGE, EXPENSE_APPROVE,
+│         ROLE_MANAGE)
 └── displayName
 
-RolePermissionEntity  (join table: which roles have which permissions)
-├── roleId
-└── permissionId
+RolePermissionEntity  (join table: which roles have which permissions — for a
+├── roleId                          custom role, these are the exact rows
+└── permissionId                    IamFacade.createCustomRole inserts)
 ```
 
 Current grants (seeded in `IamSeedDataRunner`):
@@ -744,8 +851,14 @@ Current grants (seeded in `IamSeedDataRunner`):
 | `STUDENT` | `GRADES_VIEW` |
 | `TEACHER` | `GRADES_VIEW`, `GRADES_EDIT`, `STUDENT_ENROLL`, `CLASS_VIEW` |
 | `PARENT` | `GRADES_VIEW`, `FINANCE_VIEW` |
-| `SCHOOL_ADMIN` | `GRADES_VIEW`, `FINANCE_VIEW`, `FINANCE_MANAGE`, `MEMBERSHIP_MANAGE`, `CLASS_MANAGE`, `CLASS_VIEW`, `STUDENT_ENROLL`, `GUARDIAN_MANAGE`, `EXPENSE_VIEW`, `EXPENSE_MANAGE`, `EXPENSE_APPROVE` |
+| `SCHOOL_ADMIN` | `GRADES_VIEW`, `FINANCE_VIEW`, `FINANCE_MANAGE`, `MEMBERSHIP_MANAGE`, `CLASS_MANAGE`, `CLASS_VIEW`, `STUDENT_ENROLL`, `GUARDIAN_MANAGE`, `EXPENSE_VIEW`, `EXPENSE_MANAGE`, `EXPENSE_APPROVE`, `ROLE_MANAGE` |
 | `FINANCE_ADMIN` | `FINANCE_VIEW`, `FINANCE_MANAGE`, `EXPENSE_VIEW`, `EXPENSE_MANAGE` |
+
+**`ROLE_MANAGE` (added 2026-07-13, for custom role management — see §4's
+Role subsection):** deliberately `SCHOOL_ADMIN`-only, not granted to
+`FINANCE_ADMIN` — the ability to define what a role can do is as sensitive as
+`MEMBERSHIP_MANAGE` (who holds a role), arguably more so, since it shapes what
+*every* role, including ones not yet created, is allowed to touch.
 
 **`EXPENSE_VIEW`/`EXPENSE_MANAGE`/`EXPENSE_APPROVE` (added for expense
 management, §4's Expense note):** `EXPENSE_APPROVE` is deliberately withheld
@@ -948,14 +1061,19 @@ are the read side — `listWards` is what the Bale bot's "my children" command
 and the outbound invoice-notification listener both actually use.
 Exposed at `POST`/`GET /api/admin/schools/{schoolId}/students/{studentId}/guardians`
 (`GUARDIAN_MANAGE`, `SCHOOL_ADMIN`-only — see §4's Permission section).
-**Deliberately not wired into `/finance`'s existing `GET invoices` endpoint** —
-that endpoint still returns every invoice in the school to anyone with
-`FINANCE_VIEW` (including `PARENT`, unscoped by guardian), unchanged by this
-work. Scoping that endpoint to "only this parent's own children's invoices" is
-a separate, real decision about existing shipped behavior — not something to
-change silently as a side effect of adding the bot. The Bale bot itself never
-calls that endpoint; it composes `listWards` + `FinanceFacade.listInvoices`
-directly, filtered to just that guardian's own wards.
+**Was deliberately not wired into `/finance`'s existing `GET invoices` endpoint
+at Bale-integration time** — that endpoint returned every invoice in the
+school to anyone with `FINANCE_VIEW` (including `PARENT`, unscoped by
+guardian), unchanged by the Bale work. Scoping it was flagged as "a separate,
+real decision about existing shipped behavior, not a free extension of adding
+the guardian relationship" — see §10. **That decision was made explicitly on
+2026-07-13** (§7 Done, "Finance deepening, phase 3"): `FinanceController.listInvoices`
+now checks the caller's active roles at the school (`IamFacade.findMembershipsByUser`)
+and, when `PARENT` is the only one present (no `SCHOOL_ADMIN`/`FINANCE_ADMIN`),
+scopes the result to `AcademicFacade.listWards(userId, schoolId)` instead of
+the full school list. The Bale bot itself still never calls this endpoint —
+it composes `listWards` + `FinanceFacade.listInvoices` directly, unaffected by
+this change.
 
 ### TuitionFee (owned by `finance`)
 
@@ -1011,8 +1129,11 @@ credit-balance concept. Each call saves a `PaymentEntity` (`finance/internal`:
 `invoiceId, schoolId, amount, method, note nullable, recordedByUserId nullable,
 paidAt`) and publishes `PaymentRecordedEvent` for the audit trail.
 `FinanceFacade.listInvoicesForStudents(schoolId, studentIds)` backs the guardian/
-student self-view (`MyInvoicesController`, §3) — deliberately separate from the
-existing admin `GET .../invoices`, which stays unscoped by guardian per §10.
+student self-view (`MyInvoicesController`, §3) and, since 2026-07-13, is also
+reused by `FinanceController.listInvoices` itself for PARENT-only callers (§3's
+`FinanceController` entry, §10) — the admin endpoint no longer stays unscoped
+by guardian; `SCHOOL_ADMIN`/`FINANCE_ADMIN` still get the unscoped, full-school
+`FinanceFacade.listInvoices(schoolId)` call.
 
 ### Expense, ExpenseCategory, Vendor, ExpenseAttachment (owned by `finance`)
 
@@ -1627,6 +1748,90 @@ above.
   one guards against the fix accidentally widening to swallow real resources).
   Pre-existing bug, unrelated to the finance/expense work above other than
   being noticed while manually verifying `/expenses` in a browser.
+- **Finance deepening, phase 3 — parent/student self-view page + admin
+  invoices scoping (built 2026-07-13, both on explicit user request)**:
+  - **`GET /my-invoices`** (`web.MyInvoicesPageController`, JTE
+    `my-invoices.jte`, `static/js/my-invoices.js`) — the page UX_ROADMAP.md's
+    PARENT/STUDENT section had already flagged as "a natural next slice, not
+    built speculatively ahead of being asked." A thin shell like every other
+    management page, reading the pre-existing (2026-07-12)
+    `GET /api/me/schools/{schoolId}/invoices` (`finance.MyInvoicesController`)
+    — no new REST, no new Java module dependency. Read-only: no payment
+    recording (that stays admin/finance-admin-only on `/finance`). Navbar link
+    visible while the selected role is `STUDENT` or `PARENT` — the first
+    navbar link for either role. `TenantResolverFilter` excludes `/my-invoices`
+    the page route for the same reason it excludes `/finance` — the REST call
+    underneath is itself already excluded as part of the `/api/me` prefix.
+    Covered by `MyInvoicesPageFlowIntegrationTest` (page shell only — the REST
+    scoping itself was already covered end-to-end by
+    `FinancePaymentFlowIntegrationTest.myInvoicesReturnsOwnAndWardsInvoicesOnly`).
+  - **Admin `GET .../invoices` scoped to a guardian's own children** — the
+    decision CLAUDE.md §10 had explicitly withheld pending a real ask
+    (`FinanceController.listInvoices` previously returned every invoice in
+    the school to any `FINANCE_VIEW` holder, including `PARENT`). Now checks
+    the caller's active roles at the school
+    (`IamFacade.findMembershipsByUser`): if `SCHOOL_ADMIN` or `FINANCE_ADMIN`
+    is among them, behavior is unchanged (full school-wide
+    `FinanceFacade.listInvoices`); otherwise (a `PARENT`-only caller — the
+    only other role holding `FINANCE_VIEW`, §4's Permission table) the
+    response is scoped to `FinanceFacade.listInvoicesForStudents(schoolId,
+    AcademicFacade.listWards(userId, schoolId))` — the same facade method
+    `MyInvoicesController` already used. `FinanceController` gained `IamFacade`
+    + `AcademicFacade` as constructor dependencies (both already legal —
+    `MyInvoicesController` in the same module already depended on both).
+    `/finance` and `/expenses` needed no JS changes: `finance.js` already
+    renders whatever the endpoint returns and already best-effort-resolves
+    student names. Covered by
+    `FinancePaymentFlowIntegrationTest.adminInvoicesEndpointScopesParentToOwnWardsButAdminKeepsFullVisibility`
+    (admin sees a stranger-family invoice the parent doesn't; parent sees
+    exactly their linked child's invoice and nothing else; a `STUDENT` caller
+    still gets a plain 403 since `STUDENT` never held `FINANCE_VIEW`).
+    Manually verified end-to-end in a real browser (Playwright): admin
+    enrolls two unrelated students and links a parent to only one, parent's
+    `/finance` and `/my-invoices` both show exactly one invoice, admin's
+    `/finance` shows both.
+- **Custom role management (built 2026-07-13, on explicit user request,
+  resolving §11 Q3)**: a `SCHOOL_ADMIN` can now define their own role (e.g.
+  "کتابدار"/Librarian) as a named subset of the existing fixed permission
+  catalog — see §4's Role subsection ("Custom roles") for the full model and
+  the three explicit decisions behind it (per-school scoping, existing
+  permissions only, system roles stay immutable through this path).
+  `RoleEntity` gained a nullable `schoolId` and its unique constraint moved
+  from single-column `code` to composite `(code, school_id)` (§3). New
+  `iam.RoleController` (`GET .../permissions`, `GET`/`POST .../roles`, all
+  `ROLE_MANAGE`-gated, `SCHOOL_ADMIN`-only) and `IamFacade.listPermissions` /
+  `listRoles` / `createCustomRole`. `IamFacade.createMembership`'s role
+  lookup now resolves a `roleCode` against the calling school's own custom
+  roles first, then system roles — a role created for one school can never
+  be assigned at another (`RoleNotFound` otherwise). Three new sealed
+  `IamError` cases (`InvalidRoleDefinition`, `InvalidPermissionCode`,
+  `RoleCodeAlreadyExists`) plus their `IamProblemResolver`/`IamException`
+  switch arms. New `GET /roles` management page (`web.RolesPageController`,
+  §3) — lists every role visible to the school with its permission set, plus
+  a create-role form built from a permission checklist; navbar link
+  `SCHOOL_ADMIN`-only. `/people`'s role-assignment dropdown (`people.js`)
+  now also fetches `GET .../roles` and merges custom roles in alongside the
+  five hardcoded system-role options — without this, a freshly-created
+  custom role would be visible but never actually assignable to anyone.
+  `PermissionDecisionService` needed **zero changes**: it was already fully
+  data-driven off `role_permissions` with no role-code awareness, so a
+  custom role started being enforced correctly the moment its
+  `RolePermissionEntity` rows existed — this is the same generic mechanism
+  every system role already runs through (§5). Covered by
+  `RoleManagementFlowIntegrationTest` (system roles/permissions listed
+  correctly with `PLATFORM_ADMIN` filtered out, non-`ROLE_MANAGE` caller
+  gets 403, code collision against a system role and against the same
+  school's own custom role both 409, invalid code format/blank
+  fields/empty permission list/unknown permission code all 400, a custom
+  role assigned via `POST .../memberships` grants *exactly* its selected
+  permission — proven by a real endpoint call succeeding — and *nothing*
+  else — proven by an unrelated endpoint call 403'ing, and a second
+  self-service school can neither see nor assign the first school's custom
+  role). Manually verified end-to-end in a real browser: created a
+  "کتابدار" role scoped to `CLASS_VIEW` only on `/roles`, confirmed it
+  appeared with the right permission tag, then assigned it to a new member
+  on `/people` and confirmed the member row rendered the Persian
+  `displayName` ("کتابدار"), not the raw code.
 
 ### Open / explicitly deferred
 
@@ -1778,6 +1983,22 @@ Jalali-period reports. Built from a user-supplied Persian design document; see
 §7 Done and §4's `Expense` subsection for what shipped and what was explicitly
 scoped out (OCR/AI, budgets, multi-step approval, accounting integration).
 
+**Phase I — Finance deepening, phase 3 (parent/student self-view + guardian
+invoice scoping): done.** `GET /my-invoices` (the page UX_ROADMAP.md's
+PARENT/STUDENT section had flagged as a natural next slice) plus the
+explicit decision, deferred since the Bale integration (§7 Done, §10), to
+scope the admin `GET .../invoices` endpoint to a `PARENT`-only caller's own
+linked children — `SCHOOL_ADMIN`/`FINANCE_ADMIN` visibility is unchanged. See
+§7 Done for the full detail and test coverage.
+
+**Phase J — Custom role management: done.** Resolves §11 Q3. A `SCHOOL_ADMIN`
+can define a school-scoped custom role as a named subset of the existing fixed
+permission catalog, via a new `iam.RoleController` + `GET /roles` management
+page. `PermissionDecisionService` needed no changes at all — it was already
+fully data-driven, so custom roles are enforced by the same generic mechanism
+every system role runs through. See §4's Role subsection and §7 Done for the
+full detail, the three explicit scoping decisions, and test coverage.
+
 ---
 
 ## 9. Naming Conventions
@@ -1834,12 +2055,13 @@ scoped out (OCR/AI, budgets, multi-step approval, accounting integration).
   grading split and exam planning are explicitly resolved — see §11 Q8. The
   `GRADES_VIEW`/`GRADES_EDIT` permissions already existing in seed data is not
   license to build the feature they imply.
-- **Do not scope `/finance`'s `GET invoices` (or any other already-shipped
-  endpoint) to `StudentGuardianEntity` as a side effect of unrelated work.**
-  That endpoint's current behavior (any `FINANCE_VIEW` holder sees the whole
-  school) is unchanged by the Bale integration (§7 Done) — revisiting it is a
-  separate, explicit decision about existing behavior, not a free extension of
-  adding the guardian relationship.
+- **Do not scope an already-shipped endpoint to `StudentGuardianEntity` (or
+  any other narrowing) as a silent side effect of unrelated work.** This is
+  exactly what protected `/finance`'s `GET invoices` from being scoped as a
+  drive-by of the Bale integration (§7 Done) — it was later scoped, but only
+  as its own explicit, named decision (§7 Done, "Finance deepening, phase 3"),
+  not bundled into something else. Keep applying this discipline to every
+  other already-shipped endpoint.
 
 ---
 
@@ -1873,8 +2095,22 @@ scoped out (OCR/AI, budgets, multi-step approval, accounting integration).
    - The switcher **must tolerate zero school memberships** (dropdown simply not
      rendered): individual B2C accounts (e.g. a teacher self-registering with no
      school) are an anticipated future flow — see Q7.
-3. Can a school define custom roles, or only choose from system-defined ones?
-   `RoleEntity`-as-data supports it technically; no admin UI or facade method exists.
+3. ~~Can a school define custom roles, or only choose from system-defined
+   ones?~~ **Resolved 2026-07-13, on explicit request:** yes, scoped
+   per-school. `IamFacade.createCustomRole` + `iam.RoleController` +
+   `GET /roles` page — see §4's Role subsection ("Custom roles") for the
+   full model and §7 Done ("Custom role management") for what shipped. Three
+   deliberate constraints, each a real decision (not the only option
+   considered): (1) a custom role is visible/assignable only to the school
+   that created it, never shared platform-wide; (2) its permissions must be
+   selected from the existing fixed permission catalog, never invented
+   fresh — an invented code would correspond to no `@RequiresPermission`
+   check anywhere and silently do nothing; (3) the six system roles
+   (`STUDENT`/`TEACHER`/`PARENT`/`SCHOOL_ADMIN`/`FINANCE_ADMIN`/
+   `PLATFORM_ADMIN`) are not editable through this path — only new roles can
+   be created, so this can't be used to accidentally weaken `SCHOOL_ADMIN`'s
+   own grants or bypass a hardcoded role-code check elsewhere in the codebase
+   (e.g. the guardian-eligibility check, which requires literally `PARENT`).
 4. Should `UserEntitlementEntity` (B2C) ever interact with `SchoolEntitlementEntity`
    (B2B)? Currently fully independent.
 5. **New:** What does a real `PLATFORM_ADMIN` permission-check path look like, and

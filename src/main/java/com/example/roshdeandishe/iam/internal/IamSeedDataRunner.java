@@ -125,6 +125,7 @@ class IamSeedDataRunner implements ApplicationRunner {
         permission(permissions, "EXPENSE_VIEW", "مشاهده‌ی هزینه‌های مدرسه");
         permission(permissions, "EXPENSE_MANAGE", "ثبت/مدیریت هزینه‌های مدرسه");
         permission(permissions, "EXPENSE_APPROVE", "تأیید هزینه‌های مدرسه");
+        permission(permissions, "ROLE_MANAGE", "ساخت نقش سفارشی و مدیریت دسترسی‌ها");
         return permissions;
     }
 
@@ -165,6 +166,9 @@ class IamSeedDataRunner implements ApplicationRunner {
         grant(roles.get("SCHOOL_ADMIN"), permissions.get("EXPENSE_VIEW"));
         grant(roles.get("SCHOOL_ADMIN"), permissions.get("EXPENSE_MANAGE"));
         grant(roles.get("SCHOOL_ADMIN"), permissions.get("EXPENSE_APPROVE"));
+        // ساخت/مدیریت نقش سفارشی همان سطح حساسیتِ MEMBERSHIP_MANAGE را دارد -
+        // فقط SCHOOL_ADMIN، نه FINANCE_ADMIN (§11 Q3، حل‌شده ۲۰۲۶-۰۷-۱۳)
+        grant(roles.get("SCHOOL_ADMIN"), permissions.get("ROLE_MANAGE"));
 
         // FINANCE_ADMIN: فقط دسترسی مالی - نمونه‌ی واقعی "نقش متفاوت با سطح دسترسی متفاوت".
         // عمداً بدون EXPENSE_APPROVE: تفکیک وظایف - کسی که هزینه را ثبت/پرداخت
@@ -220,7 +224,7 @@ class IamSeedDataRunner implements ApplicationRunner {
      */
     private void seedDemoAdminMembership() {
         userRepository.findByEmail(DEMO_ADMIN_EMAIL).ifPresent(admin ->
-                roleRepository.findByCode("SCHOOL_ADMIN").ifPresent(role -> {
+                roleRepository.findByCodeAndSchoolIdIsNull("SCHOOL_ADMIN").ifPresent(role -> {
                     Long demoSchoolId = 1L;
                     boolean exists = schoolMembershipRepository
                             .findByUserIdAndSchoolIdAndRoleId(admin.getId(), demoSchoolId, role.getId())

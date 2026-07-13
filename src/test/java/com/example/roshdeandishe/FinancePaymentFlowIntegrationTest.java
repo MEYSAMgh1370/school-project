@@ -339,4 +339,85 @@ class FinancePaymentFlowIntegrationTest {
         mockMvc.perform(get("/api/me/schools/1/invoices"))
                 .andExpect(status().isForbidden());
     }
+
+    @Test
+    void adminInvoicesEndpointScopesParentToOwnWardsButAdminKeepsFullVisibility() throws Exception {
+        // تصمیم صریح CLAUDE.md §10 (حل‌شده): GET .../invoices دیگر برای هر
+        // دارنده‌ی FINANCE_VIEW بی‌قید همه‌ی فاکتورهای مدرسه را برنمی‌گرداند -
+        // PARENT فقط فاکتورهای فرزندِ واقعاً لینک‌شده‌اش را می‌بیند، ولی
+        // SCHOOL_ADMIN/FINANCE_ADMIN همچنان دید کامل مدرسه را دارند.
+        MockHttpSession adminSession = loginAsAdmin();
+
+        mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders
+                        .put("/api/admin/schools/1/tuition-fee")
+                        .with(csrf())
+                        .header("X-School-ID", "1")
+                        .session(adminSession)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"amount\":1200000.00}"))
+                .andExpect(status().isOk());
+
+        String studentEmail = "scoped.student@roshdeandishe.test";
+        MockHttpSession studentSession = registerAndLogin(studentEmail, "دانش‌آموز محدود");
+
+        MvcResult classResult = mockMvc.perform(post("/api/admin/schools/1/classes")
+                        .with(csrf())
+                        .header("X-School-ID", "1")
+                        .session(adminSession)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"name\":\"کلاس محدود\",\"section\":\"ب\",\"teacherId\":null}"))
+                .andExpect(status().isOk())
+                .andReturn();
+        Long classId = objectMapper.readTree(classResult.getResponse().getContentAsString()).get("id").asLong();
+
+        MvcResult enrollResult = mockMvc.perform(post("/api/admin/schools/1/students")
+                        .with(csrf())
+                        .header("X-School-ID", "1")
+                        .session(adminSession)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"email\":\"" + studentEmail + "\",\"fullName\":\"دانش‌آموز محدود\",\"classId\":" + classId + "}"))
+                .andExpect(status().isOk())
+                .andReturn();
+        Long studentId = objectMapper.readTree(enrollResult.getResponse().getContentAsString())
+                .get("studentId").asLong();
+
+        await().atMost(Duration.ofSeconds(15)).untilAsserted(() ->
+                assertThat(financeFacade.listInvoicesForStudents(1L, List.of(studentId))).hasSize(1));
+
+        String parentEmail = "scoped.parent@roshdeandishe.test";
+        MockHttpSession parentSession = registerAndLogin(parentEmail, "ولی محدود");
+        MvcResult membershipResult = mockMvc.perform(post("/api/admin/schools/1/memberships")
+                        .with(csrf())
+                        .header("X-School-ID", "1")
+                        .session(adminSession)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"email\":\"" + parentEmail + "\",\"fullName\":\"ولی محدود\",\"roleCode\":\"PARENT\"}"))
+                .andExpect(status().isOk())
+                .andReturn();
+        Long parentUserId = objectMapper.readTree(membershipResult.getResponse().getContentAsString())
+                .get("userId").asLong();
+
+        mockMvc.perform(post("/api/admin/schools/1/students/" + studentId + "/guardians")
+                        .with(csrf())
+                        .header("X-School-ID", "1")
+                        .session(adminSession)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"guardianUserId\":" + parentUserId + "}"))
+                .andExpect(status().isOk());
+
+        // ادمین: بین همه‌ی فاکتورهای مدرسه، فاکتور این دانش‌آموز هم هست
+        mockMvc.perform(get("/api/admin/schools/1/invoices").header("X-School-ID", "1").session(adminSession))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[?(@.studentId == " + studentId + ")]").exists());
+
+        // ولی: فقط دقیقاً همان یک فاکتورِ فرزندش را می‌بیند، نه بقیه‌ی مدرسه
+        mockMvc.perform(get("/api/admin/schools/1/invoices").header("X-School-ID", "1").session(parentSession))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$", org.hamcrest.Matchers.hasSize(1)))
+                .andExpect(jsonPath("$[0].studentId").value(studentId));
+
+        // دانش‌آموز خودش FINANCE_VIEW ندارد - همچنان 403 روی endpoint ادمینی
+        mockMvc.perform(get("/api/admin/schools/1/invoices").header("X-School-ID", "1").session(studentSession))
+                .andExpect(status().isForbidden());
+    }
 }

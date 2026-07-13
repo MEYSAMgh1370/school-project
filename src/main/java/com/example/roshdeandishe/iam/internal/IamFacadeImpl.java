@@ -16,8 +16,11 @@ import java.security.SecureRandom;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.Base64;
+import java.util.Comparator;
 import java.util.List;
+import java.util.Objects;
 import java.util.Optional;
+import java.util.regex.Pattern;
 
 @Service
 class IamFacadeImpl implements IamFacade {
@@ -26,10 +29,15 @@ class IamFacadeImpl implements IamFacade {
     private static final long INVITE_TOKEN_TTL_DAYS = 7;
     private static final int MIN_PASSWORD_LENGTH = 8;
     private static final SecureRandom SECURE_RANDOM = new SecureRandom();
+    // §9: کدهای نقش UPPER_SNAKE_CASE هستند - همین قرارداد روی نقش‌های
+    // سفارشی هم اجباری می‌شود تا در کنار نقش‌های سیستمی یکدست بمانند
+    private static final Pattern ROLE_CODE_PATTERN = Pattern.compile("^[A-Z][A-Z0-9_]*$");
 
     private final UserRepository userRepository;
     private final RoleRepository roleRepository;
     private final ModuleRepository moduleRepository;
+    private final PermissionRepository permissionRepository;
+    private final RolePermissionRepository rolePermissionRepository;
     private final SchoolMembershipRepository schoolMembershipRepository;
     private final SchoolEntitlementRepository schoolEntitlementRepository;
     private final InviteTokenRepository inviteTokenRepository;
@@ -42,6 +50,8 @@ class IamFacadeImpl implements IamFacade {
             UserRepository userRepository,
             RoleRepository roleRepository,
             ModuleRepository moduleRepository,
+            PermissionRepository permissionRepository,
+            RolePermissionRepository rolePermissionRepository,
             SchoolMembershipRepository schoolMembershipRepository,
             SchoolEntitlementRepository schoolEntitlementRepository,
             InviteTokenRepository inviteTokenRepository,
@@ -53,6 +63,8 @@ class IamFacadeImpl implements IamFacade {
         this.userRepository = userRepository;
         this.roleRepository = roleRepository;
         this.moduleRepository = moduleRepository;
+        this.permissionRepository = permissionRepository;
+        this.rolePermissionRepository = rolePermissionRepository;
         this.schoolMembershipRepository = schoolMembershipRepository;
         this.schoolEntitlementRepository = schoolEntitlementRepository;
         this.inviteTokenRepository = inviteTokenRepository;
@@ -179,7 +191,13 @@ class IamFacadeImpl implements IamFacade {
     @Override
     @Transactional
     public Long createMembership(UserId userId, Long schoolId, String roleCode) {
-        RoleEntity role = roleRepository.findByCode(roleCode)
+        // نقش سفارشیِ خودِ این مدرسه اولویت دارد، وگرنه نقش سیستمی - نقش
+        // سفارشیِ مدرسه‌ی دیگری با همین کد هرگز اینجا resolve نمی‌شود
+        // (RoleCodeAlreadyExists در createCustomRole تضمین می‌کند این دو
+        // هیچ‌وقت هم‌زمان با کد یکسان وجود نداشته باشند، پس این ترتیب
+        // ابهامی ایجاد نمی‌کند)
+        RoleEntity role = roleRepository.findByCodeAndSchoolId(roleCode, schoolId)
+                .or(() -> roleRepository.findByCodeAndSchoolIdIsNull(roleCode))
                 .orElseThrow(() -> new IamException(new IamError.RoleNotFound(roleCode)));
 
         // idempotent: اگر همین (user, school, role) از قبل وجود دارد - حتی
@@ -290,6 +308,67 @@ class IamFacadeImpl implements IamFacade {
 
         entitlement.setActive(active);
         schoolEntitlementRepository.save(entitlement);
+    }
+
+    @Override
+    public List<PermissionInfo> listPermissions() {
+        return permissionRepository.findAll().stream()
+                .map(p -> new PermissionInfo(p.getId(), p.getCode(), p.getDisplayName()))
+                .sorted(Comparator.comparing(PermissionInfo::code))
+                .toList();
+    }
+
+    @Override
+    public List<RoleInfo> listRoles(Long schoolId) {
+        return roleRepository.findBySchoolIdIsNullOrSchoolId(schoolId).stream()
+                // PLATFORM_ADMIN مسیر بررسی مجوز ندارد و نباید در هیچ UI ای
+                // ظاهر شود - همان قرارداد web.RoleLabels
+                .filter(r -> !"PLATFORM_ADMIN".equals(r.getCode()))
+                .map(this::toRoleInfo)
+                .toList();
+    }
+
+    @Override
+    @Transactional
+    public RoleInfo createCustomRole(Long schoolId, String code, String displayName, List<String> permissionCodes) {
+        if (code == null || !ROLE_CODE_PATTERN.matcher(code).matches()) {
+            throw new IamException(new IamError.InvalidRoleDefinition(
+                    "کد نقش باید با حرف بزرگ لاتین شروع شود و فقط شامل حروف بزرگ، عدد و _ باشد."
+            ));
+        }
+        if (displayName == null || displayName.isBlank()) {
+            throw new IamException(new IamError.InvalidRoleDefinition("عنوان نقش الزامی است."));
+        }
+        if (permissionCodes == null || permissionCodes.isEmpty()) {
+            throw new IamException(new IamError.InvalidRoleDefinition("حداقل یک Permission باید انتخاب شود."));
+        }
+
+        // تداخل با نقش سیستمی یا نقش سفارشیِ همین مدرسه - نه نقش سفارشیِ
+        // مدرسه‌ی دیگر (آن‌ها اصلاً برای این مدرسه قابل‌مشاهده نیستند)
+        if (roleRepository.findByCodeAndSchoolIdIsNull(code).isPresent()
+                || roleRepository.findByCodeAndSchoolId(code, schoolId).isPresent()) {
+            throw new IamException(new IamError.RoleCodeAlreadyExists(code));
+        }
+
+        List<PermissionEntity> permissions = permissionCodes.stream()
+                .distinct()
+                .map(pc -> permissionRepository.findByCode(pc)
+                        .orElseThrow(() -> new IamException(new IamError.InvalidPermissionCode(pc))))
+                .toList();
+
+        RoleEntity role = roleRepository.save(new RoleEntity(code, displayName, schoolId));
+        permissions.forEach(p -> rolePermissionRepository.save(new RolePermissionEntity(role.getId(), p.getId())));
+
+        return toRoleInfo(role);
+    }
+
+    private RoleInfo toRoleInfo(RoleEntity role) {
+        List<String> permissionCodes = rolePermissionRepository.findByRoleId(role.getId()).stream()
+                .map(rp -> permissionRepository.findById(rp.getPermissionId()).map(PermissionEntity::getCode).orElse(null))
+                .filter(Objects::nonNull)
+                .sorted()
+                .toList();
+        return new RoleInfo(role.getId(), role.getCode(), role.getDisplayName(), role.getSchoolId(), permissionCodes);
     }
 
     private MembershipInfo toMembershipInfo(SchoolMembershipEntity membership) {

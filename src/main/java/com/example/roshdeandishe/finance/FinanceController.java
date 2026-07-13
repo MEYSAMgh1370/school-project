@@ -1,10 +1,12 @@
 package com.example.roshdeandishe.finance;
 
+import com.example.roshdeandishe.academic.AcademicFacade;
 import com.example.roshdeandishe.finance.FinanceFacade.InvoiceInfo;
 import com.example.roshdeandishe.finance.FinanceFacade.PaymentInfo;
 import com.example.roshdeandishe.finance.FinanceFacade.TuitionFeeInfo;
 import com.example.roshdeandishe.finance.shared.FinanceError;
 import com.example.roshdeandishe.finance.shared.FinanceException;
+import com.example.roshdeandishe.iam.IamFacade;
 import com.example.roshdeandishe.iam.shared.RequiresModule;
 import com.example.roshdeandishe.iam.shared.RequiresPermission;
 import com.example.roshdeandishe.platform.TenantContext;
@@ -29,9 +31,13 @@ import java.util.List;
 public class FinanceController {
 
     private final FinanceFacade financeFacade;
+    private final IamFacade iamFacade;
+    private final AcademicFacade academicFacade;
 
-    public FinanceController(FinanceFacade financeFacade) {
+    public FinanceController(FinanceFacade financeFacade, IamFacade iamFacade, AcademicFacade academicFacade) {
         this.financeFacade = financeFacade;
+        this.iamFacade = iamFacade;
+        this.academicFacade = academicFacade;
     }
 
     @PutMapping("/tuition-fee")
@@ -58,8 +64,36 @@ public class FinanceController {
     public List<InvoiceResponse> listInvoices(@PathVariable Long schoolId) {
         TenantContext.requireMatches(schoolId);
 
-        return financeFacade.listInvoices(schoolId).stream()
+        List<InvoiceInfo> invoices = hasSchoolWideFinanceVisibility(schoolId)
+                ? financeFacade.listInvoices(schoolId)
+                : financeFacade.listInvoicesForStudents(schoolId, guardianWardStudentIds(schoolId));
+
+        return invoices.stream()
                 .map(FinanceController::toResponse)
+                .toList();
+    }
+
+    /**
+     * تصمیم صریح (CLAUDE.md §10، حل‌شده): این endpoint دیگر برای هر
+     * دارنده‌ی FINANCE_VIEW بدون قید و شرط همه‌ی فاکتورهای مدرسه را
+     * برنمی‌گرداند - PARENT (که FINANCE_VIEW دارد، §4) فقط فاکتورهای
+     * فرزندانِ واقعاً لینک‌شده‌اش (StudentGuardianEntity) را می‌بیند.
+     * SCHOOL_ADMIN و FINANCE_ADMIN همچنان دید کامل مدرسه را دارند - تنها
+     * نقش‌هایی که اصلاً FINANCE_VIEW می‌گیرند (§4's Permission table)
+     * SCHOOL_ADMIN، FINANCE_ADMIN و PARENT هستند، پس بررسیِ این دو نقش
+     * کافی است تا PARENT را از بقیه جدا کند - حتی برای کاربری که هم‌زمان
+     * PARENT و SCHOOL_ADMIN است (دید کامل، چون نقش ادمین را هم دارد).
+     */
+    private boolean hasSchoolWideFinanceVisibility(Long schoolId) {
+        return iamFacade.findMembershipsByUser(iamFacade.currentUserId()).stream()
+                .anyMatch(m -> m.active() && m.schoolId().equals(schoolId)
+                        && (m.roleCode().equals("SCHOOL_ADMIN") || m.roleCode().equals("FINANCE_ADMIN")));
+    }
+
+    private List<Long> guardianWardStudentIds(Long schoolId) {
+        Long userId = iamFacade.currentUserId().value();
+        return academicFacade.listWards(userId, schoolId).stream()
+                .map(ward -> ward.id().value())
                 .toList();
     }
 

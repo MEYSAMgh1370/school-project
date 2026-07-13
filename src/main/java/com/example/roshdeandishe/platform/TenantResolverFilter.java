@@ -39,6 +39,8 @@ public class TenantResolverFilter extends OncePerRequestFilter {
             // fetch آن (به /api/admin/schools/{id}/memberships) هدر را خودشان
             // می‌فرستند - این استثنا فقط بارگذاری خودِ صفحه را شامل می‌شود
             "/people",
+            // همان استدلال /people برای صفحه‌ی نقش‌ها و دسترسی‌ها
+            "/roles",
             // همان استدلال /people برای صفحه‌ی مدیریت کلاس‌ها
             "/classes",
             // همان استدلال /people برای صفحه‌ی ثبت‌نام دانش‌آموز
@@ -47,6 +49,11 @@ public class TenantResolverFilter extends OncePerRequestFilter {
             "/finance",
             // همان استدلال /people برای صفحه‌ی هزینه‌های مدرسه
             "/expenses",
+            // صفحه‌ی «فاکتورهای من»: مثل /finance خودِ صفحه یک route است؛
+            // فراخوانی fetch آن به GET /api/me/schools/{id}/invoices می‌رود که
+            // خودش هم زیرمجموعه‌ی پیشوند /api/me است و بدون X-School-ID کار
+            // می‌کند (schoolId از path می‌آید، نه هدر)
+            "/my-invoices",
             // صفحه‌ی ثبت مدرسه: مدرسه هنوز وجود ندارد که schoolId داشته باشد
             "/schools/new",
             // وب‌هوک بله: فراخوان‌کننده سرور بله است، نه یک مرورگر که بتواند

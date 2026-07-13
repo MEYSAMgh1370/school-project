@@ -50,7 +50,7 @@
                                 <div class="select">
                                     <select id="memberRole" x-model="form.roleCode">
                                         <template x-for="code in roleCodes" :key="code">
-                                            <option :value="code" x-text="roleLabels[code]"></option>
+                                            <option :value="code" x-text="labelFor(code)"></option>
                                         </template>
                                     </select>
                                 </div>
@@ -79,7 +79,7 @@
                         <tr>
                             <td x-text="member.fullName"></td>
                             <td dir="ltr" x-text="member.email"></td>
-                            <td x-text="roleLabels[member.roleCode] || member.roleCode"></td>
+                            <td x-text="labelFor(member.roleCode)"></td>
                             <td>
                                 <span class="tag is-success" x-show="member.active">فعال</span>
                                 <span class="tag is-danger" x-show="!member.active">غیرفعال</span>
