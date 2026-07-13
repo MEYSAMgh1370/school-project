@@ -47,6 +47,19 @@ integration. Four pieces are being ported:
 
 ## 3. `iam` extension — Phone/OTP login
 
+**Status: DONE (2026-07-12)**, built as scoped below with one deviation:
+`SmsDriver` shipped as a **concrete class** (`iam.internal.SmsDriver`), not
+the interface sketched below — this codebase's actual convention for a
+best-effort external side-channel is one concrete class that logs-only when
+unconfigured (`BaleClient`, `InviteEmailSender`), not a speculative interface
+for a single implementation (CLAUDE.md §10). Everything else — the entity
+shape, the always-insert-a-new-row semantics, the unauthenticated
+`/api/auth/otp/*` endpoints, the `IamError` cases, and the "OTP never opens a
+registration path" boundary from §2 below — shipped as written. See
+`CLAUDE.md` §4's `VerificationCode` subsection and §7 Done for the final
+shape and test coverage. OTP rate-limiting remains the flagged, conscious
+skip noted below — still not built.
+
 Source: `exam-maker-master/account/{models.py (VerificationCode), sms.py,
 serializers.py (VerificationCodeLoginSerializer, ActivatePhoneNumberSerializer),
 views.py (SMSViewSet)}`.
@@ -233,7 +246,7 @@ Depends on: `curriculum` (topics), `academic` (students/classes).
 
 ## 8. Suggested build order
 
-1. `iam` OTP extension (smallest, no new module, unblocks nothing else).
+1. `iam` OTP extension (smallest, no new module, unblocks nothing else). **Done.**
 2. `curriculum` (no dependencies on the other new modules).
 3. `studyplan` (depends only on `curriculum` + `academic`).
 4. `exam` (depends on `curriculum` + `academic` + `studyplan`, the deepest

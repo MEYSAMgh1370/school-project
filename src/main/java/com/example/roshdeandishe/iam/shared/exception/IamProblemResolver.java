@@ -98,6 +98,22 @@ public class IamProblemResolver {
                     HttpStatus.UNAUTHORIZED, "invalid-credentials",
                     "ورود ناموفق", e.reason()
             );
+            case IamError.PhoneNotRegistered e -> ProblemDetailFactory.problem(
+                    HttpStatus.NOT_FOUND, "phone-not-registered",
+                    "شماره تلفن ثبت نشده",
+                    "هیچ کاربری با شماره '" + e.phoneNumber() + "' ثبت نشده است. ابتدا باید با یک حساب " +
+                    "فعال وارد شوید و شماره تلفن خود را از مسیر PUT /api/me/phone ثبت کنید."
+            );
+            case IamError.OtpIncorrect e -> ProblemDetailFactory.problem(
+                    HttpStatus.BAD_REQUEST, "otp-incorrect",
+                    "کد تأیید نادرست",
+                    "کد وارد‌شده صحیح نیست."
+            );
+            case IamError.OtpExpired e -> ProblemDetailFactory.problem(
+                    HttpStatus.GONE, "otp-expired",
+                    "کد تأیید منقضی شده",
+                    "کد تأیید فعالی وجود ندارد یا منقضی شده است. یک کد جدید درخواست کنید."
+            );
         };
     }
 }
