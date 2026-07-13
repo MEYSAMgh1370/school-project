@@ -98,6 +98,20 @@ public class IamProblemResolver {
                     HttpStatus.UNAUTHORIZED, "invalid-credentials",
                     "ورود ناموفق", e.reason()
             );
+            case IamError.InvalidRoleDefinition e -> ProblemDetailFactory.problem(
+                    HttpStatus.BAD_REQUEST, "invalid-role-definition",
+                    "تعریف نقش نامعتبر", e.reason()
+            );
+            case IamError.InvalidPermissionCode e -> ProblemDetailFactory.problem(
+                    HttpStatus.BAD_REQUEST, "invalid-permission-code",
+                    "Permission نامعتبر",
+                    "Permission ای با کد '" + e.permissionCode() + "' در سیستم تعریف نشده است."
+            );
+            case IamError.RoleCodeAlreadyExists e -> ProblemDetailFactory.problem(
+                    HttpStatus.CONFLICT, "role-code-already-exists",
+                    "کد نقش تکراری است",
+                    "کد '" + e.code() + "' یا با یک نقش سیستمی یکسان است یا قبلاً برای این مدرسه ساخته شده است."
+            );
             case IamError.PhoneNotRegistered e -> ProblemDetailFactory.problem(
                     HttpStatus.NOT_FOUND, "phone-not-registered",
                     "شماره تلفن ثبت نشده",

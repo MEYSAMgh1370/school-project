@@ -15,8 +15,21 @@ document.addEventListener('alpine:init', () => {
             SCHOOL_ADMIN: 'مدیر مدرسه',
             FINANCE_ADMIN: 'مدیر مالی'
         },
+        // نقش‌های سفارشیِ همین مدرسه (از /roles، ROLE_MANAGE) - بدون این،
+        // یک نقش سفارشیِ تازه‌ساخته‌شده هرگز در دراپ‌داون این صفحه قابل‌تخصیص
+        // نبود. فقط SCHOOL_ADMIN هم MEMBERSHIP_MANAGE و هم ROLE_MANAGE را
+        // دارد، پس این فراخوانی هرگز برای کاربری که اصلاً نمی‌تواند این
+        // صفحه را ببیند 403 نمی‌شود.
+        customRoles: [],
         get roleCodes() {
-            return Object.keys(this.roleLabels);
+            return [...Object.keys(this.roleLabels), ...this.customRoles.map(r => r.code)];
+        },
+        labelFor(code) {
+            if (this.roleLabels[code]) {
+                return this.roleLabels[code];
+            }
+            const custom = this.customRoles.find(r => r.code === code);
+            return custom ? custom.displayName : code;
         },
 
         init() {
@@ -43,6 +56,10 @@ document.addEventListener('alpine:init', () => {
             return `/api/admin/schools/${this.schoolId}/memberships`;
         },
 
+        rolesBase() {
+            return `/api/admin/schools/${this.schoolId}/roles`;
+        },
+
         async showError(response) {
             try {
                 const body = await response.json();
@@ -65,6 +82,13 @@ document.addEventListener('alpine:init', () => {
                     return;
                 }
                 this.members = await response.json();
+
+                // best-effort: اگر به هر دلیلی 403/خطا شد، فقط نقش‌های
+                // سفارشی در دراپ‌داون/برچسب‌ها دیده نمی‌شوند - صفحه نمی‌شکند
+                const rolesResponse = await fetch(this.rolesBase(), { headers: { 'X-School-ID': this.schoolId } });
+                this.customRoles = rolesResponse.ok
+                    ? (await rolesResponse.json()).filter(r => r.custom)
+                    : [];
             } catch (e) {
                 this.error = 'ارتباط با سرور برقرار نشد.';
             } finally {

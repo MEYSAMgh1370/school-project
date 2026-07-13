@@ -66,6 +66,15 @@ public sealed interface IamError {
     record InvalidCredentials(String reason) implements IamError {
     }
 
+    record InvalidRoleDefinition(String reason) implements IamError {
+    }
+
+    record InvalidPermissionCode(String permissionCode) implements IamError {
+    }
+
+    record RoleCodeAlreadyExists(String code) implements IamError {
+    }
+
     record PhoneNotRegistered(String phoneNumber) implements IamError {
     }
 

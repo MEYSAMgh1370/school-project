@@ -169,6 +169,41 @@ public interface IamFacade {
     void setPhoneNumber(UserId userId, String phoneNumber);
 
     /**
+     * فهرست کامل Permissionهای ثابت سیستم - برای ساخت چک‌لیستِ صفحه‌ی
+     * ساخت نقش سفارشی (یک مدرسه فقط می‌تواند از میان همین مجموعه انتخاب
+     * کند، نه اینکه کد Permission تازه‌ای اختراع کند - وگرنه گرنت کردنش
+     * عملاً هیچ @RequiresPermission ای را کنترل نمی‌کند).
+     */
+    List<PermissionInfo> listPermissions();
+
+    /**
+     * همه‌ی نقش‌های قابل‌مشاهده برای یک مدرسه: نقش‌های سیستمی (schoolId=null
+     * در PermissionInfo، ثابت برای همه‌ی مدرسه‌ها) + نقش‌های سفارشیِ خودِ
+     * همین مدرسه. PLATFORM_ADMIN عمداً حذف می‌شود - مسیر بررسی مجوز ندارد
+     * (CLAUDE.md §7 مورد ۱) و نباید در هیچ UI ای ظاهر شود (همان قرارداد
+     * web.RoleLabels).
+     */
+    List<RoleInfo> listRoles(Long schoolId);
+
+    /**
+     * ساخت یک نقش سفارشی برای یک مدرسه‌ی خاص - حل‌کننده‌ی Open Question 3
+     * در CLAUDE.md، با سه تصمیم صریح (۲۰۲۶-۰۷-۱۳): (۱) نقش سفارشی فقط برای
+     * همین مدرسه قابل‌مشاهده/تخصیص است، نه سراسری - دو مدرسه‌ی مختلف
+     * می‌توانند بدون تداخل هر دو یک کدِ یکسان بسازند؛ (۲) permissionCodes
+     * فقط می‌تواند از میان Permissionهای موجود سیستم انتخاب شود، نه کدهای
+     * تازه‌اختراع‌شده؛ (۳) نقش‌های سیستمی (SCHOOL_ADMIN و بقیه) از این مسیر
+     * قابل‌ویرایش نیستند - این متد فقط نقش تازه می‌سازد.
+     *
+     * @throws com.example.roshdeandishe.iam.shared.exception.IamException با
+     * IamError.InvalidRoleDefinition اگر code/displayName نامعتبر باشد یا
+     * permissionCodes خالی باشد، IamError.RoleCodeAlreadyExists اگر code با
+     * یک نقش سیستمی یا نقش سفارشیِ همین مدرسه تداخل داشته باشد، یا
+     * IamError.InvalidPermissionCode اگر یکی از permissionCodes در سیستم
+     * تعریف نشده باشد
+     */
+    RoleInfo createCustomRole(Long schoolId, String code, String displayName, List<String> permissionCodes);
+
+    /**
      * درخواست یک کد تأیید پیامکی برای شماره‌ی از قبل ثبت‌شده - فاکتور دوم
      * ورود، نه یک مسیر ثبت‌نام جدید. عمداً هیچ کاربری با این متد ساخته
      * نمی‌شود؛ شماره تلفن فقط از طریق {@link #setPhoneNumber} (با سشن معتبر)
@@ -219,5 +254,11 @@ public interface IamFacade {
     }
 
     record InviteIssued(String token, boolean emailSent) {
+    }
+
+    record PermissionInfo(Long id, String code, String displayName) {
+    }
+
+    record RoleInfo(Long id, String code, String displayName, Long schoolId, List<String> permissionCodes) {
     }
 }
