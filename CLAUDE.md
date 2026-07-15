@@ -18,6 +18,14 @@ conventions — it applies to every coding task in this repo, same as this file.
 `new-module` skill first, even if the request doesn't use the word "module" —
 this covers phrasing like "add Library support" or "build out Attendance."
 
+**Before creating or substantially restructuring any web page** (a new `.jte`
+page template, a new page controller in `web`, or reshaping an existing
+page's layout/flow), you MUST invoke the `design-page` skill first — even if
+the request doesn't use the word "page" ("add a screen for X", "let admins
+manage Y"). Visual rules live in [`DESIGN.md`](DESIGN.md) (subordinate to
+this file and `UX_ROADMAP.md` §2); token *values* live in the `:root` block
+of `src/main/resources/static/css/app.css`.
+
 ---
 
 ## 1. What This Product Is
