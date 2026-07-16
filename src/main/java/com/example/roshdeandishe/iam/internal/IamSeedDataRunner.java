@@ -79,6 +79,7 @@ class IamSeedDataRunner implements ApplicationRunner {
         module("ACADEMIC", "آموزش", ModuleScope.SCHOOL);
         module("FINANCE", "مالی", ModuleScope.SCHOOL);
         module("CURRICULUM", "سرفصل‌ها و بانک سوال", ModuleScope.SCHOOL);
+        module("STUDY_PLANNER", "برنامه‌ریز مطالعه", ModuleScope.SCHOOL);
         module("LIBRARY", "کتابخانه", ModuleScope.SCHOOL);
         module("ATTENDANCE", "حضور و غیاب", ModuleScope.SCHOOL);
         module("TRANSPORTATION", "سرویس", ModuleScope.SCHOOL);
@@ -138,6 +139,8 @@ class IamSeedDataRunner implements ApplicationRunner {
         permission(permissions, "ROLE_MANAGE", "ساخت نقش سفارشی و مدیریت دسترسی‌ها");
         permission(permissions, "CURRICULUM_VIEW", "مشاهده‌ی سرفصل‌ها و بانک سوال");
         permission(permissions, "CURRICULUM_MANAGE", "ایجاد/مدیریت سرفصل‌ها و سوالات");
+        permission(permissions, "STUDYPLAN_VIEW", "مشاهده‌ی برنامه‌ی درسی و جدول مطالعه");
+        permission(permissions, "STUDYPLAN_MANAGE", "ایجاد/مدیریت برنامه‌ی درسی و جدول مطالعه");
         return permissions;
     }
 
@@ -161,6 +164,10 @@ class IamSeedDataRunner implements ApplicationRunner {
         // - نوشتن هم مثل STUDENT_ENROLL کار روزمره‌ی معلم است، نه فقط ادمین
         grant(roles.get("TEACHER"), permissions.get("CURRICULUM_VIEW"));
         grant(roles.get("TEACHER"), permissions.get("CURRICULUM_MANAGE"));
+        // برنامه‌ریزیِ مطالعه هم مثل سرفصل/سوال کار روزمره‌ی معلم است
+        // (MOSHAVERE_PORT_SPEC.md §6/§2 - نویسنده‌ی Plan در moshavere همان Instructor است)
+        grant(roles.get("TEACHER"), permissions.get("STUDYPLAN_VIEW"));
+        grant(roles.get("TEACHER"), permissions.get("STUDYPLAN_MANAGE"));
 
         grant(roles.get("PARENT"), permissions.get("GRADES_VIEW"));
         grant(roles.get("PARENT"), permissions.get("FINANCE_VIEW"));
@@ -187,6 +194,8 @@ class IamSeedDataRunner implements ApplicationRunner {
         grant(roles.get("SCHOOL_ADMIN"), permissions.get("ROLE_MANAGE"));
         grant(roles.get("SCHOOL_ADMIN"), permissions.get("CURRICULUM_VIEW"));
         grant(roles.get("SCHOOL_ADMIN"), permissions.get("CURRICULUM_MANAGE"));
+        grant(roles.get("SCHOOL_ADMIN"), permissions.get("STUDYPLAN_VIEW"));
+        grant(roles.get("SCHOOL_ADMIN"), permissions.get("STUDYPLAN_MANAGE"));
 
         // FINANCE_ADMIN: فقط دسترسی مالی - نمونه‌ی واقعی "نقش متفاوت با سطح دسترسی متفاوت".
         // عمداً بدون EXPENSE_APPROVE: تفکیک وظایف - کسی که هزینه را ثبت/پرداخت
@@ -223,7 +232,7 @@ class IamSeedDataRunner implements ApplicationRunner {
      */
     private void seedDemoSchoolEntitlements() {
         Long demoSchoolId = 1L;
-        for (String moduleCode : new String[]{"ACADEMIC", "FINANCE", "CURRICULUM"}) {
+        for (String moduleCode : new String[]{"ACADEMIC", "FINANCE", "CURRICULUM", "STUDY_PLANNER"}) {
             moduleRepository.findByCode(moduleCode).ifPresent(module -> {
                 boolean exists = schoolEntitlementRepository
                         .findBySchoolIdAndModuleId(demoSchoolId, module.getId())
