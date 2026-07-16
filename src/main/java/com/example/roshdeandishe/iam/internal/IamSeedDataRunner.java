@@ -80,6 +80,7 @@ class IamSeedDataRunner implements ApplicationRunner {
         module("ACADEMIC", "آموزش", ModuleScope.SCHOOL);
         module("FINANCE", "مالی", ModuleScope.SCHOOL);
         module("CURRICULUM", "سرفصل‌ها و بانک سؤال", ModuleScope.SCHOOL);
+        module("STUDY_PLANNER", "برنامه‌ریز مطالعاتی", ModuleScope.SCHOOL);
         module("LIBRARY", "کتابخانه", ModuleScope.SCHOOL);
         module("ATTENDANCE", "حضور و غیاب", ModuleScope.SCHOOL);
         module("TRANSPORTATION", "سرویس", ModuleScope.SCHOOL);
@@ -139,6 +140,8 @@ class IamSeedDataRunner implements ApplicationRunner {
         permission(permissions, "ROLE_MANAGE", "ساخت نقش سفارشی و مدیریت دسترسی‌ها");
         permission(permissions, "CURRICULUM_VIEW", "مشاهده‌ی سرفصل‌ها و بانک سؤال");
         permission(permissions, "CURRICULUM_MANAGE", "ساخت سرفصل و سؤال در بانک سؤال");
+        permission(permissions, "STUDYPLAN_VIEW", "مشاهده‌ی برنامه‌ی مطالعاتی و بازه‌های مطالعه");
+        permission(permissions, "STUDYPLAN_MANAGE", "ساخت/تخصیص برنامه‌ی مطالعاتی و مدیریت بازه‌های مطالعه");
         return permissions;
     }
 
@@ -165,6 +168,12 @@ class IamSeedDataRunner implements ApplicationRunner {
         // از طریق ماژول exam میانجی‌گری می‌شود، نه خواندن مستقیم بانک.
         grant(roles.get("TEACHER"), permissions.get("CURRICULUM_VIEW"));
         grant(roles.get("TEACHER"), permissions.get("CURRICULUM_MANAGE"));
+        // همان استدلال CURRICULUM بالا: تألیف/تخصیص برنامه‌ی مطالعاتی کار
+        // روزمره‌ی معلم است، نه تصمیم اداری - STUDENT/PARENT عمداً هیچ‌کدام
+        // را ندارند (دسترسی دانش‌آموز به برنامه‌ی خودش از طریق endpoint
+        // خودسرویسِ studyplan.MyStudyWeekController است، نه این دو Permission)
+        grant(roles.get("TEACHER"), permissions.get("STUDYPLAN_VIEW"));
+        grant(roles.get("TEACHER"), permissions.get("STUDYPLAN_MANAGE"));
 
         grant(roles.get("PARENT"), permissions.get("GRADES_VIEW"));
         grant(roles.get("PARENT"), permissions.get("FINANCE_VIEW"));
@@ -191,6 +200,8 @@ class IamSeedDataRunner implements ApplicationRunner {
         grant(roles.get("SCHOOL_ADMIN"), permissions.get("ROLE_MANAGE"));
         grant(roles.get("SCHOOL_ADMIN"), permissions.get("CURRICULUM_VIEW"));
         grant(roles.get("SCHOOL_ADMIN"), permissions.get("CURRICULUM_MANAGE"));
+        grant(roles.get("SCHOOL_ADMIN"), permissions.get("STUDYPLAN_VIEW"));
+        grant(roles.get("SCHOOL_ADMIN"), permissions.get("STUDYPLAN_MANAGE"));
 
         // FINANCE_ADMIN: فقط دسترسی مالی - نمونه‌ی واقعی "نقش متفاوت با سطح دسترسی متفاوت".
         // عمداً بدون EXPENSE_APPROVE: تفکیک وظایف - کسی که هزینه را ثبت/پرداخت
@@ -226,7 +237,7 @@ class IamSeedDataRunner implements ApplicationRunner {
      * هرگز به دیتابیس dev از قبل seed شده نمی‌رسید. فقط seed مخصوص dev.
      */
     private void seedDemoSchoolEntitlements() {
-        for (String moduleCode : new String[]{"ACADEMIC", "FINANCE", "CURRICULUM"}) {
+        for (String moduleCode : new String[]{"ACADEMIC", "FINANCE", "CURRICULUM", "STUDY_PLANNER"}) {
             moduleRepository.findByCode(moduleCode).ifPresent(module -> {
                 boolean exists = schoolEntitlementRepository
                         .findBySchoolIdAndModuleId(DEMO_SCHOOL_ID, module.getId())
