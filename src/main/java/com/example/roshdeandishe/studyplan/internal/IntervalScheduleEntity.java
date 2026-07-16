@@ -4,26 +4,23 @@ import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 
-import java.time.LocalDateTime;
+import java.time.Instant;
 
 /**
- * پورت مدل IntervalSchedule از study_table/models.py: قالب هفتگیِ زمان
- * آزادِ یک دانش‌آموز برای مطالعه. {@code defaultScheduleJson}/
- * {@code currentScheduleJson} پورتِ default_schedule/current_schedule
- * (هر دو JSONField در منبع) - همان دلیل ستون متنی که در PlanEntity
- * توضیح داده شد (نه jsonb، برای پرهیز از ناسازگاری نوع JDBC بدون
- * FormatMapper اختصاصی).
- * <p>
- * منبع تازگیِ برنامه‌ی «این هفته ویرایش شده» را با مقایسه‌ی روزهای هفته‌ی
- * شمسی محاسبه می‌کرد (schedule property در IntervalSchedule)؛ اینجا
- * عمداً با یک مقایسه‌ی timestamp ساده (آخرین ویرایش در ۷ روز گذشته بوده؟)
- * جایگزین شده - تقویم شمسی در جای دیگری از این پروژه فقط برای نمایش
- * بازه‌ی گزارش هزینه به‌کار رفته (jalali.js)، نه به‌عنوان یک قاعده‌ی
- * دامنه‌ی عمومی - MOSHAVERE_PORT_SPEC.md §6.
+ * برنامه‌ی زمانی هفتگی زمان‌های آزاد یک دانش‌آموز. دو ستون
+ * default/current طبق MOSHAVERE_PORT_SPEC.md §6 jsonb می‌مانند (ساختار
+ * تو در توی روز→بازه‌ها؛ serialization/اعتبارسنجی در facade با Jackson) -
+ * برخلاف وزن‌دهی برنامه که جدول فرزند شد. {@code lastEditedAt} جایگزین
+ * چک «weekday تقویم پارسی» موshavere با مقایسه‌ی timestamp ساده است:
+ * currentSchedule فقط وقتی مؤثر است که از شنبه‌ی اخیر به بعد ویرایش شده
+ * باشد.
  */
 @Entity
-@Table(name = "interval_schedules", schema = "studyplan")
+@Table(name = "interval_schedules", schema = "studyplan",
+        uniqueConstraints = @UniqueConstraint(columnNames = {"student_id"}))
 @Getter
 @Setter
 @NoArgsConstructor
@@ -39,18 +36,20 @@ class IntervalScheduleEntity {
     @Column(name = "student_id", nullable = false)
     private Long studentId;
 
-    @Column(name = "default_schedule", nullable = false, columnDefinition = "text")
-    private String defaultScheduleJson;
+    @JdbcTypeCode(SqlTypes.JSON)
+    @Column(name = "default_schedule", nullable = false)
+    private String defaultSchedule;
 
-    @Column(name = "current_schedule", columnDefinition = "text")
-    private String currentScheduleJson;
+    @JdbcTypeCode(SqlTypes.JSON)
+    @Column(name = "current_schedule")
+    private String currentSchedule;
 
     @Column(name = "last_edited_at")
-    private LocalDateTime lastEditedAt;
+    private Instant lastEditedAt;
 
-    IntervalScheduleEntity(Long schoolId, Long studentId, String defaultScheduleJson) {
+    IntervalScheduleEntity(Long schoolId, Long studentId, String defaultSchedule) {
         this.schoolId = schoolId;
         this.studentId = studentId;
-        this.defaultScheduleJson = defaultScheduleJson;
+        this.defaultSchedule = defaultSchedule;
     }
 }

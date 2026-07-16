@@ -1,172 +1,189 @@
 package com.example.roshdeandishe.studyplan;
 
+import java.time.Instant;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
 
 /**
- * تنها نقطه‌ی ورود عمومی به ماژول StudyPlan: برنامه‌ی مطالعاتیِ هر مدرسه
- * (وزن‌دهی درس‌ها به تفکیک هفته) + الگوریتم پیشنهاد خودکارِ زمان آزاد
- * دانش‌آموز - پورت plan/models.py + study_table (exam-maker-master و
- * agency-panel-master) از moshavere (MOSHAVERE_PORT_SPEC.md §6).
+ * تنها نقطه‌ی ورود عمومی به ماژول StudyPlan (پورت moshavere،
+ * MOSHAVERE_PORT_SPEC.md §6).
  * <p>
- * محتوا per-school است (هر مدرسه برنامه‌های خودش را دارد)، همان تصمیم
- * صریح curriculum (MOSHAVERE_PORT_SPEC.md §2). {@code studentId} در همه‌ی
- * متدها همان قرارداد ارجاع مبهم بدون FK است که در جاهای دیگر این پروژه
- * هم به‌کار رفته (StudentGuardianEntity.guardianUserId، ClassEntity.teacherId) -
- * تا academic لازم نباشد از وجود studyplan خبر داشته باشد؛ اعتبارسنجیِ
- * تعلق studentId به این مدرسه از طریق AcademicFacade انجام می‌شود، نه FK.
+ * وزن‌دهی درس‌های برنامه ({@code CourseWeight}) به‌جای ستون JSON موshavere
+ * (course_info) یک جدول فرزند واقعی است - همان ترجیح join table بر ستون
+ * آرایه/JSON که خود spec برای WeekCourseTopics به آن استناد می‌کند
+ * (الگوی RolePermissionEntity)؛ برنامه‌های زمانی هفتگی
+ * (default/currentSchedule) اما ساختار تو در توی نامنظم دارند و طبق spec
+ * jsonb می‌مانند. ترتیب پیمایش وزن‌ها در الگوریتم پیشنهاد، priority صعودی
+ * سپس id است - جایگزینِ قطعیِ «ترتیب آرایه‌ی JSON» موshavere که با join
+ * table دیگر وجود ندارد.
+ * <p>
+ * هفته‌ی درسی از شنبه شروع می‌شود (تقویم میلادی، DayOfWeek.SATURDAY) -
+ * چک «weekday پارسی» موshavere فقط محاسبه‌ی همین شنبه بود و به تقویم جلالی
+ * نیازی ندارد؛ سرور طبق قرارداد موجود Gregorian-only می‌ماند.
  */
 public interface StudyPlanFacade {
 
     /**
-     * ساخت یک برنامه‌ی مطالعاتی. {@code courseInfo} پورتِ course_info در
-     * منبع است (COURSE_INFO_SCHEMA) - هر آیتم باید به یک Topic واقعیِ همین
-     * مدرسه اشاره کند (وگرنه StudyPlanError.TopicNotFound)، weight باید
-     * >=0 و priority باید >=1 باشد (وگرنه StudyPlanError.InvalidPlan).
-     * فیلد priority مثل منبع توسط الگوریتم پیشنهاد مصرف نمی‌شود (فقط در
-     * table_suggester.py هرگز خوانده نشده)؛ همچنان برای وفاداری به شمای
-     * منبع نگه‌داشته شده.
+     * ساخت برنامه با وزن‌دهی درس‌ها. هر topicId باید سرفصلی از همین مدرسه
+     * باشد (اعتبارسنجی از طریق CurriculumFacade - وگرنه TopicNotFound).
+     * عنوان خالی، فهرست وزن خالی، وزن منفی، priority کمتر از ۱ یا سرفصل
+     * تکراری - InvalidPlan. teacherId (سازنده) از کاربر احرازشده‌ی جاری
+     * برداشته می‌شود و مثل ClassEntity.teacherId ممکن است null باشد.
      */
-    PlanId createPlan(Long schoolId, Long teacherId, String title, List<CourseWeight> courseInfo);
-
-    PlanInfo getPlan(Long schoolId, Long planId);
+    PlanId createPlan(Long schoolId, String title, List<CourseWeight> weights);
 
     List<PlanInfo> listPlans(Long schoolId);
 
     /**
-     * تخصیص یک برنامه به یک دانش‌آموز. Idempotent-به-معنای-جایگزینی: اگر
-     * این دانش‌آموز از قبل برنامه‌ای در این مدرسه داشته باشد، جایگزین
-     * می‌شود (همان الگوی enrollStudent در academic برای جابه‌جایی کلاس) -
-     * برخلاف منبع که Student.plan یک FK تکی بود، اینجا یک جدول تخصیص
-     * جداگانه با unique(schoolId, studentId) است.
+     * ثبت سرفصل‌های یک هفته‌ی مشخص از برنامه. weekStart باید شنبه باشد
+     * (InvalidWeekStart - همان قید DB موshavere)؛ حداکثر ۱۰ زیرسرفصل
+     * (سقف ArrayField موshavere)؛ (plan, weekStart, courseTopic) یکتاست
+     * (DuplicateWeekCourse).
      */
-    StudentPlanAssignmentId assignPlanToStudent(Long schoolId, Long studentId, Long planId);
-
-    Optional<PlanId> findAssignedPlan(Long schoolId, Long studentId);
-
-    /**
-     * ثبت اینکه یک سرفصل ("course") در یک هفته‌ی مشخص (باید شنبه باشد -
-     * وگرنه StudyPlanError.InvalidWeekCourse) برای این برنامه در نظر
-     * گرفته شده، به‌همراه حداکثر ۱۰ زیر-سرفصل (پورتِ ArrayField سایز ۱۰
-     * در منبع، اینجا به‌صورت جدول join - MOSHAVERE_PORT_SPEC.md §6).
-     */
-    WeekCourseId createWeekCourse(Long schoolId, Long planId, LocalDate weekStartDate, Long topicId, List<Long> subTopicIds);
+    WeekCourseId createWeekCourse(Long schoolId, Long planId, LocalDate weekStart,
+                                  Long courseTopicId, List<Long> subTopicIds);
 
     List<WeekCourseInfo> listWeekCourses(Long schoolId, Long planId);
 
     /**
-     * برنامه‌ی هفتگیِ ثابتِ زمان آزاد یک دانش‌آموز برای مطالعه - در صورت
-     * نبود، یک برنامه‌ی خالی ساخته می‌شود (پورتِ
-     * get_or_create_interval_schedule در منبع).
+     * تخصیص برنامه به دانش‌آموز - upsert: هر دانش‌آموز در هر لحظه دقیقاً
+     * یک برنامه دارد (همان FK تکی Student.plan در moshavere)؛ تخصیص جدید
+     * جایگزین قبلی می‌شود، نه رکورد تکراری.
      */
-    ScheduleInfo getOrCreateSchedule(Long schoolId, Long studentId);
+    void assignPlanToStudent(Long schoolId, Long planId, Long studentId);
+
+    List<AssignmentInfo> listAssignments(Long schoolId, Long planId);
 
     /**
-     * جایگزینیِ برنامه‌ی «این هفته»ی دانش‌آموز (current_schedule در منبع).
-     * برنامه‌ی پیش‌فرض (default_schedule) از این مسیر قابل تغییر نیست -
-     * برای آن باید یک متد جدا اضافه شود، اگر/وقتی واقعاً لازم شد.
+     * برنامه‌ی زمانی هفتگی دانش‌آموز. اگر هنوز ثبت نشده باشد، نمایش
+     * پیش‌فرضِ خالی برمی‌گردد (بدون persist - برخلاف get_or_create
+     * موshavere؛ GET نباید بنویسد). {@code currentActive} یعنی
+     * currentSchedule در هفته‌ی جاری (از شنبه‌ی اخیر) ویرایش شده و همان
+     * ملاک پیشنهاد خودکار است - پورت property «schedule» موshavere با
+     * مقایسه‌ی timestamp ساده.
      */
-    ScheduleInfo updateCurrentSchedule(Long schoolId, Long studentId, Map<String, List<DaySlot>> currentSchedule);
+    ScheduleInfo getSchedule(Long schoolId, Long studentId);
+
+    void setDefaultSchedule(Long schoolId, Long studentId, Map<Weekday, List<TimeRange>> schedule);
 
     /**
-     * تولید خودکار بازه‌های مطالعه‌ی یک هفته (باید از شنبه شروع شود) روی
-     * زمان‌های آزادِ برنامه‌ی مؤثرِ دانش‌آموز (current_schedule اگر به‌تازگی
-     * ویرایش شده، وگرنه default_schedule) - پورت مستقیم
-     * table_suggester.py (SliceScheduleInterval + FillSlices + Suggestor).
-     * اگر آن هفته از قبل بازه‌ای داشته باشد، StudyPlanError.WeekNotEmpty.
+     * schedule=null یعنی پاک کردن برنامه‌ی موقت (بازگشت به پیش‌فرض).
      */
-    List<StudyIntervalInfo> suggestWeek(Long schoolId, Long studentId, LocalDate weekStartDate);
-
-    List<StudyIntervalInfo> getWeek(Long schoolId, Long studentId, LocalDate weekStartDate);
-
-    void clearWeek(Long schoolId, Long studentId, LocalDate weekStartDate);
+    void setCurrentSchedule(Long schoolId, Long studentId, Map<Weekday, List<TimeRange>> schedule);
 
     /**
-     * کپیِ بازه‌های یک هفته از یک دانش‌آموز به چند دانش‌آموز دیگر - عمل
-     * معلم/ادمین (پورتِ StudyViewSet.copy_week). Best-effort مثل منبع: هر
-     * دانش‌آموز مقصد نتیجه‌ی خودش را می‌گیرد، شکست روی یکی مانع بقیه نیست.
+     * پیشنهاد خودکار جدول مطالعه‌ی یک هفته - پورت مستقیم table_suggester
+     * موshavere (SliceScheduleInterval/FillSlices/Suggestor). weekStart باید
+     * شنبه باشد، هفته باید خالی باشد (WeekNotEmpty)، دانش‌آموز باید برنامه
+     * داشته باشد (PlanNotAssigned) و مجموع زمان آزاد دست‌کم ۱۸۰ دقیقه
+     * (ScheduleTooSmall). بازه‌های ساخته‌شده برمی‌گردند.
      */
-    List<CopyWeekResult> copyWeek(Long schoolId, Long sourceStudentId, LocalDate weekStartDate, List<Long> targetStudentIds);
-
-    StudyIntervalId updateStudyInterval(Long schoolId, Long intervalId, Boolean done, Integer testCount);
+    List<IntervalInfo> suggestWeek(Long schoolId, Long studentId, LocalDate weekStart);
 
     /**
-     * سرفصل‌های (+ زیر-سرفصل‌ها) مطالعه‌شده در هفته‌ی جاریِ تقویمی - پورتِ
-     * get_week_intervals_topics، متدی که ماژول exam (پورت گام ۴) برای
-     * تولید خودکار آزمون هفتگی به آن نیاز دارد (MOSHAVERE_PORT_SPEC.md §5/§6).
+     * بازه‌های هفته‌ی شامل {@code date} (نرمال‌شده به هفته‌ی شنبه-محور،
+     * همان get_start_end_week موshavere - لازم نیست خودِ date شنبه باشد).
      */
-    List<RecentTopic> getRecentTopics(Long schoolId, Long studentId);
+    List<IntervalInfo> getWeek(Long schoolId, Long studentId, LocalDate date);
 
-    record PlanId(Long value) {
+    /**
+     * حذف همه‌ی بازه‌های هفته‌ی weekStart (باید شنبه باشد).
+     */
+    void clearWeek(Long schoolId, Long studentId, LocalDate weekStart);
+
+    /**
+     * کپی بازه‌های یک هفته‌ی دانش‌آموز مبدأ برای چند دانش‌آموز دیگر
+     * (عملیات گروهی معلم در moshavere). به‌ازای هر مقصد نتیجه‌ی جدا
+     * برمی‌گردد؛ شکست یک مقصد (مثلاً هم‌پوشانی) بقیه را متوقف نمی‌کند.
+     * برای هر مقصد اول همه‌ی بازه‌ها چک می‌شوند بعد ثبت - کپی نیمه‌کاره
+     * برای یک مقصد پیش نمی‌آید (بهبود کوچک نسبت به ثبت ردیف‌به‌ردیف
+     * موshavere). زیرسرفصل‌ها مثل مبدأ کپی نمی‌شوند (همان رفتار
+     * copy_week موshavere که فقط topic را می‌برد).
+     */
+    List<CopyResult> copyWeek(Long schoolId, Long sourceStudentId, LocalDate weekStart,
+                              List<Long> targetStudentIds);
+
+    /**
+     * ثبت دستی یک بازه‌ی مطالعه - با چک هم‌پوشانی با بازه‌های موجود
+     * (IntervalOverlaps، پورت check_time_overlap موshavere).
+     */
+    IntervalId createInterval(Long schoolId, Long studentId, Long topicId, List<Long> subTopicIds,
+                              LocalDateTime start, LocalDateTime end);
+
+    /**
+     * فقط انجام‌شدن/تعداد تست قابل ویرایش‌اند (همان
+     * StudyIntervalUpdateSerializer موshavere - زمان و سرفصل read-only).
+     * پارامتر null یعنی «بدون تغییر».
+     */
+    IntervalInfo updateInterval(Long schoolId, Long intervalId, Boolean done, Integer testCount);
+
+    void deleteInterval(Long schoolId, Long intervalId);
+
+    /**
+     * سرفصل‌های مطالعه‌شده‌ی هفته‌ی جاری دانش‌آموز (متمایز، با
+     * زیرسرفصل‌های تجمیع‌شده) - پورت get_week_intervals_topics؛ متدی که
+     * ساخت خودکار آزمون هفتگی در ماژول exam به آن وابسته خواهد بود
+     * (MOSHAVERE_PORT_SPEC.md §5). studentId به‌تنهایی کافی است چون
+     * شناسه‌ی StudentEntity خودش مدرسه-محدود است.
+     */
+    List<RecentTopic> getRecentTopics(Long studentId);
+
+    /**
+     * روزهای هفته‌ی درسی، از شنبه. کلیدهای JSON برنامه‌های زمانی و ترتیب
+     * برش/تخصیص الگوریتم پیشنهاد هر دو همین ترتیب‌اند - ترتیب fri-اول
+     * موshavere فقط عارضه‌ی مرتب‌سازی کلیدهای jsonb پستگرس بود، نه تصمیم.
+     */
+    enum Weekday {
+        SAT, SUN, MON, TUE, WED, THU, FRI
     }
 
-    record StudentPlanAssignmentId(Long value) {
+    record PlanId(Long value) {
     }
 
     record WeekCourseId(Long value) {
     }
 
-    record StudyIntervalId(Long value) {
+    record IntervalId(Long value) {
     }
 
     /**
-     * یک آیتمِ course_info: {@code topicId} همان "course" در منبع (اشاره
-     * به یک Topic در curriculum)، {@code weight} سهم این درس از کل زمان
-     * آزاد هفته (۰ تا ۱)، {@code priority} نگه‌داشته‌شده برای وفاداری به
-     * شمای منبع ولی توسط الگوریتم پیشنهاد مصرف نمی‌شود (رجوع به createPlan).
+     * وزن‌دهی یک درس در برنامه - همان {course, weight, priority} اسکیمای
+     * course_info موshavere (weight >= 0, priority >= 1).
      */
     record CourseWeight(Long topicId, double weight, int priority) {
     }
 
-    record PlanInfo(PlanId id, Long schoolId, Long teacherId, String title, List<CourseWeight> courseInfo) {
+    record PlanInfo(PlanId id, Long schoolId, Long teacherId, String title, List<CourseWeight> weights) {
     }
 
-    record WeekCourseInfo(
-            WeekCourseId id, Long schoolId, Long planId, LocalDate weekStartDate, Long topicId, List<Long> subTopicIds
-    ) {
+    record WeekCourseInfo(WeekCourseId id, PlanId planId, LocalDate weekStart,
+                          Long courseTopicId, List<Long> subTopicIds) {
     }
 
-    /**
-     * یک بازه‌ی زمانیِ آزاد در یک روز، به‌صورت رشته‌ی "HH:mm" (همان قالب
-     * منبع) - عمداً نه LocalTime، تا ذخیره‌سازی JSON بدون نیاز به ماژول
-     * زمانِ Jackson ساده بماند (رجوع به توضیح PlanEntity.courseInfoJson).
-     */
-    record DaySlot(String start, String end) {
+    record AssignmentInfo(Long studentId, PlanId planId, Instant assignedAt) {
     }
 
     /**
-     * {@code effectiveSchedule} مشتق‌شده در لحظه‌ی خواندن است (هرگز
-     * ذخیره نمی‌شود): اگر current_schedule وجود دارد و در ۷ روز گذشته
-     * ویرایش شده، همان؛ وگرنه default_schedule - جایگزینِ ساده‌ترِ
-     * property محاسباتیِ منبع (رجوع به توضیح IntervalScheduleEntity).
+     * یک بازه‌ی زمان آزاد در روز، ساعت دیواری "HH:mm" - همان قالب رشته‌ای
+     * موshavere؛ اعتبارسنجی (قالب، start<end، عدم هم‌پوشانی) در facade.
      */
-    record ScheduleInfo(
-            Long schoolId,
-            Long studentId,
-            Map<String, List<DaySlot>> defaultSchedule,
-            Map<String, List<DaySlot>> currentSchedule,
-            Map<String, List<DaySlot>> effectiveSchedule,
-            LocalDateTime lastEditedAt
-    ) {
+    record TimeRange(String start, String end) {
     }
 
-    record StudyIntervalInfo(
-            StudyIntervalId id,
-            Long schoolId,
-            Long studentId,
-            Long topicId,
-            List<Long> subTopicIds,
-            LocalDateTime startTime,
-            LocalDateTime endTime,
-            boolean done,
-            int testCount
-    ) {
+    record ScheduleInfo(Long studentId,
+                        Map<Weekday, List<TimeRange>> defaultSchedule,
+                        Map<Weekday, List<TimeRange>> currentSchedule,
+                        Instant lastEditedAt,
+                        boolean currentActive) {
     }
 
-    record CopyWeekResult(Long targetStudentId, boolean success, String errorMessage) {
+    record IntervalInfo(IntervalId id, Long studentId, Long topicId, List<Long> subTopicIds,
+                        LocalDateTime start, LocalDateTime end, boolean done, int testCount) {
+    }
+
+    record CopyResult(Long studentId, boolean ok, String message) {
     }
 
     record RecentTopic(Long topicId, List<Long> subTopicIds) {

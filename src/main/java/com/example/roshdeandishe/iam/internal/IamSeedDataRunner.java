@@ -80,7 +80,7 @@ class IamSeedDataRunner implements ApplicationRunner {
         module("ACADEMIC", "آموزش", ModuleScope.SCHOOL);
         module("FINANCE", "مالی", ModuleScope.SCHOOL);
         module("CURRICULUM", "سرفصل‌ها و بانک سؤال", ModuleScope.SCHOOL);
-        module("STUDY_PLANNER", "برنامه‌ریز مطالعاتی", ModuleScope.SCHOOL);
+        module("STUDY_PLANNER", "برنامه‌ریز مطالعه", ModuleScope.SCHOOL);
         module("LIBRARY", "کتابخانه", ModuleScope.SCHOOL);
         module("ATTENDANCE", "حضور و غیاب", ModuleScope.SCHOOL);
         module("TRANSPORTATION", "سرویس", ModuleScope.SCHOOL);
@@ -140,8 +140,8 @@ class IamSeedDataRunner implements ApplicationRunner {
         permission(permissions, "ROLE_MANAGE", "ساخت نقش سفارشی و مدیریت دسترسی‌ها");
         permission(permissions, "CURRICULUM_VIEW", "مشاهده‌ی سرفصل‌ها و بانک سؤال");
         permission(permissions, "CURRICULUM_MANAGE", "ساخت سرفصل و سؤال در بانک سؤال");
-        permission(permissions, "STUDYPLAN_VIEW", "مشاهده‌ی برنامه‌ی مطالعاتی و بازه‌های مطالعه");
-        permission(permissions, "STUDYPLAN_MANAGE", "ساخت/تخصیص برنامه‌ی مطالعاتی و مدیریت بازه‌های مطالعه");
+        permission(permissions, "STUDYPLAN_VIEW", "مشاهده‌ی برنامه‌ی درسی و جدول مطالعه");
+        permission(permissions, "STUDYPLAN_MANAGE", "ایجاد/مدیریت برنامه‌ی درسی و جدول مطالعه");
         return permissions;
     }
 
@@ -168,10 +168,8 @@ class IamSeedDataRunner implements ApplicationRunner {
         // از طریق ماژول exam میانجی‌گری می‌شود، نه خواندن مستقیم بانک.
         grant(roles.get("TEACHER"), permissions.get("CURRICULUM_VIEW"));
         grant(roles.get("TEACHER"), permissions.get("CURRICULUM_MANAGE"));
-        // همان استدلال CURRICULUM بالا: تألیف/تخصیص برنامه‌ی مطالعاتی کار
-        // روزمره‌ی معلم است، نه تصمیم اداری - STUDENT/PARENT عمداً هیچ‌کدام
-        // را ندارند (دسترسی دانش‌آموز به برنامه‌ی خودش از طریق endpoint
-        // خودسرویسِ studyplan.MyStudyWeekController است، نه این دو Permission)
+        // برنامه‌ریزیِ مطالعه هم مثل سرفصل/سوال کار روزمره‌ی معلم است
+        // (MOSHAVERE_PORT_SPEC.md §6/§2 - نویسنده‌ی Plan در moshavere همان Instructor است)
         grant(roles.get("TEACHER"), permissions.get("STUDYPLAN_VIEW"));
         grant(roles.get("TEACHER"), permissions.get("STUDYPLAN_MANAGE"));
 

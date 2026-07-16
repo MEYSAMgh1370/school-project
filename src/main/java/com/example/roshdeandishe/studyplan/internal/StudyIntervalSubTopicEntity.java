@@ -6,11 +6,11 @@ import lombok.NoArgsConstructor;
 import lombok.Setter;
 
 /**
- * پورت {@code StudyInterval.sub_topics} (ManyToMany در منبع) به یک جدول
- * join صریح - همان دلیل WeekCourseTopicEntity.
+ * زیرسرفصل‌های یک بازه‌ی مطالعه - پورت ManyToMany sub_topics موshavere.
  */
 @Entity
-@Table(name = "study_interval_sub_topics", schema = "studyplan")
+@Table(name = "study_interval_sub_topics", schema = "studyplan",
+        uniqueConstraints = @UniqueConstraint(columnNames = {"interval_id", "topic_id"}))
 @Getter
 @Setter
 @NoArgsConstructor
@@ -20,14 +20,14 @@ class StudyIntervalSubTopicEntity {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(name = "study_interval_id", nullable = false)
-    private Long studyIntervalId;
+    @Column(name = "interval_id", nullable = false)
+    private Long intervalId;
 
     @Column(name = "topic_id", nullable = false)
     private Long topicId;
 
-    StudyIntervalSubTopicEntity(Long studyIntervalId, Long topicId) {
-        this.studyIntervalId = studyIntervalId;
+    StudyIntervalSubTopicEntity(Long intervalId, Long topicId) {
+        this.intervalId = intervalId;
         this.topicId = topicId;
     }
 }

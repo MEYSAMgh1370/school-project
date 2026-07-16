@@ -5,22 +5,18 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 
+import java.time.Instant;
+
 /**
- * لینک دانش‌آموز <-> برنامه‌ی مطالعاتی، به‌عنوان یک ارجاع مبهم درونِ
- * studyplan نگه‌داشته شده (بدون FK به academic) - همان قراردادِ
- * StudentGuardianEntity.guardianUserId/ClassEntity.teacherId - تا academic
- * لازم نباشد از وجود studyplan خبر داشته باشد (MOSHAVERE_PORT_SPEC.md §6).
- * برخلاف منبع (Student.plan یک FK ساده)، اینجا یک جدول جدا با
- * unique(schoolId, studentId) است: هر دانش‌آموز حداکثر یک برنامه‌ی فعال
- * در هر مدرسه دارد؛ تخصیص دوباره رکورد موجود را جایگزین می‌کند
- * (idempotent-به-معنای-جایگزینی، همان الگوی enrollStudent در academic).
+ * تخصیص برنامه به دانش‌آموز - رفرنس مات *داخل* studyplan به‌جای ستون
+ * planId روی StudentEntity ماژول academic (MOSHAVERE_PORT_SPEC.md §6):
+ * academic نباید بداند studyplan وجود دارد. {@code studentId} یکتاست -
+ * هر دانش‌آموز در هر لحظه دقیقاً یک برنامه (همان FK تکی Student.plan
+ * موshavere)؛ تخصیص جدید upsert است.
  */
 @Entity
-@Table(
-        name = "student_plan_assignments",
-        schema = "studyplan",
-        uniqueConstraints = @UniqueConstraint(columnNames = {"school_id", "student_id"})
-)
+@Table(name = "student_plan_assignments", schema = "studyplan",
+        uniqueConstraints = @UniqueConstraint(columnNames = {"student_id"}))
 @Getter
 @Setter
 @NoArgsConstructor
@@ -39,9 +35,13 @@ class StudentPlanAssignmentEntity {
     @Column(name = "plan_id", nullable = false)
     private Long planId;
 
-    StudentPlanAssignmentEntity(Long schoolId, Long studentId, Long planId) {
+    @Column(name = "assigned_at", nullable = false)
+    private Instant assignedAt;
+
+    StudentPlanAssignmentEntity(Long schoolId, Long studentId, Long planId, Instant assignedAt) {
         this.schoolId = schoolId;
         this.studentId = studentId;
         this.planId = planId;
+        this.assignedAt = assignedAt;
     }
 }

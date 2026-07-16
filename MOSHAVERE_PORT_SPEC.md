@@ -204,43 +204,30 @@ module, just an additional caller.
 
 ## 6. `studyplan` (new module) — Plans + auto-scheduler
 
-**Status: DONE (2026-07-17)**, built as scoped below via its own `new-module`
-pass — see `CLAUDE.md` §3/§4 (Plan/WeekCourse/StudyInterval/IntervalSchedule
-subsection) and §7 Done for the final shape and test coverage
-(`StudyPlanFlowIntegrationTest`). The one open item below was resolved at
-new-module time: a new `SCHOOL`-scoped `STUDY_PLANNER` module code (none of
-the seeded codes fit), and `STUDYPLAN_MANAGE`/`STUDYPLAN_VIEW` permissions,
-both `SCHOOL_ADMIN` + `TEACHER` (same `STUDENT_ENROLL`/`CURRICULUM_MANAGE`
-reasoning as `curriculum` — authoring/assigning a plan is day-to-day teacher
-work), neither to `STUDENT`/`PARENT` (a student reads their own week through
-a dedicated self-service endpoint, `studyplan.MyStudyWeekController`, the
-same trust model as `academic.MyEnrollmentController`/
-`finance.MyInvoicesController` — never the admin REST surface).
-
-Two deliberate corrections of what turned out to be actual bugs in the
-moshavere source, not behavior worth preserving (both documented in code
-comments at the port site):
-- `SliceScheduleInterval.__init__` assigned `self.intervals_info = ALLOWED_INTERVALS`
-  — a reference to the *module-level* dict, not a copy, so every instance
-  shared and leaked duration counters across requests. Ported as a fresh
-  per-call map instead (`ScheduleSlicer.slice`).
-- `Suggestor.create_study_intervals` processed the seven days of a week
-  through a scrambled index order (`intervals[2], intervals[3], intervals[1], ...`)
-  that does not correspond to the actual Saturday-start day order the same
-  file's `default_schedule` dict uses — visibly a stale bug (the source
-  itself is marked `# FIXME: code needs cleaning`). Ported as the evidently
-  intended calendar order instead: day *i* in `WeekDays.ORDER` (Saturday = 0)
-  maps to `weekStartDate.plusDays(i)`.
-
-`course_info`/`default_schedule`/`current_schedule` are stored as plain
-`text` columns (not Postgres `jsonb`) holding hand-serialized JSON, to avoid
-a JDBC type mismatch that a plain Hibernate `String` field would hit against
-a real `jsonb` column without a custom `FormatMapper` — a pragmatic
-simplification flagged in `PlanEntity`'s own doc comment, not a deviation
-from the spec's intent (still "a JSON column" in every way that matters to
-callers). Times inside those JSON blobs are kept as `"HH:mm"` strings (never
-`LocalTime`) specifically so no Jackson time module is needed for
-(de)serialization.
+**Status: DONE (2026-07-16)**, built as scoped below with one deviation:
+course weighting became a real child table (`plan_course_weights`), not
+the JSON `course_info` column sketched below — the same join-table-over-
+array preference this section already applies to `WeekCourseTopics`
+(ported as `WeekCourseTopicEntity`, as written below), extended to course
+weighting too once actually building it made the JSON-column plan look
+like the odd one out. The two schedule columns (`default_schedule`/
+`current_schedule`) did stay `jsonb` as written below — that structure is
+a genuinely nested day→interval shape, not a flat list a join table would
+simplify. Everything else — the opaque `StudentPlanAssignmentEntity`
+(not a `planId` column on `academic.StudentEntity`), the
+`SliceScheduleInterval`/`FillSlices`/`Suggestor` algorithm port, and the
+new `STUDY_PLANNER` module code + `STUDYPLAN_VIEW`/`STUDYPLAN_MANAGE`
+permissions (both granted to `SCHOOL_ADMIN` + `TEACHER`, resolving this
+section's open question below) — shipped as written. See `CLAUDE.md` §4's
+Plan/WeekCourse/StudentPlanAssignment/StudyInterval/IntervalSchedule
+subsection and §7 Done for the final shape and test coverage
+(`StudyPlanManagementFlowIntegrationTest`). Two implementation-hygiene
+normalizations were made to the algorithm port, neither changing its
+actual output: the block-size counter is per-call state instead of
+`table_suggester.py`'s module-level mutable dict (which leaked counts
+across unrelated calls — a bug, not behavior worth preserving), and
+weekdays are walked Saturday→Friday instead of moshavere's own
+Friday-first order (a Postgres jsonb key-sort artifact, not a decision).
 
 Source: `agency-panel-master/plan/models.py`,
 `exam-maker-master/plan/models.py`,
@@ -288,8 +275,11 @@ Depends on: `curriculum` (topics), `academic` (students/classes).
   `exam`'s weekly-auto-generation depends on, §5).
 - REST: `PlanController`, `WeekCourseController`, `StudyIntervalController`,
   `IntervalScheduleController`.
-- ~~**Open:** new `Module`/`Permission` codes needed~~ **Resolved** — see the
-  Status note above.
+- **Resolved at new-module time:** a new `SCHOOL`-scoped `STUDY_PLANNER`
+  module code, plus `STUDYPLAN_VIEW`/`STUDYPLAN_MANAGE` permissions
+  granted to `SCHOOL_ADMIN` + `TEACHER` (same reasoning as
+  `CURRICULUM_VIEW`/`CURRICULUM_MANAGE` — see `CLAUDE.md` §4's Permission
+  section).
 
 ## 7. Non-goals (explicitly not being ported)
 

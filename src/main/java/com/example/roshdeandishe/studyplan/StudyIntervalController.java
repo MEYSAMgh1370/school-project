@@ -3,21 +3,22 @@ package com.example.roshdeandishe.studyplan;
 import com.example.roshdeandishe.iam.shared.RequiresModule;
 import com.example.roshdeandishe.iam.shared.RequiresPermission;
 import com.example.roshdeandishe.platform.TenantContext;
-import com.example.roshdeandishe.studyplan.StudyPlanFacade.*;
+import com.example.roshdeandishe.studyplan.StudyPlanFacade.CopyResult;
+import com.example.roshdeandishe.studyplan.StudyPlanFacade.IntervalId;
+import com.example.roshdeandishe.studyplan.StudyPlanFacade.IntervalInfo;
 import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.List;
-import java.util.Map;
 
 /**
- * برنامه‌ی زمانیِ آزادِ دانش‌آموز + بازه‌های مطالعه‌ی هفتگی - پورت
- * IntervalScheduleViewSet + StudyViewSet در study_table/views.py.
- * دسترسیِ ادمین/معلم روی داده‌ی هر دانش‌آموزِ مدرسه (بر خلاف
- * MyStudyWeekController که فقط خودِ کاربر را می‌بیند).
+ * بازه‌های مطالعه‌ی یک دانش‌آموز: ثبت دستی، فهرست هفته، پیشنهاد خودکار
+ * (پورت table_suggester موshavere)، خالی‌کردن هفته، کپی هفته بین
+ * دانش‌آموزان.
  */
 @RestController
-@RequestMapping("/api/admin/schools/{schoolId}/students/{studentId}")
+@RequestMapping("/api/admin/schools/{schoolId}/students/{studentId}/study-intervals")
 @RequiresModule("STUDY_PLANNER")
 public class StudyIntervalController {
 
@@ -27,111 +28,99 @@ public class StudyIntervalController {
         this.studyPlanFacade = studyPlanFacade;
     }
 
-    @GetMapping("/schedule")
+    @PostMapping
+    @RequiresPermission("STUDYPLAN_MANAGE")
+    public IntervalResponse createInterval(@PathVariable Long schoolId, @PathVariable Long studentId,
+                                           @RequestBody CreateIntervalRequest request) {
+        TenantContext.requireMatches(schoolId);
+
+        List<Long> subTopicIds = request.subTopicIds() == null ? List.of() : request.subTopicIds();
+        IntervalId intervalId = studyPlanFacade.createInterval(
+                schoolId, studentId, request.topicId(), subTopicIds, request.start(), request.end());
+        return new IntervalResponse(intervalId.value(), studentId, request.topicId(), subTopicIds,
+                request.start(), request.end(), false, 0);
+    }
+
+    @GetMapping
     @RequiresPermission("STUDYPLAN_VIEW")
-    public ScheduleResponse getSchedule(@PathVariable Long schoolId, @PathVariable Long studentId) {
+    public List<IntervalResponse> getWeek(@PathVariable Long schoolId, @PathVariable Long studentId,
+                                          @RequestParam(required = false) LocalDate date) {
         TenantContext.requireMatches(schoolId);
 
-        return toResponse(studyPlanFacade.getOrCreateSchedule(schoolId, studentId));
-    }
-
-    @PutMapping("/schedule")
-    @RequiresPermission("STUDYPLAN_MANAGE")
-    public ScheduleResponse updateSchedule(
-            @PathVariable Long schoolId, @PathVariable Long studentId, @RequestBody UpdateScheduleRequest request
-    ) {
-        TenantContext.requireMatches(schoolId);
-
-        return toResponse(studyPlanFacade.updateCurrentSchedule(schoolId, studentId, request.currentSchedule()));
-    }
-
-    @PostMapping("/weeks/{weekStartDate}/suggest")
-    @RequiresPermission("STUDYPLAN_MANAGE")
-    public List<StudyIntervalResponse> suggestWeek(
-            @PathVariable Long schoolId, @PathVariable Long studentId, @PathVariable LocalDate weekStartDate
-    ) {
-        TenantContext.requireMatches(schoolId);
-
-        return studyPlanFacade.suggestWeek(schoolId, studentId, weekStartDate).stream()
+        return studyPlanFacade.getWeek(schoolId, studentId, date).stream()
                 .map(StudyIntervalController::toResponse)
                 .toList();
     }
 
-    @GetMapping("/weeks/{weekStartDate}")
-    @RequiresPermission("STUDYPLAN_VIEW")
-    public List<StudyIntervalResponse> getWeek(
-            @PathVariable Long schoolId, @PathVariable Long studentId, @PathVariable LocalDate weekStartDate
-    ) {
+    @PatchMapping("/{intervalId}")
+    @RequiresPermission("STUDYPLAN_MANAGE")
+    public IntervalResponse updateInterval(@PathVariable Long schoolId, @PathVariable Long studentId,
+                                           @PathVariable Long intervalId,
+                                           @RequestBody UpdateIntervalRequest request) {
         TenantContext.requireMatches(schoolId);
 
-        return studyPlanFacade.getWeek(schoolId, studentId, weekStartDate).stream()
+        return toResponse(studyPlanFacade.updateInterval(schoolId, intervalId, request.done(), request.testCount()));
+    }
+
+    @DeleteMapping("/{intervalId}")
+    @RequiresPermission("STUDYPLAN_MANAGE")
+    public void deleteInterval(@PathVariable Long schoolId, @PathVariable Long studentId,
+                               @PathVariable Long intervalId) {
+        TenantContext.requireMatches(schoolId);
+
+        studyPlanFacade.deleteInterval(schoolId, intervalId);
+    }
+
+    @PostMapping("/suggest")
+    @RequiresPermission("STUDYPLAN_MANAGE")
+    public List<IntervalResponse> suggestWeek(@PathVariable Long schoolId, @PathVariable Long studentId,
+                                              @RequestParam LocalDate weekStart) {
+        TenantContext.requireMatches(schoolId);
+
+        return studyPlanFacade.suggestWeek(schoolId, studentId, weekStart).stream()
                 .map(StudyIntervalController::toResponse)
                 .toList();
     }
 
-    @DeleteMapping("/weeks/{weekStartDate}")
+    @PostMapping("/clear")
     @RequiresPermission("STUDYPLAN_MANAGE")
-    public void clearWeek(@PathVariable Long schoolId, @PathVariable Long studentId, @PathVariable LocalDate weekStartDate) {
+    public void clearWeek(@PathVariable Long schoolId, @PathVariable Long studentId,
+                          @RequestParam LocalDate weekStart) {
         TenantContext.requireMatches(schoolId);
 
-        studyPlanFacade.clearWeek(schoolId, studentId, weekStartDate);
+        studyPlanFacade.clearWeek(schoolId, studentId, weekStart);
     }
 
-    @PostMapping("/weeks/{weekStartDate}/copy")
+    @PostMapping("/copy")
     @RequiresPermission("STUDYPLAN_MANAGE")
-    public List<CopyWeekResult> copyWeek(
-            @PathVariable Long schoolId, @PathVariable Long studentId, @PathVariable LocalDate weekStartDate,
-            @RequestBody CopyWeekRequest request
-    ) {
+    public List<CopyResultResponse> copyWeek(@PathVariable Long schoolId, @PathVariable Long studentId,
+                                             @RequestBody CopyWeekRequest request) {
         TenantContext.requireMatches(schoolId);
 
-        return studyPlanFacade.copyWeek(schoolId, studentId, weekStartDate, request.targetStudentIds());
+        List<Long> targets = request.targetStudentIds() == null ? List.of() : request.targetStudentIds();
+        return studyPlanFacade.copyWeek(schoolId, studentId, request.weekStart(), targets).stream()
+                .map(r -> new CopyResultResponse(r.studentId(), r.ok(), r.message()))
+                .toList();
     }
 
-    @PatchMapping("/intervals/{intervalId}")
-    @RequiresPermission("STUDYPLAN_MANAGE")
-    public void updateInterval(
-            @PathVariable Long schoolId, @PathVariable Long studentId, @PathVariable Long intervalId,
-            @RequestBody UpdateIntervalRequest request
-    ) {
-        TenantContext.requireMatches(schoolId);
-
-        studyPlanFacade.updateStudyInterval(schoolId, intervalId, request.done(), request.testCount());
+    private static IntervalResponse toResponse(IntervalInfo info) {
+        return new IntervalResponse(info.id().value(), info.studentId(), info.topicId(), info.subTopicIds(),
+                info.start(), info.end(), info.done(), info.testCount());
     }
 
-    static ScheduleResponse toResponse(ScheduleInfo info) {
-        return new ScheduleResponse(
-                info.schoolId(), info.studentId(), info.defaultSchedule(), info.currentSchedule(),
-                info.effectiveSchedule(), info.lastEditedAt()
-        );
-    }
-
-    static StudyIntervalResponse toResponse(StudyIntervalInfo info) {
-        return new StudyIntervalResponse(
-                info.id().value(), info.schoolId(), info.studentId(), info.topicId(), info.subTopicIds(),
-                info.startTime(), info.endTime(), info.done(), info.testCount()
-        );
-    }
-
-    public record UpdateScheduleRequest(Map<String, List<DaySlot>> currentSchedule) {
-    }
-
-    public record ScheduleResponse(
-            Long schoolId, Long studentId, Map<String, List<DaySlot>> defaultSchedule,
-            Map<String, List<DaySlot>> currentSchedule, Map<String, List<DaySlot>> effectiveSchedule,
-            java.time.LocalDateTime lastEditedAt
-    ) {
-    }
-
-    public record StudyIntervalResponse(
-            Long id, Long schoolId, Long studentId, Long topicId, List<Long> subTopicIds,
-            java.time.LocalDateTime startTime, java.time.LocalDateTime endTime, boolean done, int testCount
-    ) {
-    }
-
-    public record CopyWeekRequest(List<Long> targetStudentIds) {
+    public record CreateIntervalRequest(Long topicId, List<Long> subTopicIds, LocalDateTime start, LocalDateTime end) {
     }
 
     public record UpdateIntervalRequest(Boolean done, Integer testCount) {
+    }
+
+    public record CopyWeekRequest(LocalDate weekStart, List<Long> targetStudentIds) {
+    }
+
+    public record IntervalResponse(Long id, Long studentId, Long topicId, List<Long> subTopicIds,
+                                   LocalDateTime start, LocalDateTime end, boolean done, int testCount) {
+    }
+
+    public record CopyResultResponse(Long studentId, boolean ok, String message) {
     }
 }

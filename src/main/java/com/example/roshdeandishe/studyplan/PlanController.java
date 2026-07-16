@@ -3,23 +3,23 @@ package com.example.roshdeandishe.studyplan;
 import com.example.roshdeandishe.iam.shared.RequiresModule;
 import com.example.roshdeandishe.iam.shared.RequiresPermission;
 import com.example.roshdeandishe.platform.TenantContext;
-import com.example.roshdeandishe.studyplan.StudyPlanFacade.*;
+import com.example.roshdeandishe.studyplan.StudyPlanFacade.AssignmentInfo;
+import com.example.roshdeandishe.studyplan.StudyPlanFacade.CourseWeight;
+import com.example.roshdeandishe.studyplan.StudyPlanFacade.PlanId;
+import com.example.roshdeandishe.studyplan.StudyPlanFacade.PlanInfo;
 import org.springframework.web.bind.annotation.*;
 
-import java.time.LocalDate;
+import java.time.Instant;
 import java.util.List;
-import java.util.Optional;
 
 /**
- * مدیریت برنامه‌های مطالعاتی و تخصیص آن‌ها به دانش‌آموزان. تقسیم Permission
- * طبق تصمیم new-module این ماژول، همان استدلال curriculum: تألیف برنامه
- * کار روزمره‌ی معلم است، پس STUDYPLAN_MANAGE هم به SCHOOL_ADMIN و هم
- * TEACHER داده می‌شود؛ STUDYPLAN_VIEW هم همین دو نقش - نه STUDENT/PARENT
- * (دسترسی دانش‌آموز به برنامه‌ی خودش از طریق endpoint خودسرویسِ جدا
- * است - رجوع به MyStudyWeekController).
+ * برنامه‌های درسی و تخصیص آن‌ها به دانش‌آموز. طبق تصمیم پاس new-module:
+ * STUDYPLAN_MANAGE/STUDYPLAN_VIEW به SCHOOL_ADMIN و TEACHER هر دو داده
+ * می‌شود - نویسنده‌ی برنامه در moshavere همان Instructor است
+ * (MOSHAVERE_PORT_SPEC.md §6/§2)، همان استدلال CurriculumFacade.
  */
 @RestController
-@RequestMapping("/api/admin/schools/{schoolId}")
+@RequestMapping("/api/admin/schools/{schoolId}/study-plans")
 @RequiresModule("STUDY_PLANNER")
 public class PlanController {
 
@@ -29,104 +29,58 @@ public class PlanController {
         this.studyPlanFacade = studyPlanFacade;
     }
 
-    @PostMapping("/plans")
+    @PostMapping
     @RequiresPermission("STUDYPLAN_MANAGE")
     public PlanResponse createPlan(@PathVariable Long schoolId, @RequestBody CreatePlanRequest request) {
         TenantContext.requireMatches(schoolId);
 
-        PlanId planId = studyPlanFacade.createPlan(schoolId, request.teacherId(), request.title(), request.courseInfo());
-        return toResponse(studyPlanFacade.getPlan(schoolId, planId.value()));
+        List<CourseWeight> weights = request.weights() == null ? List.of() : request.weights();
+        PlanId planId = studyPlanFacade.createPlan(schoolId, request.title(), weights);
+        return new PlanResponse(planId.value(), schoolId, null, request.title(), weights);
     }
 
-    @GetMapping("/plans")
+    @GetMapping
     @RequiresPermission("STUDYPLAN_VIEW")
     public List<PlanResponse> listPlans(@PathVariable Long schoolId) {
         TenantContext.requireMatches(schoolId);
 
-        return studyPlanFacade.listPlans(schoolId).stream().map(PlanController::toResponse).toList();
-    }
-
-    @GetMapping("/plans/{planId}")
-    @RequiresPermission("STUDYPLAN_VIEW")
-    public PlanResponse getPlan(@PathVariable Long schoolId, @PathVariable Long planId) {
-        TenantContext.requireMatches(schoolId);
-
-        return toResponse(studyPlanFacade.getPlan(schoolId, planId));
-    }
-
-    @PostMapping("/students/{studentId}/plan-assignment")
-    @RequiresPermission("STUDYPLAN_MANAGE")
-    public AssignmentResponse assignPlan(
-            @PathVariable Long schoolId, @PathVariable Long studentId, @RequestBody AssignPlanRequest request
-    ) {
-        TenantContext.requireMatches(schoolId);
-
-        studyPlanFacade.assignPlanToStudent(schoolId, studentId, request.planId());
-        return new AssignmentResponse(studentId, request.planId());
-    }
-
-    @GetMapping("/students/{studentId}/plan-assignment")
-    @RequiresPermission("STUDYPLAN_VIEW")
-    public Optional<AssignmentResponse> getAssignedPlan(@PathVariable Long schoolId, @PathVariable Long studentId) {
-        TenantContext.requireMatches(schoolId);
-
-        return studyPlanFacade.findAssignedPlan(schoolId, studentId)
-                .map(planId -> new AssignmentResponse(studentId, planId.value()));
-    }
-
-    @PostMapping("/plans/{planId}/week-courses")
-    @RequiresPermission("STUDYPLAN_MANAGE")
-    public WeekCourseResponse createWeekCourse(
-            @PathVariable Long schoolId, @PathVariable Long planId, @RequestBody CreateWeekCourseRequest request
-    ) {
-        TenantContext.requireMatches(schoolId);
-
-        WeekCourseId id = studyPlanFacade.createWeekCourse(
-                schoolId, planId, request.weekStartDate(), request.topicId(), request.subTopicIds()
-        );
-        return new WeekCourseResponse(
-                id.value(), schoolId, planId, request.weekStartDate(), request.topicId(),
-                request.subTopicIds() == null ? List.of() : request.subTopicIds()
-        );
-    }
-
-    @GetMapping("/plans/{planId}/week-courses")
-    @RequiresPermission("STUDYPLAN_VIEW")
-    public List<WeekCourseResponse> listWeekCourses(@PathVariable Long schoolId, @PathVariable Long planId) {
-        TenantContext.requireMatches(schoolId);
-
-        return studyPlanFacade.listWeekCourses(schoolId, planId).stream()
+        return studyPlanFacade.listPlans(schoolId).stream()
                 .map(PlanController::toResponse)
                 .toList();
     }
 
+    @PostMapping("/{planId}/assignments")
+    @RequiresPermission("STUDYPLAN_MANAGE")
+    public void assignPlanToStudent(@PathVariable Long schoolId, @PathVariable Long planId,
+                                    @RequestBody AssignPlanRequest request) {
+        TenantContext.requireMatches(schoolId);
+
+        studyPlanFacade.assignPlanToStudent(schoolId, planId, request.studentId());
+    }
+
+    @GetMapping("/{planId}/assignments")
+    @RequiresPermission("STUDYPLAN_VIEW")
+    public List<AssignmentResponse> listAssignments(@PathVariable Long schoolId, @PathVariable Long planId) {
+        TenantContext.requireMatches(schoolId);
+
+        return studyPlanFacade.listAssignments(schoolId, planId).stream()
+                .map(a -> new AssignmentResponse(a.studentId(), a.planId().value(), a.assignedAt()))
+                .toList();
+    }
+
     private static PlanResponse toResponse(PlanInfo info) {
-        return new PlanResponse(info.id().value(), info.schoolId(), info.teacherId(), info.title(), info.courseInfo());
+        return new PlanResponse(info.id().value(), info.schoolId(), info.teacherId(), info.title(), info.weights());
     }
 
-    private static WeekCourseResponse toResponse(WeekCourseInfo info) {
-        return new WeekCourseResponse(
-                info.id().value(), info.schoolId(), info.planId(), info.weekStartDate(), info.topicId(), info.subTopicIds()
-        );
+    public record CreatePlanRequest(String title, List<CourseWeight> weights) {
     }
 
-    public record CreatePlanRequest(Long teacherId, String title, List<CourseWeight> courseInfo) {
+    public record AssignPlanRequest(Long studentId) {
     }
 
-    public record PlanResponse(Long id, Long schoolId, Long teacherId, String title, List<CourseWeight> courseInfo) {
+    public record PlanResponse(Long id, Long schoolId, Long teacherId, String title, List<CourseWeight> weights) {
     }
 
-    public record AssignPlanRequest(Long planId) {
-    }
-
-    public record AssignmentResponse(Long studentId, Long planId) {
-    }
-
-    public record CreateWeekCourseRequest(LocalDate weekStartDate, Long topicId, List<Long> subTopicIds) {
-    }
-
-    public record WeekCourseResponse(
-            Long id, Long schoolId, Long planId, LocalDate weekStartDate, Long topicId, List<Long> subTopicIds
-    ) {
+    public record AssignmentResponse(Long studentId, Long planId, Instant assignedAt) {
     }
 }

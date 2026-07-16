@@ -6,5 +6,5 @@ import java.util.Optional;
 
 interface IntervalScheduleRepository extends JpaRepository<IntervalScheduleEntity, Long> {
 
-    Optional<IntervalScheduleEntity> findBySchoolIdAndStudentId(Long schoolId, Long studentId);
+    Optional<IntervalScheduleEntity> findByStudentId(Long studentId);
 }

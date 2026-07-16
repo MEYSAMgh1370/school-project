@@ -8,10 +8,11 @@ import lombok.Setter;
 import java.time.LocalDateTime;
 
 /**
- * یک بازه‌ی زمانیِ مطالعه برای یک دانش‌آموز - پورت مدل StudyInterval از
- * study_table/models.py. {@code studentId} همان قرارداد مبهم بدون FK
- * (رجوع به StudentPlanAssignmentEntity بالا). {@code done}/{@code testCount}
- * معادل is_done/test_count منبع‌اند.
+ * یک بلوک مطالعه‌ی زمان‌بندی‌شده برای یک دانش‌آموز. {@code startTime}/
+ * {@code endTime} ساعت دیواری برنامه‌اند ({@code LocalDateTime}، همان
+ * قرارداد LocalDate در expenseDate/dueDate برای مقادیر تقویمی دامنه) -
+ * نه timestamp رویداد که Instant می‌بود. {@code topicId} مات به curriculum؛
+ * زیرسرفصل‌ها در جدول فرزند study_interval_sub_topics.
  */
 @Entity
 @Table(name = "study_intervals", schema = "studyplan")
@@ -45,7 +46,8 @@ class StudyIntervalEntity {
     @Column(name = "test_count", nullable = false)
     private int testCount;
 
-    StudyIntervalEntity(Long schoolId, Long studentId, Long topicId, LocalDateTime startTime, LocalDateTime endTime) {
+    StudyIntervalEntity(Long schoolId, Long studentId, Long topicId,
+                        LocalDateTime startTime, LocalDateTime endTime) {
         this.schoolId = schoolId;
         this.studentId = studentId;
         this.topicId = topicId;

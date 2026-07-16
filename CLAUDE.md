@@ -418,99 +418,6 @@ com.example.roshdeandishe
 │       ├── CurriculumException.java
 │       └── CurriculumExceptionHandler.java   (bean name "curriculumExceptionHandler")
 │
-├── studyplan/                  ← per-school study plans (course weighting) +
-│   ├── StudyPlanFacade.java        auto-scheduling of a student's free time
-│   │                                 into study blocks (moshavere port, step 3 —
-│   │                                 MOSHAVERE_PORT_SPEC.md §6). Depends on
-│   │                                 curriculum (topics) + academic
-│   │                                 (student existence checks only — studentId
-│   │                                 stays an opaque Long, no FK, same
-│   │                                 convention as StudentGuardianEntity.
-│   │                                 guardianUserId/ClassEntity.teacherId).
-│   ├── PlanController.java         (REST: plans, plan-assignment,
-│   │                                 week-courses — class-level
-│   │                                 @RequiresModule("STUDY_PLANNER"),
-│   │                                 per-method @RequiresPermission)
-│   ├── StudyIntervalController.java (REST: schedule GET/PUT, weeks/{date}
-│   │                                 suggest/GET/DELETE/copy, interval PATCH —
-│   │                                 admin/teacher view of any student in
-│   │                                 the school, unlike MyStudyWeekController)
-│   ├── MyStudyWeekController.java  (GET /api/me/schools/{schoolId}/study-schedule
-│   │                                 + /study-week — self-service, same trust
-│   │                                 model as academic.MyEnrollmentController/
-│   │                                 finance.MyInvoicesController: no
-│   │                                 @RequiresPermission/@RequiresModule,
-│   │                                 studentId always resolved from
-│   │                                 AcademicFacade.findMyEnrollment, never
-│   │                                 caller-supplied)
-│   ├── internal/
-│   │   ├── PlanEntity (schoolId, teacherId opaque Long, title, courseInfoJson
-│   │   │                — course_info list of {topicId,weight,priority} as a
-│   │   │                plain `text` column holding hand-serialized JSON, NOT
-│   │   │                jsonb — avoids a Hibernate/JDBC type mismatch a bare
-│   │   │                String field would hit against a real jsonb column
-│   │   │                without a custom FormatMapper) / PlanRepository
-│   │   ├── WeekCourseEntity (schoolId, planId, weekStartDate — must be
-│   │   │                Saturday, validated at Facade level not a DB CHECK
-│   │   │                constraint like the source — topicId) /
-│   │   │                WeekCourseRepository, WeekCourseTopicEntity (join
-│   │   │                table for up to 10 sub-topics, replacing the source's
-│   │   │                ArrayField — same convention as RolePermissionEntity)
-│   │   │                / WeekCourseTopicRepository
-│   │   ├── StudentPlanAssignmentEntity (schoolId, studentId opaque Long,
-│   │   │                planId — unique(schoolId,studentId); reassigning
-│   │   │                replaces the existing row, same idempotent-by-
-│   │   │                replacement pattern as academic.enrollStudent) /
-│   │   │                StudentPlanAssignmentRepository
-│   │   ├── StudyIntervalEntity (schoolId, studentId, topicId, startTime,
-│   │   │                endTime, done, testCount) / StudyIntervalRepository,
-│   │   │                StudyIntervalSubTopicEntity (join table, replacing
-│   │   │                the source's ManyToMany) / StudyIntervalSubTopicRepository
-│   │   ├── IntervalScheduleEntity (schoolId, studentId unique, defaultScheduleJson,
-│   │   │                currentScheduleJson nullable — both `text`, same
-│   │   │                reasoning as PlanEntity.courseInfoJson — lastEditedAt
-│   │   │                nullable) / IntervalScheduleRepository — "is this
-│   │   │                week's schedule still fresh" is a plain 7-day
-│   │   │                timestamp comparison at read time, deliberately NOT
-│   │   │                the source's Persian-calendar weekday check (no
-│   │   │                general Persian-calendar-awareness rule exists
-│   │   │                elsewhere in this project outside jalali.js's
-│   │   │                report-period picker)
-│   │   ├── ScheduleSlicer, TopicAllocator, WeekSuggester — pure-Java port of
-│   │   │                table_suggester.py (SliceScheduleInterval, FillSlices,
-│   │   │                Suggestor respectively), no framework dependency.
-│   │   │                Two deliberate corrections of actual bugs found in
-│   │   │                the moshavere source (not behavior worth preserving —
-│   │   │                see MOSHAVERE_PORT_SPEC.md §6 for both): (1) the
-│   │   │                source shared one mutable duration-counter dict
-│   │   │                across every SliceScheduleInterval instance instead of
-│   │   │                copying it; (2) the source walked a week's seven days
-│   │   │                through a scrambled index order that didn't match its
-│   │   │                own Saturday-start day dict (self-flagged
-│   │   │                "FIXME: code needs cleaning" in the source) — ported
-│   │   │                as the evidently-intended calendar order instead
-│   │   ├── ScheduleValidator (port of schedule_schema_validator +
-│   │   │                schedule_overlap_validator: all 7 day codes present,
-│   │   │                each slot start&lt;end and parseable, no overlap
-│   │   │                within a day)
-│   │   ├── JsonSupport (private ObjectMapper for the `text`-column JSON
-│   │   │                blobs above — no Jackson time module needed since
-│   │   │                times are kept as "HH:mm" strings, never LocalTime)
-│   │   ├── WeekDays (Saturday-start day-code order: sat,sun,mon,tue,wed,thur,fri
-│   │   │                — ported verbatim from the source's default_schedule
-│   │   │                dict keys)
-│   │   └── StudyPlanFacadeImpl
-│   └── shared/
-│       ├── StudyPlanError.java (sealed: PlanNotFound, InvalidPlan,
-│       │                          TopicNotFound, StudentNotFound,
-│       │                          PlanNotAssigned, InvalidWeekCourse,
-│       │                          NotSaturday, InvalidSchedule,
-│       │                          ScheduleTooSmall — port of the source's
-│       │                          explicit "&lt;180 minutes" exception —
-│       │                          WeekNotEmpty, StudyIntervalNotFound)
-│       ├── StudyPlanException.java
-│       └── StudyPlanExceptionHandler.java   (bean name "studyPlanExceptionHandler")
-│
 ├── finance/                    ← tuition, invoices, payments, expenses, audit.
 │                                  Two public Facades at the module root
 │                                  (FinanceFacade for tuition/invoices/payments,
@@ -682,6 +589,45 @@ com.example.roshdeandishe
 │       └── FinanceExceptionHandler.java   (bean name "financeExceptionHandler";
 │                                            now just routes to
 │                                            FinanceProblemResolver)
+│
+├── studyplan/                  ← per-school study plans + auto-scheduling
+│   ├── StudyPlanFacade.java        (moshavere port, step 3 —
+│   ├── PlanController.java         MOSHAVERE_PORT_SPEC.md §6). Depends on
+│   ├── WeekCourseController.java   CurriculumFacade (topic validation) and
+│   ├── IntervalScheduleController  AcademicFacade (student validation) — the
+│   │                       .java   first module with two new-module Facade
+│   ├── StudyIntervalController     dependencies at once.
+│   │                       .java
+│   ├── internal/                   Course weighting is a real child table
+│   │   ├── PlanEntity /             (plan_course_weights), NOT the JSON column
+│   │   │    PlanRepository          moshavere used — same join-table-over-array
+│   │   ├── PlanCourseWeightEntity   preference already applied to
+│   │   │    / …Repository           WeekCourseTopicEntity/RolePermissionEntity.
+│   │   ├── WeekCourseEntity /       default/currentSchedule stay jsonb (real
+│   │   │    …Repository             nested day→interval shape, spec §6).
+│   │   ├── WeekCourseTopicEntity /
+│   │   │    …Repository             StudentPlanAssignmentEntity keeps the
+│   │   ├── StudentPlanAssignment    student↔plan link *inside* this module
+│   │   │    Entity / …Repository    (opaque studentId, no FK/column added to
+│   │   ├── StudyIntervalEntity /    academic.StudentEntity) — same
+│   │   │    …Repository             opaque-cross-module-reference convention
+│   │   ├── StudyIntervalSubTopic    as StudentGuardianEntity.guardianUserId.
+│   │   │    Entity / …Repository
+│   │   ├── IntervalScheduleEntity   SliceScheduleInterval/FillSlices/Suggestor
+│   │   │    / …Repository           are a faithful logic port of moshavere's
+│   │   └── StudyPlanFacadeImpl       table_suggester.py, with two deliberate
+│   └── shared/                      normalizations: the block-size counter is
+│       ├── StudyPlanError.java      per-call state, not a module-level mutable
+│       │    (sealed, 14 cases)      dict (moshavere's version leaked across
+│       ├── StudyPlanException.java  runs — a bug, not behavior), and days are
+│       ├── StudyPlanProblemResolver walked Saturday→Friday (moshavere's
+│       │    .java                   Friday-first order was a Postgres jsonb
+│       └── StudyPlanExceptionHandler key-sort artifact, not a decision).
+│            .java  (bean name       ObjectMapper is a private `new ObjectMapper()`,
+│            "studyPlanExceptionHandler") not injected — same reason as
+│                                    bale.internal.BaleWebhookService (Jackson 3
+│                                    from spring-modulith-events-jackson makes
+│                                    the injected bean ambiguous).
 │
 ├── web/                        ← UI-composition layer (see §2 Frontend): page
     ├── LandingPageController.java     controllers that need more than one
@@ -1076,26 +1022,20 @@ by reading the bank directly. The VIEW/MANAGE split exists despite identical
 system grants today so a *custom role* (§4's Role subsection) can be composed
 read-only — same reasoning as `CLASS_VIEW`.
 
-**`STUDYPLAN_VIEW`/`STUDYPLAN_MANAGE` (added 2026-07-17, for the `studyplan`
-module — moshavere port step 3):** same reasoning as `CURRICULUM_VIEW`/
-`CURRICULUM_MANAGE` immediately above — both granted to `SCHOOL_ADMIN` *and*
-`TEACHER` (authoring/assigning a study plan is day-to-day teacher work, per
-`MOSHAVERE_PORT_SPEC.md` §2's "each school's own teachers own their own
-topics/questions/plans"), neither to `STUDENT`/`PARENT`. Unlike curriculum's
-bank (withheld from students because it leaks answers), a student's own
-study plan has no such sensitivity — but it's still not exposed through
-these two permissions, because a student only ever needs *their own* week,
-never another student's, which is exactly what a permission-gated admin
-endpoint is wrong for. That's why `studyplan.MyStudyWeekController` exists as
-a separate, unpermissioned self-service endpoint (§3) instead of widening
-these two permissions to `STUDENT`.
-
 **`ROLE_MANAGE` (added 2026-07-13, for custom role management — see §4's
 Role subsection):** deliberately `SCHOOL_ADMIN`-only, not granted to
 `FINANCE_ADMIN` — the ability to define what a role can do is as sensitive as
 `MEMBERSHIP_MANAGE` (who holds a role), arguably more so, since it shapes what
 *every* role, including ones not yet created, is allowed to touch.
 
+**`STUDYPLAN_VIEW`/`STUDYPLAN_MANAGE` (added 2026-07-16, `studyplan`
+module — moshavere port, step 3):** both granted to `SCHOOL_ADMIN` *and*
+`TEACHER`, same reasoning as `CURRICULUM_VIEW`/`CURRICULUM_MANAGE` — the
+plan author in moshavere is the `Instructor`, so authoring/scheduling a
+study plan is day-to-day teacher work, not admin-only. Deliberately not
+granted to `STUDENT`/`PARENT` — a student self-view of their own study
+schedule is a plausible later `/api/me`-style slice, not built
+speculatively here.
 **`EXPENSE_VIEW`/`EXPENSE_MANAGE`/`EXPENSE_APPROVE` (added for expense
 management, §4's Expense note):** `EXPENSE_APPROVE` is deliberately withheld
 from `FINANCE_ADMIN` — segregation of duties: the person who records and pays
@@ -1315,10 +1255,9 @@ this change.
 
 The hierarchical topic taxonomy + multiple-choice question bank ported from
 moshavere's `exam_generator` (MOSHAVERE_PORT_SPEC.md §4, built 2026-07-16).
-Per-school content, never a shared platform library (spec §2). `studyplan`
-(port step 3, built 2026-07-17) already consumes this via `CurriculumFacade`
-to validate `courseInfo`/`WeekCourse` topic references; `exam` (port step 4,
-not built yet) will too.
+Per-school content, never a shared platform library (spec §2). The `exam` and
+`studyplan` modules (port steps 3–4, not built yet) will consume these via
+`CurriculumFacade`.
 
 ```
 TopicEntity
@@ -1368,151 +1307,6 @@ TEACHER — see the Permission section above for why students/parents get
 neither). No web page yet — the port is backend domain logic only (spec §7);
 a management UI is a separate slice that must go through the `design-page`
 skill when asked for.
-
-### Plan, WeekCourse, StudentPlanAssignment, StudyInterval, IntervalSchedule (owned by `studyplan` — moshavere port, step 3)
-
-Per-school study plans (which courses/topics a student should weight their
-free time toward) plus the auto-scheduling algorithm that turns a student's
-declared free-time blocks into concrete study intervals — ported from
-moshavere's `plan` + `study_table` (`MOSHAVERE_PORT_SPEC.md` §6, built
-2026-07-17). Depends on `curriculum` (a plan's `courseInfo` and a
-`WeekCourse`'s topic/sub-topics must reference real Topics in the same
-school) and `academic` (a `studentId` must belong to the school it's used
-in — checked via `AcademicFacade.findStudentInfo`, but kept as an opaque
-`Long` everywhere, never an FK — same convention as
-`StudentGuardianEntity.guardianUserId`/`ClassEntity.teacherId`, so `academic`
-never needs to know `studyplan` exists).
-
-```
-PlanEntity
-├── id
-├── schoolId
-├── teacherId       (opaque Long → iam user, no FK — same convention as
-│                     ClassEntity.teacherId)
-├── title
-└── courseInfoJson  (a `text` column holding hand-serialized JSON — a list of
-                      {topicId, weight, priority}, port of moshavere's
-                      course_info JSON schema. `text`, not `jsonb`: a plain
-                      Hibernate String field written into a real jsonb column
-                      hits a JDBC type mismatch without a custom
-                      FormatMapper — this sidesteps that pragmatically rather
-                      than pulling in a new dependency for one column shape.
-                      `priority` is kept for schema fidelity but, matching the
-                      source, is never actually read by the scheduling
-                      algorithm — only `weight` drives allocation.)
-
-WeekCourseEntity
-├── id
-├── schoolId        (denormalized, same convention as ClassEntity/StudentEntity)
-├── planId
-├── weekStartDate   (must be a Saturday — validated at the Facade level,
-│                     StudyPlanError.NotSaturday, NOT a DB CHECK constraint
-│                     like the source's `date__week_day=7`)
-└── topicId         ("course" in the source)
-
-WeekCourseTopicEntity   (join table for up to 10 sub-topics per WeekCourse —
-├── id                   replacing the source's ArrayField(size=10), same
-├── weekCourseId          convention as RolePermissionEntity: a join table,
-├── topicId               not a new array-column pattern)
-└── sortOrder
-
-StudentPlanAssignmentEntity
-├── id
-├── schoolId
-├── studentId       (opaque Long; unique(schoolId, studentId) — a student has
-│                     at most one active plan per school; reassigning replaces
-│                     the row, same idempotent-by-replacement pattern as
-│                     academic.enrollStudent's classId move, unlike the
-│                     source's plain Student.plan FK)
-└── planId
-
-StudyIntervalEntity
-├── id
-├── schoolId
-├── studentId       (opaque Long, same convention)
-├── topicId
-├── startTime / endTime   (LocalDateTime)
-├── done            (boolean, `is_done` in source)
-└── testCount       (int, `test_count` in source)
-
-StudyIntervalSubTopicEntity   (join table, replacing the source's
-├── id                          ManyToMany `sub_topics`)
-├── studyIntervalId
-└── topicId
-
-IntervalScheduleEntity
-├── id
-├── schoolId
-├── studentId       (opaque Long, unique per school — one schedule per student)
-├── defaultScheduleJson   (`text`, same JSON-column reasoning as PlanEntity —
-│                           a Map<dayCode, List<{start,end}>> using the
-│                           source's own day codes: sat, sun, mon, tue, wed,
-│                           thur, fri. Times are kept as "HH:mm" strings, never
-│                           LocalTime, so no Jackson time module is needed.)
-├── currentScheduleJson   (same shape, nullable — "this week's" override)
-└── lastEditedAt    (nullable LocalDateTime)
-```
-
-`StudyPlanFacade.createPlan` validates every `courseInfo` entry references a
-real Topic in the school (`StudyPlanError.TopicNotFound` otherwise), `weight
->= 0`, `priority >= 1`. `assignPlanToStudent` is idempotent-by-replacement.
-`createWeekCourse` validates the topic + all sub-topics (max 10) belong to
-the school and `weekStartDate` is a Saturday. `getOrCreateSchedule` seeds an
-empty 7-day schedule on first access (port of `get_or_create_interval_schedule`).
-`updateCurrentSchedule` validates the schema (all 7 days present, each slot
-`start < end`, no overlap within a day — port of
-`schedule_schema_validator`/`schedule_overlap_validator`) before saving.
-
-**`suggestWeek`** is the auto-scheduling entry point — a direct, faithful
-port of `table_suggester.py`'s three pieces as plain Java service classes in
-`studyplan/internal` (no framework dependency, per the spec's explicit
-instruction to preserve this algorithm's behavior exactly):
-- `ScheduleSlicer` (port of `SliceScheduleInterval`) — slices each day's free
-  blocks into fixed study/rest pairs (90/15, 75/15, 60/10, 45/10, 30/5
-  minutes), largest first.
-- `TopicAllocator` (port of `FillSlices`) — divides the week's total sliced
-  minutes across `courseInfo` topics proportional to `weight`, then
-  round-robins the per-topic allocations into a final per-duration-size queue.
-  Throws `StudyPlanError.ScheduleTooSmall` below 180 total minutes, a direct
-  port of the source's explicit exception.
-- `WeekSuggester` (port of `Suggestor`) — orchestrates the above, anchors
-  each produced block onto a real date (`weekStartDate.plusDays(i)` for day
-  *i* in Saturday-start order), and resolves each block's sub-topics from any
-  matching `WeekCourseInfo` for that plan+week.
-
-Two things were deliberately **not** ported faithfully because they were
-demonstrable bugs in the moshavere source, not behavior worth preserving —
-both called out in code comments at the port site and in
-`MOSHAVERE_PORT_SPEC.md` §6:
-1. `SliceScheduleInterval.__init__` assigned `self.intervals_info = ALLOWED_INTERVALS`,
-   a reference to the module-level dict (not a copy), so every instance
-   silently shared and leaked duration counters across unrelated calls.
-   `ScheduleSlicer.slice` builds a fresh map per call instead.
-2. `Suggestor.create_study_intervals` walked a week's seven days through a
-   scrambled index order (`intervals[2], intervals[3], intervals[1], ...`)
-   that doesn't correspond to the very day-dict order the same file
-   otherwise uses — the source file itself is marked
-   `# FIXME: code needs cleaning`. `WeekSuggester` uses the evidently-intended
-   calendar order instead: day *i* in `WeekDays.ORDER` (Saturday = index 0)
-   maps to `weekStartDate.plusDays(i)`.
-
-`suggestWeek` rejects a non-empty target week (`StudyPlanError.WeekNotEmpty`)
-and requires an assigned plan (`StudyPlanError.PlanNotAssigned`). `getWeek`/
-`clearWeek`/`copyWeek` (instructor bulk-copy to other students, best-effort
-per target like the source's `copy_week`) round out the weekly view.
-`getRecentTopics(schoolId, studentId)` — the method `exam` (port step 4)
-depends on for its weekly auto-generation (spec §5/§6) — is a port of
-`get_week_intervals_topics`, computing "the current Persian calendar week"
-(most recent Saturday through the following Friday) as a plain date
-comparison, not exposed over REST (it's a facade-to-facade dependency for a
-module that doesn't exist yet).
-
-No web page yet — the port is backend domain logic only, same as
-`curriculum`; a `/studyplan` management UI is a separate slice gated by the
-`design-page` skill when asked for. A student reads their own week through
-`studyplan.MyStudyWeekController` (`GET /api/me/schools/{schoolId}/study-schedule`
-+ `/study-week`), the same self-service trust model as
-`academic.MyEnrollmentController`/`finance.MyInvoicesController`.
 
 ### TuitionFee (owned by `finance`)
 
@@ -1665,6 +1459,136 @@ for one shows up. The `/expenses` page's report section converts a Jalali
 month/quarter/year picker to a Gregorian date range client-side
 (`static/js/jalali.js`) before calling these endpoints — the server only ever
 sees `LocalDate` query params, no Jalali awareness on the backend.
+
+### Plan, WeekCourse, StudentPlanAssignment, StudyInterval, IntervalSchedule (owned by `studyplan` — moshavere port, step 3)
+
+Per-school study plans with course weighting, a per-week topic schedule, one
+active plan-per-student assignment, actual scheduled study blocks, and a
+student's weekly free-time template — the third of four pieces
+`MOSHAVERE_PORT_SPEC.md` §6 lays out for the moshavere port, ported from
+`agency-panel-master/plan` + `exam-maker-master/{plan,study_table}`.
+
+```
+PlanEntity
+├── id
+├── schoolId
+├── teacherId       (nullable, opaque Long → iam User — same no-FK convention
+│                     as ClassEntity.teacherId; taken from the current
+│                     authenticated user at creation, null from a userless
+│                     caller such as a test/seed)
+├── title
+└── createdAt
+
+PlanCourseWeightEntity   (a real child table, NOT moshavere's course_info
+├── id                    JSON column — same join-table-over-array preference
+├── planId                already applied to RolePermissionEntity/
+├── topicId               WeekCourseTopicEntity; unique(planId, topicId))
+├── weight          (>= 0, same COURSE_INFO_SCHEMA constraint as moshavere)
+└── priority        (>= 1; the auto-scheduler walks weights ordered by
+                      priority ascending then id — a deterministic
+                      replacement for "JSON array order", which a join table
+                      no longer has)
+
+WeekCourseEntity
+├── id
+├── planId
+├── weekStart       (LocalDate; must be a Saturday — InvalidWeekStart,
+│                     ported from moshavere's DB CheckConstraint on
+│                     date's weekday)
+└── courseTopicId   (opaque Long → curriculum Topic; unique(planId,
+                      weekStart, courseTopicId), same as moshavere's
+                      unique_together)
+
+WeekCourseTopicEntity    (sub-topics for a WeekCourse — moshavere's
+├── id                    ArrayField(size=10) ported to a real join table,
+├── weekCourseId          same reasoning as PlanCourseWeightEntity above;
+└── topicId               facade enforces the size-10 cap)
+
+StudentPlanAssignmentEntity   (the student↔plan link lives *inside*
+├── id                         studyplan, not as a planId column on
+├── schoolId                   academic.StudentEntity — same opaque
+├── studentId       (unique — one active plan per student, upsert on           cross-module-reference convention as
+│                     reassignment, same FK-tightness as moshavere's           StudentGuardianEntity.guardianUserId;
+│                     single Student.plan FK)                                  keeps academic unaware studyplan exists)
+├── planId
+└── assignedAt
+
+StudyIntervalEntity
+├── id
+├── schoolId
+├── studentId
+├── topicId
+├── startTime / endTime   (LocalDateTime — wall-clock study block, not an
+│                           Instant-stamped event)
+├── done            (boolean, default false)
+└── testCount       (int, default 0)
+
+StudyIntervalSubTopicEntity   (sub-topics of one interval — join table,
+├── id                         ported from moshavere's ManyToMany sub_topics)
+├── intervalId
+└── topicId
+
+IntervalScheduleEntity   (one row per student — unique(studentId))
+├── id
+├── schoolId
+├── studentId
+├── defaultSchedule (jsonb: {SAT: [{start,end}, …], SUN: […], …} — real
+│                     nested shape stays jsonb per spec §6, unlike course
+│                     weighting above which became a real table)
+├── currentSchedule (jsonb, nullable — a temporary override)
+└── lastEditedAt    (Instant, nullable — replaces moshavere's "edited this
+                      week" Persian-calendar weekday check with a plain
+                      timestamp comparison: currentSchedule is only
+                      effective if lastEditedAt is on or after the most
+                      recent Saturday)
+```
+
+`StudyPlanFacade.createPlan(schoolId, title, weights)` validates every
+weighted `topicId` against `CurriculumFacade.listTopics(schoolId)`
+(`TopicNotFound` for a foreign/unknown topic — the same "foreign school =
+not found" convention as `ClassNotFound`/`CurriculumError.TopicNotFound`),
+plus the weight/priority/no-duplicate-topic rules above (`InvalidPlan`).
+`assignPlanToStudent` validates the student via
+`AcademicFacade.findStudentInfo` and upserts the single assignment row.
+`suggestWeek(schoolId, studentId, weekStart)` is the auto-scheduler: `weekStart`
+must be a Saturday, the target week must have zero existing intervals
+(`WeekNotEmpty`), the student must have an assigned plan
+(`PlanNotAssigned`), and the effective free-time schedule (current if
+edited since the most recent Saturday, else default) must yield at least
+180 minutes total (`ScheduleTooSmall`) — all four are direct ports of
+moshavere's `StudyViewSet.suggest` checks. The algorithm itself
+(`internal.SliceScheduleInterval` → `internal.FillSlices` →
+`internal.Suggestor`) is a faithful logic port of
+`study_table/table_suggester.py`'s three classes, with two deliberate
+normalizations flagged during the port (neither changes the algorithm's
+actual output, only its implementation hygiene): the block-size counter
+is now per-call state instead of a dict `table_suggester.py` held at
+module scope (the Python version leaked counts across unrelated calls —
+a bug, not behavior worth preserving), and the seven weekdays are walked
+Saturday→Friday in `StudyPlanFacade.Weekday` (moshavere's own
+Friday-first iteration order was an artifact of Postgres jsonb key
+sorting, not a decision). `copyWeek` validates every target student and
+checks all overlaps *before* writing any interval, so a failure partway
+through a multi-target copy never leaves one target half-populated (a
+small correctness improvement over moshavere's row-by-row
+`copy_week`, which could). `getRecentTopics(studentId)` — the method
+`exam`'s weekly auto-generation will depend on (`MOSHAVERE_PORT_SPEC.md`
+§5) — returns the distinct topics (with merged sub-topics) studied in the
+current calendar week, a direct port of
+`week_functions.get_week_intervals_topics`.
+
+REST: `PlanController` (`POST`/`GET .../study-plans`, plus
+`POST`/`GET .../study-plans/{planId}/assignments`), `WeekCourseController`
+(`POST`/`GET .../study-plans/{planId}/week-courses`),
+`IntervalScheduleController` (`GET`/`PUT .../students/{studentId}/schedule`,
+`.../schedule/default`, `.../schedule/current`), `StudyIntervalController`
+(`POST`/`GET`/`PATCH`/`DELETE .../students/{studentId}/study-intervals`,
+plus `/suggest`, `/clear`, `/copy`) — all class-level
+`@RequiresModule("STUDY_PLANNER")` + per-method `@RequiresPermission`
+(`STUDYPLAN_MANAGE` write / `STUDYPLAN_VIEW` read — see §4's Permission
+section for who holds them). No audit trail and no UI page yet — same as
+`curriculum`, nothing here is money-like or reacted-to, and the spec ports
+backend domain logic only (§7 there).
 
 ### BaleLink (owned by the `bale` module)
 
@@ -2338,44 +2262,56 @@ above.
   topic create → 404) was folded into `CurriculumFlowIntegrationTest`, and
   its `curriculum/package-info.java` (`@ApplicationModule(displayName)`)
   was kept.
-- **Moshavere port, step 3 — `studyplan` module (built 2026-07-17, via its
-  own `new-module` pass)**: per-school study plans (course weighting) + a
-  faithful pure-Java port of `table_suggester.py`'s auto-scheduling
-  algorithm — see §3's module tree entry and §4's Plan/WeekCourse/
-  StudentPlanAssignment/StudyInterval/IntervalSchedule subsection for the
-  full model. Resolved the spec's one open item: a new `SCHOOL`-scoped
-  `STUDY_PLANNER` module code, plus `STUDYPLAN_MANAGE`/`STUDYPLAN_VIEW`
-  permissions (both SCHOOL_ADMIN + TEACHER, same day-to-day-authoring
-  reasoning as `CURRICULUM_MANAGE`/`CURRICULUM_VIEW` — see §4's Permission
-  section). A student reads their own week through a new, unpermissioned
-  self-service controller (`studyplan.MyStudyWeekController`), the same
-  trust model as `MyEnrollmentController`/`MyInvoicesController` — not by
-  widening the two admin/teacher permissions. `course_info`/
-  `default_schedule`/`current_schedule` are stored as plain `text` columns
-  holding hand-serialized JSON rather than Postgres `jsonb`, sidestepping a
-  JDBC type mismatch a bare Hibernate `String` field would hit against a
-  real `jsonb` column without a custom `FormatMapper` — a pragmatic
-  simplification, not a scope reduction. **Two actual bugs found in the
-  moshavere source while porting, deliberately not preserved** (both
-  documented in code comments at the port site and in
-  `MOSHAVERE_PORT_SPEC.md` §6): a shared/leaking module-level dict used as
-  each `SliceScheduleInterval` instance's duration counters, and a scrambled
-  day-index order in `Suggestor.create_study_intervals` that didn't match
-  the source's own Saturday-start day-dict order (the source file itself is
-  marked `# FIXME: code needs cleaning`) — both replaced with the evidently-
-  intended, bug-fixed behavior. Covered by `StudyPlanFlowIntegrationTest`:
-  the scheduling algorithm's exact output (block count and duration mix) is
-  hand-computed from a fixed schedule and asserted precisely, plus
-  non-Saturday week-start rejection, the &lt;180-minutes-free rejection,
-  suggesting without an assigned plan, `getRecentTopics` reflecting the
-  actual current calendar week, TEACHER-can-author/PARENT-gets-
-  `permission-denied`, and a fresh entitlement-less school getting
-  `module-not-entitled`. Full suite (112 tests) + `ModularityTests` green.
-  **No UI** — backend domain logic only, same as `curriculum`; a
-  `/studyplan` management page is a separate slice gated by the
-  `design-page` skill. Remaining port step: `exam` (depends on `curriculum`
-  + `academic` + this module's `getRecentTopics`), needing its own
-  `new-module` pass.
+- **Moshavere port, step 3 — `studyplan` module (built 2026-07-16,
+  `MOSHAVERE_PORT_SPEC.md` §6, continuing the port immediately after
+  `curriculum`)**: per-school study plans with course weighting, weekly
+  topic schedules, student↔plan assignment, a student's weekly free-time
+  template, actual scheduled study blocks, and a faithful logic port of
+  moshavere's `table_suggester.py` auto-scheduling algorithm — see §4's
+  Plan/WeekCourse/StudentPlanAssignment/StudyInterval/IntervalSchedule
+  subsection for the full model and §3 for the module layout. Decisions
+  made at new-module time: new `SCHOOL`-scoped `STUDY_PLANNER` module code
+  (spec §6's own suggestion — no existing seed code fits);
+  `STUDYPLAN_VIEW`/`STUDYPLAN_MANAGE` both granted to `SCHOOL_ADMIN` +
+  `TEACHER` (moshavere's plan author is the `Instructor` — same reasoning
+  as `CURRICULUM_VIEW`/`CURRICULUM_MANAGE`), deliberately not to
+  `STUDENT`/`PARENT` (a student self-view is a plausible later
+  `/api/me`-style slice, not built here); course weighting became a real
+  child table (`plan_course_weights`), not the JSON column the draft spec
+  sketched — same join-table-over-array preference already applied to
+  `WeekCourseTopicEntity`/`RolePermissionEntity`; the two schedule columns
+  (`default_schedule`/`current_schedule`) stayed `jsonb` per the spec,
+  since that structure is a genuinely nested day→interval shape, not a
+  flat list. `ObjectMapper` is a private `new ObjectMapper()`, not an
+  injected Spring bean — same documented reason as
+  `bale.internal.BaleWebhookService`: `spring-modulith-events-jackson`
+  brings a second Jackson (`tools.jackson`) onto the classpath, so
+  auto-configuration no longer produces one unambiguous
+  `com.fasterxml.jackson.databind.ObjectMapper` bean (discovered when the
+  full `@SpringBootTest` context failed to wire `StudyPlanFacadeImpl`
+  during this build, not assumed in advance). The algorithm port
+  (`internal.SliceScheduleInterval`/`internal.FillSlices`/
+  `internal.Suggestor`) preserves moshavere's behavior exactly, including
+  its round-half-to-even interval-count rounding, with two deliberate
+  normalizations of accidental implementation details (not behavior):
+  the block-size counter is per-call state instead of a module-level
+  mutable dict (moshavere's version leaked counts across unrelated calls
+  — a bug), and weekdays are walked Saturday→Friday (moshavere's own
+  Friday-first order was a Postgres jsonb key-sort artifact, not a
+  decision). `init-schemas.sql` gained `CREATE SCHEMA IF NOT EXISTS
+  studyplan;` (§7 item 4) and `IamSeedDataRunner` grants/seeds the new
+  module and permissions using the same per-code-idempotent helpers the
+  `CURRICULUM_*`/`EXPENSE_*` fix established — no early-return-on-count
+  regression reintroduced. No UI page and no navbar link yet, same as
+  `curriculum` — the spec ports backend domain logic only (§7 there).
+  Covered by `StudyPlanManagementFlowIntegrationTest` (plan creation with
+  course weights + unknown-topic 404, student assignment + listing,
+  default-schedule set, full suggest→week-not-empty→clear→suggest-again
+  cycle, unassigned-student `plan-not-assigned` 409, non-Saturday
+  `invalid-week-start` 400, TEACHER can author plans, STUDENT gets
+  `permission-denied`, fresh self-service school gets
+  `module-not-entitled` — both 403 flavors — missing `X-School-ID` 400).
+  Full suite (113 tests) + `ModularityTests` green.
 
 ### Open / explicitly deferred
 
@@ -2558,27 +2494,24 @@ pass — new `SCHOOL`-scoped `CURRICULUM` module code,
 `CURRICULUM_MANAGE`/`CURRICULUM_VIEW` permissions (SCHOOL_ADMIN + TEACHER;
 students/parents get neither — the bank carries correct answers), subtree
 topic-filter semantics preserved from the source. Backend only, no UI — see
-§3, §4's Topic/Question subsection, and §7 Done. Remaining port steps per
-MOSHAVERE_PORT_SPEC.md §8: `studyplan` (depends on curriculum + academic),
-then `exam` (deepest dependency chain, built last so
-`StudyPlanFacade.getRecentTopics` already exists) — each a genuinely new
-module needing its own `new-module` pass.
+§3, §4's Topic/Question subsection, and §7 Done.
 
-**Phase M — Moshavere port, step 3 (`studyplan` module): done.** New
-`studyplan` module (course-weighted study plans + a faithful pure-Java port
-of `table_suggester.py`'s auto-scheduling algorithm) via its own
-`new-module` pass — new `SCHOOL`-scoped `STUDY_PLANNER` module code,
-`STUDYPLAN_MANAGE`/`STUDYPLAN_VIEW` permissions (SCHOOL_ADMIN + TEACHER;
-students read their own week through a separate self-service endpoint
-instead of a widened permission). Two genuine bugs found in the moshavere
-source while porting were fixed rather than preserved (a leaking shared
-duration-counter dict, and a scrambled day-processing order that
-contradicted the source's own day-dict order). Backend only, no UI — see
-§3, §4's Plan/WeekCourse/StudentPlanAssignment/StudyInterval/
-IntervalSchedule subsection, and §7 Done. Remaining port step per
-MOSHAVERE_PORT_SPEC.md §8: `exam` (depends on curriculum + academic + this
-module's `getRecentTopics`, the deepest dependency chain — built last for
-exactly that reason), needing its own `new-module` pass.
+**Phase M — Moshavere port, step 3 (`studyplan` module): done.** Per-school
+study plans with course weighting, weekly topic schedules, one active
+plan-per-student assignment, a student's weekly free-time template, and a
+faithful logic port of moshavere's `table_suggester.py` auto-scheduling
+algorithm — the third of the four pieces in `MOSHAVERE_PORT_SPEC.md`'s
+build order (§8 there), the first new module in this port with two
+new-module Facade dependencies (`CurriculumFacade` + `AcademicFacade`) at
+once. New `SCHOOL`-scoped `STUDY_PLANNER` module code +
+`STUDYPLAN_VIEW`/`STUDYPLAN_MANAGE` permissions (`SCHOOL_ADMIN` +
+`TEACHER`, same reasoning as `CURRICULUM_*`). See §4's Plan/WeekCourse/
+StudentPlanAssignment/StudyInterval/IntervalSchedule subsection and §7
+Done for the full model, the algorithm-port normalizations, and test
+coverage (`StudyPlanManagementFlowIntegrationTest`). Remaining port step:
+`exam` (depends on `curriculum` + `academic` + `studyplan`, the deepest
+chain, built last per spec §8 — `getRecentTopics` now exists for it to
+call) — still needs its own `new-module` pass.
 
 ---
 

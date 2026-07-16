@@ -6,13 +6,13 @@ import lombok.NoArgsConstructor;
 import lombok.Setter;
 
 /**
- * پورت {@code WeekCourse.topics} (ArrayField تا ۱۰ شناسه‌ی زیر-سرفصل) به
- * یک جدول join واقعی - مطابق ترجیح این codebase برای جدول join به‌جای
- * ستون آرایه (مثل RolePermissionEntity)، نه معرفی یک الگوی ستون آرایه‌ی
- * تازه (MOSHAVERE_PORT_SPEC.md §6).
+ * زیرسرفصل‌های یک WeekCourse - پورت ArrayField(size=10) موshavere به join
+ * table واقعی (MOSHAVERE_PORT_SPEC.md §6، همان ترجیحی که
+ * RolePermissionEntity برقرار کرده).
  */
 @Entity
-@Table(name = "week_course_topics", schema = "studyplan")
+@Table(name = "week_course_topics", schema = "studyplan",
+        uniqueConstraints = @UniqueConstraint(columnNames = {"week_course_id", "topic_id"}))
 @Getter
 @Setter
 @NoArgsConstructor
@@ -28,12 +28,8 @@ class WeekCourseTopicEntity {
     @Column(name = "topic_id", nullable = false)
     private Long topicId;
 
-    @Column(name = "sort_order", nullable = false)
-    private int sortOrder;
-
-    WeekCourseTopicEntity(Long weekCourseId, Long topicId, int sortOrder) {
+    WeekCourseTopicEntity(Long weekCourseId, Long topicId) {
         this.weekCourseId = weekCourseId;
         this.topicId = topicId;
-        this.sortOrder = sortOrder;
     }
 }

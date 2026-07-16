@@ -7,53 +7,83 @@ import java.time.LocalDate;
  */
 public sealed interface StudyPlanError {
 
+    /**
+     * برنامه یافت نشد - «برنامه‌ی متعلق به مدرسه‌ی دیگر» هم همین خطاست
+     * (همان قرارداد ClassNotFound/TopicNotFound).
+     */
     record PlanNotFound(Long planId) implements StudyPlanError {
     }
 
-    record InvalidPlan(String reason) implements StudyPlanError {
-    }
-
     /**
-     * سرفصلی با این شناسه در این مدرسه یافت نشد - سرفصلِ مدرسه‌ی دیگر هم
-     * عمداً همین خطاست، همان قرارداد TopicNotFound در curriculum.
+     * دانش‌آموز در این مدرسه یافت نشد. studentId شناسه‌ی StudentEntity
+     * ماژول academic است (Long مات از دید این ماژول) - اعتبارسنجی از طریق
+     * AcademicFacade.findStudentInfo انجام می‌شود.
      */
-    record TopicNotFound(Long topicId) implements StudyPlanError {
-    }
-
     record StudentNotFound(Long studentId) implements StudyPlanError {
     }
 
     /**
-     * دانش‌آموز هیچ برنامه‌ی مطالعاتی‌ای در این مدرسه ندارد - پیشنهاد
-     * خودکار بدون course_info امکان‌پذیر نیست.
+     * سرفصل در این مدرسه یافت نشد - topicId مات به curriculum اشاره دارد و
+     * از طریق CurriculumFacade.listTopics اعتبارسنجی می‌شود.
      */
-    record PlanNotAssigned(Long studentId) implements StudyPlanError {
+    record TopicNotFound(Long topicId) implements StudyPlanError {
     }
 
-    record InvalidWeekCourse(String reason) implements StudyPlanError {
+    record InvalidPlan(String detail) implements StudyPlanError {
+    }
+
+    record InvalidWeekCourse(String detail) implements StudyPlanError {
     }
 
     /**
-     * weekStartDate ورودی (برای createWeekCourse یا هر عملیات هفتگیِ
-     * دیگر) باید شنبه باشد - پورت CheckConstraint {@code date__week_day=7}
-     * در منبع، اینجا به‌عنوان اعتبارسنجی سطح Facade.
+     * (plan, weekStart, courseTopic) باید یکتا باشد - همان unique_together
+     * موshavere.
      */
-    record NotSaturday(LocalDate date) implements StudyPlanError {
+    record DuplicateWeekCourse(Long planId, LocalDate weekStart, Long courseTopicId) implements StudyPlanError {
     }
 
-    record InvalidSchedule(String reason) implements StudyPlanError {
+    record InvalidSchedule(String detail) implements StudyPlanError {
     }
 
     /**
-     * زمان کل بلوک‌های آزادِ هفته کمتر از ۱۸۰ دقیقه است - پورت مستقیم
-     * exception صریح {@code compute_interval_per_topic} در منبع.
+     * شروع هفته باید شنبه باشد (هفته‌ی درسی ایران) - همان چک
+     * weekday()==Saturday در moshavere و قید DB روی WeekCourse.date.
+     */
+    record InvalidWeekStart(String detail) implements StudyPlanError {
+    }
+
+    /**
+     * پیشنهاد خودکار فقط برای هفته‌ی خالی مجاز است - وگرنه بازه‌های موجود
+     * با پیشنهادی‌ها تداخل می‌کردند («This week is not empty!» moshavere).
+     */
+    record WeekNotEmpty(LocalDate weekStart) implements StudyPlanError {
+    }
+
+    /**
+     * مجموع زمان آزاد برنامه‌ی هفتگی کمتر از ۱۸۰ دقیقه است - پورت مستقیم
+     * خطای FillSlices در moshavere (کمتر از این مقدار، توزیع وزنی بین
+     * درس‌ها بی‌معنا می‌شود).
      */
     record ScheduleTooSmall(int totalMinutes) implements StudyPlanError {
     }
 
-    record WeekNotEmpty(LocalDate weekStartDate) implements StudyPlanError {
+    /**
+     * دانش‌آموز هنوز به هیچ برنامه‌ای تخصیص داده نشده - پیشنهاد خودکار بدون
+     * وزن‌دهی درس‌های یک برنامه ممکن نیست.
+     */
+    record PlanNotAssigned(Long studentId) implements StudyPlanError {
     }
 
-    record StudyIntervalNotFound(Long intervalId) implements StudyPlanError {
+    record IntervalNotFound(Long intervalId) implements StudyPlanError {
+    }
+
+    /**
+     * بازه‌ی جدید با بازه‌ی مطالعه‌ی موجودِ همین دانش‌آموز هم‌پوشانی دارد -
+     * پورت check_time_overlap در moshavere.
+     */
+    record IntervalOverlaps(String detail) implements StudyPlanError {
+    }
+
+    record InvalidInterval(String detail) implements StudyPlanError {
     }
 }

@@ -5,19 +5,14 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 
+import java.time.Instant;
+
 /**
- * یک برنامه‌ی مطالعاتی مدرسه - پورت مدل Plan از plan/models.py در
- * moshavere. {@code teacherId} یک Long غیر-FK به کاربر iam است، همان
- * قرارداد ClassEntity.teacherId (بدون FK واقعی چون academic/studyplan از
- * iam فقط شناسه‌ی مبهم می‌خواهند، نه رابطه‌ی دیتابیسی).
- * <p>
- * {@code courseInfoJson} پورتِ course_info در منبع است (JSONField با شمای
- * {course, weight, priority} - COURSE_INFO_SCHEMA در account/constants.py).
- * به‌جای ستون jsonb، عمداً یک ستون متنی ساده (columnDefinition="text")
- * است تا از ناسازگاری نوع JDBC هنگام نوشتن String در ستون jsonb (بدون
- * FormatMapper اختصاصی هایبرنیت) پرهیز شود - (де)serialize کردن به لیست
- * تایپ‌شده‌ی {@link com.example.roshdeandishe.studyplan.StudyPlanFacade.CourseWeight}
- * کاملاً در FacadeImpl انجام می‌شود، نه اینجا.
+ * برنامه‌ی درسی یک مدرسه. {@code teacherId} یک Long مات به iam User است
+ * (بدون FK بین‌ماژولی، همان قرارداد ClassEntity.teacherId) و nullable -
+ * سازنده از کاربر جاری برداشته می‌شود و مسیرهای بدون کاربر (تست/seed)
+ * نباید بشکنند. وزن‌دهی درس‌ها در جدول فرزند plan_course_weights است،
+ * نه ستون JSON (تصمیم پاس new-module - رجوع به StudyPlanFacade).
  */
 @Entity
 @Table(name = "plans", schema = "studyplan")
@@ -33,19 +28,19 @@ class PlanEntity {
     @Column(name = "school_id", nullable = false)
     private Long schoolId;
 
-    @Column(name = "teacher_id", nullable = false)
+    @Column(name = "teacher_id")
     private Long teacherId;
 
-    @Column(nullable = false, length = 100)
+    @Column(nullable = false, length = 256)
     private String title;
 
-    @Column(name = "course_info", nullable = false, columnDefinition = "text")
-    private String courseInfoJson;
+    @Column(name = "created_at", nullable = false)
+    private Instant createdAt;
 
-    PlanEntity(Long schoolId, Long teacherId, String title, String courseInfoJson) {
+    PlanEntity(Long schoolId, Long teacherId, String title, Instant createdAt) {
         this.schoolId = schoolId;
         this.teacherId = teacherId;
         this.title = title;
-        this.courseInfoJson = courseInfoJson;
+        this.createdAt = createdAt;
     }
 }
