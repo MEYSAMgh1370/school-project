@@ -225,6 +225,16 @@ class CurriculumFlowIntegrationTest {
                         .content("{\"parentId\":null,\"name\":\"  \"}"))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.type").value(org.hamcrest.Matchers.endsWith("invalid-topic")));
+
+        // والدِ ناموجود روی ساخت سرفصل
+        mockMvc.perform(post("/api/admin/schools/1/topics")
+                        .with(csrf())
+                        .header("X-School-ID", "1")
+                        .session(session)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"parentId\":999999,\"name\":\"سرفصل یتیم\"}"))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.type").value(org.hamcrest.Matchers.endsWith("topic-not-found")));
     }
 
     @Test

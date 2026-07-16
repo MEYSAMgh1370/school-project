@@ -58,15 +58,19 @@ class AcademicFacadeImpl implements AcademicFacade {
 
     @Override
     public StudentInfo getStudentInfo(Long studentId) {
-        StudentEntity student = studentRepository.findById(studentId)
+        return findStudentInfo(studentId)
                 .orElseThrow(() -> new AcademicException(new AcademicError.StudentNotFound(studentId)));
+    }
 
-        return new StudentInfo(
-                new StudentId(student.getId()),
-                student.getUserId(),
-                student.getSchoolId(),
-                new ClassId(student.getClassId())
-        );
+    @Override
+    public Optional<StudentInfo> findStudentInfo(Long studentId) {
+        return studentRepository.findById(studentId)
+                .map(student -> new StudentInfo(
+                        new StudentId(student.getId()),
+                        student.getUserId(),
+                        student.getSchoolId(),
+                        new ClassId(student.getClassId())
+                ));
     }
 
     @Override

@@ -5,11 +5,14 @@ import com.example.roshdeandishe.academic.AcademicFacade.StudentInfo;
 import com.example.roshdeandishe.bale.BaleFacade;
 import com.example.roshdeandishe.finance.InvoiceIssuedEvent;
 import com.example.roshdeandishe.platform.TenantContext;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.modulith.events.ApplicationModuleListener;
 import org.springframework.stereotype.Component;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 
 /**
  * اطلاع‌رسانی خروجی، اولین موردِ واقعیِ این ماژول: وقتی فاکتوری صادر
@@ -24,6 +27,8 @@ import java.util.List;
 @Component
 class InvoiceIssuedEventListener {
 
+    private static final Logger log = LoggerFactory.getLogger(InvoiceIssuedEventListener.class);
+
     private final AcademicFacade academicFacade;
     private final BaleFacade baleFacade;
 
@@ -37,7 +42,16 @@ class InvoiceIssuedEventListener {
         try {
             TenantContext.set(event.schoolId());
 
-            StudentInfo student = academicFacade.getStudentInfo(event.studentId());
+            // نبودن StudentEntity برای این studentId یک حالت عادی است (مثلاً
+            // فاکتوری که مستقیم با issueTuitionInvoice صادر شده)، نه خطا -
+            // همان قرارداد sendMessageToUser: فقط اطلاع‌رسانی رد می‌شود.
+            Optional<StudentInfo> found = academicFacade.findStudentInfo(event.studentId());
+            if (found.isEmpty()) {
+                log.warn("اطلاع‌رسانی فاکتور رد شد: دانش‌آموزی با شناسه {} در مدرسه {} وجود ندارد",
+                        event.studentId(), event.schoolId());
+                return;
+            }
+            StudentInfo student = found.get();
             String text = "فاکتور جدیدی به مبلغ " + event.amount() + " برای دانش‌آموز صادر شد.";
 
             List<Long> recipients = new ArrayList<>();

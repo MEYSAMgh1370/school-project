@@ -979,7 +979,9 @@ topics/questions/plans"). Deliberately **not** granted to `STUDENT`/`PARENT`,
 not even `CURRICULUM_VIEW`: a question row carries `correctChoice` and the
 `answer` explanation, so raw bank read access leaks answers — student access
 will be mediated by the future `exam` module (scoped exam-take token), never
-by reading the bank directly.
+by reading the bank directly. The VIEW/MANAGE split exists despite identical
+system grants today so a *custom role* (§4's Role subsection) can be composed
+read-only — same reasoning as `CLASS_VIEW`.
 
 **`ROLE_MANAGE` (added 2026-07-13, for custom role management — see §4's
 Role subsection):** deliberately `SCHOOL_ADMIN`-only, not granted to
@@ -2070,10 +2072,19 @@ above.
   correctChoice/blank-choice/blank-name 400s, nonexistent topic 404,
   TEACHER can author, PARENT gets `permission-denied`, fresh
   entitlement-less school gets `module-not-entitled`, missing X-School-ID
-  400). Full suite (105 tests) + `ModularityTests` green. **No UI** — the
+  400). Full suite + `ModularityTests` green. **No UI** — the
   port is backend domain logic only (spec §7); a `/curriculum` management
   page is a separate slice gated by the `design-page` skill. Remaining
   port steps: `studyplan` → `exam`, each needing its own `new-module` pass.
+  **Merge note (same day):** two sessions built this module in parallel; a
+  second implementation (PR #37 — `Integer` difficulty, no `answer` field,
+  exact-match topic filter, `CurriculumManagementFlowIntegrationTest`)
+  briefly lived on master and was superseded by this one at merge-conflict
+  time as the more faithful port (subtree filter semantics, `answer`
+  ported, enum difficulty). Its one extra test case (unknown parent on
+  topic create → 404) was folded into `CurriculumFlowIntegrationTest`, and
+  its `curriculum/package-info.java` (`@ApplicationModule(displayName)`)
+  was kept.
 
 ### Open / explicitly deferred
 
