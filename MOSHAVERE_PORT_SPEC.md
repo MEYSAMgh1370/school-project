@@ -92,6 +92,17 @@ views.py (SMSViewSet)}`.
 
 ## 4. `curriculum` (new module) — Topics + question bank
 
+**Status: DONE (2026-07-16)**, built as scoped below. The open module-code
+question was resolved at new-module time: a new `SCHOOL`-scoped `CURRICULUM`
+code (none of the existing seeds fit — `EXAM_PREP` is `USER`-scoped/B2C,
+this is instructor-authored B2B content), with `CURRICULUM_VIEW`/
+`CURRICULUM_MANAGE` permissions granted to `SCHOOL_ADMIN` + `TEACHER` (write
+included for teachers — they own their own content, §2). Moshavere's
+`answer` explanation field was not ported (absent from the field list
+below); add it as its own small decision if exam review needs it. See
+`CLAUDE.md` §4's Topic/Question subsection and §7 Done for the final shape
+and test coverage (`CurriculumManagementFlowIntegrationTest`).
+
 Source: `exam-maker-master/exam_generator/{models.py, tree.py, filters.py,
 views.py}`.
 
@@ -247,7 +258,7 @@ Depends on: `curriculum` (topics), `academic` (students/classes).
 ## 8. Suggested build order
 
 1. `iam` OTP extension (smallest, no new module, unblocks nothing else). **Done.**
-2. `curriculum` (no dependencies on the other new modules).
+2. `curriculum` (no dependencies on the other new modules). **Done.**
 3. `studyplan` (depends only on `curriculum` + `academic`).
 4. `exam` (depends on `curriculum` + `academic` + `studyplan`, the deepest
    dependency chain — build last so `getRecentTopics` already exists).
