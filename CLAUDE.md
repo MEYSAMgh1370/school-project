@@ -373,6 +373,51 @@ com.example.roshdeandishe
 │       ├── AcademicException.java
 │       └── AcademicExceptionHandler.java   (bean name "academicGlobalExceptionHandler")
 │
+├── curriculum/                 ← hierarchical topic taxonomy + multiple-choice
+│   ├── CurriculumFacade.java       question bank (moshavere port, step 2 —
+│   │                                 MOSHAVERE_PORT_SPEC.md §4). Content is
+│   │                                 per-school, never a shared platform library
+│   │                                 (spec §2). No audit trail, no events — pure
+│   │                                 CRUD + read composition so far.
+│   ├── QuestionDifficulty.java     (enum EDUCATIONAL|EASY|MEDIUM|HARD|VERY_HARD —
+│   │                                 port of moshavere's 0/10/20/30/40 int scale;
+│   │                                 nullable on a question, same as source)
+│   ├── TopicController.java        (REST: POST topics (CURRICULUM_MANAGE) /
+│   │                                 GET topics + GET topics/tree
+│   │                                 (CURRICULUM_VIEW) — class-level
+│   │                                 @RequiresModule("CURRICULUM"), per-method
+│   │                                 @RequiresPermission, TenantContext.requireMatches
+│   │                                 everywhere)
+│   ├── QuestionController.java     (REST: POST questions (CURRICULUM_MANAGE) /
+│   │                                 GET questions?topicId=&difficulty=…
+│   │                                 (CURRICULUM_VIEW) — topicId filter includes
+│   │                                 the topic's WHOLE SUBTREE (descendants),
+│   │                                 the one behavior deliberately preserved
+│   │                                 from moshavere's QuestionFilter)
+│   ├── internal/
+│   │   ├── TopicEntity (schoolId, parentId nullable self-ref as plain Long,
+│   │   │                 name, sortOrder) / TopicRepository — plain adjacency
+│   │   │                 list, deliberately NOT moshavere's dual ltree+pickled
+│   │   │                 tree (spec §4/§7); subtree/tree reads are in-memory
+│   │   │                 traversals over one school's topics. No topic-move
+│   │   │                 operation exists, so cycles are structurally impossible
+│   │   │                 (a new topic's parent must already exist).
+│   │   ├── QuestionEntity (schoolId, topicId required — unlike source's nullable,
+│   │   │                    a wart not worth porting — text + choice1..4 +
+│   │   │                    answer as Postgres text columns, correctChoice 1–4,
+│   │   │                    difficulty, discriminationIndex) / QuestionRepository
+│   │   │                    — `answer` (explanation of the correct choice) was
+│   │   │                    in the moshavere source but missing from the spec's
+│   │   │                    field list; ported deliberately.
+│   │   └── CurriculumFacadeImpl
+│   └── shared/
+│       ├── CurriculumError.java (sealed: TopicNotFound, InvalidTopic,
+│       │                          InvalidQuestion — a topic belonging to another
+│       │                          school is TopicNotFound, same convention as
+│       │                          academic's requireClassExists)
+│       ├── CurriculumException.java
+│       └── CurriculumExceptionHandler.java   (bean name "curriculumExceptionHandler")
+│
 ├── finance/                    ← tuition, invoices, payments, expenses, audit.
 │                                  Two public Facades at the module root
 │                                  (FinanceFacade for tuition/invoices/payments,
@@ -907,7 +952,7 @@ PermissionEntity
 ├── code (GRADES_VIEW, GRADES_EDIT, FINANCE_VIEW, FINANCE_MANAGE,
 │         MEMBERSHIP_MANAGE, STUDENT_ENROLL, CLASS_MANAGE, CLASS_VIEW,
 │         GUARDIAN_MANAGE, EXPENSE_VIEW, EXPENSE_MANAGE, EXPENSE_APPROVE,
-│         ROLE_MANAGE)
+│         ROLE_MANAGE, CURRICULUM_VIEW, CURRICULUM_MANAGE)
 └── displayName
 
 RolePermissionEntity  (join table: which roles have which permissions — for a
@@ -920,10 +965,21 @@ Current grants (seeded in `IamSeedDataRunner`):
 | Role | Permissions |
 |---|---|
 | `STUDENT` | `GRADES_VIEW` |
-| `TEACHER` | `GRADES_VIEW`, `GRADES_EDIT`, `STUDENT_ENROLL`, `CLASS_VIEW` |
+| `TEACHER` | `GRADES_VIEW`, `GRADES_EDIT`, `STUDENT_ENROLL`, `CLASS_VIEW`, `CURRICULUM_VIEW`, `CURRICULUM_MANAGE` |
 | `PARENT` | `GRADES_VIEW`, `FINANCE_VIEW` |
-| `SCHOOL_ADMIN` | `GRADES_VIEW`, `FINANCE_VIEW`, `FINANCE_MANAGE`, `MEMBERSHIP_MANAGE`, `CLASS_MANAGE`, `CLASS_VIEW`, `STUDENT_ENROLL`, `GUARDIAN_MANAGE`, `EXPENSE_VIEW`, `EXPENSE_MANAGE`, `EXPENSE_APPROVE`, `ROLE_MANAGE` |
+| `SCHOOL_ADMIN` | `GRADES_VIEW`, `FINANCE_VIEW`, `FINANCE_MANAGE`, `MEMBERSHIP_MANAGE`, `CLASS_MANAGE`, `CLASS_VIEW`, `STUDENT_ENROLL`, `GUARDIAN_MANAGE`, `EXPENSE_VIEW`, `EXPENSE_MANAGE`, `EXPENSE_APPROVE`, `ROLE_MANAGE`, `CURRICULUM_VIEW`, `CURRICULUM_MANAGE` |
 | `FINANCE_ADMIN` | `FINANCE_VIEW`, `FINANCE_MANAGE`, `EXPENSE_VIEW`, `EXPENSE_MANAGE` |
+
+**`CURRICULUM_VIEW`/`CURRICULUM_MANAGE` (added 2026-07-16, for the `curriculum`
+module — moshavere port step 2, resolving the spec's "exact permission split
+TBD"):** both granted to `SCHOOL_ADMIN` *and* `TEACHER` — authoring the
+question bank is day-to-day teacher work (the `STUDENT_ENROLL` reasoning, not
+the `CLASS_MANAGE` one; spec §2: "each school's own teachers own their own
+topics/questions/plans"). Deliberately **not** granted to `STUDENT`/`PARENT`,
+not even `CURRICULUM_VIEW`: a question row carries `correctChoice` and the
+`answer` explanation, so raw bank read access leaks answers — student access
+will be mediated by the future `exam` module (scoped exam-take token), never
+by reading the bank directly.
 
 **`ROLE_MANAGE` (added 2026-07-13, for custom role management — see §4's
 Role subsection):** deliberately `SCHOOL_ADMIN`-only, not granted to
@@ -1020,7 +1076,7 @@ checked.
 ```
 ModuleEntity
 ├── id
-├── code (ACADEMIC, FINANCE, LIBRARY, ATTENDANCE, TRANSPORTATION,
+├── code (ACADEMIC, FINANCE, CURRICULUM, LIBRARY, ATTENDANCE, TRANSPORTATION,
 │         AI_TUTOR, EXAM_PREP, PORTFOLIO_BUILDER, TEACHER_MARKETPLACE,
 │         PROFESSIONAL_DEVELOPMENT)
 ├── displayName
@@ -1145,6 +1201,63 @@ scopes the result to `AcademicFacade.listWards(userId, schoolId)` instead of
 the full school list. The Bale bot itself still never calls this endpoint —
 it composes `listWards` + `FinanceFacade.listInvoices` directly, unaffected by
 this change.
+
+### Topic + Question (owned by `curriculum` — moshavere port, step 2)
+
+The hierarchical topic taxonomy + multiple-choice question bank ported from
+moshavere's `exam_generator` (MOSHAVERE_PORT_SPEC.md §4, built 2026-07-16).
+Per-school content, never a shared platform library (spec §2). The `exam` and
+`studyplan` modules (port steps 3–4, not built yet) will consume these via
+`CurriculumFacade`.
+
+```
+TopicEntity
+├── id
+├── schoolId
+├── parentId       (nullable self-reference as a plain Long column — null = root.
+│                    Plain adjacency list, deliberately NOT moshavere's dual
+│                    ltree + pickled-in-memory-tree representation. No move/
+│                    reparent operation exists, so cycles are structurally
+│                    impossible: a topic's parent must already exist at create
+│                    time. A parent belonging to another school is rejected as
+│                    TopicNotFound — same convention as academic's
+│                    requireClassExists.)
+├── name
+└── sortOrder      (column sort_order — "order" is an SQL keyword)
+
+QuestionEntity
+├── id
+├── schoolId
+├── topicId        (required — moshavere allowed null, but a topic-less question
+│                    was unreachable through its own required topic filter; a
+│                    wart, not ported)
+├── text / choice1..choice4   (Postgres text columns, all required non-blank)
+├── correctChoice  (int, validated 1–4)
+├── answer         (nullable text — the explanation of the correct choice; in
+│                    the moshavere source but missing from the port spec's field
+│                    list, ported deliberately)
+├── difficulty     (nullable QuestionDifficulty enum: EDUCATIONAL | EASY |
+│                    MEDIUM | HARD | VERY_HARD — port of moshavere's
+│                    0/10/20/30/40 int scale)
+└── discriminationIndex   (nullable Double)
+```
+
+`CurriculumFacade.createTopic / listTopics / getTopicTree / createQuestion /
+listQuestions(schoolId, filter)`. The one behavior deliberately preserved from
+moshavere's `QuestionFilter`: **the topic filter includes the whole subtree**
+(the topic + all descendants), computed as an in-memory traversal over one
+school's topics — if read performance ever actually demands it, a materialized
+closure table is the next step (spec §4), not a second in-memory cache.
+The difficulty filter is a set (`?difficulty=EASY&difficulty=HARD`); a question
+with null difficulty is excluded when the filter is active (IN semantics, same
+as source). Exposed at `POST`/`GET /api/admin/schools/{schoolId}/topics`
+(+ `GET .../topics/tree`) and `POST`/`GET .../questions` — class-level
+`@RequiresModule("CURRICULUM")`, per-method `@RequiresPermission`
+(`CURRICULUM_MANAGE` write / `CURRICULUM_VIEW` read, both SCHOOL_ADMIN +
+TEACHER — see the Permission section above for why students/parents get
+neither). No web page yet — the port is backend domain logic only (spec §7);
+a management UI is a separate slice that must go through the `design-page`
+skill when asked for.
 
 ### TuitionFee (owned by `finance`)
 
@@ -1928,6 +2041,39 @@ above.
   appeared with the right permission tag, then assigned it to a new member
   on `/people` and confirmed the member row rendered the Persian
   `displayName` ("کتابدار"), not the raw code.
+- **Moshavere port, step 2 — `curriculum` module (built 2026-07-16, via its
+  own `new-module` pass per the standing instruction)**: hierarchical topic
+  taxonomy + multiple-choice question bank — see §3's module tree entry and
+  §4's Topic/Question subsection for the full model. Resolved the spec's two
+  open items explicitly: a new `SCHOOL`-scoped `CURRICULUM` module code
+  (none of the seeded codes fit; `EXAM_PREP` stays the B2C placeholder it
+  was, its scope question deferred to the `exam` module's own pass), and
+  the permission split — `CURRICULUM_MANAGE`/`CURRICULUM_VIEW`, both
+  SCHOOL_ADMIN + TEACHER, neither to STUDENT/PARENT (the bank carries
+  correct answers; see §4's Permission section). Two deliberate deviations
+  from the spec's field list, both toward the actual moshavere source: the
+  `answer` explanation field (in the source, missing from the spec) and
+  difficulty as a 5-level enum (port of the source's 0/10/20/30/40 int
+  scale). The subtree semantics of the question topic-filter (a topic
+  matches its whole descendant tree) were preserved exactly. **Fixed in
+  passing**: `IamSeedDataRunner.seedModules()` and
+  `seedDemoSchoolEntitlements()` still had the early-return-on-count trap
+  documented (and fixed) for `seedPermissions()` back when `EXPENSE_*`
+  landed — a new module code / demo entitlement would silently never reach
+  an already-seeded dev database while tests stayed green; both are now
+  per-code idempotent, and the demo school gets a `CURRICULUM` entitlement.
+  Also added the missing `bale` + new `curriculum` schemas to README's
+  local-setup SQL (`bale` was a pre-existing doc gap; `init-schemas.sql`
+  already had it). Covered by `CurriculumFlowIntegrationTest` (topic tree
+  build + nested read, subtree question filter includes descendants and
+  excludes unrelated roots, difficulty filter, invalid
+  correctChoice/blank-choice/blank-name 400s, nonexistent topic 404,
+  TEACHER can author, PARENT gets `permission-denied`, fresh
+  entitlement-less school gets `module-not-entitled`, missing X-School-ID
+  400). Full suite (105 tests) + `ModularityTests` green. **No UI** — the
+  port is backend domain logic only (spec §7); a `/curriculum` management
+  page is a separate slice gated by the `design-page` skill. Remaining
+  port steps: `studyplan` → `exam`, each needing its own `new-module` pass.
 
 ### Open / explicitly deferred
 
@@ -2103,6 +2249,18 @@ page. `PermissionDecisionService` needed no changes at all — it was already
 fully data-driven, so custom roles are enforced by the same generic mechanism
 every system role runs through. See §4's Role subsection and §7 Done for the
 full detail, the three explicit scoping decisions, and test coverage.
+
+**Phase L — Moshavere port, step 2 (`curriculum` module): done.** New
+`curriculum` module (topic taxonomy + question bank) via its own `new-module`
+pass — new `SCHOOL`-scoped `CURRICULUM` module code,
+`CURRICULUM_MANAGE`/`CURRICULUM_VIEW` permissions (SCHOOL_ADMIN + TEACHER;
+students/parents get neither — the bank carries correct answers), subtree
+topic-filter semantics preserved from the source. Backend only, no UI — see
+§3, §4's Topic/Question subsection, and §7 Done. Remaining port steps per
+MOSHAVERE_PORT_SPEC.md §8: `studyplan` (depends on curriculum + academic),
+then `exam` (deepest dependency chain, built last so
+`StudyPlanFacade.getRecentTopics` already exists) — each a genuinely new
+module needing its own `new-module` pass.
 
 ---
 

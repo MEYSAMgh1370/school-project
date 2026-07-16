@@ -92,6 +92,26 @@ views.py (SMSViewSet)}`.
 
 ## 4. `curriculum` (new module) — Topics + question bank
 
+**Status: DONE (2026-07-16)**, built as scoped below via its own `new-module`
+pass — see `CLAUDE.md` §3/§4 (Topic + Question subsection) and §7 Done for
+the final shape and test coverage (`CurriculumFlowIntegrationTest`). The two
+open items below were resolved at new-module time: a **new `SCHOOL`-scoped
+`CURRICULUM` module code** (none of the seeded codes fit; `EXAM_PREP` stays
+untouched as the B2C placeholder — its scope question belongs to the `exam`
+module's pass, §5), and the permission split —
+**`CURRICULUM_MANAGE`/`CURRICULUM_VIEW`, both `SCHOOL_ADMIN` + `TEACHER`**
+(authoring the bank is day-to-day teacher work, the `STUDENT_ENROLL`
+reasoning), neither granted to `STUDENT`/`PARENT` (questions carry
+`correctChoice` + the answer explanation; student access will be mediated by
+`exam`'s scoped token, never raw bank reads). Two deviations from the field
+list below, both toward the actual source: the `answer` explanation field
+(present in `models.py`, missing from this spec's summary) was ported, and
+`difficulty` became a 5-level enum (`EDUCATIONAL|EASY|MEDIUM|HARD|VERY_HARD`,
+port of the source's 0/10/20/30/40 int scale). `topicId` on a question is
+required (the source's nullable topic was unreachable through its own
+required topic filter — a wart, not ported). The subtree semantics of the
+topic filter (`descendants()`) shipped as written, as an in-memory traversal.
+
 Source: `exam-maker-master/exam_generator/{models.py, tree.py, filters.py,
 views.py}`.
 
@@ -247,7 +267,7 @@ Depends on: `curriculum` (topics), `academic` (students/classes).
 ## 8. Suggested build order
 
 1. `iam` OTP extension (smallest, no new module, unblocks nothing else). **Done.**
-2. `curriculum` (no dependencies on the other new modules).
+2. `curriculum` (no dependencies on the other new modules). **Done.**
 3. `studyplan` (depends only on `curriculum` + `academic`).
 4. `exam` (depends on `curriculum` + `academic` + `studyplan`, the deepest
    dependency chain — build last so `getRecentTopics` already exists).

@@ -11,12 +11,14 @@ spring:
   # ⚠️ نکته‌ی مهم Postgres: Hibernate با ddl-auto=update فقط جدول‌ها را
   # می‌سازد، نه خود schema را. چون SchoolEntity با schema="school"،
   # FinanceAuditEntity با schema="finance"، ClassEntity/StudentEntity با
-  # schema="academic"، و حالا BaleLinkEntity با schema="bale" تعریف
-  # شده‌اند، قبل از اجرای اپلیکیشن باید این schemaها را دستی بسازید:
+  # schema="academic"، BaleLinkEntity با schema="bale"، و حالا
+  # TopicEntity/QuestionEntity با schema="curriculum" تعریف شده‌اند،
+  # قبل از اجرای اپلیکیشن باید این schemaها را دستی بسازید:
   #   CREATE SCHEMA IF NOT EXISTS school;
   #   CREATE SCHEMA IF NOT EXISTS finance;
   #   CREATE SCHEMA IF NOT EXISTS academic;
   #   CREATE SCHEMA IF NOT EXISTS bale;
+  #   CREATE SCHEMA IF NOT EXISTS curriculum;
   datasource:
     url: jdbc:postgresql://localhost:5432/roshdeandishe_iam
     username: postgres

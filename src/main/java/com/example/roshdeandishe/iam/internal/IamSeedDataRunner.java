@@ -69,21 +69,32 @@ class IamSeedDataRunner implements ApplicationRunner {
         seedDemoAdminMembership();
     }
 
+    /**
+     * به‌ازای هر کد idempotent - همان دلیل seedPermissions پایین: early-return
+     * قبلی روی count یعنی هر Module جدید (اولین مورد واقعی: CURRICULUM،
+     * پورت moshavere) هرگز به یک دیتابیس dev از قبل seed شده نمی‌رسید و
+     * @RequiresModule آن برای همیشه 403 می‌داد، در حالی که تست‌ها
+     * (Testcontainers همیشه تازه) سبز می‌ماندند.
+     */
     private void seedModules() {
-        if (moduleRepository.count() > 0) {
-            return;
-        }
-        moduleRepository.save(new ModuleEntity("ACADEMIC", "آموزش", ModuleScope.SCHOOL));
-        moduleRepository.save(new ModuleEntity("FINANCE", "مالی", ModuleScope.SCHOOL));
-        moduleRepository.save(new ModuleEntity("LIBRARY", "کتابخانه", ModuleScope.SCHOOL));
-        moduleRepository.save(new ModuleEntity("ATTENDANCE", "حضور و غیاب", ModuleScope.SCHOOL));
-        moduleRepository.save(new ModuleEntity("TRANSPORTATION", "سرویس", ModuleScope.SCHOOL));
+        module("ACADEMIC", "آموزش", ModuleScope.SCHOOL);
+        module("FINANCE", "مالی", ModuleScope.SCHOOL);
+        module("CURRICULUM", "سرفصل‌ها و بانک سؤال", ModuleScope.SCHOOL);
+        module("LIBRARY", "کتابخانه", ModuleScope.SCHOOL);
+        module("ATTENDANCE", "حضور و غیاب", ModuleScope.SCHOOL);
+        module("TRANSPORTATION", "سرویس", ModuleScope.SCHOOL);
 
-        moduleRepository.save(new ModuleEntity("AI_TUTOR", "معلم هوش مصنوعی", ModuleScope.USER));
-        moduleRepository.save(new ModuleEntity("EXAM_PREP", "آماده‌سازی آزمون", ModuleScope.USER));
-        moduleRepository.save(new ModuleEntity("PORTFOLIO_BUILDER", "ساخت نمونه‌کار", ModuleScope.USER));
-        moduleRepository.save(new ModuleEntity("TEACHER_MARKETPLACE", "بازار معلم‌ها", ModuleScope.USER));
-        moduleRepository.save(new ModuleEntity("PROFESSIONAL_DEVELOPMENT", "دوره‌های توسعه‌ی حرفه‌ای", ModuleScope.USER));
+        module("AI_TUTOR", "معلم هوش مصنوعی", ModuleScope.USER);
+        module("EXAM_PREP", "آماده‌سازی آزمون", ModuleScope.USER);
+        module("PORTFOLIO_BUILDER", "ساخت نمونه‌کار", ModuleScope.USER);
+        module("TEACHER_MARKETPLACE", "بازار معلم‌ها", ModuleScope.USER);
+        module("PROFESSIONAL_DEVELOPMENT", "دوره‌های توسعه‌ی حرفه‌ای", ModuleScope.USER);
+    }
+
+    private void module(String code, String displayName, ModuleScope scope) {
+        if (moduleRepository.findByCode(code).isEmpty()) {
+            moduleRepository.save(new ModuleEntity(code, displayName, scope));
+        }
     }
 
     private Map<String, RoleEntity> seedRoles() {
@@ -126,6 +137,8 @@ class IamSeedDataRunner implements ApplicationRunner {
         permission(permissions, "EXPENSE_MANAGE", "ثبت/مدیریت هزینه‌های مدرسه");
         permission(permissions, "EXPENSE_APPROVE", "تأیید هزینه‌های مدرسه");
         permission(permissions, "ROLE_MANAGE", "ساخت نقش سفارشی و مدیریت دسترسی‌ها");
+        permission(permissions, "CURRICULUM_VIEW", "مشاهده‌ی سرفصل‌ها و بانک سؤال");
+        permission(permissions, "CURRICULUM_MANAGE", "ساخت سرفصل و سؤال در بانک سؤال");
         return permissions;
     }
 
@@ -145,6 +158,13 @@ class IamSeedDataRunner implements ApplicationRunner {
         // انتخاب کلاس در صفحه‌ی ثبت‌نام (/students) ببیند - ساخت کلاس همچنان
         // فقط با CLASS_MANAGE (پایین‌تر) مخصوص SCHOOL_ADMIN می‌ماند
         grant(roles.get("TEACHER"), permissions.get("CLASS_VIEW"));
+        // تألیف بانک سؤال کار روزمره‌ی معلم است (همان استدلال STUDENT_ENROLL،
+        // نه CLASS_MANAGE) - هر دو Permission ماژول CURRICULUM به TEACHER هم
+        // داده می‌شود. STUDENT/PARENT عمداً هیچ‌کدام را ندارند: بانک سؤال
+        // گزینه‌ی درست و پاسخ تشریحی را حمل می‌کند؛ دسترسی دانش‌آموز بعداً
+        // از طریق ماژول exam میانجی‌گری می‌شود، نه خواندن مستقیم بانک.
+        grant(roles.get("TEACHER"), permissions.get("CURRICULUM_VIEW"));
+        grant(roles.get("TEACHER"), permissions.get("CURRICULUM_MANAGE"));
 
         grant(roles.get("PARENT"), permissions.get("GRADES_VIEW"));
         grant(roles.get("PARENT"), permissions.get("FINANCE_VIEW"));
@@ -169,6 +189,8 @@ class IamSeedDataRunner implements ApplicationRunner {
         // ساخت/مدیریت نقش سفارشی همان سطح حساسیتِ MEMBERSHIP_MANAGE را دارد -
         // فقط SCHOOL_ADMIN، نه FINANCE_ADMIN (§11 Q3، حل‌شده ۲۰۲۶-۰۷-۱۳)
         grant(roles.get("SCHOOL_ADMIN"), permissions.get("ROLE_MANAGE"));
+        grant(roles.get("SCHOOL_ADMIN"), permissions.get("CURRICULUM_VIEW"));
+        grant(roles.get("SCHOOL_ADMIN"), permissions.get("CURRICULUM_MANAGE"));
 
         // FINANCE_ADMIN: فقط دسترسی مالی - نمونه‌ی واقعی "نقش متفاوت با سطح دسترسی متفاوت".
         // عمداً بدون EXPENSE_APPROVE: تفکیک وظایف - کسی که هزینه را ثبت/پرداخت
@@ -196,22 +218,25 @@ class IamSeedDataRunner implements ApplicationRunner {
     }
 
     /**
-     * ماژول‌های ACADEMIC و FINANCE را برای مدرسه‌ی نمونه (id=1، ساخته‌شده
-     * توسط SchoolSeedDataRunner روی دیتابیس تازه) فعال می‌کند - وگرنه
-     * FinanceController (اولین کنترلر با @RequiresModule) برای جریان dev
-     * از همان ابتدا 403 می‌دهد. مثل بقیه‌ی این کلاس، فقط seed مخصوص dev.
+     * ماژول‌های ACADEMIC، FINANCE و CURRICULUM را برای مدرسه‌ی نمونه (id=1،
+     * ساخته‌شده توسط SchoolSeedDataRunner روی دیتابیس تازه) فعال می‌کند -
+     * وگرنه کنترلرهای @RequiresModule دار برای جریان dev از همان ابتدا 403
+     * می‌دهند. به‌ازای هر ماژول idempotent (نه early-return روی count) -
+     * همان تله‌ی seedPermissions/seedModules: وگرنه Entitlement ماژول جدید
+     * هرگز به دیتابیس dev از قبل seed شده نمی‌رسید. فقط seed مخصوص dev.
      */
     private void seedDemoSchoolEntitlements() {
-        if (schoolEntitlementRepository.count() > 0) {
-            return;
-        }
-        Long demoSchoolId = 1L;
-        for (String moduleCode : new String[]{"ACADEMIC", "FINANCE"}) {
-            moduleRepository.findByCode(moduleCode).ifPresent(module ->
+        for (String moduleCode : new String[]{"ACADEMIC", "FINANCE", "CURRICULUM"}) {
+            moduleRepository.findByCode(moduleCode).ifPresent(module -> {
+                boolean exists = schoolEntitlementRepository
+                        .findBySchoolIdAndModuleId(DEMO_SCHOOL_ID, module.getId())
+                        .isPresent();
+                if (!exists) {
                     schoolEntitlementRepository.save(
-                            new SchoolEntitlementEntity(demoSchoolId, module.getId(), true)
-                    )
-            );
+                            new SchoolEntitlementEntity(DEMO_SCHOOL_ID, module.getId(), true)
+                    );
+                }
+            });
         }
     }
 
