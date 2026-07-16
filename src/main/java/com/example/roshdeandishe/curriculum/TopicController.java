@@ -2,7 +2,7 @@ package com.example.roshdeandishe.curriculum;
 
 import com.example.roshdeandishe.curriculum.CurriculumFacade.TopicId;
 import com.example.roshdeandishe.curriculum.CurriculumFacade.TopicInfo;
-import com.example.roshdeandishe.curriculum.CurriculumFacade.TopicNode;
+import com.example.roshdeandishe.curriculum.CurriculumFacade.TopicTreeNode;
 import com.example.roshdeandishe.iam.shared.RequiresModule;
 import com.example.roshdeandishe.iam.shared.RequiresPermission;
 import com.example.roshdeandishe.platform.TenantContext;
@@ -11,13 +11,14 @@ import org.springframework.web.bind.annotation.*;
 import java.util.List;
 
 /**
- * مدیریت سرفصل‌های درسی یک مدرسه. طبق تصمیم صریح (پاس new-module ماژول
- * curriculum)، نوشتن (CURRICULUM_MANAGE) به SCHOOL_ADMIN و TEACHER هر دو
- * داده می‌شود - معلم‌ها صاحب سرفصل/سوال‌های خودشان هستند
- * (MOSHAVERE_PORT_SPEC.md §2) - و خواندن (CURRICULUM_VIEW) هم فعلاً به همان
- * دو نقش؛ جدایی VIEW از MANAGE (الگوی CLASS_VIEW/CLASS_MANAGE) برای این است
- * که یک نقش سفارشی بتواند فقط-خواندنی ساخته شود، نه اینکه grant سیستمی
- * متفاوتی وجود داشته باشد.
+ * مدیریت تاکسونومی سرفصل‌های یک مدرسه. تقسیم Permission طبق تصمیم صریح
+ * new-module این ماژول: CURRICULUM_MANAGE (ساخت) به SCHOOL_ADMIN و
+ * TEACHER هر دو داده می‌شود - تألیف بانک سؤال کار روزمره‌ی معلم است،
+ * همان استدلال STUDENT_ENROLL، نه تصمیم اداری مثل CLASS_MANAGE.
+ * CURRICULUM_VIEW (خواندن) هم فقط همین دو نقش - عمداً نه STUDENT/PARENT،
+ * چون بانک سؤال گزینه‌ی درست و پاسخ تشریحی را حمل می‌کند؛ دسترسی
+ * دانش‌آموز بعداً از طریق ماژول exam (با token مخصوص جلسه‌ی آزمون)
+ * میانجی‌گری می‌شود، نه خواندن مستقیم بانک.
  */
 @RestController
 @RequestMapping("/api/admin/schools/{schoolId}/topics")
@@ -35,9 +36,13 @@ public class TopicController {
     public TopicResponse createTopic(@PathVariable Long schoolId, @RequestBody CreateTopicRequest request) {
         TenantContext.requireMatches(schoolId);
 
-        TopicId topicId = curriculumFacade.createTopic(schoolId, request.parentId(), request.name(), request.order());
-        return new TopicResponse(topicId.value(), schoolId, request.parentId(), request.name(),
-                request.order() == null ? 0 : request.order());
+        TopicId topicId = curriculumFacade.createTopic(
+                schoolId, request.parentId(), request.name(), request.sortOrder()
+        );
+        return new TopicResponse(
+                topicId.value(), schoolId, request.parentId(), request.name(),
+                request.sortOrder() == null ? 0 : request.sortOrder()
+        );
     }
 
     @GetMapping
@@ -50,6 +55,11 @@ public class TopicController {
                 .toList();
     }
 
+    /**
+     * درخت تو در تو - جایگزین مسیرخوانی درخت pickle شده‌ی moshavere؛
+     * children هر گره داخل خودش است، پس مسیر اجداد هم سمت کلاینت از همین
+     * ساختار قابل استخراج است.
+     */
     @GetMapping("/tree")
     @RequiresPermission("CURRICULUM_VIEW")
     public List<TopicTreeResponse> getTopicTree(@PathVariable Long schoolId) {
@@ -61,22 +71,22 @@ public class TopicController {
     }
 
     private static TopicResponse toResponse(TopicInfo info) {
-        return new TopicResponse(info.id().value(), info.schoolId(), info.parentId(), info.name(), info.order());
+        return new TopicResponse(info.id().value(), info.schoolId(), info.parentId(), info.name(), info.sortOrder());
     }
 
-    private static TopicTreeResponse toTreeResponse(TopicNode node) {
+    private static TopicTreeResponse toTreeResponse(TopicTreeNode node) {
         return new TopicTreeResponse(
-                node.id().value(), node.name(), node.order(),
+                node.id().value(), node.name(), node.sortOrder(),
                 node.children().stream().map(TopicController::toTreeResponse).toList()
         );
     }
 
-    public record CreateTopicRequest(String name, Long parentId, Integer order) {
+    public record CreateTopicRequest(Long parentId, String name, Integer sortOrder) {
     }
 
-    public record TopicResponse(Long id, Long schoolId, Long parentId, String name, int order) {
+    public record TopicResponse(Long id, Long schoolId, Long parentId, String name, int sortOrder) {
     }
 
-    public record TopicTreeResponse(Long id, String name, int order, List<TopicTreeResponse> children) {
+    public record TopicTreeResponse(Long id, String name, int sortOrder, List<TopicTreeResponse> children) {
     }
 }

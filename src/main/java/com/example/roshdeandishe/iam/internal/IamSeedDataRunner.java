@@ -70,15 +70,16 @@ class IamSeedDataRunner implements ApplicationRunner {
     }
 
     /**
-     * مثل seedPermissions به‌ازای هر کد idempotent - early-return قبلی روی
-     * count همان تله‌ای بود که موقع EXPENSE_* برای Permission ها پیدا شد:
-     * کد ماژول جدید (اینجا CURRICULUM) هرگز به دیتابیس dev از قبل seed شده
-     * نمی‌رسید و هر endpoint اش 403 ModuleNotEntitled می‌گرفت.
+     * به‌ازای هر کد idempotent - همان دلیل seedPermissions پایین: early-return
+     * قبلی روی count یعنی هر Module جدید (اولین مورد واقعی: CURRICULUM،
+     * پورت moshavere) هرگز به یک دیتابیس dev از قبل seed شده نمی‌رسید و
+     * @RequiresModule آن برای همیشه 403 می‌داد، در حالی که تست‌ها
+     * (Testcontainers همیشه تازه) سبز می‌ماندند.
      */
     private void seedModules() {
         module("ACADEMIC", "آموزش", ModuleScope.SCHOOL);
         module("FINANCE", "مالی", ModuleScope.SCHOOL);
-        module("CURRICULUM", "سرفصل‌ها و بانک سوال", ModuleScope.SCHOOL);
+        module("CURRICULUM", "سرفصل‌ها و بانک سؤال", ModuleScope.SCHOOL);
         module("LIBRARY", "کتابخانه", ModuleScope.SCHOOL);
         module("ATTENDANCE", "حضور و غیاب", ModuleScope.SCHOOL);
         module("TRANSPORTATION", "سرویس", ModuleScope.SCHOOL);
@@ -136,8 +137,8 @@ class IamSeedDataRunner implements ApplicationRunner {
         permission(permissions, "EXPENSE_MANAGE", "ثبت/مدیریت هزینه‌های مدرسه");
         permission(permissions, "EXPENSE_APPROVE", "تأیید هزینه‌های مدرسه");
         permission(permissions, "ROLE_MANAGE", "ساخت نقش سفارشی و مدیریت دسترسی‌ها");
-        permission(permissions, "CURRICULUM_VIEW", "مشاهده‌ی سرفصل‌ها و بانک سوال");
-        permission(permissions, "CURRICULUM_MANAGE", "ایجاد/مدیریت سرفصل‌ها و سوالات");
+        permission(permissions, "CURRICULUM_VIEW", "مشاهده‌ی سرفصل‌ها و بانک سؤال");
+        permission(permissions, "CURRICULUM_MANAGE", "ساخت سرفصل و سؤال در بانک سؤال");
         return permissions;
     }
 
@@ -157,8 +158,11 @@ class IamSeedDataRunner implements ApplicationRunner {
         // انتخاب کلاس در صفحه‌ی ثبت‌نام (/students) ببیند - ساخت کلاس همچنان
         // فقط با CLASS_MANAGE (پایین‌تر) مخصوص SCHOOL_ADMIN می‌ماند
         grant(roles.get("TEACHER"), permissions.get("CLASS_VIEW"));
-        // معلم‌ها صاحب سرفصل/سوال‌های خودشان هستند (MOSHAVERE_PORT_SPEC.md §2)
-        // - نوشتن هم مثل STUDENT_ENROLL کار روزمره‌ی معلم است، نه فقط ادمین
+        // تألیف بانک سؤال کار روزمره‌ی معلم است (همان استدلال STUDENT_ENROLL،
+        // نه CLASS_MANAGE) - هر دو Permission ماژول CURRICULUM به TEACHER هم
+        // داده می‌شود. STUDENT/PARENT عمداً هیچ‌کدام را ندارند: بانک سؤال
+        // گزینه‌ی درست و پاسخ تشریحی را حمل می‌کند؛ دسترسی دانش‌آموز بعداً
+        // از طریق ماژول exam میانجی‌گری می‌شود، نه خواندن مستقیم بانک.
         grant(roles.get("TEACHER"), permissions.get("CURRICULUM_VIEW"));
         grant(roles.get("TEACHER"), permissions.get("CURRICULUM_MANAGE"));
 
@@ -214,23 +218,22 @@ class IamSeedDataRunner implements ApplicationRunner {
     }
 
     /**
-     * ماژول‌های ACADEMIC و FINANCE و CURRICULUM را برای مدرسه‌ی نمونه (id=1،
+     * ماژول‌های ACADEMIC، FINANCE و CURRICULUM را برای مدرسه‌ی نمونه (id=1،
      * ساخته‌شده توسط SchoolSeedDataRunner روی دیتابیس تازه) فعال می‌کند -
      * وگرنه کنترلرهای @RequiresModule دار برای جریان dev از همان ابتدا 403
-     * می‌دهند. به‌ازای هر ماژول idempotent (نه early-return روی count، همان
-     * دلیل seedModules/seedPermissions بالا). مثل بقیه‌ی این کلاس، فقط seed
-     * مخصوص dev.
+     * می‌دهند. به‌ازای هر ماژول idempotent (نه early-return روی count) -
+     * همان تله‌ی seedPermissions/seedModules: وگرنه Entitlement ماژول جدید
+     * هرگز به دیتابیس dev از قبل seed شده نمی‌رسید. فقط seed مخصوص dev.
      */
     private void seedDemoSchoolEntitlements() {
-        Long demoSchoolId = 1L;
         for (String moduleCode : new String[]{"ACADEMIC", "FINANCE", "CURRICULUM"}) {
             moduleRepository.findByCode(moduleCode).ifPresent(module -> {
                 boolean exists = schoolEntitlementRepository
-                        .findBySchoolIdAndModuleId(demoSchoolId, module.getId())
+                        .findBySchoolIdAndModuleId(DEMO_SCHOOL_ID, module.getId())
                         .isPresent();
                 if (!exists) {
                     schoolEntitlementRepository.save(
-                            new SchoolEntitlementEntity(demoSchoolId, module.getId(), true)
+                            new SchoolEntitlementEntity(DEMO_SCHOOL_ID, module.getId(), true)
                     );
                 }
             });

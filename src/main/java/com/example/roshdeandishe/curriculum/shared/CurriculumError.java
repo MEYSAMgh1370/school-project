@@ -6,15 +6,16 @@ package com.example.roshdeandishe.curriculum.shared;
 public sealed interface CurriculumError {
 
     /**
-     * سرفصل یافت نشد - از دید این ماژول، «سرفصل متعلق به مدرسه‌ی دیگر»
-     * هم همین خطاست (همان قرارداد ClassNotFound در academic).
+     * سرفصلی با این شناسه در این مدرسه وجود ندارد - سرفصلِ مدرسه‌ی دیگر
+     * هم عمداً همین خطاست (نه 403)، همان قرارداد requireClassExists در
+     * academic: از دید این مدرسه «یافت نشد».
      */
     record TopicNotFound(Long topicId) implements CurriculumError {
     }
 
-    record InvalidTopic(String detail) implements CurriculumError {
+    record InvalidTopic(String reason) implements CurriculumError {
     }
 
-    record InvalidQuestion(String detail) implements CurriculumError {
+    record InvalidQuestion(String reason) implements CurriculumError {
     }
 }

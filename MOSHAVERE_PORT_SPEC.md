@@ -92,16 +92,29 @@ views.py (SMSViewSet)}`.
 
 ## 4. `curriculum` (new module) — Topics + question bank
 
-**Status: DONE (2026-07-16)**, built as scoped below. The open module-code
-question was resolved at new-module time: a new `SCHOOL`-scoped `CURRICULUM`
-code (none of the existing seeds fit — `EXAM_PREP` is `USER`-scoped/B2C,
-this is instructor-authored B2B content), with `CURRICULUM_VIEW`/
-`CURRICULUM_MANAGE` permissions granted to `SCHOOL_ADMIN` + `TEACHER` (write
-included for teachers — they own their own content, §2). Moshavere's
-`answer` explanation field was not ported (absent from the field list
-below); add it as its own small decision if exam review needs it. See
-`CLAUDE.md` §4's Topic/Question subsection and §7 Done for the final shape
-and test coverage (`CurriculumManagementFlowIntegrationTest`).
+**Status: DONE (2026-07-16)**, built as scoped below via its own `new-module`
+pass — see `CLAUDE.md` §3/§4 (Topic + Question subsection) and §7 Done for
+the final shape and test coverage (`CurriculumFlowIntegrationTest`). The two
+open items below were resolved at new-module time: a **new `SCHOOL`-scoped
+`CURRICULUM` module code** (none of the seeded codes fit; `EXAM_PREP` is
+`USER`-scoped/B2C while this is instructor-authored B2B content — it stays
+untouched as the B2C placeholder, its scope question belonging to the `exam`
+module's pass, §5), and the permission split —
+**`CURRICULUM_MANAGE`/`CURRICULUM_VIEW`, both `SCHOOL_ADMIN` + `TEACHER`**
+(authoring the bank is day-to-day teacher work, the `STUDENT_ENROLL`
+reasoning; teachers own their own content, §2), neither granted to
+`STUDENT`/`PARENT` (questions carry `correctChoice` + the answer explanation;
+student access will be mediated by `exam`'s scoped token, never raw bank
+reads). Two deviations from the field list below, both toward the actual
+source: the `answer` explanation field (present in `models.py`, missing from
+this spec's summary) was ported, and `difficulty` became a 5-level enum
+(`EDUCATIONAL|EASY|MEDIUM|HARD|VERY_HARD`, port of the source's 0/10/20/30/40
+int scale). `topicId` on a question is required (the source's nullable topic
+was unreachable through its own required topic filter — a wart, not ported).
+The subtree semantics of the topic filter (`descendants()`) shipped as
+written, as an in-memory traversal. (Two parallel implementations of this
+module were built the same day; the one without subtree semantics and without
+`answer` was superseded at merge time — `CLAUDE.md` §7 Done, merge note.)
 
 Source: `exam-maker-master/exam_generator/{models.py, tree.py, filters.py,
 views.py}`.

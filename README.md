@@ -32,6 +32,8 @@ separate build artifacts.
    CREATE SCHEMA IF NOT EXISTS school;
    CREATE SCHEMA IF NOT EXISTS academic;
    CREATE SCHEMA IF NOT EXISTS finance;
+   CREATE SCHEMA IF NOT EXISTS bale;
+   CREATE SCHEMA IF NOT EXISTS curriculum;
    ```
    Connection defaults live in `src/main/resources/application.yml`
    (`localhost:5432/roshdeandishe_iam`, `postgres`/`postgres`).
