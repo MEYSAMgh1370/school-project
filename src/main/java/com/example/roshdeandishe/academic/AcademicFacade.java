@@ -22,6 +22,15 @@ public interface AcademicFacade {
 
     StudentInfo getStudentInfo(Long studentId);
 
+    /**
+     * نسخه‌ی Optional از getStudentInfo برای فراخوان‌هایی که «نبودن
+     * دانش‌آموز» برایشان حالت عادی است، نه خطای دامنه - مثل
+     * bale.InvoiceIssuedEventListener که برای فاکتوری با studentId بدون
+     * StudentEntity فقط باید اطلاع‌رسانی را رد کند (همان قرارداد
+     * findMyEnrollment/BaleFacade.sendMessageToUser).
+     */
+    Optional<StudentInfo> findStudentInfo(Long studentId);
+
     List<StudentInfo> listStudents(Long schoolId);
 
     ClassId createClass(Long schoolId, String name, Long teacherId, String section);
