@@ -1,5 +1,7 @@
 package com.example.roshdeandishe.curriculum;
 
+import com.example.roshdeandishe.curriculum.CurriculumFacade.NewQuestion;
+import com.example.roshdeandishe.curriculum.CurriculumFacade.QuestionFilter;
 import com.example.roshdeandishe.curriculum.CurriculumFacade.QuestionId;
 import com.example.roshdeandishe.curriculum.CurriculumFacade.QuestionInfo;
 import com.example.roshdeandishe.iam.shared.RequiresModule;
@@ -8,14 +10,13 @@ import com.example.roshdeandishe.platform.TenantContext;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.Set;
 
 /**
- * بانک سوال چهارگزینه‌ای یک مدرسه. همان تقسیم دسترسی TopicController:
- * CURRICULUM_MANAGE برای ثبت، CURRICULUM_VIEW برای خواندن - هیچ‌کدام به
- * STUDENT/PARENT داده نمی‌شود، چون پاسخ صحیح (correctChoice) در همین
- * پاسخ‌ها برمی‌گردد و دیدن بانک سوال برای دانش‌آموز یعنی لو رفتن آزمون؛
- * مسیر دانش‌آموز به سوالات، بعداً از توکن آزمونِ ماژول exam می‌گذرد
- * (MOSHAVERE_PORT_SPEC.md §5)، نه از این کنترلر.
+ * بانک سؤال یک مدرسه. همان تقسیم Permission که TopicController توضیح
+ * می‌دهد. فیلترِ topicId شامل کل زیر درخت آن سرفصل است (سمنتیک
+ * پورت‌شده از QuestionFilter در moshavere)؛ difficulty چندتایی است
+ * (?difficulty=EASY&difficulty=MEDIUM).
  */
 @RestController
 @RequestMapping("/api/admin/schools/{schoolId}/questions")
@@ -33,15 +34,18 @@ public class QuestionController {
     public QuestionResponse createQuestion(@PathVariable Long schoolId, @RequestBody CreateQuestionRequest request) {
         TenantContext.requireMatches(schoolId);
 
-        QuestionId questionId = curriculumFacade.createQuestion(
-                schoolId, request.topicId(), request.text(),
+        NewQuestion question = new NewQuestion(
+                request.topicId(), request.text(),
                 request.choice1(), request.choice2(), request.choice3(), request.choice4(),
                 request.correctChoice() == null ? 0 : request.correctChoice(),
-                request.difficulty(), request.discriminationIndex()
+                request.answer(), request.difficulty(), request.discriminationIndex()
         );
-        return new QuestionResponse(questionId.value(), schoolId, request.topicId(), request.text(),
+        QuestionId questionId = curriculumFacade.createQuestion(schoolId, question);
+        return new QuestionResponse(
+                questionId.value(), schoolId, request.topicId(), request.text(),
                 request.choice1(), request.choice2(), request.choice3(), request.choice4(),
-                request.correctChoice(), request.difficulty(), request.discriminationIndex());
+                question.correctChoice(), request.answer(), request.difficulty(), request.discriminationIndex()
+        );
     }
 
     @GetMapping
@@ -49,30 +53,50 @@ public class QuestionController {
     public List<QuestionResponse> listQuestions(
             @PathVariable Long schoolId,
             @RequestParam(required = false) Long topicId,
-            @RequestParam(required = false) Integer difficulty
+            @RequestParam(required = false) Set<QuestionDifficulty> difficulty
     ) {
         TenantContext.requireMatches(schoolId);
 
-        return curriculumFacade.listQuestions(schoolId, topicId, difficulty).stream()
+        return curriculumFacade.listQuestions(schoolId, new QuestionFilter(topicId, difficulty)).stream()
                 .map(QuestionController::toResponse)
                 .toList();
     }
 
     private static QuestionResponse toResponse(QuestionInfo info) {
         return new QuestionResponse(
-                info.id().value(), info.schoolId(), info.topicId().value(), info.text(),
+                info.id().value(), info.schoolId(), info.topicId(), info.text(),
                 info.choice1(), info.choice2(), info.choice3(), info.choice4(),
-                info.correctChoice(), info.difficulty(), info.discriminationIndex()
+                info.correctChoice(), info.answer(), info.difficulty(), info.discriminationIndex()
         );
     }
 
-    public record CreateQuestionRequest(Long topicId, String text,
-                                        String choice1, String choice2, String choice3, String choice4,
-                                        Integer correctChoice, Integer difficulty, Double discriminationIndex) {
+    public record CreateQuestionRequest(
+            Long topicId,
+            String text,
+            String choice1,
+            String choice2,
+            String choice3,
+            String choice4,
+            Integer correctChoice,
+            String answer,
+            QuestionDifficulty difficulty,
+            Double discriminationIndex
+    ) {
     }
 
-    public record QuestionResponse(Long id, Long schoolId, Long topicId, String text,
-                                   String choice1, String choice2, String choice3, String choice4,
-                                   Integer correctChoice, Integer difficulty, Double discriminationIndex) {
+    public record QuestionResponse(
+            Long id,
+            Long schoolId,
+            Long topicId,
+            String text,
+            String choice1,
+            String choice2,
+            String choice3,
+            String choice4,
+            int correctChoice,
+            String answer,
+            QuestionDifficulty difficulty,
+            Double discriminationIndex
+    ) {
     }
 }

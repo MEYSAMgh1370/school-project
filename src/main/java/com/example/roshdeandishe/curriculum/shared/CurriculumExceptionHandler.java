@@ -9,14 +9,11 @@ import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 
 /**
- * {@code @Order(0)}: باید قبل از {@code PlatformExceptionHandler}
- * ({@code @Order(Integer.MAX_VALUE)}) اجرا شود.
- * <p>
- * ⚠️ نام Bean از طریق {@code @Component("...")} تنظیم شده، نه
- * {@code @RestControllerAdvice("...")} - {@code value()} در
- * {@code @ControllerAdvice} به {@code basePackages} نگاشت می‌شود و پاس دادن
- * رشته به آن، این handler را برای همیشه غیرقابل‌اعمال می‌کند (رجوع کنید به
- * AcademicExceptionHandler، همین دام یک بار واقعاً رخ داده).
+ * همان الگوی AcademicExceptionHandler: {@code @Order(0)} تا قبل از
+ * PlatformExceptionHandler اجرا شود، و نام Bean از طریق
+ * {@code @Component("...")} - نه {@code @RestControllerAdvice("...")} که
+ * value آن به basePackages نگاشت می‌شود و handler را غیرقابل‌اعمال می‌کند
+ * (توضیح کامل در AcademicExceptionHandler).
  */
 @RestControllerAdvice
 @Component("curriculumExceptionHandler")
@@ -29,17 +26,17 @@ public class CurriculumExceptionHandler {
             case CurriculumError.TopicNotFound e -> ProblemDetailFactory.problem(
                     HttpStatus.NOT_FOUND, "topic-not-found",
                     "سرفصل یافت نشد",
-                    "سرفصلی با شناسه " + e.topicId() + " یافت نشد."
+                    "سرفصلی با شناسه " + e.topicId() + " در این مدرسه یافت نشد."
             );
             case CurriculumError.InvalidTopic e -> ProblemDetailFactory.problem(
                     HttpStatus.BAD_REQUEST, "invalid-topic",
                     "سرفصل نامعتبر",
-                    e.detail()
+                    e.reason()
             );
             case CurriculumError.InvalidQuestion e -> ProblemDetailFactory.problem(
                     HttpStatus.BAD_REQUEST, "invalid-question",
-                    "سوال نامعتبر",
-                    e.detail()
+                    "سؤال نامعتبر",
+                    e.reason()
             );
         };
     }

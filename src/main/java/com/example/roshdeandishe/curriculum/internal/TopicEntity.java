@@ -6,12 +6,13 @@ import lombok.NoArgsConstructor;
 import lombok.Setter;
 
 /**
- * یک سرفصل درسی در تاکسونومی سلسله‌مراتبی یک مدرسه. {@code parentId} یک
- * خود-ارجاع nullable در همین جدول است (adjacency list ساده - نه ltree و نه
- * closure table، طبق MOSHAVERE_PORT_SPEC.md §4): null یعنی ریشه.
+ * یک سرفصل در تاکسونومی سلسله‌مراتبی مدرسه. adjacency list ساده:
+ * {@code parentId} به یک TopicEntity دیگرِ همین ماژول اشاره دارد
+ * (null = ریشه). عمداً بازنمایی دوگانه‌ی moshavere (ltree + درخت pickle
+ * شده) پورت نشده - MOSHAVERE_PORT_SPEC.md §4/§7.
  * <p>
  * ستون {@code sort_order} (نه {@code order} که کلیدواژه‌ی SQL است) ترتیب
- * نمایش بین هم‌نیاها را نگه می‌دارد.
+ * نمایش بین هم‌نیاهاست.
  */
 @Entity
 @Table(name = "topics", schema = "curriculum")
@@ -30,7 +31,7 @@ class TopicEntity {
     @Column(name = "parent_id")
     private Long parentId;
 
-    @Column(nullable = false, length = 256)
+    @Column(nullable = false, length = 250)
     private String name;
 
     @Column(name = "sort_order", nullable = false)
