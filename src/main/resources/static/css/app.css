@@ -1,5 +1,89 @@
-/* CSS سراسری خارج از template (قانون جای‌گذاری کد - CLAUDE.md §2:
-   CSS سفارشی همیشه فایل جداست، هرگز <style> درون‌صفحه‌ای). */
+/* ==========================================================================
+   Roshdeandishe design tokens — source of truth for token VALUES;
+   DESIGN.md documents the rules.
+
+   The "Bulma bridge" section requires the Bulma WebJar to be 1.x
+   (runtime CSS variables) — verified: pom.xml pins 1.0.4 (DESIGN.md §2).
+   ========================================================================== */
+
+:root {
+  /* --- Spacing scale (px) — the only values custom CSS may use ---------- */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 24px;
+  --space-6: 32px;
+  --space-7: 48px;
+  --space-8: 64px;
+
+  /* --- Radius ------------------------------------------------------------ */
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 16px;
+
+  /* --- Shadows (two levels only; no heavy elevation) --------------------- */
+  --shadow-sm: 0 1px 2px hsl(210 30% 20% / 0.08);
+  --shadow-md: 0 2px 8px hsl(210 30% 20% / 0.12);
+
+  /* --- Motion ------------------------------------------------------------ */
+  --motion-fast: 120ms;
+  --motion-base: 180ms;
+  --motion-ease: cubic-bezier(0, 0, 0.2, 1); /* ease-out; no bounce */
+
+  /* =======================================================================
+     Bulma 1.x bridge — Bulma components pick these up automatically.
+     ======================================================================= */
+
+  /* Radius */
+  --bulma-radius-small: var(--radius-sm);
+  --bulma-radius:       var(--radius-md);
+  --bulma-radius-large: var(--radius-lg);
+
+  /* Primary accent — proposed value, pending sign-off (DESIGN.md §4):
+     desaturated ink-blue hsl(210 40% 38%) ≈ #3A5F84.
+     Bulma 1.x derives every shade/state from these three components. */
+  --bulma-primary-h: 210deg;
+  --bulma-primary-s: 40%;
+  --bulma-primary-l: 38%;
+
+  /* Links match primary so buttons and anchors agree on one accent. */
+  --bulma-link-h: 210deg;
+  --bulma-link-s: 40%;
+  --bulma-link-l: 38%;
+
+  /* success / warning / danger / info: Bulma defaults, deliberately
+     untouched (DESIGN.md §4). */
+}
+
+/* --- Accessibility floor (DESIGN.md §7) ----------------------------------- */
+
+/* Touch targets ≥ 44px on interactive controls, enforced globally rather
+   than per page. `is-small` controls inside dense tables are exempted —
+   they are pointer-first surfaces; revisit if a table must be touch-first. */
+.button:not(.is-small),
+.input:not(.is-small),
+.select:not(.is-small) select {
+  min-block-size: 44px;
+}
+
+/* Visible keyboard focus — never removed without replacement. */
+:focus-visible {
+  outline: 2px solid hsl(var(--bulma-primary-h) var(--bulma-primary-s) var(--bulma-primary-l));
+  outline-offset: 2px;
+}
+
+/* Reduced motion: disable non-essential animation globally. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
 
 /* عناصر x-cloak تا پیش از init شدن Alpine پنهان می‌مانند تا فرم‌های
    بسته (x-show=false) در لحظه‌ی load سوسو نزنند. */
