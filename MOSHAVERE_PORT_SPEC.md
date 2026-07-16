@@ -204,6 +204,31 @@ module, just an additional caller.
 
 ## 6. `studyplan` (new module) — Plans + auto-scheduler
 
+**Status: DONE (2026-07-16)**, built as scoped below with one deviation:
+course weighting became a real child table (`plan_course_weights`), not
+the JSON `course_info` column sketched below — the same join-table-over-
+array preference this section already applies to `WeekCourseTopics`
+(ported as `WeekCourseTopicEntity`, as written below), extended to course
+weighting too once actually building it made the JSON-column plan look
+like the odd one out. The two schedule columns (`default_schedule`/
+`current_schedule`) did stay `jsonb` as written below — that structure is
+a genuinely nested day→interval shape, not a flat list a join table would
+simplify. Everything else — the opaque `StudentPlanAssignmentEntity`
+(not a `planId` column on `academic.StudentEntity`), the
+`SliceScheduleInterval`/`FillSlices`/`Suggestor` algorithm port, and the
+new `STUDY_PLANNER` module code + `STUDYPLAN_VIEW`/`STUDYPLAN_MANAGE`
+permissions (both granted to `SCHOOL_ADMIN` + `TEACHER`, resolving this
+section's open question below) — shipped as written. See `CLAUDE.md` §4's
+Plan/WeekCourse/StudentPlanAssignment/StudyInterval/IntervalSchedule
+subsection and §7 Done for the final shape and test coverage
+(`StudyPlanManagementFlowIntegrationTest`). Two implementation-hygiene
+normalizations were made to the algorithm port, neither changing its
+actual output: the block-size counter is per-call state instead of
+`table_suggester.py`'s module-level mutable dict (which leaked counts
+across unrelated calls — a bug, not behavior worth preserving), and
+weekdays are walked Saturday→Friday instead of moshavere's own
+Friday-first order (a Postgres jsonb key-sort artifact, not a decision).
+
 Source: `agency-panel-master/plan/models.py`,
 `exam-maker-master/plan/models.py`,
 `exam-maker-master/study_table/{models.py, table_suggester.py,
@@ -250,10 +275,11 @@ Depends on: `curriculum` (topics), `academic` (students/classes).
   `exam`'s weekly-auto-generation depends on, §5).
 - REST: `PlanController`, `WeekCourseController`, `StudyIntervalController`,
   `IntervalScheduleController`.
-- **Open:** new `Module`/`Permission` codes needed (no existing seed fits);
-  likely a new `SCHOOL`-scoped `STUDY_PLANNER` module code plus
-  `STUDYPLAN_MANAGE`/`STUDYPLAN_VIEW` permissions, decided at new-module
-  time alongside `curriculum`'s and `exam`'s.
+- **Resolved at new-module time:** a new `SCHOOL`-scoped `STUDY_PLANNER`
+  module code, plus `STUDYPLAN_VIEW`/`STUDYPLAN_MANAGE` permissions
+  granted to `SCHOOL_ADMIN` + `TEACHER` (same reasoning as
+  `CURRICULUM_VIEW`/`CURRICULUM_MANAGE` — see `CLAUDE.md` §4's Permission
+  section).
 
 ## 7. Non-goals (explicitly not being ported)
 
@@ -272,7 +298,7 @@ Depends on: `curriculum` (topics), `academic` (students/classes).
 
 1. `iam` OTP extension (smallest, no new module, unblocks nothing else). **Done.**
 2. `curriculum` (no dependencies on the other new modules). **Done.**
-3. `studyplan` (depends only on `curriculum` + `academic`).
+3. `studyplan` (depends only on `curriculum` + `academic`). **Done.**
 4. `exam` (depends on `curriculum` + `academic` + `studyplan`, the deepest
    dependency chain — build last so `getRecentTopics` already exists).
 
