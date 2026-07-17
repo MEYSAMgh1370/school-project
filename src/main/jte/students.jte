@@ -54,6 +54,7 @@
                     </form>
                 </div>
 
+                <div class="table-container">
                 <table class="table is-fullwidth is-striped">
                     <thead>
                     <tr>
@@ -82,6 +83,7 @@
                     </template>
                     </tbody>
                 </table>
+                </div>
 
                 <div class="notification" x-show="!loading && students.length === 0">
                     هنوز دانش‌آموزی در این مدرسه ثبت‌نام نشده است.
@@ -98,7 +100,8 @@
                         </div>
                     </div>
 
-                    <table class="table is-fullwidth is-narrow" x-show="guardiansForSelected().length > 0">
+                    <div class="table-container" x-show="guardiansForSelected().length > 0">
+                    <table class="table is-fullwidth is-narrow">
                         <thead>
                         <tr>
                             <th>نام والد</th>
@@ -114,6 +117,7 @@
                         </template>
                         </tbody>
                     </table>
+                    </div>
                     <p class="has-text-grey" x-show="!guardiansLoading && guardiansForSelected().length === 0">
                         هنوز ولی‌ای برای این دانش‌آموز لینک نشده است.
                     </p>

@@ -88,7 +88,8 @@
                                     </template>
                                 </div>
 
-                                <table class="table is-fullwidth is-striped" x-show="questions.length > 0">
+                                <div class="table-container" x-show="questions.length > 0">
+                                <table class="table is-fullwidth is-striped">
                                     <thead>
                                     <tr>
                                         <th>متن سؤال</th>
@@ -108,6 +109,7 @@
                                     </template>
                                     </tbody>
                                 </table>
+                                </div>
 
                                 <div class="notification" x-show="!loading && questions.length === 0">
                                     <span x-show="selectedTopicId">برای این سرفصل هنوز سؤالی ثبت نشده است. از فرم زیر اولین سؤال را اضافه کنید.</span>

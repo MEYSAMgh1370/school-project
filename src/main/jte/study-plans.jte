@@ -27,7 +27,8 @@
                                 این مدرسه هنوز برنامه‌ی مطالعه‌ای ندارد. اولین برنامه را از فرم زیر بسازید.
                             </div>
 
-                            <table class="table is-fullwidth is-striped" x-show="plans.length > 0">
+                            <div class="table-container" x-show="plans.length > 0">
+                            <table class="table is-fullwidth is-striped">
                                 <thead>
                                 <tr>
                                     <th>عنوان</th>
@@ -51,6 +52,7 @@
                                 </template>
                                 </tbody>
                             </table>
+                            </div>
 
                             <template x-for="plan in plans" :key="'detail-' + plan.id">
                                 <div class="box" x-show="expandedPlanId === plan.id" x-cloak>
@@ -68,7 +70,8 @@
                                     <template x-if="planDetailTab === 'assignments'">
                                         <div>
                                             <h3 class="title is-6" x-text="'دانش‌آموزان تخصیص‌یافته به: ' + plan.title"></h3>
-                                            <table class="table is-fullwidth is-narrow" x-show="assignments.length > 0">
+                                            <div class="table-container" x-show="assignments.length > 0">
+                                            <table class="table is-fullwidth is-narrow">
                                                 <tbody>
                                                 <template x-for="assignment in assignments" :key="assignment.studentId">
                                                     <tr>
@@ -77,6 +80,7 @@
                                                 </template>
                                                 </tbody>
                                             </table>
+                                            </div>
                                             <p class="has-text-grey mb-3" x-show="assignments.length === 0">
                                                 هنوز دانش‌آموزی به این برنامه تخصیص داده نشده است.
                                             </p>
@@ -106,7 +110,8 @@
                                     <template x-if="planDetailTab === 'weekCourses'">
                                         <div>
                                             <h3 class="title is-6" x-text="'سرفصل‌های هفتگیِ: ' + plan.title"></h3>
-                                            <table class="table is-fullwidth is-narrow" x-show="weekCourses.length > 0">
+                                            <div class="table-container" x-show="weekCourses.length > 0">
+                                            <table class="table is-fullwidth is-narrow">
                                                 <thead>
                                                 <tr>
                                                     <th>شروع هفته</th>
@@ -124,6 +129,7 @@
                                                 </template>
                                                 </tbody>
                                             </table>
+                                            </div>
                                             <p class="has-text-grey mb-3" x-show="!loadingWeekCourses && weekCourses.length === 0">
                                                 هنوز سرفصل هفتگی‌ای برای این برنامه ثبت نشده است.
                                             </p>
@@ -320,7 +326,8 @@
                                                 کپی کردن
                                             </button>
                                         </div>
-                                        <table class="table is-fullwidth is-narrow mt-3" x-show="copyResults.length > 0">
+                                        <div class="table-container mt-3" x-show="copyResults.length > 0">
+                                        <table class="table is-fullwidth is-narrow">
                                             <thead>
                                             <tr>
                                                 <th>دانش‌آموز</th>
@@ -339,6 +346,7 @@
                                             </template>
                                             </tbody>
                                         </table>
+                                        </div>
                                     </div>
 
                                     <div class="sp-legend" x-show="!loadingWeek && intervals.length > 0">
