@@ -672,7 +672,12 @@ com.example.roshdeandishe
     ├── RolesPageController.java       a school's classes; GET /students (third
     ├── NavbarModel.java               slice) enrolls/lists students into a class;
     ├── NavbarModelAssembler.java      GET /my-invoices and GET /roles are both
-    └── RoleLabels.java                described separately below; GET /finance
+    ├── RoleLabels.java                described separately below; GET /finance
+    ├── CurriculumPageController.java
+    ├── StudyPlansPageController.java
+    ├── ExamsPageController.java
+    ├── MyExamsPageController.java
+    └── ExamTakePageController.java
                                   (fourth slice) sets/views the
                                   tuition fee, lists invoices, records payments,
                                   and runs invoice backfill; GET /expenses
@@ -736,7 +741,38 @@ com.example.roshdeandishe
                                   creation form, entirely client-side against
                                   the new iam.RoleController (§4's Role
                                   subsection, §11 Q3). Navbar link visible
-                                  for SCHOOL_ADMIN only.
+                                  for SCHOOL_ADMIN only. CurriculumPageController
+                                  (GET /curriculum, built 2026-07-17 — first
+                                  frontend slice of the moshavere port,
+                                  see the `curriculum` module entry above and
+                                  §7 Done) is another thin shell, same pattern —
+                                  no new `web`→curriculum Java dependency,
+                                  curriculum.js composes TopicController/
+                                  QuestionController directly. Navbar link
+                                  visible for SCHOOL_ADMIN/TEACHER (both hold
+                                  CURRICULUM_MANAGE/CURRICULUM_VIEW identically).
+                                  StudyPlansPageController (GET /study-plans,
+                                  built 2026-07-17, second moshavere-port
+                                  frontend slice, see the `studyplan` module
+                                  entry above and §7 Done) is the same thin-shell
+                                  pattern — study-plans.js composes
+                                  PlanController/IntervalScheduleController/
+                                  StudyIntervalController plus the existing
+                                  curriculum/academic/iam endpoints for topic
+                                  and student names, no new `web` Java
+                                  dependency. Navbar link visible for
+                                  SCHOOL_ADMIN/TEACHER. ExamsPageController
+                                  (GET /exams, built 2026-07-17, last
+                                  moshavere-port slice, see the `exam` module
+                                  entry above and §7 Done) is the same
+                                  thin-shell pattern for the admin/teacher
+                                  surface. MyExamsPageController (GET
+                                  /my-exams) and ExamTakePageController (GET
+                                  /exam-take) are the two student-facing
+                                  pages built in the same pass — see §7 Done
+                                  for why exam-take is a second, separate,
+                                  navbar-less, permitAll page rather than a
+                                  section of /my-exams.
 │
 └── bale/                       ← Bale (بله) messenger bot integration — outbound
     ├── BaleFacade.java             notifications + inbound self-service queries.
@@ -1346,9 +1382,25 @@ as source). Exposed at `POST`/`GET /api/admin/schools/{schoolId}/topics`
 `@RequiresModule("CURRICULUM")`, per-method `@RequiresPermission`
 (`CURRICULUM_MANAGE` write / `CURRICULUM_VIEW` read, both SCHOOL_ADMIN +
 TEACHER — see the Permission section above for why students/parents get
-neither). No web page yet — the port is backend domain logic only (spec §7);
-a management UI is a separate slice that must go through the `design-page`
-skill when asked for.
+neither). **Management UI: `GET /curriculum` (`web.CurriculumPageController`,
+built 2026-07-17 via the `design-page` skill)** — a thin shell like every
+other management page, entirely client-side against the REST endpoints
+above. Topic tree rendered as a flattened, depth-indented list (computed
+client-side from `/topics/tree`, not a recursive JTE template) doubling as
+both the navigation panel and the parent-picker/topic-picker dropdown
+source. Two box-level creation forms (topic, question) rather than one
+header-level primary action — same multi-entity-page precedent as
+`/expenses` (categories/vendors/expenses). Selecting a topic reuses the
+backend's subtree-inclusive filter as-is (picking a parent topic shows its
+descendants' questions too, unchanged from the API semantics). Behind
+`@RequiresModule("CURRICULUM")`, so it reuses the `classifyError`
+two-kinds-of-403 pattern from `finance.js`/`expenses.js` verbatim. Navbar
+link visible for `SCHOOL_ADMIN`/`TEACHER` (both hold `CURRICULUM_MANAGE`/
+`CURRICULUM_VIEW` identically, unlike Classes' admin/day-to-day split).
+`discriminationIndex` is deliberately not exposed on the create-question
+form — nothing in this codebase computes it yet, so a raw manual-entry
+field would have no clear meaning; it stays server-side-only until an
+analytics feature needs it.
 
 ### TuitionFee (owned by `finance`)
 
@@ -2483,8 +2535,27 @@ above.
   studyplan;` (§7 item 4) and `IamSeedDataRunner` grants/seeds the new
   module and permissions using the same per-code-idempotent helpers the
   `CURRICULUM_*`/`EXPENSE_*` fix established — no early-return-on-count
-  regression reintroduced. No UI page and no navbar link yet, same as
-  `curriculum` — the spec ports backend domain logic only (§7 there).
+  regression reintroduced. **Management UI: `GET /study-plans`
+  (`web.StudyPlansPageController`, built 2026-07-17 via the `design-page`
+  skill)** — a thin shell like `/curriculum`, entirely client-side against
+  `PlanController`/`IntervalScheduleController`/`StudyIntervalController`.
+  Deliberately scoped to the plan→assignment→schedule→interval path only:
+  `WeekCourseController` (a plan's weekly topic template) and the
+  multi-student `copyWeek` bulk action are **not** built in this pass —
+  neither is load-bearing for anything else in the UI or for `exam`'s
+  `getRecentTopics` (which reads actual `StudyIntervalEntity` rows, not
+  `WeekCourse`), so they're lower priority than the core scheduling loop;
+  a separate slice if asked for. The `suggest`/`clear` week actions need an
+  exact Saturday `weekStart`, so the page lets the user pick *any* day and
+  derives the week's Saturday client-side
+  (`mostRecentSaturday`/`formatLocalDate` in `study-plans.js`) — deliberately
+  built on local Y/M/D string formatting, not `Date.toISOString()`, which
+  shifts to UTC and is off-by-one near local midnight in any non-UTC
+  timezone (caught during manual verification: the Saturday-required
+  validation rejected a date computed via `toISOString()`). Behind
+  `@RequiresModule("STUDY_PLANNER")`, reuses the `classifyError` two-403
+  pattern verbatim. Navbar link visible for `SCHOOL_ADMIN`/`TEACHER` (both
+  hold `STUDYPLAN_MANAGE`/`STUDYPLAN_VIEW` identically).
   Covered by `StudyPlanManagementFlowIntegrationTest` (plan creation with
   course weights + unknown-topic 404, student assignment + listing,
   default-schedule set, full suggest→week-not-empty→clear→suggest-again
@@ -2528,8 +2599,57 @@ above.
   (cross-student score statistics) were not ported at all — they're
   artifacts of the source's Postgres materialized view + Celery refresh job
   (no such infra exists here, and none was stood up speculatively, per the
-  spec's own recommendation), not core exam data. No UI page yet, same as
-  `curriculum`/`studyplan` — backend domain logic only. Covered by
+  spec's own recommendation), not core exam data. **Management UI: `GET /exams`
+  (`web.ExamsPageController`, built 2026-07-17 via the `design-page` skill,
+  third and last moshavere-port frontend slice)** — a thin shell like
+  `/curriculum`/`/study-plans`, entirely client-side against `ExamController`/
+  `ExamResultController`. The expanded-exam management panel uses Bulma
+  `tabs` (Sections / Assign / Results) instead of three always-visible
+  stacked boxes, since a single exam's authoring surface is deep enough that
+  the curriculum/study-plan pattern would make the page unreadably long.
+  Manual section authoring loads a topic's questions (subtree-inclusive,
+  same semantics `/curriculum` already exercises) into a checkbox list; auto
+  section authoring exposes `lazy` as a plain checkbox. The weekly-exam box
+  reuses `mostRecentSaturday`/`formatLocalDate` from `study-plans.js`
+  (duplicated inline again, second use, still under the rule-of-three) and
+  only shows the just-generated exam's own sections inline — there is no
+  admin-facing "list a student's weekly exams" endpoint to browse historical
+  ones (`ExamFacade.listExamsForStudent` is reached only through the
+  self-service `MyExamsController`, not the admin surface). Navbar link
+  visible for `SCHOOL_ADMIN`/`TEACHER` (both hold `EXAM_MANAGE`/`EXAM_VIEW`
+  identically).
+  <br>
+  **Student-facing UI, built in the same pass**: `GET /my-exams`
+  (`web.MyExamsPageController`) is a thin shell like `/my-invoices` — no
+  `X-School-ID` header, `schoolId` comes from the `/api/me/...` path, reads
+  `exam.MyExamsController` directly. Starting an attempt navigates to a
+  **second, deliberately separate page**: `GET /exam-take?token=...&expireAt=...`
+  (`web.ExamTakePageController`). This page is `permitAll` in `SecurityConfig`
+  and excluded from `TenantResolverFilter` (same treatment as `/activate` and
+  the pre-existing `/api/exam-take/**`) and renders **without the shared
+  navbar** — `NavbarModelAssembler` requires an authenticated principal that
+  this page's own trust model doesn't guarantee, since the exam-take token
+  is deliberately the sole credential (`ExamFacade`'s own class doc). Unlike
+  `/activate` (which predates the 2026-07-05 code-placement rule and keeps
+  inline Alpine), `exam-take.js` is a proper static `Alpine.data` file — and
+  since a static JS file can't receive JTE `${...}` interpolation, it reads
+  `token`/`expireAt` directly from `window.location.search` rather than
+  through a server-injected model, which is also why
+  `ExamTakePageController` stays a bare one-line route with no model at all.
+  The countdown timer is computed from the `expireAt` query param (the
+  attempt's own expiry, passed through from `my-exams.js`'s `startAttempt`);
+  each answer selection POSTs immediately to `ExamTakeController` (no
+  separate "submit exam" step exists on the backend — there never was one to
+  wire up). Deliberately not built: an "clear my answer" control (the
+  backend supports `choice=null`, moshavere's own UI rarely used it, and
+  omitting it keeps the page to one interaction per question) — a disclosed,
+  narrow scope cut, not a silent one. Manually verified end-to-end (no
+  Docker/Testcontainers in this session, same gap noted for `bale` Phase 1):
+  full collective-exam create→auto-section→assign→student
+  start-attempt→answer→(simulated exam-end via direct DB update, since
+  waiting out a real exam window isn't practical in a manual session)→both
+  the student's own result view and the instructor's per-student result view
+  showed the correct 100% score and 1/1 correct breakdown. Covered by
   `ExamFlowIntegrationTest` (full collective-exam
   create→section(manual+auto-pick with `lazy` both ways)→assign→attempt→
   exam-take→submit→(wait for the exam window to close)→result cycle, both

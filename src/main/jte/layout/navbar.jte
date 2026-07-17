@@ -33,6 +33,10 @@
                 <a class="navbar-item" href="/people" x-cloak x-show="selectedRole === 'SCHOOL_ADMIN'">اعضای مدرسه</a>
                 <a class="navbar-item" href="/roles" x-cloak x-show="selectedRole === 'SCHOOL_ADMIN'">نقش‌ها و دسترسی‌ها</a>
                 <a class="navbar-item" href="/classes" x-cloak x-show="selectedRole === 'SCHOOL_ADMIN' || selectedRole === 'TEACHER'">کلاس‌ها</a>
+                <a class="navbar-item" href="/curriculum" x-cloak x-show="selectedRole === 'SCHOOL_ADMIN' || selectedRole === 'TEACHER'">سرفصل‌ها و بانک سؤال</a>
+                <a class="navbar-item" href="/study-plans" x-cloak x-show="selectedRole === 'SCHOOL_ADMIN' || selectedRole === 'TEACHER'">برنامه‌های مطالعه</a>
+                <a class="navbar-item" href="/exams" x-cloak x-show="selectedRole === 'SCHOOL_ADMIN' || selectedRole === 'TEACHER'">آزمون‌ها</a>
+                <a class="navbar-item" href="/my-exams" x-cloak x-show="selectedRole === 'STUDENT'">آزمون‌های من</a>
                 <a class="navbar-item" href="/students" x-cloak x-show="selectedRole === 'SCHOOL_ADMIN' || selectedRole === 'TEACHER'">دانش‌آموزان</a>
                 <a class="navbar-item" href="/finance" x-cloak x-show="selectedRole === 'SCHOOL_ADMIN' || selectedRole === 'FINANCE_ADMIN'">امور مالی</a>
                 <a class="navbar-item" href="/expenses" x-cloak x-show="selectedRole === 'SCHOOL_ADMIN' || selectedRole === 'FINANCE_ADMIN'">هزینه‌ها</a>
