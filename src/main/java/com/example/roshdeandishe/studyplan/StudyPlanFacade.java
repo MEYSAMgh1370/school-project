@@ -119,6 +119,18 @@ public interface StudyPlanFacade {
      */
     IntervalInfo updateInterval(Long schoolId, Long intervalId, Boolean done, Integer testCount);
 
+    /**
+     * همان {@link #updateInterval}، به‌علاوه‌ی چک مالکیت: بازه باید متعلق
+     * به همین {@code studentId} باشد، وگرنه IntervalNotFound (نه یک خطای
+     * دسترسیِ جدا - همان قرارداد «مال مدرسه‌ی دیگر هم یافت نشد است» که
+     * requireIntervalInSchool از قبل برای schoolId اعمال می‌کند). لازم
+     * برای مسیر خودسرویسِ دانش‌آموز (MyStudyIntervalController) که برخلاف
+     * updateInterval معمولی (پشت STUDYPLAN_MANAGE، فقط برای مشاور/معلم)
+     * هیچ اجازه‌ی سطح-مدرسه‌ای پشت سرش نیست - بدون این چک، یک دانش‌آموز
+     * می‌توانست با حدس‌زدن intervalId بازه‌ی دانش‌آموز دیگری را ویرایش کند.
+     */
+    IntervalInfo updateOwnInterval(Long schoolId, Long studentId, Long intervalId, Boolean done, Integer testCount);
+
     void deleteInterval(Long schoolId, Long intervalId);
 
     /**

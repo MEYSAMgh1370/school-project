@@ -61,8 +61,8 @@ window.Jalali = (function () {
         return { gy: gy, gm: gm, gd: gd };
     }
 
-    // تبدیل تاریخ جلالی به Date میلادی (UTC نیمه‌شب) - تنها جهتی که این
-    // ماژول واقعاً لازم دارد (انتخابگر بازه فقط ورودی جلالی می‌گیرد)
+    // تبدیل تاریخ جلالی به Date میلادی (UTC نیمه‌شب) - جهتی که انتخابگر
+    // بازه‌ی گزارش هزینه لازم دارد (ورودی جلالی می‌گیرد)
     function toGregorian(jy, jm, jd) {
         const r = jalCal(jy);
         const gy = jy + 621;
@@ -73,6 +73,52 @@ window.Jalali = (function () {
         const jdn = g2d(gy, 3, r.march) + days;
         const g = d2g(jdn);
         return new Date(Date.UTC(g.gy, g.gm - 1, g.gd));
+    }
+
+    // جهتِ برعکس - لازمِ صفحه‌ی «برنامه‌ی مطالعه‌ی من» (my-study-plan.js):
+    // نمایش تاریخ‌های میلادیِ StudyInterval روی گرید هفتگی به‌صورت جلالی.
+    // پورت مستقیم الگوریتم d2j جلاعی-js، با کمک همان g2d/d2g/jalCal بالا.
+    function toJalali(gy, gm, gd) {
+        const jdn = g2d(gy, gm, gd);
+        let jy = gy - 621;
+        const r = jalCal(jy);
+        const jdn1f = g2d(gy, 3, r.march);
+        let k = jdn - jdn1f;
+        let jm, jd;
+        if (k >= 0) {
+            if (k <= 185) {
+                jm = 1 + div(k, 31);
+                jd = mod(k, 31) + 1;
+                return { jy: jy, jm: jm, jd: jd };
+            }
+            k -= 186;
+        } else {
+            jy -= 1;
+            k += 179;
+            if (r.leap === 1) k += 1;
+        }
+        jm = 7 + div(k, 30);
+        jd = mod(k, 30) + 1;
+        return { jy: jy, jm: jm, jd: jd };
+    }
+
+    const MONTH_NAMES = ['فروردین', 'اردیبهشت', 'خرداد', 'تیر', 'مرداد', 'شهریور',
+        'مهر', 'آبان', 'آذر', 'دی', 'بهمن', 'اسفند'];
+    // شنبه‌محور (هفته از شنبه شروع می‌شود، DESIGN.md §8) - index صفر شنبه است.
+    const WEEKDAY_NAMES = ['شنبه', 'یکشنبه', 'دوشنبه', 'سه‌شنبه', 'چهارشنبه', 'پنجشنبه', 'جمعه'];
+    const WEEKDAY_SHORT = ['ش', 'ی', 'د', 'س', 'چ', 'پ', 'ج'];
+    const DIGIT_MAP = { '0': '۰', '1': '۱', '2': '۲', '3': '۳', '4': '۴', '5': '۵', '6': '۶', '7': '۷', '8': '۸', '9': '۹' };
+
+    // اعمال روی Date میلادی: index صفر شنبه (نه یکشنبه‌ی getDay میلادی) -
+    // DESIGN.md §8: «هفته از شنبه شروع می‌شود».
+    function weekdayIndex(date) {
+        return (date.getDay() + 1) % 7;
+    }
+
+    // DESIGN.md §8: ارقام فارسی برای هر عدد نمایشی؛ داده/state زیرین همیشه
+    // ASCII می‌ماند - این فقط در لحظه‌ی رندر صدا زده می‌شود.
+    function toPersianDigits(value) {
+        return String(value).replace(/[0-9]/g, d => DIGIT_MAP[d]);
     }
 
     // بازه‌ی ماه/فصل/سالِ جلالی → { from, to } تاریخ میلادی (YYYY-MM-DD،
@@ -101,5 +147,14 @@ window.Jalali = (function () {
         return date.toISOString().slice(0, 10);
     }
 
-    return { toGregorian: toGregorian, periodRange: periodRange };
+    return {
+        toGregorian: toGregorian,
+        periodRange: periodRange,
+        toJalali: toJalali,
+        monthNames: MONTH_NAMES,
+        weekdayNames: WEEKDAY_NAMES,
+        weekdayShort: WEEKDAY_SHORT,
+        weekdayIndex: weekdayIndex,
+        toPersianDigits: toPersianDigits
+    };
 })();

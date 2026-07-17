@@ -1,0 +1,370 @@
+/* ==========================================================================
+   صفحه‌ی «برنامه‌ی مطالعه‌ی من» (دانش‌آموز) - گرید تقویمی هفتگی.
+   فقط توکن‌های موجود در app.css استفاده می‌شود (بدون رنگ/فونت تازه،
+   DESIGN.md §2/§4)؛ فقط خواص منطقی (logical properties)، هرگز left/right
+   فیزیکی (DESIGN.md §7).
+   ========================================================================== */
+
+.sp-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+  margin-block-end: var(--space-4);
+}
+
+.sp-weeknav {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.sp-picker {
+  position: relative;
+}
+
+.sp-picker-pop {
+  position: absolute;
+  inset-block-start: calc(100% + var(--space-2));
+  inset-inline-end: 0;
+  z-index: 30;
+  width: 280px;
+  background: #fff;
+  border: 1px solid #e6e9ec;
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-md);
+  padding: var(--space-4);
+}
+
+.sp-picker-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-block-end: var(--space-3);
+}
+
+.sp-picker-grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 2px;
+}
+
+.sp-picker-weekday {
+  height: 26px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.72rem;
+  color: #9aa0a7;
+}
+
+.sp-picker-day {
+  height: 34px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  font-size: 0.85rem;
+  border: none;
+  cursor: pointer;
+  background: transparent;
+  color: #3a3f45;
+}
+
+.sp-picker-day:hover {
+  background: #f2f4f6;
+}
+
+.sp-picker-day--in-week {
+  background: hsl(var(--bulma-primary-h) var(--bulma-primary-s) 92%);
+  color: hsl(var(--bulma-primary-h) var(--bulma-primary-s) var(--bulma-primary-l));
+  font-weight: 700;
+}
+
+.sp-picker-day--today {
+  background: hsl(var(--bulma-primary-h) var(--bulma-primary-s) var(--bulma-primary-l));
+  color: #fff;
+  font-weight: 700;
+}
+
+.sp-legend {
+  display: flex;
+  gap: var(--space-5);
+  align-items: center;
+  flex-wrap: wrap;
+  margin-block-end: var(--space-4);
+  font-size: 0.85rem;
+  color: #6b7280;
+}
+
+.sp-legend-item {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.sp-swatch {
+  width: 14px;
+  height: 14px;
+  border-radius: 4px;
+  display: inline-block;
+}
+
+.sp-swatch--pending {
+  background: hsl(var(--bulma-primary-h) var(--bulma-primary-s) 92%);
+  border: 1px solid hsl(var(--bulma-primary-h) var(--bulma-primary-s) var(--bulma-primary-l));
+}
+
+.sp-swatch--done {
+  background: hsl(var(--bulma-success-h, 141deg) var(--bulma-success-s, 53%) 92%);
+  border: 1px solid hsl(var(--bulma-success-h, 141deg) var(--bulma-success-s, 53%) 40%);
+}
+
+.sp-grid-box {
+  overflow-x: auto;
+  padding: 0;
+}
+
+.sp-grid {
+  display: flex;
+  min-width: 900px;
+}
+
+.sp-axis {
+  flex: none;
+  width: 52px;
+  position: relative;
+  height: 1092px;
+  border-inline-end: 1px solid #e6e9ec;
+}
+
+.sp-hour {
+  position: absolute;
+  inset-inline-end: 8px;
+  transform: translateY(-50%);
+  font-size: 0.7rem;
+  color: #b7bcc2;
+  white-space: nowrap;
+}
+
+.sp-day {
+  flex: 1;
+  min-width: 118px;
+  border-inline-start: 1px solid #f0f2f4;
+}
+
+.sp-day--today {
+  background-color: #fbfcfe;
+}
+
+.sp-day-head {
+  text-align: center;
+  padding: var(--space-3) var(--space-1);
+  border-block-end: 1px solid #e6e9ec;
+  background: #fcfcfd;
+}
+
+.sp-day-name {
+  font-size: 0.72rem;
+  color: #9aa0a7;
+  letter-spacing: 0.02em;
+  margin-block-end: var(--space-2);
+}
+
+.sp-day-num {
+  font-size: 1.15rem;
+  font-weight: 700;
+  color: #1f2429;
+}
+
+.sp-day-num--today {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  border-radius: 999px;
+  background: hsl(var(--bulma-primary-h) var(--bulma-primary-s) var(--bulma-primary-l));
+  color: #fff;
+}
+
+.sp-day-body {
+  position: relative;
+  height: 1080px;
+  background-image: linear-gradient(to bottom, #f2f4f6 1px, transparent 1px);
+  background-size: 100% 60px;
+}
+
+.sp-block {
+  position: absolute;
+  inset-inline: 3px;
+  border-radius: var(--radius-sm);
+  box-sizing: border-box;
+  padding: 5px 8px;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 1px;
+  cursor: pointer;
+  border: none;
+  border-inline-start-width: 3px;
+  border-inline-start-style: solid;
+  font-family: inherit;
+  text-align: start;
+  transition: box-shadow var(--motion-fast) var(--motion-ease);
+}
+
+.sp-block:hover,
+.sp-block:focus-visible {
+  box-shadow: var(--shadow-md);
+}
+
+.sp-block--pending {
+  background: hsl(var(--bulma-primary-h) var(--bulma-primary-s) 92%);
+  border-color: hsl(var(--bulma-primary-h) var(--bulma-primary-s) var(--bulma-primary-l));
+  color: hsl(var(--bulma-primary-h) var(--bulma-primary-s) 26%);
+}
+
+.sp-block--done {
+  background: hsl(var(--bulma-success-h, 141deg) var(--bulma-success-s, 53%) 92%);
+  border-color: hsl(var(--bulma-success-h, 141deg) var(--bulma-success-s, 40%) 40%);
+  color: hsl(var(--bulma-success-h, 141deg) var(--bulma-success-s, 53%) 24%);
+}
+
+.sp-block-title {
+  font-weight: 600;
+  font-size: 12.5px;
+  line-height: 1.2;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-inline-size: 100%;
+}
+
+.sp-block-time {
+  font-size: 10.5px;
+  opacity: 0.75;
+  white-space: nowrap;
+}
+
+.sp-block-check {
+  position: absolute;
+  inset-block-start: 4px;
+  inset-inline-end: 4px;
+  width: 16px;
+  height: 16px;
+  border-radius: 999px;
+  background: hsl(var(--bulma-success-h, 141deg) var(--bulma-success-s, 40%) 40%);
+  color: #fff;
+  font-size: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* --- Stats tab --------------------------------------------------------- */
+
+.sp-kpis {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+  margin-block-end: var(--space-6);
+}
+
+.sp-kpi {
+  flex: 1 1 180px;
+  min-inline-size: 170px;
+  background: #f6f8fa;
+  border: 1px solid #e6e9ec;
+  border-inline-start: 3px solid hsl(var(--bulma-primary-h) var(--bulma-primary-s) var(--bulma-primary-l));
+  border-radius: var(--radius-md);
+  padding: var(--space-4) var(--space-5);
+}
+
+.sp-kpi-label {
+  font-size: 0.8rem;
+  color: #8a9098;
+  margin-block-end: var(--space-2);
+}
+
+.sp-kpi-value {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: hsl(var(--bulma-primary-h) var(--bulma-primary-s) var(--bulma-primary-l));
+}
+
+.sp-charts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-5);
+}
+
+.sp-chart-card {
+  flex: 1 1 420px;
+  min-inline-size: 320px;
+}
+
+.sp-daybars {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: var(--space-2);
+  margin-block-start: var(--space-4);
+}
+
+.sp-daybar-col {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.sp-daybar-track {
+  width: 100%;
+  max-inline-size: 26px;
+  background: #e8ecf0;
+  border-radius: 6px;
+  display: flex;
+  align-items: flex-end;
+  overflow: hidden;
+  height: 130px;
+}
+
+.sp-daybar-fill {
+  width: 100%;
+  background: hsl(var(--bulma-primary-h) var(--bulma-primary-s) var(--bulma-primary-l));
+  border-radius: 6px;
+}
+
+.sp-topicbar {
+  margin-block-end: var(--space-3);
+}
+
+.sp-topicbar-head {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.8rem;
+  margin-block-end: var(--space-2);
+}
+
+.sp-topicbar-track {
+  height: 8px;
+  border-radius: 999px;
+  background: #eef1f4;
+  overflow: hidden;
+}
+
+.sp-topicbar-fill {
+  height: 100%;
+  background: hsl(var(--bulma-primary-h) var(--bulma-primary-s) var(--bulma-primary-l));
+  border-radius: 999px;
+}
+
+@media (max-width: 600px) {
+  .sp-grid {
+    min-width: 700px;
+  }
+}

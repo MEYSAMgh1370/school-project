@@ -231,6 +231,20 @@ link visible while the selected role is `STUDENT` or `PARENT`. See CLAUDE.md
 §7 Done ("Finance deepening, phase 3"). Neither this nor the Bale bot is a
 substitute for a real `/grades` web page.
 
+**A study-plan self-view now also exists: `/my-study-plan`**
+(`web.MyStudyPlanPageController`, built 2026-07-17 from a Claude Design
+handoff bundle) — read-only weekly calendar of the student's own
+auto-scheduled study sessions (RTL, Jalali dates, week/month navigation) plus
+a client-computed statistics tab; a student can mark a session done and log
+a test count (the only per-session fields the real `StudyIntervalEntity`
+carries — see CLAUDE.md §7 Done, "Student study-plan self-view", for the
+explicit decision not to extend that schema to match the design mockup's
+richer invented fields). Backed by the new
+`studyplan.MyStudyIntervalController`, no new REST behind `/my-exams`'s
+established "my" pattern. Navbar link visible while the selected role is
+`STUDENT` only (a study plan is assigned per-student, not per-guardian —
+unlike `/my-invoices`, `PARENT` has no linked-wards view here).
+
 **Also as of 2026-07-13:** the admin `GET .../invoices` endpoint (used by
 `/finance`, item 5 above) is no longer unscoped for `PARENT` callers — a
 `PARENT` with no `SCHOOL_ADMIN`/`FINANCE_ADMIN` role at the school now sees
