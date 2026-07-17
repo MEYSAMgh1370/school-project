@@ -15,9 +15,20 @@ document.addEventListener('alpine:init', () => {
         planForm: { title: '', weights: [{ topicId: '', weight: 1, priority: 1 }] },
 
         expandedPlanId: null,
+        planDetailTab: 'assignments',
         assignments: [],
         assignStudentIdInput: '',
         submittingAssignment: false,
+
+        weekCourses: [],
+        loadingWeekCourses: false,
+        weekCourseForm: { weekStart: '', courseTopicId: '', subTopicIds: [] },
+        submittingWeekCourse: false,
+
+        copyPanelOpen: false,
+        copyTargetIds: [],
+        copyingWeek: false,
+        copyResults: [],
 
         selectedStudentId: '',
         weekdays: [
@@ -53,6 +64,9 @@ document.addEventListener('alpine:init', () => {
                 this.blocked = false;
                 this.selectedStudentId = '';
                 this.expandedPlanId = null;
+                this.copyPanelOpen = false;
+                this.copyTargetIds = [];
+                this.copyResults = [];
                 this.load();
             });
             if (this.schoolId) {
@@ -109,6 +123,14 @@ document.addEventListener('alpine:init', () => {
         topicName(topicId) {
             const topic = this.flatTopics.find(t => t.id === topicId);
             return topic ? topic.name : `سرفصل #${topicId}`;
+        },
+
+        subTopicNames(subTopicIds) {
+            return (subTopicIds || []).map(id => this.topicName(id)).join('، ');
+        },
+
+        otherStudents() {
+            return this.students.filter(s => String(s.studentId) !== String(this.selectedStudentId));
         },
 
         studentLabel(studentId) {
@@ -238,13 +260,18 @@ document.addEventListener('alpine:init', () => {
             }
         },
 
-        async toggleAssignments(planId) {
+        async togglePlanDetails(planId) {
             if (this.expandedPlanId === planId) {
                 this.expandedPlanId = null;
                 return;
             }
             this.expandedPlanId = planId;
+            this.planDetailTab = 'assignments';
             this.assignStudentIdInput = '';
+            await this.loadAssignments(planId);
+        },
+
+        async loadAssignments(planId) {
             try {
                 const response = await fetch(`${this.plansBase()}/${planId}/assignments`, {
                     headers: { 'X-School-ID': this.schoolId }
@@ -252,6 +279,119 @@ document.addEventListener('alpine:init', () => {
                 this.assignments = response.ok ? await response.json() : [];
             } catch (e) {
                 this.assignments = [];
+            }
+        },
+
+        // سرفصل‌های هفتگیِ یک برنامه (WeekCourse) - lazy-load می‌شود، فقط وقتی
+        // این تب برای اولین بار برای این برنامه باز شود؛ همان الگوی lazy که
+        // toggleGuardianPanel در students.js برای بارگذاری ولی‌ها استفاده می‌کند.
+        async selectWeekCoursesTab(planId) {
+            this.planDetailTab = 'weekCourses';
+            this.weekCourseForm = { weekStart: '', courseTopicId: '', subTopicIds: [] };
+            await this.loadWeekCourses(planId);
+        },
+
+        async loadWeekCourses(planId) {
+            this.loadingWeekCourses = true;
+            try {
+                const response = await fetch(`${this.plansBase()}/${planId}/week-courses`, {
+                    headers: { 'X-School-ID': this.schoolId }
+                });
+                this.weekCourses = response.ok ? await response.json() : [];
+            } catch (e) {
+                this.weekCourses = [];
+            } finally {
+                this.loadingWeekCourses = false;
+            }
+        },
+
+        toggleWeekCourseSubTopic(topicId) {
+            const index = this.weekCourseForm.subTopicIds.indexOf(topicId);
+            if (index >= 0) {
+                this.weekCourseForm.subTopicIds.splice(index, 1);
+                return;
+            }
+            // سقف ۱۰ زیرسرفصل - همان محدودیتی که WeekCourseTopicEntity سمت
+            // سرور اعمال می‌کند (پورت ArrayField(size=10) موshavere)
+            if (this.weekCourseForm.subTopicIds.length >= 10) {
+                return;
+            }
+            this.weekCourseForm.subTopicIds.push(topicId);
+        },
+
+        async createWeekCourse(planId) {
+            this.submittingWeekCourse = true;
+            this.error = '';
+            this.notice = '';
+            try {
+                const weekStart = this.mostRecentSaturday(this.weekCourseForm.weekStart);
+                const response = await fetch(`${this.plansBase()}/${planId}/week-courses`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-School-ID': this.schoolId,
+                        'X-XSRF-TOKEN': this.csrfToken()
+                    },
+                    body: JSON.stringify({
+                        weekStart,
+                        courseTopicId: parseInt(this.weekCourseForm.courseTopicId, 10),
+                        subTopicIds: this.weekCourseForm.subTopicIds
+                    })
+                });
+                if (!response.ok) {
+                    const classified = await this.classifyError(response);
+                    this.error = classified.message;
+                    this.blocked = classified.blocking;
+                    return;
+                }
+                this.notice = 'سرفصل هفتگی اضافه شد.';
+                this.weekCourseForm = { weekStart: '', courseTopicId: '', subTopicIds: [] };
+                await this.loadWeekCourses(planId);
+            } catch (e) {
+                this.error = 'ارتباط با سرور برقرار نشد.';
+            } finally {
+                this.submittingWeekCourse = false;
+            }
+        },
+
+        toggleCopyTarget(studentId) {
+            const index = this.copyTargetIds.indexOf(studentId);
+            if (index >= 0) {
+                this.copyTargetIds.splice(index, 1);
+            } else {
+                this.copyTargetIds.push(studentId);
+            }
+        },
+
+        async copyWeekToOthers() {
+            this.copyingWeek = true;
+            this.error = '';
+            this.notice = '';
+            this.copyResults = [];
+            try {
+                const weekStart = this.mostRecentSaturday(this.weekDate);
+                const response = await fetch(`${this.intervalsBase(this.selectedStudentId)}/copy`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-School-ID': this.schoolId,
+                        'X-XSRF-TOKEN': this.csrfToken()
+                    },
+                    body: JSON.stringify({ weekStart, targetStudentIds: this.copyTargetIds })
+                });
+                if (!response.ok) {
+                    const classified = await this.classifyError(response);
+                    this.error = classified.message;
+                    this.blocked = classified.blocking;
+                    return;
+                }
+                this.copyResults = await response.json();
+                const successCount = this.copyResults.filter(r => r.ok).length;
+                this.notice = `کپی هفته انجام شد: ${successCount} از ${this.copyResults.length} مورد با موفقیت.`;
+            } catch (e) {
+                this.error = 'ارتباط با سرور برقرار نشد.';
+            } finally {
+                this.copyingWeek = false;
             }
         },
 
@@ -276,8 +416,8 @@ document.addEventListener('alpine:init', () => {
                     return;
                 }
                 this.notice = 'برنامه به دانش‌آموز تخصیص داده شد.';
-                await this.toggleAssignments(planId);
-                await this.toggleAssignments(planId);
+                this.assignStudentIdInput = '';
+                await this.loadAssignments(planId);
             } catch (e) {
                 this.error = 'ارتباط با سرور برقرار نشد.';
             } finally {
@@ -289,6 +429,9 @@ document.addEventListener('alpine:init', () => {
             this.selectedStudentId = studentId;
             this.error = '';
             this.notice = '';
+            this.copyPanelOpen = false;
+            this.copyTargetIds = [];
+            this.copyResults = [];
             await Promise.all([this.loadSchedule(), this.loadWeek()]);
         },
 

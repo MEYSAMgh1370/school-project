@@ -2572,13 +2572,14 @@ above.
   (`web.StudyPlansPageController`, built 2026-07-17 via the `design-page`
   skill)** — a thin shell like `/curriculum`, entirely client-side against
   `PlanController`/`IntervalScheduleController`/`StudyIntervalController`.
-  Deliberately scoped to the plan→assignment→schedule→interval path only:
-  `WeekCourseController` (a plan's weekly topic template) and the
-  multi-student `copyWeek` bulk action are **not** built in this pass —
-  neither is load-bearing for anything else in the UI or for `exam`'s
+  Deliberately scoped at the time to the plan→assignment→schedule→interval
+  path only: `WeekCourseController` (a plan's weekly topic template) and the
+  multi-student `copyWeek` bulk action were **not** built in that first
+  pass — neither is load-bearing for anything else in the UI or for `exam`'s
   `getRecentTopics` (which reads actual `StudyIntervalEntity` rows, not
-  `WeekCourse`), so they're lower priority than the core scheduling loop;
-  a separate slice if asked for. The `suggest`/`clear` week actions need an
+  `WeekCourse`), so they were lower priority than the core scheduling loop.
+  **Both were added 2026-07-17** (§7 Done, "Study-plans page deepening") —
+  see that entry for the UI shape. The `suggest`/`clear` week actions need an
   exact Saturday `weekStart`, so the page lets the user pick *any* day and
   derives the week's Saturday client-side
   (`mostRecentSaturday`/`formatLocalDate` in `study-plans.js`) — deliberately
@@ -2754,6 +2755,75 @@ above.
   authoring session (module boundaries intact, no new named-interface
   exposure needed since `studyplan` already depended on `AcademicFacade`/
   `CurriculumFacade`/`IamFacade`).
+- **Bale integration gap cleanup (built 2026-07-17)**: two known gaps flagged
+  since the Bale Phase 1 build (§7 Done above, `MOBILE_ROADMAP.md` §4/§5)
+  closed now that Docker/Testcontainers is available again in-session:
+  - **`BaleFlowIntegrationTest`**: covers the inbound webhook (wrong-secret
+    404, `/start` contact-request prompt, contact-share linking + upsert on
+    re-share, unknown-phone rejection, unlinked-chat "not linked" reply,
+    `"مدرسه‌های من"`/`"فرزندان من"` text commands) and the outbound
+    `finance.InvoiceIssuedEvent` → notify-student-and-linked-guardians flow.
+    Since `roshdeandishe.bale.bot-token` is empty by default (`BaleClient`
+    only logs, makes no real HTTP call), the test stands up a local JDK
+    `com.sun.net.httpserver.HttpServer` and points
+    `roshdeandishe.bale.api-base-url`/`bot-token`/`webhook-secret` at it via
+    `@DynamicPropertySource` — the same role GreenMail plays for
+    `InviteTokenFlowIntegrationTest`, but with zero new `pom.xml` dependency
+    (the JDK's built-in HTTP server is sufficient for capturing outbound
+    `sendMessage` calls). `mvn test -Dtest=ModularityTests` re-verified green.
+  - **Guardian-link admin UI**: previously curl/API-only (`AcademicFacade.linkGuardian`/
+    `listGuardians`, `GUARDIAN_MANAGE`, SCHOOL_ADMIN-only). Added as a
+    per-student-row "مدیریت والدین" expandable panel on the existing
+    `GET /students` page (`students.jte`/`students.js`) — same expand-in-place
+    pattern as `/classes`'s student-roster panel (§7 Done, "TEACHER persona").
+    **Zero backend change**: the panel composes the existing
+    `academic.StudentController` guardian endpoints with
+    `iam.MembershipController` (filtered to active `PARENT` memberships) for
+    name/email resolution and the parent-picker options, client-side only.
+    Guardians for a given student are fetched lazily the first time that
+    student's panel is opened (no bulk "list every guardian link in the
+    school" endpoint exists), cached per-student in memory for the rest of
+    the page session. The already-linked-parent set is subtracted from the
+    picker's options so the form doesn't re-offer someone already linked
+    (the backend call is idempotent either way — this is UX polish, not a
+    safety net). Manually verified end-to-end in a real browser: opened an
+    already-linked student's panel (existing guardian listed correctly),
+    opened an unlinked student's panel (empty-state text + picker shown),
+    linked a parent, saw the success notice and the panel update immediately.
+    Went through the `design-page` skill first per the standing instruction,
+    since this reshapes `/students`'s layout; no navbar change needed (no new
+    page, no new link).
+- **Study-plans page deepening (built 2026-07-17)**: the two pieces
+  deliberately left out of `/study-plans`'s first pass (§7 Done, "Moshavere
+  port, step 3") — `WeekCourseController` (a plan's weekly topic template)
+  and the multi-student `copyWeek` bulk action. **Zero backend change**,
+  both REST endpoints already existed. Went through the `design-page` skill
+  first since this reshapes `/study-plans`'s layout.
+  - **Weekly topics**: the per-plan row's single "تخصیص به دانش‌آموز" toggle
+    became "جزئیات برنامه", opening a panel with Bulma `tabs` — one tab for
+    the existing student-assignment list, a second, lazy-loaded
+    "سرفصل‌های هفتگی" tab listing/creating `WeekCourse` rows (week-start date
+    snapped to that week's Saturday client-side via the same
+    `mostRecentSaturday` helper `suggest`/`clear` already use, a topic
+    picker, and a sub-topic checklist capped at 10 — mirroring
+    `WeekCourseTopicEntity`'s server-side `ArrayField(size=10)` port — that
+    excludes whichever topic is currently selected as the week's main
+    topic, so a topic can't be checked as its own sub-topic). This is the
+    same expanded-row-with-Bulma-tabs pattern `/exams` already established
+    for its per-exam management panel (§7 Done, "Moshavere port, step 4").
+  - **Copy week**: a new secondary button next to `پیشنهاد خودکار`/
+    `خالی‌کردن این هفته` in the student-schedule box opens an inline panel —
+    a checkbox list of the school's *other* students (the selected student
+    excluded) plus a "کپی کردن" submit — calling the existing
+    `POST .../study-intervals/copy`. Per-target results (نام + موفق/ناموفق)
+    render in a small results table, and the top-level notice summarizes
+    "X از Y مورد با موفقیت".
+  - Manually verified end-to-end in a real browser: created a `WeekCourse`
+    with a sub-topic (confirmed the self-reference exclusion and the
+    Saturday-snap), then copied a populated week to a second student and
+    confirmed both the success notice and the per-target result row.
+    `mvn test -Dtest=StudyPlanManagementFlowIntegrationTest,ModularityTests`
+    re-verified green (no backend touched).
 
 ### Open / explicitly deferred
 

@@ -194,18 +194,24 @@ product** — see §2.
     secret path segment, not `@RequiresModule`/`@RequiresPermission` — the
     caller is Bale's server, not a browser session; authorization instead
     comes from every query being scoped to the linked user's own data.
-  - **Known gaps, not this doc's to schedule** (tracked in `CLAUDE.md` §7/§11):
-    admin UI for guardian linking is curl/API-only so far; `/finance`'s
-    existing `GET invoices` is *not* yet scoped to a guardian's own children;
-    no `BaleFlowIntegrationTest` exists yet (blocked on Testcontainers/Docker
-    availability in the session that built it).
+  - **Known gaps at the time this was written — all since closed:**
+    `/finance`'s `GET invoices` scoping to a guardian's own children shipped
+    2026-07-13 (`CLAUDE.md` §7 Done, "Finance deepening, phase 3"); a
+    `BaleFlowIntegrationTest` (webhook link flow + outbound
+    `InvoiceIssuedEvent` notification, using a local JDK `HttpServer` in
+    place of a real Bale API — Docker/Testcontainers is available again)
+    and an admin UI for guardian linking (`GET /students`'s new
+    "مدیریت والدین" panel per student row — no backend change, composes the
+    existing `academic.StudentController` guardian endpoints with
+    `iam.MembershipController` the same way the class-roster panel already
+    does) both shipped 2026-07-17.
 
 ## 5. Build order (roadmap-level, not committed dates)
 
 1. ~~`notifications` module~~ — **done, 2026-07-07**, shipped as the `bale`
-   module (see §4). Remaining follow-ups are bug/gap fixes, not roadmap items:
-   guardian-link admin UI, scoping invoice list to a guardian's children, and
-   a `BaleFlowIntegrationTest`.
+   module (see §4). The follow-up bug/gap fixes flagged at the time
+   (guardian-link admin UI, guardian invoice scoping, `BaleFlowIntegrationTest`)
+   are now all done too — see §4 above.
 2. ~~**Mobile auth mechanism**~~ — **done, 2026-07-08**: `POST /api/auth/token`,
    additive JWT bearer auth (see §4). Prerequisite for the Android app itself,
    which is next.
