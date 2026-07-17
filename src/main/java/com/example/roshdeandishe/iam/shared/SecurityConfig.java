@@ -73,6 +73,10 @@ public class SecurityConfig {
                         // مسیر از طریق بخش مخفی در خودِ URL تأمین می‌شود
                         // (BaleWebhookController)، نه CSRF token.
                         .ignoringRequestMatchers("/api/bale/webhook/**")
+                        // جلسه‌ی آزمون‌دهی (exam-take) هم از CSRF مستثناست: مجوز این
+                        // مسیر از توکن جلسه‌ی آزمون می‌آید (query param)، نه کوکی
+                        // سشن - همان استدلال وب‌هوک بله (رجوع به ExamTakeController).
+                        .ignoringRequestMatchers("/api/exam-take/**")
                         // صدور توکن موبایل هم از CSRF مستثناست - برخلاف
                         // /api/auth/login (که عمداً CSRF می‌خواهد، برای جلوگیری
                         // از "login CSRF" روی مسیر cookie/session وب)، این
@@ -98,7 +102,7 @@ public class SecurityConfig {
                         .requestMatchers(
                                 "/", "/api/auth/**", "/actuator/**", "/error",
                                 "/swagger-ui/**", "/swagger-ui.html", "/v3/api-docs/**",
-                                "/api/bale/webhook/**",
+                                "/api/bale/webhook/**", "/api/exam-take/**",
                                 "/activate", "/login", "/register", "/webjars/**",
                                 "/css/**", "/js/**"
                         ).permitAll()

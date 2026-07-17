@@ -143,64 +143,122 @@ views.py}`.
 
 ## 5. `exam` (new module) — Exam engine
 
+**Status: DONE (2026-07-17)**, built via its own `new-module` pass as scoped
+below — the fourth and last step of this port, the deepest dependency chain
+(`curriculum` + `academic` + `studyplan` + `iam`), and the only place this
+port introduces a new-module-depends-on-new-module edge. See `CLAUDE.md` §3/§4
+(Exam/Section/SectionQuestion/ExamAssignment/Attempt/Submit subsection) and
+§7 Done for the final shape and test coverage (`ExamFlowIntegrationTest`).
+Both open items below were resolved at new-module time: a **new
+`SCHOOL`-scoped `EXAM` module code** (not `EXAM_PREP` — that stays the
+untouched `USER`-scoped B2C placeholder; the actual moshavere feature is
+instructor-authored, per-school content, a B2B shape), and the permission
+split — **`EXAM_MANAGE`/`EXAM_VIEW`, both `SCHOOL_ADMIN` + `TEACHER`** (same
+`CURRICULUM_*`/`STUDYPLAN_*` reasoning — authoring/assigning is day-to-day
+teacher work), neither granted to `STUDENT`/`PARENT` — student access is
+mediated entirely by the "my" pattern (`MyExamsController`, no
+`@RequiresPermission`) plus the scoped exam-take token
+(`ExamTakeController`), never by the two RBAC permissions.
+
 Source: `exam-maker-master/azmoon/{models.py, token.py, tasks.py, views.py}`.
 
 Depends on: `curriculum` (topics/questions), `academic` (students/classes),
-`iam`, and `studyplan` (see dependency note below).
+`iam`, and `studyplan` (`StudyPlanFacade.getRecentTopics`, for weekly
+auto-generation).
 
-**Consumers of the exam-take API — updated 2026-07-11:** both the native
-Android app (`MOBILE_ROADMAP.md` §5 item 3/7) and a new student-facing
-JTE+Alpine web page (`MOBILE_ROADMAP.md` §4, "Student web channel") will call
-`ExamTakeController` against the same scoped exam-take token — the token
-scheme is client-agnostic by design, so this doesn't add work to this
-module, just an additional caller.
+Four deliberate deviations from the shape sketched below, all documented at
+the point they're implemented:
 
-- Entities: single `ExamEntity` with an `examType` enum (`WEEKLY` |
-  `COLLECTIVE`) rather than moshavere's Django model-inheritance chain
-  (`Exam` → `PersonalExam` → `WeeklyExam` / `CollectiveExam`) — matches this
-  codebase's existing preference for a flat entity + explicit enum/sealed
-  type over inheritance tricks (see `ModuleScope`, `IamError` etc.).
-  `SectionEntity` (`examId`, `topicId`, `order`), `SectionQuestionEntity`
-  (join table), `AttemptEntity` (`examId`, `studentId`, `startedAt`,
-  `expireTime`), `SubmitEntity` (`attemptId`, `sectionQuestionId`,
-  `chosenOption`, constrained 1–4 same as source).
-- **Exam-taking session token**: a second, independently-secreted JWT
-  (own config key, e.g. `roshdeandishe.exam.token-secret`), issued per
-  `Attempt`, distinct from both the session cookie and the mobile bearer
-  JWT — directly porting `azmoon/token.py`'s pattern of a scoped,
-  short-lived token for a bounded task. Lives in `exam.internal` or
-  `exam.shared` (not `iam` — `iam` must not depend on `exam`).
-- **Scoring**: moshavere precomputed scores via a Postgres materialized view
-  refreshed by a Celery task (`azmoon/tasks.py refresh_exam_results`). This
-  project has no Celery-equivalent async task runner yet. **Recommend**
-  computing scores on demand in `ExamFacade` first, and only introducing a
-  materialized view + a Spring `@Scheduled` refresh job if/when real
-  performance data justifies it — don't stand up new async infra
-  speculatively for a feature that doesn't exist yet.
-- **Weekly-exam auto-generation dependency**: moshavere's `WeeklyExam` builds
-  its sections from the student's recent study-table topics
-  (`study_table.week_functions.get_week_intervals_topics`). In this port that
-  means `exam` needs the student's recently-studied topics from `studyplan`
-  — call `StudyPlanFacade.getRecentTopics(studentId)` directly (a plain
-  facade dependency, matching this codebase's stated default of
-  synchronous facade calls between modules, reserving events for one-way
-  reactions) rather than an event. This makes `exam` depend on `studyplan`
-  in addition to `curriculum`/`academic`/`iam` — flag this dependency
-  explicitly during `exam`'s new-module pass since it's the one place this
-  port introduces a new-module-depends-on-new-module edge.
-- REST: `ExamController` (create/list collective exams, `assign` students),
-  `AttemptController` (start attempt → issues exam token), `ExamTakeController`
-  (token-authenticated: list sections, get questions, submit answers — its
-  own permission mechanism keyed off the exam token, not the normal
-  `@RequiresPermission`, same as moshavere's `HasValidExamToken`/
-  `ExamTokenNotExpired`/`ExamTokenIsUsers`), `ExamResultController`.
-- **Open:** does this map to the already-seeded `EXAM_PREP` module code
-  (currently `USER`-scoped/B2C, a placeholder) or does it need its own new
-  `SCHOOL`-scoped code? Moshavere's product was itself exam-prep coaching,
-  so `EXAM_PREP` is a plausible fit by name — but the actual moshavere
-  feature is instructor-authored, per-class/per-school, which is a B2B
-  shape, not B2C. **Resolve this at new-module time**, don't silently reuse
-  `EXAM_PREP`'s scope without confirming it.
+- **Scoring**: on-demand in `ExamFacade` (`ExamFacadeImpl.computeResult`), as
+  recommended — no materialized view, no Celery-equivalent scheduled job.
+  **`rank`/`balance` (cross-student standard deviation) were not ported at
+  all** — they're artifacts of moshavere's materialized view, not core exam
+  data; per-student `score`/`correctCount`/`incorrectCount`/`unansweredCount`
+  are computed and returned, `rank`/`balance` would need a real cross-student
+  aggregate query and are deferred until a UI actually asks for them (none
+  exists yet — this module is backend-only, same as `curriculum`/`studyplan`).
+- **`startAttempt` idempotency**: unlike the source (which raised a
+  validation error on any second `POST` for the same exam, "you already
+  obtained token for this exam"), a second call while the existing `Attempt`
+  hasn't expired yet returns the same still-valid token instead of erroring —
+  a small, deliberate UX improvement (a client retry or page refresh
+  shouldn't be a hard failure). The **one-shot invariant itself is
+  unchanged**: `unique(examId, studentId)` on `AttemptEntity` means there is
+  still only ever one `Attempt` per student per exam, ever; once it expires,
+  `startAttempt` throws `ExamError.AttemptExpired` — no second chance, same
+  as the source's own comment ("we only support single attempt exams").
+  Note the actual precedence at call time: the "has the exam itself ended"
+  check runs *before* the per-attempt expiry check, so once `now` is past
+  `exam.endAt` the caller sees `CannotAttempt`, not `AttemptExpired` — both
+  are real, reachable errors, just gated by which condition is true first.
+- **Weekly-exam regeneration guard**: the source's `auto-update` action
+  unconditionally deleted and rebuilt a student's `WeeklyExam` — including
+  wiping any `Attempt`/`Submit` rows already recorded against it via cascade.
+  `generateWeeklyExam` ports the delete-and-rebuild behavior but refuses it
+  outright (`ExamError.InvalidExam`) once an `Attempt` already exists for
+  that exam — silently destroying a student's already-taken exam is a real
+  data-integrity concern, not just a style preference, the same class of
+  small correctness improvement already applied to `studyplan.copyWeek`.
+- **No "start must be ≥ now" validation** on `createCollectiveExam` (the
+  source's `validate_start`) — a UX-layer constraint from the source's own
+  admin panel, not a domain invariant; skipping it keeps exam creation simple
+  for tests/seed callers exactly like `studyplan`/`curriculum` already do for
+  their own no-past-of-mind checks.
+
+- Entities: flat `ExamEntity` with an `examType` enum (`WEEKLY` |
+  `COLLECTIVE`) instead of moshavere's Django model-inheritance chain (`Exam`
+  → `PersonalExam` → `WeeklyExam` / `CollectiveExam`) — matches this
+  codebase's existing preference for a flat entity + explicit enum over
+  inheritance (`ModuleScope`, `IamError`, etc.). The source's single
+  polymorphic `Exam.author` field (student for `WeeklyExam`, instructor for
+  `CollectiveExam`) is split into two separate nullable fields instead —
+  `studentId` (opaque → `academic` Student, `WEEKLY` only) and `teacherId`
+  (opaque → `iam` User, `COLLECTIVE` only, captured from the current
+  authenticated caller like `PlanEntity.teacherId`) — clearer than one
+  overloaded column. `SectionEntity` (`examId`, `topicId`, nullable `name`,
+  `unique(examId, topicId)`), `SectionQuestionEntity` (join: `sectionId`,
+  `questionId`, `unique(sectionId, questionId)`), `ExamAssignmentEntity` (a
+  real join table — `examId`, `studentId` — replacing the source's
+  `CollectiveExam.students` `ManyToMany`, same join-table-over-ORM-relation
+  preference as `RolePermissionEntity`/`WeekCourseTopicEntity`),
+  `AttemptEntity` (`examId`, `studentId`, `startedAt`, `expireAt` —
+  `unique(examId, studentId)`, the one-shot invariant; `expireAt` is
+  persisted, not a `@Transient` property like the source's `Attempt.jwt_token`,
+  since the token itself is regenerated fresh on every call rather than
+  stored), `SubmitEntity` (`sectionQuestionId`, `studentId`, `choice`
+  constrained 1–4, `unique(sectionQuestionId, studentId)`).
+- **Exam-taking session token** (`exam.internal.ExamTokenService`): a second,
+  independently-secreted JWT (`roshdeandishe.exam.token-secret`, its own HMAC
+  key), issued per `Attempt`, distinct from both the session cookie and the
+  mobile bearer JWT (`roshdeandishe.jwt.secret`) — a faithful port of
+  `azmoon/token.py`'s scoped, short-lived token, except expiry is the JWT's
+  own native `exp` claim (not a hand-rolled comparison) so an expired token
+  fails to decode automatically. Lives in `exam.internal` — every
+  `ExamFacade` method that deals with the exam-take flow accepts the raw
+  token string and decodes/validates it internally, so `ExamTakeController`
+  (module root) never touches the token codec directly.
+- **Weekly-exam auto-generation**: `ExamFacade.generateWeeklyExam(schoolId,
+  studentId, weekStart)` calls `StudyPlanFacade.getRecentTopics(studentId)`
+  directly (a plain synchronous facade call, this codebase's stated default
+  — events are for one-way reactions, not this) and, for each recent topic,
+  builds one `Section` with up to 5 randomly-picked questions per
+  topic/sub-topic (`lazy=true`, same as the source — never errors on too few
+  questions).
+- REST: `ExamController` (create/list/get collective exams, `assign`
+  students, create sections — manual and auto-pick, trigger weekly
+  generation — all `@RequiresModule("EXAM")` + `EXAM_MANAGE`/`EXAM_VIEW`),
+  `ExamResultController` (instructor-side results, `EXAM_VIEW`),
+  `MyExamsController` (`/api/me/schools/{schoolId}/exams` — the "my" pattern:
+  list own exams, start an attempt, view own result, no
+  `@RequiresPermission`/`@RequiresModule`, `studentId` resolved via
+  `AcademicFacade.findMyEnrollment`, never from client input),
+  `ExamTakeController` (`/api/exam-take/**`, token-authenticated — `permitAll`
+  + CSRF-ignored in `SecurityConfig`, excluded from `TenantResolverFilter`,
+  same treatment as `BaleWebhookController`: the token itself is the full
+  credential and carries `examId`/`studentId`, so no session, no
+  `X-School-ID`, no `@RequiresPermission` at all — its own permission
+  mechanism keyed off the exam token, exactly as this section originally
+  called for).
 
 ## 6. `studyplan` (new module) — Plans + auto-scheduler
 
@@ -300,8 +358,10 @@ Depends on: `curriculum` (topics), `academic` (students/classes).
 2. `curriculum` (no dependencies on the other new modules). **Done.**
 3. `studyplan` (depends only on `curriculum` + `academic`). **Done.**
 4. `exam` (depends on `curriculum` + `academic` + `studyplan`, the deepest
-   dependency chain — build last so `getRecentTopics` already exists).
+   dependency chain — built last so `getRecentTopics` already existed). **Done.**
 
-Each step still goes through the `new-module` skill individually; this
-document is context for that process, not a replacement for the module-code/
-permission-code/dependency decisions that skill is meant to force explicitly.
+**This closes out the moshavere port** — all four pieces (`iam` OTP, `curriculum`,
+`studyplan`, `exam`) are built. Each step went through the `new-module` skill
+individually; this document was context for that process, not a replacement
+for the module-code/permission-code/dependency decisions that skill forced
+explicitly at each step.
