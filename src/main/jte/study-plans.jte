@@ -2,10 +2,10 @@
 
 @param NavbarModel navbar
 
-@template.layout.main(title = "برنامه‌های مطالعه", scripts = java.util.List.of("/js/navbar.js", "/js/study-plans.js"), content = @`
+@template.layout.main(title = "برنامه‌های مطالعه", styles = java.util.List.of("/css/my-study-plan.css"), scripts = java.util.List.of("/js/navbar.js", "/js/study-plans.js"), content = @`
 @template.layout.navbar(navbar = navbar)
 
-<section class="section" x-data="studyPlansPage()">
+<section class="section" x-data="studyPlansPage()" @keydown.escape.window="closeGridBlock()">
     <div class="container">
         <h1 class="title is-4">برنامه‌های مطالعه</h1>
 
@@ -210,37 +210,41 @@
                                         </div>
                                     </div>
 
-                                    <table class="table is-fullwidth is-striped" x-show="intervals.length > 0">
-                                        <thead>
-                                        <tr>
-                                            <th>سرفصل</th>
-                                            <th>شروع</th>
-                                            <th>پایان</th>
-                                            <th>انجام‌شده</th>
-                                            <th></th>
-                                        </tr>
-                                        </thead>
-                                        <tbody>
-                                        <template x-for="interval in intervals" :key="interval.id">
-                                            <tr>
-                                                <td x-text="topicName(interval.topicId)"></td>
-                                                <td dir="ltr" x-text="interval.start.replace('T', ' ')"></td>
-                                                <td dir="ltr" x-text="interval.end.replace('T', ' ')"></td>
-                                                <td>
-                                                    <button type="button" class="button is-small"
-                                                            :class="interval.done ? 'is-success' : 'is-light'"
-                                                            @click="toggleIntervalDone(interval)">
-                                                        <span x-text="interval.done ? 'بله' : 'خیر'"></span>
-                                                    </button>
-                                                </td>
-                                                <td>
-                                                    <button type="button" class="button is-small is-danger is-light"
-                                                            @click="deleteInterval(interval)">حذف</button>
-                                                </td>
-                                            </tr>
-                                        </template>
-                                        </tbody>
-                                    </table>
+                                    <div class="sp-legend" x-show="!loadingWeek && intervals.length > 0">
+                                        <span class="sp-legend-item"><span class="sp-swatch sp-swatch--pending"></span> در انتظار ثبت</span>
+                                        <span class="sp-legend-item"><span class="sp-swatch sp-swatch--done"></span> مطالعه انجام‌شده</span>
+                                    </div>
+
+                                    <div class="box sp-grid-box" x-show="!loadingWeek && intervals.length > 0">
+                                        <div class="sp-grid">
+                                            <div class="sp-axis">
+                                                <template x-for="h in hourMarks" :key="h">
+                                                    <div class="sp-hour" :style="'top:' + hourMarkTop(h) + 'px'" x-text="hourMarkLabel(h)"></div>
+                                                </template>
+                                            </div>
+                                            <template x-for="day in weekDays" :key="day.iso">
+                                                <div class="sp-day" :class="{ 'sp-day--today': day.isToday }">
+                                                    <div class="sp-day-head">
+                                                        <div class="sp-day-name" x-text="day.name"></div>
+                                                        <div :class="day.isToday ? 'sp-day-num sp-day-num--today' : 'sp-day-num'" x-text="day.dateNum"></div>
+                                                    </div>
+                                                    <div class="sp-day-body">
+                                                        <template x-for="block in day.blocks" :key="block.id">
+                                                            <button type="button" class="sp-block"
+                                                                    :class="block.done ? 'sp-block--done' : 'sp-block--pending'"
+                                                                    :style="'top:' + block.top + 'px; height:' + block.height + 'px'"
+                                                                    @click="openGridBlock(block)">
+                                                                <span class="sp-block-title" x-text="block.topicName"></span>
+                                                                <span class="sp-block-time" x-show="block.showTime" x-text="block.timeLabel"></span>
+                                                                <span class="sp-block-check" x-show="block.done">✓</span>
+                                                            </button>
+                                                        </template>
+                                                    </div>
+                                                </div>
+                                            </template>
+                                        </div>
+                                    </div>
+
                                     <div class="notification" x-show="!loadingWeek && intervals.length === 0">
                                         برای این هفته هنوز بازه‌ی مطالعه‌ای ثبت نشده است. از «پیشنهاد خودکار» یا فرم زیر استفاده کنید.
                                     </div>
@@ -283,6 +287,50 @@
                 </template>
             </div>
         </template>
+    </div>
+
+    <%-- ------------------------------------------------------- بازه‌ی انتخاب‌شده --%>
+    <div class="modal" :class="{ 'is-active': gridBlock }" x-cloak>
+        <div class="modal-background" @click="closeGridBlock"></div>
+        <div class="modal-card">
+            <header class="modal-card-head">
+                <p class="modal-card-title" x-text="gridBlock ? gridBlock.topicName : ''"></p>
+                <button class="delete" type="button" aria-label="close" @click="closeGridBlock"></button>
+            </header>
+            <template x-if="gridBlock && gridBlockStep === 'detail'">
+                <section class="modal-card-body">
+                    <p class="has-text-grey mb-4" x-text="gridBlock ? gridBlock.timeLabel : ''"></p>
+                    <p>
+                        وضعیت:
+                        <span class="tag" :class="gridBlock && gridBlock.done ? 'is-success' : 'is-light'"
+                              x-text="gridBlock && gridBlock.done ? 'انجام‌شده' : 'انجام‌نشده'"></span>
+                    </p>
+                </section>
+            </template>
+            <template x-if="gridBlock && gridBlockStep === 'confirm-delete'">
+                <section class="modal-card-body">
+                    <p class="has-text-weight-semibold">آیا از حذف این بازه‌ی مطالعه مطمئن هستید؟</p>
+                    <p class="has-text-grey" x-text="gridBlock ? gridBlock.topicName + ' — ' + gridBlock.timeLabel : ''"></p>
+                </section>
+            </template>
+            <footer class="modal-card-foot">
+                <template x-if="gridBlockStep === 'detail'">
+                    <div style="display: contents">
+                        <button class="button is-link" type="button" @click="toggleGridBlockDone">
+                            <span x-text="gridBlock && gridBlock.done ? 'علامت‌گذاری به‌عنوان انجام‌نشده' : 'علامت‌گذاری به‌عنوان انجام‌شده'"></span>
+                        </button>
+                        <button class="button is-danger is-light" type="button" @click="gridBlockStep = 'confirm-delete'">حذف</button>
+                        <button class="button" type="button" @click="closeGridBlock">بستن</button>
+                    </div>
+                </template>
+                <template x-if="gridBlockStep === 'confirm-delete'">
+                    <div style="display: contents">
+                        <button class="button is-danger" type="button" @click="deleteGridBlock">حذف قطعی</button>
+                        <button class="button" type="button" @click="gridBlockStep = 'detail'">انصراف</button>
+                    </div>
+                </template>
+            </footer>
+        </div>
     </div>
 </section>
 `)
