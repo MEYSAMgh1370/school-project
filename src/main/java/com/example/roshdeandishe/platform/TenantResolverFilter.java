@@ -43,6 +43,19 @@ public class TenantResolverFilter extends OncePerRequestFilter {
             "/roles",
             // همان استدلال /people برای صفحه‌ی مدیریت کلاس‌ها
             "/classes",
+            // همان استدلال /people برای صفحه‌ی سرفصل‌ها و بانک سؤال
+            "/curriculum",
+            // همان استدلال /people برای صفحه‌ی برنامه‌های مطالعه
+            "/study-plans",
+            // همان استدلال /people برای صفحه‌ی مدیریت آزمون‌ها
+            "/exams",
+            // «آزمون‌های من»: مثل /my-invoices خودِ صفحه یک route است؛
+            // فراخوانی‌های fetch آن زیرمجموعه‌ی پیشوند /api/me هستند
+            "/my-exams",
+            // صفحه‌ی آزمون‌دهی (نه پیشوند REST آن که از قبل مستثناست): هیچ
+            // X-School-ID ای در دسترس این صفحه نیست - همان استدلال
+            // /api/exam-take بالاتر
+            "/exam-take",
             // همان استدلال /people برای صفحه‌ی ثبت‌نام دانش‌آموز
             "/students",
             // همان استدلال /people برای صفحه‌ی امور مالی

@@ -102,7 +102,7 @@ public class SecurityConfig {
                         .requestMatchers(
                                 "/", "/api/auth/**", "/actuator/**", "/error",
                                 "/swagger-ui/**", "/swagger-ui.html", "/v3/api-docs/**",
-                                "/api/bale/webhook/**", "/api/exam-take/**",
+                                "/api/bale/webhook/**", "/api/exam-take/**", "/exam-take",
                                 "/activate", "/login", "/register", "/webjars/**",
                                 "/css/**", "/js/**"
                         ).permitAll()
