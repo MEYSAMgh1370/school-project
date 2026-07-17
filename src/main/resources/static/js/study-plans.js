@@ -41,6 +41,14 @@ document.addEventListener('alpine:init', () => {
         submittingInterval: false,
         intervalForm: { topicId: '', start: '', end: '' },
 
+        // گرید هفتگی (my-study-plan.css) - hourStart/hourEnd/hourPx باید با
+        // sp-day-body/sp-axis آن فایل هماهنگ بمانند (ببینید کامنت بالای فایل).
+        hourStart: 6,
+        hourEnd: 24,
+        hourPx: 60,
+        gridBlock: null,
+        gridBlockStep: 'detail',
+
         init() {
             const saved = parseInt(localStorage.getItem('selectedSchoolId') || '', 10);
             this.schoolId = Number.isInteger(saved) ? saved : null;
@@ -374,6 +382,93 @@ document.addEventListener('alpine:init', () => {
             }
         },
 
+        // -------------------------------------------------------- گرید هفتگی
+
+        get weekDays() {
+            const start = new Date(this.mostRecentSaturday(this.weekDate) + 'T00:00:00');
+            const todayIso = this.formatLocalDate(new Date());
+            const days = [];
+            for (let i = 0; i < 7; i++) {
+                const d = new Date(start);
+                d.setDate(d.getDate() + i);
+                const iso = this.formatLocalDate(d);
+                days.push({
+                    iso,
+                    name: this.weekdays[i].label,
+                    dateNum: d.getDate(),
+                    isToday: iso === todayIso,
+                    blocks: this.blocksForDay(iso)
+                });
+            }
+            return days;
+        },
+
+        blocksForDay(iso) {
+            return this.intervals
+                .filter(iv => iv.start.slice(0, 10) === iso)
+                .map(iv => this.toBlock(iv))
+                .sort((a, b) => a.top - b.top);
+        },
+
+        toBlock(iv) {
+            const start = new Date(iv.start);
+            const end = new Date(iv.end);
+            const startHour = start.getHours() + start.getMinutes() / 60;
+            const durationHours = (end - start) / 3600000;
+            const top = Math.max(0, Math.round((startHour - this.hourStart) * this.hourPx));
+            const height = Math.max(16, Math.round(durationHours * this.hourPx - 2));
+            const pad2 = n => String(n).padStart(2, '0');
+            return {
+                id: iv.id,
+                interval: iv,
+                topicName: this.topicName(iv.topicId),
+                done: iv.done,
+                top,
+                height,
+                showTime: durationHours > 1,
+                timeLabel: `${pad2(start.getHours())}:${pad2(start.getMinutes())} – ${pad2(end.getHours())}:${pad2(end.getMinutes())}`
+            };
+        },
+
+        get hourMarks() {
+            const marks = [];
+            for (let h = this.hourStart; h <= this.hourEnd; h += 1) {
+                marks.push(h);
+            }
+            return marks;
+        },
+
+        hourMarkTop(h) {
+            return (h - this.hourStart) * this.hourPx;
+        },
+
+        hourMarkLabel(h) {
+            return String(h).padStart(2, '0') + ':00';
+        },
+
+        openGridBlock(block) {
+            this.gridBlock = block;
+            this.gridBlockStep = 'detail';
+        },
+
+        closeGridBlock() {
+            this.gridBlock = null;
+        },
+
+        async toggleGridBlockDone() {
+            const ok = await this.toggleIntervalDone(this.gridBlock.interval);
+            if (ok) {
+                this.closeGridBlock();
+            }
+        },
+
+        async deleteGridBlock() {
+            const ok = await this.deleteInterval(this.gridBlock.interval);
+            if (ok) {
+                this.closeGridBlock();
+            }
+        },
+
         async suggestWeek() {
             this.suggesting = true;
             this.error = '';
@@ -461,6 +556,7 @@ document.addEventListener('alpine:init', () => {
 
         async toggleIntervalDone(interval) {
             this.error = '';
+            this.notice = '';
             try {
                 const response = await fetch(`${this.intervalsBase(this.selectedStudentId)}/${interval.id}`, {
                     method: 'PATCH',
@@ -474,11 +570,14 @@ document.addEventListener('alpine:init', () => {
                 if (!response.ok) {
                     const classified = await this.classifyError(response);
                     this.error = classified.message;
-                    return;
+                    return false;
                 }
+                this.notice = 'وضعیت بازه به‌روزرسانی شد.';
                 await this.loadWeek();
+                return true;
             } catch (e) {
                 this.error = 'ارتباط با سرور برقرار نشد.';
+                return false;
             }
         },
 
@@ -493,12 +592,14 @@ document.addEventListener('alpine:init', () => {
                 if (!response.ok) {
                     const classified = await this.classifyError(response);
                     this.error = classified.message;
-                    return;
+                    return false;
                 }
                 this.notice = 'بازه‌ی مطالعه حذف شد.';
                 await this.loadWeek();
+                return true;
             } catch (e) {
                 this.error = 'ارتباط با سرور برقرار نشد.';
+                return false;
             }
         }
     }));
