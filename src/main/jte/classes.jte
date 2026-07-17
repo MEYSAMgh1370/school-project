@@ -50,6 +50,7 @@
                     </form>
                 </div>
 
+                <div class="table-container">
                 <table class="table is-fullwidth is-striped">
                     <thead>
                     <tr>
@@ -77,6 +78,7 @@
                     </template>
                     </tbody>
                 </table>
+                </div>
 
                 <div class="notification" x-show="!loading && classes.length === 0">
                     هنوز کلاسی در این مدرسه ثبت نشده است.
@@ -92,7 +94,8 @@
                                     @click="selectedClassId = null"></button>
                         </div>
                     </div>
-                    <table class="table is-fullwidth is-narrow" x-show="rosterForSelected().length > 0">
+                    <div class="table-container" x-show="rosterForSelected().length > 0">
+                    <table class="table is-fullwidth is-narrow">
                         <thead>
                         <tr>
                             <th>نام دانش‌آموز</th>
@@ -108,6 +111,7 @@
                         </template>
                         </tbody>
                     </table>
+                    </div>
                     <p class="has-text-grey" x-show="rosterForSelected().length === 0">
                         دانش‌آموزی در این کلاس ثبت‌نام نشده است.
                     </p>

@@ -27,6 +27,7 @@
                                     <button class="button is-small mb-3" @click="seedDefaults" :class="{ 'is-loading': seeding }">
                                         ساخت دسته‌های پیش‌فرض
                                     </button>
+                                    <div class="table-container">
                                     <table class="table is-fullwidth is-narrow">
                                         <tbody>
                                         <template x-for="category in categories" :key="category.id">
@@ -43,6 +44,7 @@
                                         </template>
                                         </tbody>
                                     </table>
+                                    </div>
                                     <form @submit.prevent="createCategory">
                                         <div class="field has-addons">
                                             <div class="control is-expanded">
@@ -61,6 +63,7 @@
                             <div class="column">
                                 <div class="box">
                                     <h2 class="title is-6">طرف‌حساب‌ها</h2>
+                                    <div class="table-container">
                                     <table class="table is-fullwidth is-narrow">
                                         <tbody>
                                         <template x-for="vendor in vendors" :key="vendor.id">
@@ -77,6 +80,7 @@
                                         </template>
                                         </tbody>
                                     </table>
+                                    </div>
                                     <form @submit.prevent="createVendor">
                                         <div class="field has-addons">
                                             <div class="control is-expanded">
@@ -180,6 +184,7 @@
                         </div>
 
                         <h2 class="title is-6">فهرست هزینه‌ها</h2>
+                        <div class="table-container">
                         <table class="table is-fullwidth is-striped">
                             <thead>
                             <tr>
@@ -218,6 +223,7 @@
                             </template>
                             </tbody>
                         </table>
+                        </div>
                         <div class="notification" x-show="!loading && expenses.length === 0">
                             هیچ هزینه‌ای با این فیلترها ثبت نشده است.
                         </div>
@@ -226,7 +232,8 @@
                             <div class="box" x-show="expandedExpenseId === expense.id" x-cloak>
                                 <h3 class="title is-6">پیوست‌های هزینه (<span x-text="categoryName(expense.categoryId)"></span>)</h3>
                                 <p x-show="attachmentsLoading">در حال بارگذاری...</p>
-                                <table class="table is-fullwidth" x-show="!attachmentsLoading && attachments.length > 0">
+                                <div class="table-container" x-show="!attachmentsLoading && attachments.length > 0">
+                                <table class="table is-fullwidth">
                                     <tbody>
                                     <template x-for="attachment in attachments" :key="attachment.id">
                                         <tr>
@@ -243,6 +250,7 @@
                                     </template>
                                     </tbody>
                                 </table>
+                                </div>
                                 <p x-show="!attachmentsLoading && attachments.length === 0">هنوز پیوستی ثبت نشده است.</p>
                                 <div class="field" x-show="expense.status !== 'CANCELLED'">
                                     <label class="label">افزودن پیوست (رسید/فاکتور - حداکثر ۵ مگابایت)</label>
@@ -291,7 +299,8 @@
                                 </div>
                             </div>
 
-                            <table class="table is-fullwidth" x-show="summaryRows.length > 0">
+                            <div class="table-container" x-show="summaryRows.length > 0">
+                            <table class="table is-fullwidth">
                                 <thead>
                                 <tr><th>مورد</th><th>مبلغ</th><th>تعداد</th></tr>
                                 </thead>
@@ -305,6 +314,7 @@
                                 </template>
                                 </tbody>
                             </table>
+                            </div>
 
                             <div class="notification is-info" x-show="financeSummaryResult" x-cloak>
                                 درآمد بازه: <strong dir="ltr" x-text="financeSummaryResult ? financeSummaryResult.income : ''"></strong> تومان -

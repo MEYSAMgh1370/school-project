@@ -27,7 +27,8 @@
                                 این مدرسه هنوز برنامه‌ی مطالعه‌ای ندارد. اولین برنامه را از فرم زیر بسازید.
                             </div>
 
-                            <table class="table is-fullwidth is-striped" x-show="plans.length > 0">
+                            <div class="table-container" x-show="plans.length > 0">
+                            <table class="table is-fullwidth is-striped">
                                 <thead>
                                 <tr>
                                     <th>عنوان</th>
@@ -51,11 +52,13 @@
                                 </template>
                                 </tbody>
                             </table>
+                            </div>
 
                             <template x-for="plan in plans" :key="'assign-' + plan.id">
                                 <div class="box" x-show="expandedPlanId === plan.id" x-cloak>
                                     <h3 class="title is-6" x-text="'دانش‌آموزان تخصیص‌یافته به: ' + plan.title"></h3>
-                                    <table class="table is-fullwidth is-narrow" x-show="assignments.length > 0">
+                                    <div class="table-container" x-show="assignments.length > 0">
+                                    <table class="table is-fullwidth is-narrow">
                                         <tbody>
                                         <template x-for="assignment in assignments" :key="assignment.studentId">
                                             <tr>
@@ -64,6 +67,7 @@
                                         </template>
                                         </tbody>
                                     </table>
+                                    </div>
                                     <p class="has-text-grey mb-3" x-show="assignments.length === 0">
                                         هنوز دانش‌آموزی به این برنامه تخصیص داده نشده است.
                                     </p>

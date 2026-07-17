@@ -64,6 +64,7 @@
                     </form>
                 </div>
 
+                <div class="table-container">
                 <table class="table is-fullwidth is-striped">
                     <thead>
                     <tr>
@@ -97,6 +98,7 @@
                     </template>
                     </tbody>
                 </table>
+                </div>
 
                 <div class="notification" x-show="!loading && members.length === 0">
                     هنوز عضوی در این مدرسه ثبت نشده است.
