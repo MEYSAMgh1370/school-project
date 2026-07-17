@@ -43,8 +43,8 @@
                                         <td>
                                             <button type="button" class="button is-small"
                                                     :class="{ 'is-link': expandedPlanId === plan.id }"
-                                                    @click="toggleAssignments(plan.id)">
-                                                تخصیص به دانش‌آموز
+                                                    @click="togglePlanDetails(plan.id)">
+                                                جزئیات برنامه
                                             </button>
                                         </td>
                                     </tr>
@@ -52,41 +52,124 @@
                                 </tbody>
                             </table>
 
-                            <template x-for="plan in plans" :key="'assign-' + plan.id">
+                            <template x-for="plan in plans" :key="'detail-' + plan.id">
                                 <div class="box" x-show="expandedPlanId === plan.id" x-cloak>
-                                    <h3 class="title is-6" x-text="'دانش‌آموزان تخصیص‌یافته به: ' + plan.title"></h3>
-                                    <table class="table is-fullwidth is-narrow" x-show="assignments.length > 0">
-                                        <tbody>
-                                        <template x-for="assignment in assignments" :key="assignment.studentId">
-                                            <tr>
-                                                <td x-text="studentLabel(assignment.studentId)"></td>
-                                            </tr>
-                                        </template>
-                                        </tbody>
-                                    </table>
-                                    <p class="has-text-grey mb-3" x-show="assignments.length === 0">
-                                        هنوز دانش‌آموزی به این برنامه تخصیص داده نشده است.
-                                    </p>
-                                    <div class="field has-addons">
-                                        <div class="control is-expanded">
-                                            <div class="select is-fullwidth">
-                                                <select x-model="assignStudentIdInput">
-                                                    <option value="">— انتخاب دانش‌آموز —</option>
-                                                    <template x-for="student in students" :key="'opt-' + student.studentId">
-                                                        <option :value="student.studentId" x-text="studentLabel(student.studentId)"></option>
-                                                    </template>
-                                                </select>
+                                    <div class="tabs is-toggle is-toggle-rounded is-small">
+                                        <ul>
+                                            <li :class="{ 'is-active': planDetailTab === 'assignments' }">
+                                                <a @click.prevent="planDetailTab = 'assignments'">تخصیص به دانش‌آموز</a>
+                                            </li>
+                                            <li :class="{ 'is-active': planDetailTab === 'weekCourses' }">
+                                                <a @click.prevent="selectWeekCoursesTab(plan.id)">سرفصل‌های هفتگی</a>
+                                            </li>
+                                        </ul>
+                                    </div>
+
+                                    <template x-if="planDetailTab === 'assignments'">
+                                        <div>
+                                            <h3 class="title is-6" x-text="'دانش‌آموزان تخصیص‌یافته به: ' + plan.title"></h3>
+                                            <table class="table is-fullwidth is-narrow" x-show="assignments.length > 0">
+                                                <tbody>
+                                                <template x-for="assignment in assignments" :key="assignment.studentId">
+                                                    <tr>
+                                                        <td x-text="studentLabel(assignment.studentId)"></td>
+                                                    </tr>
+                                                </template>
+                                                </tbody>
+                                            </table>
+                                            <p class="has-text-grey mb-3" x-show="assignments.length === 0">
+                                                هنوز دانش‌آموزی به این برنامه تخصیص داده نشده است.
+                                            </p>
+                                            <div class="field has-addons">
+                                                <div class="control is-expanded">
+                                                    <div class="select is-fullwidth">
+                                                        <select x-model="assignStudentIdInput">
+                                                            <option value="">— انتخاب دانش‌آموز —</option>
+                                                            <template x-for="student in students" :key="'opt-' + student.studentId">
+                                                                <option :value="student.studentId" x-text="studentLabel(student.studentId)"></option>
+                                                            </template>
+                                                        </select>
+                                                    </div>
+                                                </div>
+                                                <div class="control">
+                                                    <button class="button is-link" type="button"
+                                                            :disabled="!assignStudentIdInput"
+                                                            :class="{ 'is-loading': submittingAssignment }"
+                                                            @click="assignStudent(plan.id)">
+                                                        تخصیص
+                                                    </button>
+                                                </div>
                                             </div>
                                         </div>
-                                        <div class="control">
-                                            <button class="button is-link" type="button"
-                                                    :disabled="!assignStudentIdInput"
-                                                    :class="{ 'is-loading': submittingAssignment }"
-                                                    @click="assignStudent(plan.id)">
-                                                تخصیص
-                                            </button>
+                                    </template>
+
+                                    <template x-if="planDetailTab === 'weekCourses'">
+                                        <div>
+                                            <h3 class="title is-6" x-text="'سرفصل‌های هفتگیِ: ' + plan.title"></h3>
+                                            <table class="table is-fullwidth is-narrow" x-show="weekCourses.length > 0">
+                                                <thead>
+                                                <tr>
+                                                    <th>شروع هفته</th>
+                                                    <th>سرفصل</th>
+                                                    <th>زیرسرفصل‌ها</th>
+                                                </tr>
+                                                </thead>
+                                                <tbody>
+                                                <template x-for="weekCourse in weekCourses" :key="weekCourse.id">
+                                                    <tr>
+                                                        <td dir="ltr" x-text="weekCourse.weekStart"></td>
+                                                        <td x-text="topicName(weekCourse.courseTopicId)"></td>
+                                                        <td x-text="subTopicNames(weekCourse.subTopicIds) || '—'"></td>
+                                                    </tr>
+                                                </template>
+                                                </tbody>
+                                            </table>
+                                            <p class="has-text-grey mb-3" x-show="!loadingWeekCourses && weekCourses.length === 0">
+                                                هنوز سرفصل هفتگی‌ای برای این برنامه ثبت نشده است.
+                                            </p>
+
+                                            <div class="field is-grouped is-grouped-multiline">
+                                                <div class="control">
+                                                    <label class="label" for="weekCourseStart">یک روز از هفته‌ی مورد نظر</label>
+                                                    <input class="input" dir="ltr" id="weekCourseStart" type="date"
+                                                           x-model="weekCourseForm.weekStart">
+                                                </div>
+                                                <div class="control is-expanded">
+                                                    <label class="label" for="weekCourseTopic">سرفصل هفته</label>
+                                                    <div class="select is-fullwidth">
+                                                        <select id="weekCourseTopic" x-model="weekCourseForm.courseTopicId">
+                                                            <option value="">— انتخاب کنید —</option>
+                                                            <template x-for="node in flatTopics" :key="'wc-topic-' + node.id">
+                                                                <option :value="node.id" x-text="'—'.repeat(node.depth) + ' ' + node.name"></option>
+                                                            </template>
+                                                        </select>
+                                                    </div>
+                                                </div>
+                                            </div>
+
+                                            <label class="label">زیرسرفصل‌ها (حداکثر ۱۰ مورد)</label>
+                                            <div class="field is-grouped is-grouped-multiline mb-3">
+                                                <template x-for="node in flatTopics" :key="'wc-sub-' + node.id">
+                                                    <label class="checkbox mr-4" x-show="String(node.id) !== String(weekCourseForm.courseTopicId)">
+                                                        <input type="checkbox"
+                                                               :checked="weekCourseForm.subTopicIds.includes(node.id)"
+                                                               :disabled="!weekCourseForm.subTopicIds.includes(node.id) && weekCourseForm.subTopicIds.length >= 10"
+                                                               @change="toggleWeekCourseSubTopic(node.id)">
+                                                        <span x-text="node.name"></span>
+                                                    </label>
+                                                </template>
+                                            </div>
+
+                                            <div class="field">
+                                                <button class="button is-link" type="button"
+                                                        :disabled="!weekCourseForm.weekStart || !weekCourseForm.courseTopicId"
+                                                        :class="{ 'is-loading': submittingWeekCourse }"
+                                                        @click="createWeekCourse(plan.id)">
+                                                    افزودن سرفصل هفتگی
+                                                </button>
+                                            </div>
                                         </div>
-                                    </div>
+                                    </template>
                                 </div>
                             </template>
 
@@ -208,6 +291,54 @@
                                                 خالی‌کردن این هفته
                                             </button>
                                         </div>
+                                        <div class="control" style="align-self: flex-end">
+                                            <button class="button" type="button" @click="copyPanelOpen = !copyPanelOpen">
+                                                کپی این هفته برای دانش‌آموزان دیگر
+                                            </button>
+                                        </div>
+                                    </div>
+
+                                    <div class="box" x-show="copyPanelOpen" x-cloak>
+                                        <h4 class="title is-6">کپی بازه‌های این هفته به دانش‌آموزان دیگر</h4>
+                                        <p class="has-text-grey" x-show="otherStudents().length === 0">
+                                            دانش‌آموز دیگری در این مدرسه برای کپی وجود ندارد.
+                                        </p>
+                                        <div class="field is-grouped is-grouped-multiline mb-3">
+                                            <template x-for="student in otherStudents()" :key="'copy-target-' + student.studentId">
+                                                <label class="checkbox mr-4">
+                                                    <input type="checkbox"
+                                                           :checked="copyTargetIds.includes(student.studentId)"
+                                                           @change="toggleCopyTarget(student.studentId)">
+                                                    <span x-text="studentLabel(student.studentId)"></span>
+                                                </label>
+                                            </template>
+                                        </div>
+                                        <div class="field">
+                                            <button class="button is-link" type="button"
+                                                    :disabled="copyTargetIds.length === 0"
+                                                    :class="{ 'is-loading': copyingWeek }" @click="copyWeekToOthers">
+                                                کپی کردن
+                                            </button>
+                                        </div>
+                                        <table class="table is-fullwidth is-narrow mt-3" x-show="copyResults.length > 0">
+                                            <thead>
+                                            <tr>
+                                                <th>دانش‌آموز</th>
+                                                <th>نتیجه</th>
+                                            </tr>
+                                            </thead>
+                                            <tbody>
+                                            <template x-for="result in copyResults" :key="'copy-result-' + result.studentId">
+                                                <tr>
+                                                    <td x-text="studentLabel(result.studentId)"></td>
+                                                    <td>
+                                                        <span class="tag" :class="result.ok ? 'is-success' : 'is-danger'"
+                                                              x-text="result.ok ? 'موفق' : (result.message || 'ناموفق')"></span>
+                                                    </td>
+                                                </tr>
+                                            </template>
+                                            </tbody>
+                                        </table>
                                     </div>
 
                                     <div class="sp-legend" x-show="!loadingWeek && intervals.length > 0">
