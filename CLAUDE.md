@@ -598,6 +598,31 @@ com.example.roshdeandishe
 │   │                       .java   first module with two new-module Facade
 │   ├── StudyIntervalController     dependencies at once.
 │   │                       .java
+│   ├── MyStudyIntervalController   «برنامه‌ی مطالعه‌ی من» (student self-view,
+│   │                       .java   built 2026-07-17 for the Claude Design
+│   │                               handoff — see §7 Done, "Student study-plan
+│   │                               self-view"). GET/PATCH
+│   │                               /api/me/schools/{schoolId}/study-intervals —
+│   │                               same "my" trust model as MyEnrollmentController/
+│   │                               MyExamsController (no @RequiresModule/
+│   │                               @RequiresPermission, studentId resolved via
+│   │                               AcademicFacade.findMyEnrollment, never
+│   │                               client input). PATCH goes through the new
+│   │                               StudyPlanFacade.updateOwnInterval, not the
+│   │                               admin updateInterval — the admin one only
+│   │                               checks schoolId, not studentId (fine for a
+│   │                               STUDYPLAN_MANAGE caller, who is already
+│   │                               authorized school-wide; unsafe for a
+│   │                               student self-service endpoint, where any
+│   │                               authenticated student could otherwise edit
+│   │                               another student's interval by guessing its
+│   │                               id). Topic names are resolved server-side
+│   │                               via CurriculumFacade.listTopics and embedded
+│   │                               in the response, since curriculum's own
+│   │                               endpoints are CURRICULUM_VIEW/MANAGE-gated
+│   │                               (SCHOOL_ADMIN/TEACHER only — the bank
+│   │                               carries correct answers) and a student
+│   │                               can't call them directly.
 │   ├── internal/                   Course weighting is a real child table
 │   │   ├── PlanEntity /             (plan_course_weights), NOT the JSON column
 │   │   │    PlanRepository          moshavere used — same join-table-over-array
@@ -677,7 +702,8 @@ com.example.roshdeandishe
     ├── StudyPlansPageController.java
     ├── ExamsPageController.java
     ├── MyExamsPageController.java
-    └── ExamTakePageController.java
+    ├── ExamTakePageController.java
+    └── MyStudyPlanPageController.java
                                   (fourth slice) sets/views the
                                   tuition fee, lists invoices, records payments,
                                   and runs invoice backfill; GET /expenses
@@ -772,7 +798,14 @@ com.example.roshdeandishe
                                   pages built in the same pass — see §7 Done
                                   for why exam-take is a second, separate,
                                   navbar-less, permitAll page rather than a
-                                  section of /my-exams.
+                                  section of /my-exams. MyStudyPlanPageController
+                                  (GET /my-study-plan, built 2026-07-17 from a
+                                  Claude Design handoff bundle — see §7 Done,
+                                  "Student study-plan self-view") is a thin
+                                  shell like /my-exams — no X-School-ID, data
+                                  entirely client-side against the new
+                                  studyplan.MyStudyIntervalController. Navbar
+                                  link visible for STUDENT only.
 │
 └── bale/                       ← Bale (بله) messenger bot integration — outbound
     ├── BaleFacade.java             notifications + inbound self-service queries.
@@ -2662,6 +2695,65 @@ above.
   self-service school). **This closes out the moshavere port** — all four
   pieces (`iam` OTP, `curriculum`, `studyplan`, `exam`) are now built; see
   `MOSHAVERE_PORT_SPEC.md` §8.
+- **Student study-plan self-view (built 2026-07-17, from a Claude Design
+  handoff bundle — implementing that tool's "Student Panel" mockup against
+  this codebase's real `studyplan` domain, not the mockup's own invented
+  one)**: `GET /my-study-plan` (`web.MyStudyPlanPageController`, thin shell
+  like `/my-exams`) — a read-mostly weekly calendar of the student's own
+  auto-scheduled `StudyInterval` blocks (RTL, Saturday→Friday, Jalali dates/
+  Persian digits, week + Jalali month-picker navigation), a legend, and a
+  client-computed "آمار و گزارش" tab (KPIs, per-day and per-topic charts) —
+  all derived from one weekly fetch, no separate stats endpoint. Backed by a
+  new `studyplan.MyStudyIntervalController` (`GET`/`PATCH
+  /api/me/schools/{schoolId}/study-intervals`), same "my" trust model as
+  `MyEnrollmentController`/`MyExamsController` (no `@RequiresModule`/
+  `@RequiresPermission`, `studentId` resolved via
+  `AcademicFacade.findMyEnrollment`). **Explicit scope decision, made with
+  the user before implementing**: the design mockup invented per-session
+  fields this codebase's `StudyIntervalEntity` doesn't have (assigned/actual
+  pages read, actual minutes studied) — rather than extending the schema,
+  the page was built strictly against the fields that already exist
+  (`topicId`/`start`/`end`/`done`/`testCount`); a student marks a session
+  done and logs a test count, nothing more. Topic names are resolved
+  server-side via `CurriculumFacade.listTopics` and embedded in the
+  response, since Curriculum's own endpoints are
+  `CURRICULUM_VIEW`/`CURRICULUM_MANAGE`-gated (the bank carries correct
+  answers) and a student can't call them directly. **New facade method:**
+  `StudyPlanFacade.updateOwnInterval(schoolId, studentId, intervalId, done,
+  testCount)` — the pre-existing admin `updateInterval` only checks
+  `schoolId`, which is fine behind `STUDYPLAN_MANAGE` (already
+  school-wide-authorized) but would have let any authenticated student edit
+  another student's interval by guessing its id; the new method also
+  verifies the interval belongs to the calling `studentId`, throwing the
+  existing `IntervalNotFound` otherwise (same "foreign record = not found"
+  convention as everywhere else in this module, so the 404 doesn't leak
+  whether the id exists at all). Also extended two shared pieces rather than
+  duplicating: `layout/main.jte` gained an optional `styles` param
+  (mirroring the pre-existing `scripts` param) since this is the first page
+  with its own external stylesheet (`static/css/my-study-plan.css` — the
+  calendar grid, logical properties only, no new colors, reuses the
+  `--bulma-primary-*`/`--bulma-success-*` HSL tokens); `static/js/jalali.js`
+  (previously Jalali→Gregorian only, for the `/expenses` report picker)
+  gained the reverse direction (`toJalali`) plus `toPersianDigits()` and
+  Persian month/weekday name arrays — completing it into the single shared
+  Jalali+digit-rendering utility DESIGN.md §8 already assumed existed.
+  Navbar link visible for `STUDENT` only; `/my-study-plan` added to
+  `TenantResolverFilter.EXCLUDED_PATHS` (same reasoning as `/my-exams` — its
+  fetches are under the already-excluded `/api/me` prefix). Covered by
+  `MyStudyPlanFlowIntegrationTest` (topic names + own-interval PATCH
+  round-trip, a second student rejected with `interval-not-found` when
+  attempting to PATCH the first student's interval, a non-student caller
+  gets an empty week with no error, unauthenticated page access redirects to
+  `/login`) — **not run against a real Postgres in the authoring session**
+  (no Docker registry egress in that sandbox to pull the Testcontainers
+  image); it compiles and follows the established
+  `*FlowIntegrationTest`/`TestcontainersConfiguration` pattern exactly, same
+  as this repo's CI (`.github/workflows/*.yml`, real internet access) already
+  runs for every other such test — run it there before treating this slice
+  as fully verified. `mvn test -Dtest=ModularityTests` passed in the
+  authoring session (module boundaries intact, no new named-interface
+  exposure needed since `studyplan` already depended on `AcademicFacade`/
+  `CurriculumFacade`/`IamFacade`).
 
 ### Open / explicitly deferred
 

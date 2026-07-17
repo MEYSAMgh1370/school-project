@@ -377,6 +377,20 @@ class StudyPlanFacadeImpl implements StudyPlanFacade {
     @Transactional
     public IntervalInfo updateInterval(Long schoolId, Long intervalId, Boolean done, Integer testCount) {
         StudyIntervalEntity interval = requireIntervalInSchool(schoolId, intervalId);
+        return applyIntervalUpdate(interval, done, testCount);
+    }
+
+    @Override
+    @Transactional
+    public IntervalInfo updateOwnInterval(Long schoolId, Long studentId, Long intervalId, Boolean done, Integer testCount) {
+        StudyIntervalEntity interval = requireIntervalInSchool(schoolId, intervalId);
+        if (!interval.getStudentId().equals(studentId)) {
+            throw new StudyPlanException(new StudyPlanError.IntervalNotFound(intervalId));
+        }
+        return applyIntervalUpdate(interval, done, testCount);
+    }
+
+    private IntervalInfo applyIntervalUpdate(StudyIntervalEntity interval, Boolean done, Integer testCount) {
         if (testCount != null && testCount < 0) {
             throw new StudyPlanException(new StudyPlanError.InvalidInterval("تعداد تست نمی‌تواند منفی باشد."));
         }
