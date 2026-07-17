@@ -52,6 +52,10 @@ public class TenantResolverFilter extends OncePerRequestFilter {
             // «آزمون‌های من»: مثل /my-invoices خودِ صفحه یک route است؛
             // فراخوانی‌های fetch آن زیرمجموعه‌ی پیشوند /api/me هستند
             "/my-exams",
+            // «برنامه‌ی مطالعه‌ی من»: همان استدلال /my-exams - فراخوانی‌های
+            // fetch آن به GET/PATCH /api/me/schools/{id}/study-intervals
+            // می‌روند که خودشان زیرمجموعه‌ی پیشوند /api/me هستند
+            "/my-study-plan",
             // صفحه‌ی آزمون‌دهی (نه پیشوند REST آن که از قبل مستثناست): هیچ
             // X-School-ID ای در دسترس این صفحه نیست - همان استدلال
             // /api/exam-take بالاتر
