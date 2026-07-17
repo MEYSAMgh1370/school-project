@@ -4,6 +4,12 @@ document.addEventListener('alpine:init', () => {
         students: [],
         classes: [],
         pupils: [],
+        parents: [],
+        selectedStudentId: null,
+        guardiansByStudent: {},
+        guardiansLoading: false,
+        guardianForm: { guardianUserId: '' },
+        guardianSubmitting: false,
         loading: false,
         submitting: false,
         error: '',
@@ -17,6 +23,8 @@ document.addEventListener('alpine:init', () => {
                 this.schoolId = e.detail.id;
                 this.error = '';
                 this.notice = '';
+                this.selectedStudentId = null;
+                this.guardiansByStudent = {};
                 this.load();
             });
             if (this.schoolId) {
@@ -44,6 +52,10 @@ document.addEventListener('alpine:init', () => {
             return `/api/admin/schools/${this.schoolId}/memberships`;
         },
 
+        guardiansBase(studentId) {
+            return `${this.studentsBase()}/${studentId}/guardians`;
+        },
+
         className(classId) {
             const classItem = this.classes.find(c => c.id === classId);
             return classItem ? classItem.name : 'نامشخص';
@@ -57,6 +69,35 @@ document.addEventListener('alpine:init', () => {
         studentEmail(userId) {
             const pupil = this.pupils.find(p => p.userId === userId);
             return pupil ? pupil.email : '';
+        },
+
+        // نام/ایمیل والد هم از همان فهرست عضویت‌ها resolve می‌شود، این بار
+        // فیلترشده روی نقش PARENT - همان الگوی teacherName/studentName.
+        guardianName(userId) {
+            const parent = this.parents.find(p => p.userId === userId);
+            return parent ? parent.fullName : `کاربر #${userId}`;
+        },
+
+        guardianEmail(userId) {
+            const parent = this.parents.find(p => p.userId === userId);
+            return parent ? parent.email : '—';
+        },
+
+        selectedStudentUserId() {
+            const student = this.students.find(s => s.studentId === this.selectedStudentId);
+            return student ? student.userId : null;
+        },
+
+        guardiansForSelected() {
+            return this.selectedStudentId ? (this.guardiansByStudent[this.selectedStudentId] || []) : [];
+        },
+
+        // والدینی که هنوز به دانش‌آموز انتخاب‌شده لینک نشده‌اند - صرفاً برای
+        // این‌که دراپ‌داون کسی را که از قبل لینک شده دوباره پیشنهاد ندهد؛
+        // خودِ لینک کردن idempotent است، این فقط UX را تمیزتر می‌کند.
+        availableParentsForSelected() {
+            const linkedIds = new Set(this.guardiansForSelected());
+            return this.parents.filter(p => !linkedIds.has(p.userId));
         },
 
         async showError(response) {
@@ -87,13 +128,76 @@ document.addEventListener('alpine:init', () => {
                 // اگر در دسترس نبود (مثلاً نقش کاربر اجازه‌ی CLASS_MANAGE
                 // ندارد)، صفحه‌ی دانش‌آموزان را نمی‌شکند
                 this.classes = classesResponse.ok ? await classesResponse.json() : [];
-                this.pupils = membershipsResponse.ok
-                    ? (await membershipsResponse.json()).filter(m => m.active && m.roleCode === 'STUDENT')
-                    : [];
+                const memberships = membershipsResponse.ok ? await membershipsResponse.json() : [];
+                this.pupils = memberships.filter(m => m.active && m.roleCode === 'STUDENT');
+                this.parents = memberships.filter(m => m.active && m.roleCode === 'PARENT');
             } catch (e) {
                 this.error = 'ارتباط با سرور برقرار نشد.';
             } finally {
                 this.loading = false;
+            }
+        },
+
+        async toggleGuardianPanel(studentId) {
+            if (this.selectedStudentId === studentId) {
+                this.selectedStudentId = null;
+                return;
+            }
+            this.selectedStudentId = studentId;
+            this.guardianForm = { guardianUserId: '' };
+            if (!this.guardiansByStudent[studentId]) {
+                await this.loadGuardiansFor(studentId);
+            }
+        },
+
+        async loadGuardiansFor(studentId) {
+            this.guardiansLoading = true;
+            try {
+                const response = await fetch(this.guardiansBase(studentId), {
+                    headers: { 'X-School-ID': this.schoolId }
+                });
+                if (!response.ok) {
+                    await this.showError(response);
+                    this.guardiansByStudent[studentId] = [];
+                    return;
+                }
+                this.guardiansByStudent[studentId] = await response.json();
+            } catch (e) {
+                this.error = 'ارتباط با سرور برقرار نشد.';
+                this.guardiansByStudent[studentId] = [];
+            } finally {
+                this.guardiansLoading = false;
+            }
+        },
+
+        async linkGuardian() {
+            if (!this.guardianForm.guardianUserId || !this.selectedStudentId) {
+                return;
+            }
+            this.guardianSubmitting = true;
+            this.error = '';
+            this.notice = '';
+            try {
+                const response = await fetch(this.guardiansBase(this.selectedStudentId), {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-School-ID': this.schoolId,
+                        'X-XSRF-TOKEN': this.csrfToken()
+                    },
+                    body: JSON.stringify({ guardianUserId: parseInt(this.guardianForm.guardianUserId, 10) })
+                });
+                if (!response.ok) {
+                    await this.showError(response);
+                    return;
+                }
+                this.notice = 'ولی با موفقیت لینک شد.';
+                this.guardianForm = { guardianUserId: '' };
+                await this.loadGuardiansFor(this.selectedStudentId);
+            } catch (e) {
+                this.error = 'ارتباط با سرور برقرار نشد.';
+            } finally {
+                this.guardianSubmitting = false;
             }
         },
 

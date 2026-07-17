@@ -131,6 +131,10 @@ coherent as more pages are added by different people/sessions over time.
    (fetched client-side, same as the class picker). Navbar link added,
    visible while the selected role is `SCHOOL_ADMIN` or `TEACHER` (first link
    shown to a non-admin role, since `STUDENT_ENROLL` is granted to both).
+   **Deepened 2026-07-17**: a per-row "مدیریت والدین" panel (guardian
+   management, `GUARDIAN_MANAGE`/SCHOOL_ADMIN-only) — see CLAUDE.md §7 Done,
+   "Bale integration gap cleanup". Zero backend change; closes the "curl-only"
+   gap `MOBILE_ROADMAP.md` had flagged since the Bale Phase 1 build.
 5. **Finance** — `/finance` (`web.FinancePageController`) — **built, deepened
    2026-07-12.** Set/view the school's tuition fee and list its invoices,
    entirely client-side against the existing `finance.FinanceController`
