@@ -1274,12 +1274,24 @@ SchoolEntity
 ├── name
 ├── status (ACTIVE | SUSPENDED)
 ├── timezone
-└── locale
+├── locale
+└── schoolLevel (SchoolFacade.SchoolLevel: ELEMENTARY | LOWER_SECONDARY | UPPER_SECONDARY —
+                  added 2026-07-18, §7 Done "School/class level classification")
 ```
 
 Created via `SchoolFacade.createSchool`, always self-service (§1). `setSchoolStatus`
 (suspension) exists on the facade but, like entitlement toggling, has no REST
 endpoint yet for the same platform-privilege reason.
+
+**`SchoolLevel`** (added 2026-07-18, resolving half of §11 Q8's blocker) — Iran's
+three-tier school system, required at creation, one level per school (a real
+دبستان building only ever has grades 1–6, never a K-12 campus):
+`ELEMENTARY` (دبستان, grades 1–6), `LOWER_SECONDARY` (متوسطه اول, grades 7–9),
+`UPPER_SECONDARY` (متوسطه دوم, grades 10–12). Each variant carries its own
+`minGrade()`/`maxGrade()`/`includesGrade(int)` — the single source of truth for
+the grade range, consumed by `academic.ClassEntity.gradeLevel` validation below.
+**This is classification only, not a grading scheme** — see the `Class` entry
+below and §11 Q8 for what's deliberately *not* built yet on top of it.
 
 ### Class (owned by `academic`)
 
@@ -1287,12 +1299,18 @@ endpoint yet for the same platform-privilege reason.
 ClassEntity
 ├── id
 ├── schoolId
-├── name           (e.g. "Grade 5 - A" — carries the grade-level meaning; there is
-│                    no separate gradeLevel field anywhere)
+├── name           (e.g. "Grade 5 - A" — free-text display label; does not need to
+│                    agree with gradeLevel below, though new classes should)
 ├── teacherId       (nullable — a class may exist before a teacher is assigned;
 │                    references an iam userId, not enforced at the DB level since
 │                    academic has no FK into iam's tables)
-└── section
+├── section
+└── gradeLevel      (int, required — added 2026-07-18. Validated at creation against
+                      the owning school's SchoolLevel range (school.SchoolFacade.SchoolLevel,
+                      AcademicFacadeImpl.requireValidGradeLevel) — a grade outside that
+                      range is AcademicError.InvalidGradeLevel, 400. This is the first
+                      thing `academic` depends on `school`'s Facade for; previously
+                      schoolId was a fully opaque Long with zero cross-module validation.)
 ```
 
 ### Student (owned by `academic`, not an identity — see §4 User)
@@ -2824,6 +2842,64 @@ above.
     confirmed both the success notice and the per-target result row.
     `mvn test -Dtest=StudyPlanManagementFlowIntegrationTest,ModularityTests`
     re-verified green (no backend touched).
+- **School/class level classification (built 2026-07-18, explicit user decision —
+  resolves half of §11 Q8's blocker)**: schools can now differentiate themselves
+  as دبستان/متوسطه اول/متوسطه دوم ahead of building the actual grades feature —
+  see §4's `School` and `Class` entries for the full model
+  (`school.SchoolFacade.SchoolLevel`, `academic.ClassEntity.gradeLevel`). Four
+  explicit decisions, made with the user before implementing (not defaults):
+  (1) Iran's real 3-tier taxonomy, not a generic 2-tier primary/high split;
+  (2) the classification lives on **both** `School` (`schoolLevel`, required at
+  creation) and `Class` (`gradeLevel`, required at creation) — not just one —
+  because a real school building only ever has classes within its own level's
+  grade range, and that's only enforceable per-class; (3) the eventual grading
+  scheme (descriptive vs. numeric) will be auto-derived from `gradeLevel` by a
+  fixed platform rule (grades 1–6 → descriptive, 7–12 → numeric) once the grades
+  module is actually built — **not built in this pass**, since nothing consumes
+  it yet (YAGNI, CLAUDE.md's own top-level discipline); (4) scope for this pass
+  is the classification model only, not the grades (marks) module itself — same
+  incremental-slice precedent as curriculum → studyplan → exam each being a
+  separate pass.
+  <br>
+  **New cross-module dependency**: `academic` now depends on `school.SchoolFacade`
+  (`AcademicFacadeImpl.requireValidGradeLevel`, called from `createClass`) — the
+  first time `academic` validates anything about `schoolId` beyond treating it as
+  an opaque Long. Legal per `ModularityTests` (no cycle: `school` has never
+  depended on `academic`). Two new `AcademicError` cases:
+  `SchoolNotFound` (defensive — `TenantContext` already validates `schoolId`
+  before a controller call reaches the facade, so this shouldn't be reachable
+  through the REST path) and `InvalidGradeLevel` (a real, reachable 400 when the
+  submitted grade falls outside the school's level range).
+  <br>
+  **UI**: `GET /schools/new` gained a required "مقطع تحصیلی" select (three
+  Persian-labeled options, `school-new.js`). `GET /classes` gained a required
+  "پایه" number input on the create-class form (`classes.jte`/`classes.js`) and
+  a "پایه" column in the class table; the form also fetches
+  `GET /api/admin/schools/{id}` once per page load (already existed, no backend
+  change — any active member may call it, §3's `SchoolController` entry) to show
+  the school's valid grade range as helper text and set the input's `min`/`max` —
+  best-effort only, the real validation is always server-side. Neither page
+  reshapes layout/flow enough to warrant the `design-page` skill — both are a
+  single new field on an already-designed form, not a new page or a new
+  panel/tab.
+  <br>
+  **Test fallout**: `academic.createClass`'s new validation broke every test that
+  called it (directly via `AcademicFacade` or through `POST .../classes`) with a
+  schoolId that had no real backing `SchoolEntity` — a pattern several facade-level
+  tests relied on precisely because `schoolId` used to be a fully opaque Long
+  (`FinanceFlowIntegrationTest`, `FinancePaymentFlowIntegrationTest`,
+  `BaleFlowIntegrationTest` all used synthetic/sequential schoolId literals with
+  no real school row). Fixed by having those specific tests call
+  `schoolFacade.createSchool(...)` for a real schoolId instead of fabricating one
+  — the correct fix, not a workaround, since a class genuinely cannot exist
+  without a real, level-compatible school now. Every other affected test (all
+  `POST /api/admin/schools` bodies gained `"level":"ELEMENTARY"`; all
+  `POST .../classes` bodies and direct `createClass` calls gained a `gradeLevel`
+  within the demo school's ELEMENTARY 1–6 range, regardless of what a class's
+  free-text `name` happens to say — e.g. a fixture named "پایه هشتم" may carry
+  `gradeLevel: 6`, a harmless cosmetic mismatch in test data, not a product bug)
+  needed only a field added to an existing request body. Full suite (139 tests)
+  + `ModularityTests` green after the fix.
 
 ### Open / explicitly deferred
 
@@ -3090,8 +3166,10 @@ deviations from the source, and test coverage (`ExamFlowIntegrationTest`).
   reasoning that keeps `InviteEmailSender` inside `iam/internal` instead of a
   shared `platform` abstraction. Build a second channel's own module when a
   second channel is actually requested, not before.
-- **Do not build a grades data model or UI** until the descriptive-vs-numeric
-  grading split and exam planning are explicitly resolved — see §11 Q8. The
+- **Do not build a grades data model or UI** without an explicit ask — see §11
+  Q8. The grading-scheme *rule* is decided (grades 1–6 descriptive, 7–12
+  numeric, derived from `academic.ClassEntity.gradeLevel`) but the derivation
+  logic and the `Grade` entity/UI itself are still unbuilt on purpose. The
   `GRADES_VIEW`/`GRADES_EDIT` permissions already existing in seed data is not
   license to build the feature they imply.
 - **Do not scope an already-shipped endpoint to `StudentGuardianEntity` (or
@@ -3174,18 +3252,27 @@ deviations from the source, and test coverage (`ExamFlowIntegrationTest`).
    is the *B2C module* side: no flow exists for an individual to actually obtain
    a `UserEntitlementEntity` (subscribe to AI Tutor, Exam Prep, …), and no UI
    consumes USER-scoped modules. Still "later maybe" — do not build until asked.
-8. **(raised 2026-07-07, explicit decision):** A grades feature/UI was
-   considered next (`GRADES_VIEW`/`GRADES_EDIT` permissions have existed in
-   the seed data since the start, unused by any real feature or data model —
-   see `UX_ROADMAP.md`'s PARENT/STUDENT section) but **deliberately deferred**
-   in favor of the Bale bot integration (§7 Done) instead: elementary grading
-   in Iranian schools is typically **توصیفی** (descriptive/qualitative — a
-   short written evaluation, not a number), while higher grade levels use a
-   **numeric** scale — a single `Grade` shape can't represent both without a
-   real design decision on how (or whether) one `ClassEntity`/school
-   distinguishes the two. Compounding that, there is no chosen exam plan yet,
-   which a numeric grading model would presumably need to reference. Do not
-   build a grades data model or UI assuming either scheme until both of these
-   are explicitly resolved — this is *not* the same kind of "not scheduled
-   yet" as e.g. the TEACHER roster view was (§7 Done); it's blocked on a real
-   product decision, not just sequencing.
+8. **(raised 2026-07-07, explicit decision; partially resolved 2026-07-18):** A
+   grades feature/UI was considered next (`GRADES_VIEW`/`GRADES_EDIT`
+   permissions have existed in the seed data since the start, unused by any
+   real feature or data model — see `UX_ROADMAP.md`'s PARENT/STUDENT section)
+   but **deliberately deferred** in favor of the Bale bot integration (§7
+   Done) instead: elementary grading in Iranian schools is typically
+   **توصیفی** (descriptive/qualitative — a short written evaluation, not a
+   number), while higher grade levels use a **numeric** scale — a single
+   `Grade` shape can't represent both without a real design decision on how
+   (or whether) one `ClassEntity`/school distinguishes the two.
+   **2026-07-18 update: the first half of this blocker is resolved** —
+   `school.SchoolFacade.SchoolLevel` + `academic.ClassEntity.gradeLevel` (§4,
+   §7 Done "School/class level classification") now give every class a real,
+   validated grade number, and the decided rule for the eventual auto-derived
+   grading scheme is grades 1–6 → descriptive, 7–12 → numeric. **Neither the
+   derivation logic nor a `Grade` entity/UI exists yet** — that was an
+   explicit scope cut for that pass (classification model only), not an
+   oversight; building it is now unblocked but still not started. The
+   second original blocker ("no chosen exam plan") is also stale as written —
+   the `exam` module (§3, §4's Exam subsection, §7 Done "Moshavere port, step
+   4") now exists — but a grades data model/UI is still **not built** and
+   should not be assumed to fall out of either piece automatically; treat
+   actually building it as its own explicit ask, same as every other module
+   in this port.

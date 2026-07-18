@@ -20,11 +20,17 @@
 
                 <div class="box">
                     <h2 class="title is-6">افزودن کلاس جدید</h2>
+                    <p class="help" x-show="school" x-text="gradeRangeHelp()"></p>
                     <form @submit.prevent="createClass">
                         <div class="field is-grouped is-grouped-multiline">
                             <div class="control is-expanded">
                                 <label class="label" for="className">نام کلاس</label>
                                 <input class="input" id="className" type="text" x-model="form.name" required>
+                            </div>
+                            <div class="control">
+                                <label class="label" for="classGradeLevel">پایه</label>
+                                <input class="input" id="classGradeLevel" type="number" x-model="form.gradeLevel"
+                                       :min="school ? school.minGrade : 1" :max="school ? school.maxGrade : 12" required>
                             </div>
                             <div class="control is-expanded">
                                 <label class="label" for="classSection">بخش</label>
@@ -54,6 +60,7 @@
                     <thead>
                     <tr>
                         <th>نام کلاس</th>
+                        <th>پایه</th>
                         <th>بخش</th>
                         <th>معلم</th>
                         <th>دانش‌آموزان کلاس</th>
@@ -63,6 +70,7 @@
                     <template x-for="classItem in classes" :key="classItem.id">
                         <tr>
                             <td x-text="classItem.name"></td>
+                            <td x-text="classItem.gradeLevel"></td>
                             <td x-text="classItem.section || '—'"></td>
                             <td x-text="teacherName(classItem.teacherId)"></td>
                             <td>

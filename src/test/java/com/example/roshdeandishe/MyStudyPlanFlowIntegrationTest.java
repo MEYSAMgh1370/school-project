@@ -82,7 +82,7 @@ class MyStudyPlanFlowIntegrationTest {
                         .header("X-School-ID", "1")
                         .session(session)
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"name\":\"" + name + "\",\"teacherId\":null,\"section\":null}"))
+                        .content("{\"name\":\"" + name + "\",\"teacherId\":null,\"section\":null,\"gradeLevel\":5}"))
                 .andExpect(status().isOk())
                 .andReturn();
         return objectMapper.readTree(result.getResponse().getContentAsString()).get("id").asLong();

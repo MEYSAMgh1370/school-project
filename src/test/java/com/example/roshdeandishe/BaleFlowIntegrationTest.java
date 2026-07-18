@@ -2,6 +2,8 @@ package com.example.roshdeandishe;
 
 import com.example.roshdeandishe.academic.AcademicFacade;
 import com.example.roshdeandishe.iam.IamFacade;
+import com.example.roshdeandishe.school.SchoolFacade;
+import com.example.roshdeandishe.school.SchoolFacade.SchoolLevel;
 import com.sun.net.httpserver.HttpServer;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeEach;
@@ -111,6 +113,9 @@ class BaleFlowIntegrationTest {
     private AcademicFacade academicFacade;
 
     @Autowired
+    private SchoolFacade schoolFacade;
+
+    @Autowired
     private com.example.roshdeandishe.finance.FinanceFacade financeFacade;
 
     @Autowired
@@ -215,7 +220,10 @@ class BaleFlowIntegrationTest {
 
     @Test
     void linkedParentCanQuerySchoolsAndWardsThroughTextCommands() throws Exception {
-        long schoolId = uniqueSchoolId();
+        // academicFacade.createClass اکنون schoolId را در برابر یک SchoolEntity
+        // واقعی اعتبارسنجی می‌کند (CLAUDE.md §4) - uniqueSchoolId ساختگی دیگر کافی نیست.
+        long schoolId = schoolFacade.createSchool(
+                "مدرسه‌ی تست بله ۱", "Asia/Tehran", "fa-IR", SchoolLevel.ELEMENTARY).value();
         String parentEmail = "bale-parent-" + System.nanoTime() + "@roshdeandishe.test";
         String parentPhone = uniquePhoneNumber();
         MockHttpSession parentSession = registerAndLogin(parentEmail, "والد فرمانده");
@@ -223,7 +231,7 @@ class BaleFlowIntegrationTest {
         IamFacade.UserId parentUserId = iamFacade.findOrCreateUser(parentEmail, "والد فرمانده");
         iamFacade.createMembership(parentUserId, schoolId, "PARENT");
 
-        AcademicFacade.ClassId classId = academicFacade.createClass(schoolId, "کلاس آزمایشی بله", null, null);
+        AcademicFacade.ClassId classId = academicFacade.createClass(schoolId, "کلاس آزمایشی بله", null, null, 5);
         AcademicFacade.StudentId studentId = academicFacade.enrollStudent(
                 "bale-ward-" + System.nanoTime() + "@roshdeandishe.test", "فرزند آزمایشی", schoolId, classId.value());
         academicFacade.linkGuardian(schoolId, studentId.value(), parentUserId.value());
@@ -249,7 +257,9 @@ class BaleFlowIntegrationTest {
 
     @Test
     void invoiceIssuedNotifiesLinkedStudentAndLinkedGuardians() throws Exception {
-        long schoolId = uniqueSchoolId();
+        // همان دلیل تست بالا: schoolId باید یک SchoolEntity واقعی داشته باشد.
+        long schoolId = schoolFacade.createSchool(
+                "مدرسه‌ی تست بله ۲", "Asia/Tehran", "fa-IR", SchoolLevel.ELEMENTARY).value();
 
         String parentEmail = "bale-guardian-" + System.nanoTime() + "@roshdeandishe.test";
         String parentPhone = uniquePhoneNumber();
@@ -260,7 +270,7 @@ class BaleFlowIntegrationTest {
         long parentChatId = uniqueChatId();
         linkChatToPhoneNumber(parentChatId, parentPhone);
 
-        AcademicFacade.ClassId classId = academicFacade.createClass(schoolId, "کلاس فاکتور", null, null);
+        AcademicFacade.ClassId classId = academicFacade.createClass(schoolId, "کلاس فاکتور", null, null, 5);
         AcademicFacade.StudentId studentId = academicFacade.enrollStudent(
                 "bale-student-invoice-" + System.nanoTime() + "@roshdeandishe.test",
                 "دانش‌آموز فاکتور", schoolId, classId.value());

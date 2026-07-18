@@ -20,8 +20,8 @@ class SchoolFacadeImpl implements SchoolFacade {
 
     @Override
     @Transactional
-    public SchoolId createSchool(String name, String timezone, String locale) {
-        SchoolEntity entity = schoolRepository.save(new SchoolEntity(name, timezone, locale));
+    public SchoolId createSchool(String name, String timezone, String locale, SchoolLevel level) {
+        SchoolEntity entity = schoolRepository.save(new SchoolEntity(name, timezone, locale, level));
         return new SchoolId(entity.getId());
     }
 
@@ -50,7 +50,8 @@ class SchoolFacadeImpl implements SchoolFacade {
                 entity.getName(),
                 entity.getStatus(),
                 entity.getTimezone(),
-                entity.getLocale()
+                entity.getLocale(),
+                entity.getSchoolLevel()
         );
     }
 }

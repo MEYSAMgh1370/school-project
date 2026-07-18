@@ -227,7 +227,7 @@ class RoleManagementFlowIntegrationTest {
                         .with(csrf())
                         .session(secondFounderSession)
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"name\":\"مدرسه‌ی دوم\",\"timezone\":\"Asia/Tehran\",\"locale\":\"fa-IR\"}"))
+                        .content("{\"name\":\"مدرسه‌ی دوم\",\"timezone\":\"Asia/Tehran\",\"locale\":\"fa-IR\",\"level\":\"ELEMENTARY\"}"))
                 .andExpect(status().isOk())
                 .andReturn();
         Long secondSchoolId = objectMapper.readTree(schoolResult.getResponse().getContentAsString()).get("id").asLong();

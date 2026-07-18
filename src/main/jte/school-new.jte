@@ -23,6 +23,19 @@
                     </div>
                 </div>
 
+                <div class="field">
+                    <label class="label" for="schoolLevel">مقطع تحصیلی</label>
+                    <div class="control">
+                        <div class="select is-fullwidth">
+                            <select id="schoolLevel" x-model="level" required>
+                                <template x-for="option in levelOptions" :key="option.value">
+                                    <option :value="option.value" x-text="option.label"></option>
+                                </template>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+
                 <div class="field is-grouped">
                     <div class="control is-expanded">
                         <label class="label" for="schoolTimezone">منطقه‌ی زمانی</label>

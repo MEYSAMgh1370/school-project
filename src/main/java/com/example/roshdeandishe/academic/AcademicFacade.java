@@ -33,7 +33,13 @@ public interface AcademicFacade {
 
     List<StudentInfo> listStudents(Long schoolId);
 
-    ClassId createClass(Long schoolId, String name, Long teacherId, String section);
+    /**
+     * gradeLevel باید در بازه‌ی مقطع تحصیلی همین مدرسه باشد (school.SchoolFacade.SchoolLevel،
+     * مثلاً یک دبستان فقط پایه‌های ۱ تا ۶ را می‌پذیرد) - وگرنه
+     * AcademicError.InvalidGradeLevel. مدرسه‌ای که schoolId اش اصلاً وجود
+     * ندارد AcademicError.SchoolNotFound می‌دهد.
+     */
+    ClassId createClass(Long schoolId, String name, Long teacherId, String section, int gradeLevel);
 
     List<ClassInfo> listClasses(Long schoolId);
 
@@ -85,7 +91,7 @@ public interface AcademicFacade {
     record StudentInfo(StudentId id, Long userId, Long schoolId, ClassId classId) {
     }
 
-    record ClassInfo(ClassId id, Long schoolId, String name, Long teacherId, String section) {
+    record ClassInfo(ClassId id, Long schoolId, String name, Long teacherId, String section, int gradeLevel) {
     }
 
     record EnrollmentInfo(StudentId studentId, Long schoolId, ClassId classId, String className, String section) {
