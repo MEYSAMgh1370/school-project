@@ -69,7 +69,7 @@ class GradeManagementFlowIntegrationTest {
                         .header("X-School-ID", "1")
                         .session(adminSession)
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"name\":\"" + name + "\",\"section\":null,\"teacherId\":null,\"gradingScheme\":\"" + gradingScheme + "\"}"))
+                        .content("{\"name\":\"" + name + "\",\"section\":null,\"teacherId\":null,\"gradeLevel\":5,\"gradingScheme\":\"" + gradingScheme + "\"}"))
                 .andExpect(status().isOk())
                 .andReturn();
         return objectMapper.readTree(result.getResponse().getContentAsString()).get("id").asLong();
@@ -294,7 +294,7 @@ class GradeManagementFlowIntegrationTest {
                         .with(csrf())
                         .session(founder)
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"name\":\"مدرسه‌ی بدون ماژول آموزشی\",\"timezone\":\"Asia/Tehran\",\"locale\":\"fa-IR\"}"))
+                        .content("{\"name\":\"مدرسه‌ی بدون ماژول آموزشی\",\"timezone\":\"Asia/Tehran\",\"locale\":\"fa-IR\",\"level\":\"ELEMENTARY\"}"))
                 .andExpect(status().isOk())
                 .andReturn();
         long schoolId = objectMapper.readTree(createResult.getResponse().getContentAsString()).get("id").asLong();
