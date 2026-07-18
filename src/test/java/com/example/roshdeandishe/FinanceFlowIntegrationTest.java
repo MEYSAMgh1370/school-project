@@ -4,6 +4,8 @@ import com.example.roshdeandishe.academic.AcademicFacade;
 import com.example.roshdeandishe.finance.FinanceFacade;
 import com.example.roshdeandishe.finance.FinanceFacade.InvoiceInfo;
 import com.example.roshdeandishe.finance.shared.FinanceException;
+import com.example.roshdeandishe.school.SchoolFacade;
+import com.example.roshdeandishe.school.SchoolFacade.SchoolLevel;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -26,6 +28,9 @@ class FinanceFlowIntegrationTest {
 
     @Autowired
     private AcademicFacade academicFacade;
+
+    @Autowired
+    private SchoolFacade schoolFacade;
 
     @Test
     void tuitionFeeUpsertIsIdempotent() {
@@ -76,9 +81,12 @@ class FinanceFlowIntegrationTest {
 
     @Test
     void enrollingStudentEventuallyIssuesInvoiceWithRealPrice() {
-        Long schoolId = 9105L;
+        // academicFacade.createClass اکنون schoolId را در برابر یک SchoolEntity
+        // واقعی اعتبارسنجی می‌کند (school.SchoolFacade.SchoolLevel، CLAUDE.md §4).
+        Long schoolId = schoolFacade.createSchool(
+                "مدرسه‌ی تست فاکتور", "Asia/Tehran", "fa-IR", SchoolLevel.ELEMENTARY).value();
         financeFacade.setTuitionFee(schoolId, new BigDecimal("2500000.00"));
-        Long classId = academicFacade.createClass(schoolId, "پایه پنجم - الف", null, "الف").value();
+        Long classId = academicFacade.createClass(schoolId, "پایه پنجم - الف", null, "الف", 5).value();
 
         academicFacade.enrollStudent(
                 "finance-flow-student@example.com", "Finance Flow Student", schoolId, classId

@@ -286,7 +286,7 @@ class CurriculumFlowIntegrationTest {
                         .with(csrf())
                         .session(founderSession)
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"name\":\"مدرسه‌ی بدون بانک سؤال\",\"timezone\":\"Asia/Tehran\",\"locale\":\"fa-IR\"}"))
+                        .content("{\"name\":\"مدرسه‌ی بدون بانک سؤال\",\"timezone\":\"Asia/Tehran\",\"locale\":\"fa-IR\",\"level\":\"ELEMENTARY\"}"))
                 .andExpect(status().isOk())
                 .andReturn();
         long schoolId = objectMapper.readTree(createResult.getResponse().getContentAsString()).get("id").asLong();

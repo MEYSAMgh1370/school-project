@@ -81,7 +81,7 @@ class StudyPlanManagementFlowIntegrationTest {
                         .header("X-School-ID", "1")
                         .session(session)
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"name\":\"" + name + "\",\"teacherId\":null,\"section\":null}"))
+                        .content("{\"name\":\"" + name + "\",\"teacherId\":null,\"section\":null,\"gradeLevel\":5}"))
                 .andExpect(status().isOk())
                 .andReturn();
         return objectMapper.readTree(result.getResponse().getContentAsString()).get("id").asLong();
@@ -297,7 +297,7 @@ class StudyPlanManagementFlowIntegrationTest {
                         .with(csrf())
                         .session(founderSession)
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"name\":\"مدرسه‌ی بدون برنامه‌ریز\",\"timezone\":\"Asia/Tehran\",\"locale\":\"fa-IR\"}"))
+                        .content("{\"name\":\"مدرسه‌ی بدون برنامه‌ریز\",\"timezone\":\"Asia/Tehran\",\"locale\":\"fa-IR\",\"level\":\"ELEMENTARY\"}"))
                 .andExpect(status().isOk())
                 .andReturn();
         long schoolId = objectMapper.readTree(createResult.getResponse().getContentAsString()).get("id").asLong();

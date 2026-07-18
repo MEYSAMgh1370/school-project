@@ -11,6 +11,14 @@ document.addEventListener('alpine:init', () => {
         name: '',
         timezone: 'Asia/Tehran',
         locale: 'fa-IR',
+        // مقطع تحصیلی مدرسه (CLAUDE.md §4 - SchoolFacade.SchoolLevel): هر مدرسه
+        // دقیقاً یک مقطع دارد، بازه‌ی پایه‌ی کلاس‌های آن مدرسه را تعیین می‌کند.
+        level: 'ELEMENTARY',
+        levelOptions: [
+            { value: 'ELEMENTARY', label: 'دبستان (پایه‌های ۱ تا ۶)' },
+            { value: 'LOWER_SECONDARY', label: 'متوسطه اول (پایه‌های ۷ تا ۹)' },
+            { value: 'UPPER_SECONDARY', label: 'متوسطه دوم (پایه‌های ۱۰ تا ۱۲)' }
+        ],
         submitting: false,
         errorMessage: '',
         get canSubmit() {
@@ -31,7 +39,8 @@ document.addEventListener('alpine:init', () => {
                     body: JSON.stringify({
                         name: this.name.trim(),
                         timezone: this.timezone.trim(),
-                        locale: this.locale.trim()
+                        locale: this.locale.trim(),
+                        level: this.level
                     })
                 });
                 if (response.ok) {

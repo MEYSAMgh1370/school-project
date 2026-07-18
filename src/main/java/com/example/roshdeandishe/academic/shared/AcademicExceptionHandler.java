@@ -45,6 +45,17 @@ public class AcademicExceptionHandler {
                     "کاربر واجد شرایط ولی نیست",
                     "کاربر " + e.guardianUserId() + " عضویت ولیِ فعالی در این مدرسه ندارد."
             );
+            case AcademicError.SchoolNotFound e -> ProblemDetailFactory.problem(
+                    HttpStatus.NOT_FOUND, "school-not-found",
+                    "مدرسه یافت نشد",
+                    "مدرسه‌ای با شناسه " + e.schoolId() + " یافت نشد."
+            );
+            case AcademicError.InvalidGradeLevel e -> ProblemDetailFactory.problem(
+                    HttpStatus.BAD_REQUEST, "invalid-grade-level",
+                    "پایه‌ی تحصیلی نامعتبر",
+                    "پایه‌ی " + e.gradeLevel() + " در بازه‌ی مقطع تحصیلی این مدرسه ("
+                            + e.minGrade() + " تا " + e.maxGrade() + ") نیست."
+            );
         };
     }
 }

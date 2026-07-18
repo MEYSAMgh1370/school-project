@@ -1,6 +1,15 @@
+// بازه‌ی پایه‌ی هر مقطع تحصیلی - نسخه‌ی سمت کلاینتِ school.SchoolFacade.SchoolLevel
+// (CLAUDE.md §4)؛ این دو را با هم هماهنگ نگه دارید.
+const SCHOOL_LEVEL_GRADE_RANGES = {
+    ELEMENTARY: { minGrade: 1, maxGrade: 6 },
+    LOWER_SECONDARY: { minGrade: 7, maxGrade: 9 },
+    UPPER_SECONDARY: { minGrade: 10, maxGrade: 12 }
+};
+
 document.addEventListener('alpine:init', () => {
     Alpine.data('classesPage', () => ({
         schoolId: null,
+        school: null,
         classes: [],
         teachers: [],
         students: [],
@@ -10,7 +19,7 @@ document.addEventListener('alpine:init', () => {
         submitting: false,
         error: '',
         notice: '',
-        form: { name: '', section: '', teacherId: '' },
+        form: { name: '', section: '', teacherId: '', gradeLevel: '' },
 
         init() {
             const saved = parseInt(localStorage.getItem('selectedSchoolId') || '', 10);
@@ -34,6 +43,17 @@ document.addEventListener('alpine:init', () => {
 
         classesBase() {
             return `/api/admin/schools/${this.schoolId}/classes`;
+        },
+
+        schoolBase() {
+            return `/api/admin/schools/${this.schoolId}`;
+        },
+
+        gradeRangeHelp() {
+            if (!this.school) {
+                return '';
+            }
+            return `پایه‌ی مجاز برای این مدرسه: ${this.school.minGrade} تا ${this.school.maxGrade}`;
         },
 
         // نام معلم از iam.MembershipController گرفته می‌شود - ماژول academic
@@ -102,10 +122,11 @@ document.addEventListener('alpine:init', () => {
             this.loading = true;
             this.error = '';
             try {
-                const [classesResponse, membershipsResponse, studentsResponse] = await Promise.all([
+                const [classesResponse, membershipsResponse, studentsResponse, schoolResponse] = await Promise.all([
                     fetch(this.classesBase(), { headers: { 'X-School-ID': this.schoolId } }),
                     fetch(this.membershipsBase(), { headers: { 'X-School-ID': this.schoolId } }),
-                    fetch(this.studentsBase(), { headers: { 'X-School-ID': this.schoolId } })
+                    fetch(this.studentsBase(), { headers: { 'X-School-ID': this.schoolId } }),
+                    fetch(this.schoolBase(), { headers: { 'X-School-ID': this.schoolId } })
                 ]);
                 if (!classesResponse.ok) {
                     await this.showError(classesResponse);
@@ -113,6 +134,16 @@ document.addEventListener('alpine:init', () => {
                     return;
                 }
                 this.classes = await classesResponse.json();
+                // فقط برای نمایش بازه‌ی مجاز پایه در فرم - best-effort، اگر
+                // مدرسه به هر دلیلی در دسترس نبود صفحه نمی‌شکند (اعتبارسنجی
+                // واقعی همیشه سمت سرور انجام می‌شود).
+                if (schoolResponse.ok) {
+                    const schoolInfo = await schoolResponse.json();
+                    const range = SCHOOL_LEVEL_GRADE_RANGES[schoolInfo.level];
+                    this.school = range ? { ...schoolInfo, ...range } : null;
+                } else {
+                    this.school = null;
+                }
                 // فهرست معلم‌ها/دانش‌آموزها فقط برای پر کردن دراپ‌داون و نمایش
                 // نام است؛ اگر خودِ عضویت‌ها در دسترس نبود (مثلاً نقش کاربر
                 // اجازه‌ی MEMBERSHIP_MANAGE ندارد)، صفحه‌ی کلاس‌ها را نمی‌شکند -
@@ -149,7 +180,8 @@ document.addEventListener('alpine:init', () => {
                         section: this.form.section || null,
                         // select همیشه رشته برمی‌گرداند؛ تبدیل صریح به عدد چون
                         // teacherId سمت سرور Long است
-                        teacherId: this.form.teacherId ? parseInt(this.form.teacherId, 10) : null
+                        teacherId: this.form.teacherId ? parseInt(this.form.teacherId, 10) : null,
+                        gradeLevel: parseInt(this.form.gradeLevel, 10)
                     })
                 });
                 if (!response.ok) {
@@ -157,7 +189,7 @@ document.addEventListener('alpine:init', () => {
                     return;
                 }
                 this.notice = 'کلاس جدید اضافه شد.';
-                this.form = { name: '', section: '', teacherId: '' };
+                this.form = { name: '', section: '', teacherId: '', gradeLevel: '' };
                 await this.load();
             } catch (e) {
                 this.error = 'ارتباط با سرور برقرار نشد.';

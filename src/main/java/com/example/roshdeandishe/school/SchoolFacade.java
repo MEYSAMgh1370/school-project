@@ -17,7 +17,7 @@ public interface SchoolFacade {
      * onboarding مدرسه‌ی جدید است؛ تا این متد صدا زده نشود، schoolId ای
      * که در IamFacade استفاده می‌شود معنای واقعی ندارد.
      */
-    SchoolId createSchool(String name, String timezone, String locale);
+    SchoolId createSchool(String name, String timezone, String locale, SchoolLevel level);
 
     Optional<SchoolInfo> findSchool(SchoolId schoolId);
 
@@ -36,10 +36,46 @@ public interface SchoolFacade {
     record SchoolId(Long value) {
     }
 
-    record SchoolInfo(SchoolId id, String name, SchoolStatus status, String timezone, String locale) {
+    record SchoolInfo(SchoolId id, String name, SchoolStatus status, String timezone, String locale, SchoolLevel level) {
     }
 
     enum SchoolStatus {
         ACTIVE, SUSPENDED
+    }
+
+    /**
+     * مقطع تحصیلی مدرسه - نظام سه‌دوره‌ای رسمی ایران. هر مدرسه دقیقاً یک
+     * مقطع دارد (یک ساختمان دبستان فقط پایه‌های ۱ تا ۶ دارد، نه بیشتر) -
+     * academic.ClassEntity.gradeLevel هر کلاس باید در بازه‌ی همین مقطع
+     * باشد (AcademicFacadeImpl.requireValidGradeLevel). این فقط طبقه‌بندی
+     * است، نه شیوه‌ی نمره‌دهی - ماژول grades (هنوز ساخته نشده، CLAUDE.md
+     * §11 Q8) از همین gradeLevel، شیوه‌ی نمره‌دهی (توصیفی برای پایه‌های
+     * ۱ تا ۶، عددی برای ۷ تا ۱۲) را با یک قاعده‌ی ثابت مشتق خواهد کرد -
+     * چیزی که عمداً در این فاز ساخته نشده چون هنوز مصرف‌کننده‌ای ندارد.
+     */
+    enum SchoolLevel {
+        ELEMENTARY(1, 6),
+        LOWER_SECONDARY(7, 9),
+        UPPER_SECONDARY(10, 12);
+
+        private final int minGrade;
+        private final int maxGrade;
+
+        SchoolLevel(int minGrade, int maxGrade) {
+            this.minGrade = minGrade;
+            this.maxGrade = maxGrade;
+        }
+
+        public int minGrade() {
+            return minGrade;
+        }
+
+        public int maxGrade() {
+            return maxGrade;
+        }
+
+        public boolean includesGrade(int gradeLevel) {
+            return gradeLevel >= minGrade && gradeLevel <= maxGrade;
+        }
     }
 }

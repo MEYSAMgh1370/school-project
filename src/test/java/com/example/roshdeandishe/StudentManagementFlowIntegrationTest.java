@@ -79,7 +79,7 @@ class StudentManagementFlowIntegrationTest {
                         .header("X-School-ID", "1")
                         .session(session)
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"name\":\"پایه سوم - ب\",\"section\":\"ب\",\"teacherId\":null}"))
+                        .content("{\"name\":\"پایه سوم - ب\",\"section\":\"ب\",\"teacherId\":null,\"gradeLevel\":3}"))
                 .andExpect(status().isOk())
                 .andReturn();
         Long classId = objectMapper.readTree(classResult.getResponse().getContentAsString())

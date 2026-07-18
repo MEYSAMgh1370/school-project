@@ -41,8 +41,10 @@ public class ClassController {
     public ClassResponse createClass(@PathVariable Long schoolId, @RequestBody CreateClassRequest request) {
         TenantContext.requireMatches(schoolId);
 
-        ClassId classId = academicFacade.createClass(schoolId, request.name(), request.teacherId(), request.section());
-        return new ClassResponse(classId.value(), schoolId, request.name(), request.teacherId(), request.section());
+        ClassId classId = academicFacade.createClass(
+                schoolId, request.name(), request.teacherId(), request.section(), request.gradeLevel());
+        return new ClassResponse(
+                classId.value(), schoolId, request.name(), request.teacherId(), request.section(), request.gradeLevel());
     }
 
     @GetMapping
@@ -57,12 +59,13 @@ public class ClassController {
 
 
     private static ClassResponse toResponse(ClassInfo info) {
-        return new ClassResponse(info.id().value(), info.schoolId(), info.name(), info.teacherId(), info.section());
+        return new ClassResponse(
+                info.id().value(), info.schoolId(), info.name(), info.teacherId(), info.section(), info.gradeLevel());
     }
 
-    public record CreateClassRequest(String name, Long teacherId, String section) {
+    public record CreateClassRequest(String name, Long teacherId, String section, int gradeLevel) {
     }
 
-    public record ClassResponse(Long id, Long schoolId, String name, Long teacherId, String section) {
+    public record ClassResponse(Long id, Long schoolId, String name, Long teacherId, String section, int gradeLevel) {
     }
 }

@@ -65,7 +65,7 @@ class MyEnrollmentFlowIntegrationTest {
                         .header("X-School-ID", "1")
                         .session(adminSession)
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"name\":\"کلاس آزمایشی ثبت‌نام\",\"section\":\"الف\",\"teacherId\":null}"))
+                        .content("{\"name\":\"کلاس آزمایشی ثبت‌نام\",\"section\":\"الف\",\"teacherId\":null,\"gradeLevel\":5}"))
                 .andExpect(status().isOk())
                 .andReturn();
         Long classId = objectMapper.readTree(classResult.getResponse().getContentAsString())

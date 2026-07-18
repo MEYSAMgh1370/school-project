@@ -1,5 +1,6 @@
 package com.example.roshdeandishe.school.internal;
 
+import com.example.roshdeandishe.school.SchoolFacade.SchoolLevel;
 import com.example.roshdeandishe.school.SchoolFacade.SchoolStatus;
 import jakarta.persistence.*;
 import lombok.Getter;
@@ -34,10 +35,15 @@ class SchoolEntity {
     @Column(nullable = false, length = 16)
     private String locale;
 
-    SchoolEntity(String name, String timezone, String locale) {
+    @Enumerated(EnumType.STRING)
+    @Column(name = "school_level", nullable = false, length = 32)
+    private SchoolLevel schoolLevel;
+
+    SchoolEntity(String name, String timezone, String locale, SchoolLevel schoolLevel) {
         this.name = name;
         this.timezone = timezone;
         this.locale = locale;
+        this.schoolLevel = schoolLevel;
         this.status = SchoolStatus.ACTIVE;
     }
 }

@@ -38,10 +38,14 @@ class ClassEntity {
     @Column(length = 32)
     private String section;
 
-    ClassEntity(Long schoolId, String name, Long teacherId, String section) {
+    @Column(name = "grade_level", nullable = false)
+    private int gradeLevel;
+
+    ClassEntity(Long schoolId, String name, Long teacherId, String section, int gradeLevel) {
         this.schoolId = schoolId;
         this.name = name;
         this.teacherId = teacherId;
         this.section = section;
+        this.gradeLevel = gradeLevel;
     }
 }
