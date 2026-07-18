@@ -190,6 +190,12 @@ class IamSeedDataRunner implements ApplicationRunner {
 
         // SCHOOL_ADMIN: دسترسی کامل
         grant(roles.get("SCHOOL_ADMIN"), permissions.get("GRADES_VIEW"));
+        // GRADES_EDIT از ابتدای پروژه فقط به TEACHER داده شده بود (داده‌ی
+        // seed پیش از ساختِ خودِ ویژگیِ نمرات) - حالا که ویژگی واقعاً ساخته
+        // می‌شود، طبق همان الگویی که هر MANAGE دیگری (FINANCE_MANAGE،
+        // CLASS_MANAGE، EXPENSE_MANAGE، CURRICULUM_MANAGE، ...) به
+        // SCHOOL_ADMIN هم داده شده، این ناهم‌خوانی رفع می‌شود.
+        grant(roles.get("SCHOOL_ADMIN"), permissions.get("GRADES_EDIT"));
         grant(roles.get("SCHOOL_ADMIN"), permissions.get("FINANCE_VIEW"));
         grant(roles.get("SCHOOL_ADMIN"), permissions.get("FINANCE_MANAGE"));
         grant(roles.get("SCHOOL_ADMIN"), permissions.get("MEMBERSHIP_MANAGE"));

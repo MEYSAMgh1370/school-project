@@ -45,6 +45,26 @@ public class AcademicExceptionHandler {
                     "کاربر واجد شرایط ولی نیست",
                     "کاربر " + e.guardianUserId() + " عضویت ولیِ فعالی در این مدرسه ندارد."
             );
+            case AcademicError.StudentNotInClass e -> ProblemDetailFactory.problem(
+                    HttpStatus.CONFLICT, "student-not-in-class",
+                    "دانش‌آموز عضو این کلاس نیست",
+                    "دانش‌آموز " + e.studentId() + " در حال حاضر عضو کلاس " + e.classId() + " نیست."
+            );
+            case AcademicError.GradingSchemeMismatch e -> ProblemDetailFactory.problem(
+                    HttpStatus.CONFLICT, "grading-scheme-mismatch",
+                    "عدم تطابق با شِمای نمره‌دهی",
+                    "این کلاس شِمای " + e.expectedScheme() + " دارد؛ فیلد متناظر با همین شِما را پر کنید."
+            );
+            case AcademicError.InvalidGrade e -> ProblemDetailFactory.problem(
+                    HttpStatus.BAD_REQUEST, "invalid-grade",
+                    "نمره نامعتبر است",
+                    e.reason()
+            );
+            case AcademicError.GradeNotFound e -> ProblemDetailFactory.problem(
+                    HttpStatus.NOT_FOUND, "grade-not-found",
+                    "نمره یافت نشد",
+                    "نمره‌ای با شناسه " + e.gradeId() + " یافت نشد."
+            );
         };
     }
 }

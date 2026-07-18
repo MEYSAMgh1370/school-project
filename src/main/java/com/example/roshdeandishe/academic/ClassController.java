@@ -41,8 +41,9 @@ public class ClassController {
     public ClassResponse createClass(@PathVariable Long schoolId, @RequestBody CreateClassRequest request) {
         TenantContext.requireMatches(schoolId);
 
-        ClassId classId = academicFacade.createClass(schoolId, request.name(), request.teacherId(), request.section());
-        return new ClassResponse(classId.value(), schoolId, request.name(), request.teacherId(), request.section());
+        ClassId classId = academicFacade.createClass(
+                schoolId, request.name(), request.teacherId(), request.section(), request.gradingScheme());
+        return new ClassResponse(classId.value(), schoolId, request.name(), request.teacherId(), request.section(), request.gradingScheme());
     }
 
     @GetMapping
@@ -57,12 +58,23 @@ public class ClassController {
 
 
     private static ClassResponse toResponse(ClassInfo info) {
-        return new ClassResponse(info.id().value(), info.schoolId(), info.name(), info.teacherId(), info.section());
+        return new ClassResponse(info.id().value(), info.schoolId(), info.name(), info.teacherId(), info.section(), info.gradingScheme());
     }
 
-    public record CreateClassRequest(String name, Long teacherId, String section) {
+    /**
+     * {@code gradingScheme} اختیاری است و در نبودش NUMERIC فرض می‌شود - تا
+     * کدهای موجودی که این فیلد را نمی‌فرستند (تست‌های ماژول‌های دیگر) نشکنند؛
+     * CLAUDE.md §11 Q8 فقط محدوده‌ی این فیلد (سطح کلاس) را مشخص کرده، نه
+     * الزامی‌بودنِ آن در هر فراخوانی.
+     */
+    public record CreateClassRequest(String name, Long teacherId, String section, GradingScheme gradingScheme) {
+        public CreateClassRequest {
+            if (gradingScheme == null) {
+                gradingScheme = GradingScheme.NUMERIC;
+            }
+        }
     }
 
-    public record ClassResponse(Long id, Long schoolId, String name, Long teacherId, String section) {
+    public record ClassResponse(Long id, Long schoolId, String name, Long teacherId, String section, GradingScheme gradingScheme) {
     }
 }

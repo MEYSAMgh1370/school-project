@@ -356,8 +356,23 @@ com.example.roshdeandishe
 │   │                                 identified user about their own data" without a
 │   │                                 reverse module dependency. 204, not an exception,
 │   │                                 when the caller isn't a student at that school.)
+│   ├── GradeController.java        (REST: POST/GET grades — §11 Q8, resolved
+│   │                                 2026-07-18. Class-level @RequiresModule("ACADEMIC");
+│   │                                 both methods deliberately gated by GRADES_EDIT,
+│   │                                 not GRADES_VIEW — GRADES_VIEW is held by
+│   │                                 STUDENT/PARENT too, and this endpoint returns a
+│   │                                 whole class's grades, so gating it on VIEW would
+│   │                                 let a student see classmates' grades by calling
+│   │                                 the admin endpoint directly. See §4's Grade
+│   │                                 subsection.)
+│   ├── MyGradesController.java     (REST: GET /api/me/schools/{id}/grades — the "my"
+│   │                                 pattern, same trust model as MyInvoicesController:
+│   │                                 own grades (findMyEnrollment) + linked wards'
+│   │                                 grades (listWards), no @RequiresPermission/
+│   │                                 @RequiresModule at all.)
 │   ├── internal/
-│   │   ├── ClassEntity (schoolId, name, teacherId nullable, section) / ClassRepository
+│   │   ├── ClassEntity (schoolId, name, teacherId nullable, section,
+│   │   │                 gradingScheme — §11 Q8, resolved) / ClassRepository
 │   │   ├── StudentEntity (userId, schoolId, classId, enrolledAt) / StudentRepository
 │   │   │   — StudentEntity is NOT an identity; the person is the iam UserEntity.
 │   │   │     enrollStudent() internally calls IamFacade.findOrCreateUser +
@@ -366,10 +381,18 @@ com.example.roshdeandishe
 │   │   │                           module, guardianUserId — opaque Long, same
 │   │   │                           convention as StudentEntity.userId, linkedAt)
 │   │   │                           / StudentGuardianRepository — see §4
+│   │   ├── GradeEntity (schoolId, studentId, classId, academicYear, term,
+│   │   │                 scheme — copied from the class at record time, same
+│   │   │                 convention as InvoiceEntity.amount — descriptiveLevel
+│   │   │                 nullable, numericScore nullable, comment nullable,
+│   │   │                 recordedByUserId nullable, recordedAt; unique(studentId,
+│   │   │                 classId, academicYear, term)) / GradeRepository — see
+│   │   │                 §4's Grade subsection
 │   │   └── AcademicFacadeImpl
 │   └── shared/
 │       ├── AcademicError.java (sealed: StudentNotFound, ClassNotFound,
-│       │                        GuardianNotEligible)
+│       │                        GuardianNotEligible, StudentNotInClass,
+│       │                        GradingSchemeMismatch, InvalidGrade, GradeNotFound)
 │       ├── AcademicException.java
 │       └── AcademicExceptionHandler.java   (bean name "academicGlobalExceptionHandler")
 │
@@ -1105,8 +1128,25 @@ Current grants (seeded in `IamSeedDataRunner`):
 | `STUDENT` | `GRADES_VIEW` |
 | `TEACHER` | `GRADES_VIEW`, `GRADES_EDIT`, `STUDENT_ENROLL`, `CLASS_VIEW`, `CURRICULUM_VIEW`, `CURRICULUM_MANAGE`, `STUDYPLAN_VIEW`, `STUDYPLAN_MANAGE`, `EXAM_VIEW`, `EXAM_MANAGE` |
 | `PARENT` | `GRADES_VIEW`, `FINANCE_VIEW` |
-| `SCHOOL_ADMIN` | `GRADES_VIEW`, `FINANCE_VIEW`, `FINANCE_MANAGE`, `MEMBERSHIP_MANAGE`, `CLASS_MANAGE`, `CLASS_VIEW`, `STUDENT_ENROLL`, `GUARDIAN_MANAGE`, `EXPENSE_VIEW`, `EXPENSE_MANAGE`, `EXPENSE_APPROVE`, `ROLE_MANAGE`, `CURRICULUM_VIEW`, `CURRICULUM_MANAGE`, `STUDYPLAN_VIEW`, `STUDYPLAN_MANAGE`, `EXAM_VIEW`, `EXAM_MANAGE` |
+| `SCHOOL_ADMIN` | `GRADES_VIEW`, `GRADES_EDIT`, `FINANCE_VIEW`, `FINANCE_MANAGE`, `MEMBERSHIP_MANAGE`, `CLASS_MANAGE`, `CLASS_VIEW`, `STUDENT_ENROLL`, `GUARDIAN_MANAGE`, `EXPENSE_VIEW`, `EXPENSE_MANAGE`, `EXPENSE_APPROVE`, `ROLE_MANAGE`, `CURRICULUM_VIEW`, `CURRICULUM_MANAGE`, `STUDYPLAN_VIEW`, `STUDYPLAN_MANAGE`, `EXAM_VIEW`, `EXAM_MANAGE` |
 | `FINANCE_ADMIN` | `FINANCE_VIEW`, `FINANCE_MANAGE`, `EXPENSE_VIEW`, `EXPENSE_MANAGE` |
+
+**`GRADES_EDIT` granted to `SCHOOL_ADMIN` (added 2026-07-18, alongside actually
+building the grades feature — §11 Q8, resolved):** `GRADES_VIEW`/`GRADES_EDIT`
+existed in seed data since the very start of the project, unused by any real
+feature — `GRADES_EDIT` had only ever been granted to `TEACHER`. Now that the
+feature is real, this asymmetry is fixed to match every other `*_MANAGE`-tier
+permission (`FINANCE_MANAGE`, `CLASS_MANAGE`, `EXPENSE_MANAGE`,
+`CURRICULUM_MANAGE`, `STUDYPLAN_MANAGE`, `EXAM_MANAGE`), all of which
+`SCHOOL_ADMIN` already holds alongside `TEACHER`. **`GradeController`'s two
+endpoints are deliberately gated by `GRADES_EDIT`, not `GRADES_VIEW`** — see
+§3/§4's Grade subsection: `GRADES_VIEW` is held by `STUDENT`/`PARENT` too, and
+this endpoint returns a *whole class's* grades, so gating a class-wide list on
+`VIEW` would let a student see classmates' grades by calling the admin
+endpoint directly. `GRADES_VIEW` stays exactly as seeded (unchanged) and is
+inert for `STUDENT`/`PARENT` today — their own-grade access runs entirely
+through `MyGradesController`'s "my" pattern (no permission check at all), same
+precedent as `MyInvoicesController`/`MyExamsController`.
 
 **`CURRICULUM_VIEW`/`CURRICULUM_MANAGE` (added 2026-07-16, for the `curriculum`
 module — moshavere port step 2, resolving the spec's "exact permission split
@@ -1292,8 +1332,91 @@ ClassEntity
 ├── teacherId       (nullable — a class may exist before a teacher is assigned;
 │                    references an iam userId, not enforced at the DB level since
 │                    academic has no FK into iam's tables)
-└── section
+├── section
+└── gradingScheme   (GradingScheme: DESCRIPTIVE | NUMERIC — §11 Q8, resolved
+                      2026-07-18. Per-class, not per-school or per-grade-level:
+                      a single school has both elementary classes (descriptive)
+                      and older ones (numeric) at once, and ClassEntity has no
+                      gradeLevel field to derive this from automatically.
+                      Column stays nullable at the DB level so adding it to the
+                      existing table doesn't break dev data; the default
+                      (NUMERIC) is applied in ClassController.CreateClassRequest's
+                      compact constructor, not here — set explicitly at class
+                      creation when a class needs DESCRIPTIVE.)
 ```
+
+### Grade (owned by `academic` — resolves §11 Q8)
+
+A student's grade in a class for one term. Building this required four explicit
+decisions (all made 2026-07-18, each a real fork — see §11 Q8 for the options
+considered and rejected):
+
+1. **Scheme is per-class** (`ClassEntity.gradingScheme` above), not per-school or
+   derived from a grade-level taxonomy that doesn't exist yet.
+2. **Manual entry only** — a teacher enters a grade directly; it is not derived
+   from `exam` module results. Real grades blend homework, participation, and
+   exams, not just exam scores; deriving from `exam` is a plausible future
+   extension, not built here (YAGNI).
+3. **Descriptive grades use the real Iranian Ministry-of-Education four-level
+   scale** (`DescriptiveGradeLevel`: `EXCELLENT`/`GOOD`/`ACCEPTABLE`/
+   `NEEDS_EFFORT` — خیلی خوب/خوب/قابل قبول/نیازمند تلاش), not free text, plus an
+   optional comment — matches what a real report card looks like.
+4. **Cadence is per term** (`GradingTerm`: `FIRST`/`SECOND` — نوبت اول/دوم),
+   paired with a plain `academicYear` string (e.g. "1404-1405") — the real
+   Iranian report-card structure, not a running unstructured log.
+
+```
+GradeEntity   (unique(studentId, classId, academicYear, term))
+├── id
+├── schoolId
+├── studentId       (real FK — academic's own StudentEntity)
+├── classId         (real FK — academic's own ClassEntity)
+├── academicYear    (plain String, e.g. "1404-1405" — no calendar-year validation,
+│                     same manual-validation-only bias as RoleEntity.code)
+├── term            (GradingTerm)
+├── scheme          (GradingScheme — copied from ClassEntity.gradingScheme at
+│                     record time, not just referenced, so a later change to a
+│                     class's scheme never retroactively alters past grades —
+│                     same convention as InvoiceEntity.amount copied from
+│                     TuitionFee at issue time)
+├── descriptiveLevel (nullable DescriptiveGradeLevel — populated iff scheme is
+│                      DESCRIPTIVE)
+├── numericScore    (nullable BigDecimal(4,2), 0–20 — populated iff scheme is
+│                     NUMERIC; validated in-range in AcademicFacadeImpl,
+│                     not Bean Validation, same convention as everywhere else
+│                     in this codebase)
+├── comment         (nullable — optional note, either scheme)
+├── recordedByUserId (nullable — the teacher/admin who entered it; nullable per
+│                      the standard actorUserId convention, §3's audit pattern)
+└── recordedAt
+```
+
+`AcademicFacade.recordGrade(schoolId, studentId, classId, academicYear, term,
+descriptiveLevel, numericScore, comment)` — **idempotent upsert**: re-recording
+the same `(studentId, classId, academicYear, term)` updates the existing row
+(a teacher correcting a mistake) rather than duplicating — same pattern as
+`setTuitionFee`/`assignPlanToStudent`. Validates: the student must currently be
+enrolled in that exact class (`AcademicError.StudentNotInClass` otherwise — a
+grade can't be recorded against a class the student has since moved out of);
+exactly the field matching the class's own `gradingScheme` must be populated
+(`AcademicError.GradingSchemeMismatch` otherwise — the scheme is not a request
+parameter, it's read from `ClassEntity`); a numeric score must be in `[0, 20]`
+(`AcademicError.InvalidGrade` otherwise).
+
+`AcademicFacade.listGradesForClass(schoolId, classId, academicYear, term)` — a
+teacher's gradebook view for one class/term. **Exposed at
+`GET /api/admin/schools/{schoolId}/grades`, deliberately gated by
+`GRADES_EDIT`, not `GRADES_VIEW`** (§4's Permission section, §7 Done) — see
+`GradeController`'s note in §3.
+
+`AcademicFacade.listGradesForStudents(schoolId, studentIds)` — backs
+`MyGradesController` (own grades + linked wards' grades), same shape as
+`FinanceFacade.listInvoicesForStudents`.
+
+No UI page yet — same posture as `curriculum`/`studyplan` at their own
+new-module time: backend + REST + tests first; a `/grades` gradebook page and
+a `/my-grades` self-view are a separate slice, through the `design-page` skill
+when built.
 
 ### Student (owned by `academic`, not an identity — see §4 User)
 
@@ -2754,6 +2877,44 @@ above.
   authoring session (module boundaries intact, no new named-interface
   exposure needed since `studyplan` already depended on `AcademicFacade`/
   `CurriculumFacade`/`IamFacade`).
+- **Grades (built 2026-07-18, resolving §11 Q8, an extension of `academic` —
+  not a new module, same precedent as `Expense` extending `finance`)**: a
+  student's grade in a class for one term — see §3, §4's Grade subsection,
+  and §11 Q8 for the full model and the four explicit decisions behind it
+  (per-class scheme, manual entry only, fixed four-level descriptive scale,
+  per-term cadence). New `GradingScheme`/`GradingTerm`/`DescriptiveGradeLevel`
+  enums, `ClassEntity.gradingScheme` (nullable column, defaults to `NUMERIC`
+  in `ClassController.CreateClassRequest`'s compact constructor so existing
+  callers that don't send it — other modules' tests creating a class just to
+  enroll a student — keep working unchanged), `GradeEntity`/`GradeRepository`,
+  `AcademicFacade.recordGrade`/`getGrade`/`listGradesForClass`/
+  `listGradesForStudents`, four new `AcademicError` cases
+  (`StudentNotInClass`, `GradingSchemeMismatch`, `InvalidGrade`,
+  `GradeNotFound`). New `GradeController` (admin gradebook,
+  `@RequiresModule("ACADEMIC")` + `GRADES_EDIT` on *both* methods — a
+  deliberate security choice, see §4's Permission section — `GRADES_VIEW`
+  alone would let a `STUDENT`/`PARENT` caller see a whole class's grades) and
+  `MyGradesController` (`GET /api/me/schools/{id}/grades`, the established
+  "my" pattern, no permission check — own grades + linked wards' grades, same
+  shape as `MyInvoicesController`). Fixed a pre-existing seed-data asymmetry
+  in passing: `GRADES_EDIT` had only ever been granted to `TEACHER`, not
+  `SCHOOL_ADMIN` (unlike every other `*_MANAGE`-tier permission) — placeholder
+  seed data from before this feature existed, corrected now that it's real.
+  Covered by `GradeManagementFlowIntegrationTest` (both schemes recorded and
+  listed, wrong-field-for-scheme rejected as `grading-scheme-mismatch`,
+  out-of-range numeric score rejected as `invalid-grade`, re-recording the
+  same student/class/term updates in place instead of duplicating, grading a
+  student against a class they're not enrolled in rejected as
+  `student-not-in-class`, `TEACHER` can record/list, `STUDENT` gets
+  `permission-denied` on the admin endpoint *despite holding* `GRADES_VIEW`
+  — the security case above — a fresh self-service school gets
+  `module-not-entitled`, and `MyGradesController` returns own + linked wards'
+  grades only, empty for an unrelated caller). Full suite (149 tests) +
+  `ModularityTests` run against a real Postgres via Testcontainers in the
+  authoring session and green. **No UI yet** — same posture `curriculum`/
+  `studyplan` shipped with at their own new-module time: backend + REST +
+  tests first; a `/grades` gradebook page and a `/my-grades` self-view are a
+  separate slice, through the `design-page` skill when built.
 
 ### Open / explicitly deferred
 
@@ -2968,6 +3129,19 @@ Submit subsection and §7 Done for the full model, the three deliberate
 deviations from the source, and test coverage (`ExamFlowIntegrationTest`).
 **This closes out the moshavere port** — see `MOSHAVERE_PORT_SPEC.md` §8.
 
+**Phase O — Grades (resolves §11 Q8): done.** A student's grade in a class
+for one term, an extension of `academic` (not a new module). Four explicit
+decisions made before building: per-class scheme (`ClassEntity.gradingScheme`,
+not per-school or grade-level), manual entry only (not derived from `exam`
+results), the real Iranian four-level descriptive scale (not free text), and
+per-term cadence (not a running unstructured log). New `GradeController`
+(admin gradebook, deliberately gated by `GRADES_EDIT` on both read and write —
+`GRADES_VIEW` alone would leak a whole class's grades to any `STUDENT`/
+`PARENT` caller) and `MyGradesController` (the "my" pattern, own + wards'
+grades). See §4's Grade subsection and §7 Done for the full model and test
+coverage (`GradeManagementFlowIntegrationTest`). **No UI yet** — backend +
+REST + tests only, same posture `curriculum`/`studyplan` shipped with.
+
 ---
 
 ## 9. Naming Conventions
@@ -3020,10 +3194,13 @@ deviations from the source, and test coverage (`ExamFlowIntegrationTest`).
   reasoning that keeps `InviteEmailSender` inside `iam/internal` instead of a
   shared `platform` abstraction. Build a second channel's own module when a
   second channel is actually requested, not before.
-- **Do not build a grades data model or UI** until the descriptive-vs-numeric
-  grading split and exam planning are explicitly resolved — see §11 Q8. The
-  `GRADES_VIEW`/`GRADES_EDIT` permissions already existing in seed data is not
-  license to build the feature they imply.
+- ~~Do not build a grades data model or UI~~ — **resolved 2026-07-18, §11
+  Q8.** The grades data model and REST layer are built (§4's Grade
+  subsection, §7 Done) — the four decisions that unblocked it (per-class
+  scheme, manual entry only, fixed descriptive scale, per-term cadence) are
+  documented there. A `/grades`/`/my-grades` **UI** is still unbuilt (not
+  forbidden, just not yet requested) — go through the `design-page` skill
+  when it is.
 - **Do not scope an already-shipped endpoint to `StudentGuardianEntity` (or
   any other narrowing) as a silent side effect of unrelated work.** This is
   exactly what protected `/finance`'s `GET invoices` from being scoped as a
@@ -3104,18 +3281,29 @@ deviations from the source, and test coverage (`ExamFlowIntegrationTest`).
    is the *B2C module* side: no flow exists for an individual to actually obtain
    a `UserEntitlementEntity` (subscribe to AI Tutor, Exam Prep, …), and no UI
    consumes USER-scoped modules. Still "later maybe" — do not build until asked.
-8. **(raised 2026-07-07, explicit decision):** A grades feature/UI was
-   considered next (`GRADES_VIEW`/`GRADES_EDIT` permissions have existed in
-   the seed data since the start, unused by any real feature or data model —
-   see `UX_ROADMAP.md`'s PARENT/STUDENT section) but **deliberately deferred**
-   in favor of the Bale bot integration (§7 Done) instead: elementary grading
-   in Iranian schools is typically **توصیفی** (descriptive/qualitative — a
-   short written evaluation, not a number), while higher grade levels use a
-   **numeric** scale — a single `Grade` shape can't represent both without a
-   real design decision on how (or whether) one `ClassEntity`/school
-   distinguishes the two. Compounding that, there is no chosen exam plan yet,
-   which a numeric grading model would presumably need to reference. Do not
-   build a grades data model or UI assuming either scheme until both of these
-   are explicitly resolved — this is *not* the same kind of "not scheduled
-   yet" as e.g. the TEACHER roster view was (§7 Done); it's blocked on a real
-   product decision, not just sequencing.
+8. ~~A grades feature/UI was considered next... elementary grading in Iranian
+   schools is typically descriptive... while higher grade levels use a
+   numeric scale... no chosen exam plan yet either~~ — **resolved
+   2026-07-18.** Both original blockers are gone: the `exam` module now
+   exists (moshavere port step 4, §7 Done), and the grading-scheme question
+   is answered with four explicit decisions:
+   - **Scheme is per-class**, via `ClassEntity.gradingScheme`
+     (`DESCRIPTIVE`/`NUMERIC`) — not per-school and not derived from a
+     grade-level taxonomy (`ClassEntity` still has no `gradeLevel` field, and
+     none was added just for this — a school's elementary and older classes
+     simply get different explicit `gradingScheme` values at creation).
+   - **Manual entry only**, not derived from `exam` results — real grades
+     blend homework, participation, and exams; auto-deriving from exam scores
+     is a plausible future extension, not built now.
+   - **Descriptive grades use the real Ministry-of-Education four-level
+     scale** (`DescriptiveGradeLevel`: `EXCELLENT`/`GOOD`/`ACCEPTABLE`/
+     `NEEDS_EFFORT`) plus an optional comment — not free text.
+   - **Cadence is per term** (`GradingTerm`: `FIRST`/`SECOND` + a plain
+     `academicYear` string) — matching the real report-card structure, not a
+     running unstructured log.
+
+   See §4's Grade subsection and §7 Done ("Grades") for the full model,
+   `GradeController`'s deliberate `GRADES_EDIT`-only gating (to prevent a
+   `STUDENT`/`PARENT` holder of `GRADES_VIEW` from seeing a whole class's
+   grades), and test coverage. **Backend + REST only — no UI yet**, same
+   posture `curriculum`/`studyplan` shipped with at their own new-module time.

@@ -1,5 +1,7 @@
 package com.example.roshdeandishe.academic;
 
+import java.math.BigDecimal;
+import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
 
@@ -33,9 +35,40 @@ public interface AcademicFacade {
 
     List<StudentInfo> listStudents(Long schoolId);
 
-    ClassId createClass(Long schoolId, String name, Long teacherId, String section);
+    ClassId createClass(Long schoolId, String name, Long teacherId, String section, GradingScheme gradingScheme);
 
     List<ClassInfo> listClasses(Long schoolId);
+
+    /**
+     * ثبت/به‌روزرسانیِ نمره‌ی یک دانش‌آموز در یک کلاس برای یک نوبتِ مشخص.
+     * Idempotent است: نمره‌ی همان (studentId, classId, academicYear, term) به‌جای
+     * ثبتِ تکراری به‌روزرسانی می‌شود - همان الگوی setTuitionFee/assignPlanToStudent.
+     * <p>
+     * دانش‌آموز باید همین الان عضو همین کلاس باشد
+     * (AcademicError.StudentNotInClass وگرنه)، و دقیقاً یکی از
+     * descriptiveLevel/numericScore باید متناظر با شِمای واقعیِ کلاس
+     * (ClassEntity.gradingScheme) پر باشد (AcademicError.GradingSchemeMismatch
+     * وگرنه) - شِما پارامتر جداگانه نمی‌گیرد چون قابل استنتاج از خودِ کلاس است.
+     */
+    GradeId recordGrade(Long schoolId, Long studentId, Long classId, String academicYear, GradingTerm term,
+                         DescriptiveGradeLevel descriptiveLevel, BigDecimal numericScore, String comment);
+
+    GradeInfo getGrade(Long gradeId);
+
+    /**
+     * همه‌ی نمره‌های یک کلاس برای یک نوبتِ مشخص - نمای دفترچه‌نمره‌ی معلم
+     * برای ورود/بازبینیِ نمرات. عمداً فقط با GRADES_EDIT گیت می‌شود، نه
+     * GRADES_VIEW (که STUDENT/PARENT هم دارند) - وگرنه یک دانش‌آموز می‌توانست
+     * با فراخوانی مستقیمِ این endpoint، نمره‌ی کل هم‌کلاسی‌هایش را ببیند.
+     */
+    List<GradeInfo> listGradesForClass(Long schoolId, Long classId, String academicYear, GradingTerm term);
+
+    /**
+     * همه‌ی نمره‌های ثبت‌شده برای چند دانش‌آموز مشخص، در همه‌ی سال‌ها/نوبت‌ها -
+     * پشتیبانِ academic.MyGradesController (خودِ دانش‌آموز + فرزندانِ لینک‌شده‌ی
+     * والد)، همان الگوی FinanceFacade.listInvoicesForStudents.
+     */
+    List<GradeInfo> listGradesForStudents(Long schoolId, List<Long> studentIds);
 
     /**
      * لینک کردن یک کاربر به‌عنوان ولیِ یک دانش‌آموز. Idempotent است: اگر
@@ -82,10 +115,18 @@ public interface AcademicFacade {
     record ClassId(Long value) {
     }
 
+    record GradeId(Long value) {
+    }
+
     record StudentInfo(StudentId id, Long userId, Long schoolId, ClassId classId) {
     }
 
-    record ClassInfo(ClassId id, Long schoolId, String name, Long teacherId, String section) {
+    record ClassInfo(ClassId id, Long schoolId, String name, Long teacherId, String section, GradingScheme gradingScheme) {
+    }
+
+    record GradeInfo(GradeId id, Long schoolId, StudentId studentId, ClassId classId, String academicYear,
+                      GradingTerm term, GradingScheme scheme, DescriptiveGradeLevel descriptiveLevel,
+                      BigDecimal numericScore, String comment, Long recordedByUserId, Instant recordedAt) {
     }
 
     record EnrollmentInfo(StudentId studentId, Long schoolId, ClassId classId, String className, String section) {
