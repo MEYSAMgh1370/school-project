@@ -52,6 +52,7 @@
                         </div>
 
                         <h2 class="title is-6">نقش‌های این مدرسه</h2>
+                        <div class="table-container">
                         <table class="table is-fullwidth is-striped">
                             <thead>
                             <tr>
@@ -79,6 +80,7 @@
                             </template>
                             </tbody>
                         </table>
+                        </div>
                     </div>
                 </template>
             </div>

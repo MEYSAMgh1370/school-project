@@ -46,4 +46,20 @@ public sealed interface AcademicError {
 
     record GradeNotFound(Long gradeId) implements AcademicError {
     }
+
+    /**
+     * schoolId ای که در createClass داده شده به هیچ SchoolEntity واقعی‌ای
+     * اشاره ندارد - عملاً نباید رخ دهد (TenantContext از قبل schoolId را
+     * تأیید کرده)، اما یک بررسی دفاعی است نه چیزی که در مسیر عادی رخ دهد.
+     */
+    record SchoolNotFound(Long schoolId) implements AcademicError {
+    }
+
+    /**
+     * gradeLevel داده‌شده برای ساخت کلاس، در بازه‌ی مقطع تحصیلی مدرسه
+     * (school.SchoolFacade.SchoolLevel) نیست - مثلاً پایه‌ی ۸ برای مدرسه‌ای
+     * که مقطعش دبستان (پایه‌های ۱ تا ۶) است.
+     */
+    record InvalidGradeLevel(int gradeLevel, int minGrade, int maxGrade) implements AcademicError {
+    }
 }

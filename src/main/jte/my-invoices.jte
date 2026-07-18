@@ -20,7 +20,8 @@
 
                 <p x-show="loading">در حال بارگذاری...</p>
 
-                <table class="table is-fullwidth is-striped" x-show="!loading && invoices.length > 0">
+                <div class="table-container" x-show="!loading && invoices.length > 0">
+                <table class="table is-fullwidth is-striped">
                     <thead>
                     <tr>
                         <th>دانش‌آموز</th>
@@ -49,6 +50,7 @@
                     </template>
                     </tbody>
                 </table>
+                </div>
 
                 <div class="notification" x-show="!loading && !error && invoices.length === 0">
                     فاکتوری برای شما یا فرزندانتان در این مدرسه ثبت نشده است.

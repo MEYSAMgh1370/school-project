@@ -55,6 +55,7 @@
                                     <p class="mb-2">
                                         نمره‌ی کل: <strong dir="ltr" x-text="results[exam.id].overallScore"></strong>
                                     </p>
+                                    <div class="table-container">
                                     <table class="table is-fullwidth is-narrow">
                                         <thead>
                                         <tr><th>بخش</th><th>درست</th><th>غلط</th><th>بی‌پاسخ</th><th>نمره</th></tr>
@@ -71,6 +72,7 @@
                                         </template>
                                         </tbody>
                                     </table>
+                                    </div>
                                 </div>
                             </template>
                         </div>

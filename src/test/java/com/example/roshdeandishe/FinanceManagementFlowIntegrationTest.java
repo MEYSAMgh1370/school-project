@@ -114,7 +114,7 @@ class FinanceManagementFlowIntegrationTest {
                         .header("X-School-ID", "1")
                         .session(session)
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"name\":\"پایه چهارم - ج\",\"section\":\"ج\",\"teacherId\":null}"))
+                        .content("{\"name\":\"پایه چهارم - ج\",\"section\":\"ج\",\"teacherId\":null,\"gradeLevel\":4}"))
                 .andExpect(status().isOk())
                 .andReturn();
         Long classId = objectMapper.readTree(classResult.getResponse().getContentAsString())
@@ -170,7 +170,7 @@ class FinanceManagementFlowIntegrationTest {
                         .with(csrf())
                         .session(founderSession)
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"name\":\"مدرسه‌ی بدون ماژول مالی\",\"timezone\":\"Asia/Tehran\",\"locale\":\"fa-IR\"}"))
+                        .content("{\"name\":\"مدرسه‌ی بدون ماژول مالی\",\"timezone\":\"Asia/Tehran\",\"locale\":\"fa-IR\",\"level\":\"ELEMENTARY\"}"))
                 .andExpect(status().isOk())
                 .andReturn();
         long schoolId = objectMapper.readTree(createResult.getResponse().getContentAsString()).get("id").asLong();

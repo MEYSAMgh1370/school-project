@@ -1314,12 +1314,24 @@ SchoolEntity
 ├── name
 ├── status (ACTIVE | SUSPENDED)
 ├── timezone
-└── locale
+├── locale
+└── schoolLevel (SchoolFacade.SchoolLevel: ELEMENTARY | LOWER_SECONDARY | UPPER_SECONDARY —
+                  added 2026-07-18, §7 Done "School/class level classification")
 ```
 
 Created via `SchoolFacade.createSchool`, always self-service (§1). `setSchoolStatus`
 (suspension) exists on the facade but, like entitlement toggling, has no REST
 endpoint yet for the same platform-privilege reason.
+
+**`SchoolLevel`** (added 2026-07-18, resolving half of §11 Q8's blocker) — Iran's
+three-tier school system, required at creation, one level per school (a real
+دبستان building only ever has grades 1–6, never a K-12 campus):
+`ELEMENTARY` (دبستان, grades 1–6), `LOWER_SECONDARY` (متوسطه اول, grades 7–9),
+`UPPER_SECONDARY` (متوسطه دوم, grades 10–12). Each variant carries its own
+`minGrade()`/`maxGrade()`/`includesGrade(int)` — the single source of truth for
+the grade range, consumed by `academic.ClassEntity.gradeLevel` validation below.
+**This is classification only, not a grading scheme** — see the `Class` entry
+below and §11 Q8 for what's deliberately *not* built yet on top of it.
 
 ### Class (owned by `academic`)
 
@@ -1327,22 +1339,29 @@ endpoint yet for the same platform-privilege reason.
 ClassEntity
 ├── id
 ├── schoolId
-├── name           (e.g. "Grade 5 - A" — carries the grade-level meaning; there is
-│                    no separate gradeLevel field anywhere)
+├── name           (e.g. "Grade 5 - A" — free-text display label; does not need to
+│                    agree with gradeLevel below, though new classes should)
 ├── teacherId       (nullable — a class may exist before a teacher is assigned;
 │                    references an iam userId, not enforced at the DB level since
 │                    academic has no FK into iam's tables)
 ├── section
+├── gradeLevel      (int, required — added 2026-07-18. Validated at creation against
+│                     the owning school's SchoolLevel range (school.SchoolFacade.SchoolLevel,
+│                     AcademicFacadeImpl.requireValidGradeLevel) — a grade outside that
+│                     range is AcademicError.InvalidGradeLevel, 400. This is the first
+│                     thing `academic` depends on `school`'s Facade for; previously
+│                     schoolId was a fully opaque Long with zero cross-module validation.)
 └── gradingScheme   (GradingScheme: DESCRIPTIVE | NUMERIC — §11 Q8, resolved
-                      2026-07-18. Per-class, not per-school or per-grade-level:
-                      a single school has both elementary classes (descriptive)
-                      and older ones (numeric) at once, and ClassEntity has no
-                      gradeLevel field to derive this from automatically.
-                      Column stays nullable at the DB level so adding it to the
-                      existing table doesn't break dev data; the default
-                      (NUMERIC) is applied in ClassController.CreateClassRequest's
-                      compact constructor, not here — set explicitly at class
-                      creation when a class needs DESCRIPTIVE.)
+                      2026-07-18, same day as gradeLevel above (two parallel
+                      sessions, reconciled — see the Grade entry below).
+                      Per-class, explicit and overridable on the class itself,
+                      not derived at read time — but its *default*, when a
+                      caller doesn't set it explicitly, is computed from
+                      gradeLevel: 1–6 → DESCRIPTIVE, 7–12 → NUMERIC (in
+                      ClassController.CreateClassRequest's compact
+                      constructor, not here). Column stays nullable at the DB
+                      level so adding it to the existing table doesn't break
+                      dev data.)
 ```
 
 ### Grade (owned by `academic` — resolves §11 Q8)
@@ -1351,8 +1370,12 @@ A student's grade in a class for one term. Building this required four explicit
 decisions (all made 2026-07-18, each a real fork — see §11 Q8 for the options
 considered and rejected):
 
-1. **Scheme is per-class** (`ClassEntity.gradingScheme` above), not per-school or
-   derived from a grade-level taxonomy that doesn't exist yet.
+1. **Scheme is per-class, explicit and overridable** (`ClassEntity.gradingScheme`
+   above), not per-school and not *solely* derived from a grade-level rule —
+   though its default *is* now derived from `ClassEntity.gradeLevel` (a
+   parallel session's classification work, reconciled the same day — see the
+   `Class` entry above): 1–6 → `DESCRIPTIVE`, 7–12 → `NUMERIC`, still
+   overridable per class at creation.
 2. **Manual entry only** — a teacher enters a grade directly; it is not derived
    from `exam` module results. Real grades blend homework, participation, and
    exams, not just exam scores; deriving from `exam` is a plausible future
@@ -2695,13 +2718,14 @@ above.
   (`web.StudyPlansPageController`, built 2026-07-17 via the `design-page`
   skill)** — a thin shell like `/curriculum`, entirely client-side against
   `PlanController`/`IntervalScheduleController`/`StudyIntervalController`.
-  Deliberately scoped to the plan→assignment→schedule→interval path only:
-  `WeekCourseController` (a plan's weekly topic template) and the
-  multi-student `copyWeek` bulk action are **not** built in this pass —
-  neither is load-bearing for anything else in the UI or for `exam`'s
+  Deliberately scoped at the time to the plan→assignment→schedule→interval
+  path only: `WeekCourseController` (a plan's weekly topic template) and the
+  multi-student `copyWeek` bulk action were **not** built in that first
+  pass — neither is load-bearing for anything else in the UI or for `exam`'s
   `getRecentTopics` (which reads actual `StudyIntervalEntity` rows, not
-  `WeekCourse`), so they're lower priority than the core scheduling loop;
-  a separate slice if asked for. The `suggest`/`clear` week actions need an
+  `WeekCourse`), so they were lower priority than the core scheduling loop.
+  **Both were added 2026-07-17** (§7 Done, "Study-plans page deepening") —
+  see that entry for the UI shape. The `suggest`/`clear` week actions need an
   exact Saturday `weekStart`, so the page lets the user pick *any* day and
   derives the week's Saturday client-side
   (`mostRecentSaturday`/`formatLocalDate` in `study-plans.js`) — deliberately
@@ -2877,44 +2901,180 @@ above.
   authoring session (module boundaries intact, no new named-interface
   exposure needed since `studyplan` already depended on `AcademicFacade`/
   `CurriculumFacade`/`IamFacade`).
+- **Bale integration gap cleanup (built 2026-07-17)**: two known gaps flagged
+  since the Bale Phase 1 build (§7 Done above, `MOBILE_ROADMAP.md` §4/§5)
+  closed now that Docker/Testcontainers is available again in-session:
+  - **`BaleFlowIntegrationTest`**: covers the inbound webhook (wrong-secret
+    404, `/start` contact-request prompt, contact-share linking + upsert on
+    re-share, unknown-phone rejection, unlinked-chat "not linked" reply,
+    `"مدرسه‌های من"`/`"فرزندان من"` text commands) and the outbound
+    `finance.InvoiceIssuedEvent` → notify-student-and-linked-guardians flow.
+    Since `roshdeandishe.bale.bot-token` is empty by default (`BaleClient`
+    only logs, makes no real HTTP call), the test stands up a local JDK
+    `com.sun.net.httpserver.HttpServer` and points
+    `roshdeandishe.bale.api-base-url`/`bot-token`/`webhook-secret` at it via
+    `@DynamicPropertySource` — the same role GreenMail plays for
+    `InviteTokenFlowIntegrationTest`, but with zero new `pom.xml` dependency
+    (the JDK's built-in HTTP server is sufficient for capturing outbound
+    `sendMessage` calls). `mvn test -Dtest=ModularityTests` re-verified green.
+  - **Guardian-link admin UI**: previously curl/API-only (`AcademicFacade.linkGuardian`/
+    `listGuardians`, `GUARDIAN_MANAGE`, SCHOOL_ADMIN-only). Added as a
+    per-student-row "مدیریت والدین" expandable panel on the existing
+    `GET /students` page (`students.jte`/`students.js`) — same expand-in-place
+    pattern as `/classes`'s student-roster panel (§7 Done, "TEACHER persona").
+    **Zero backend change**: the panel composes the existing
+    `academic.StudentController` guardian endpoints with
+    `iam.MembershipController` (filtered to active `PARENT` memberships) for
+    name/email resolution and the parent-picker options, client-side only.
+    Guardians for a given student are fetched lazily the first time that
+    student's panel is opened (no bulk "list every guardian link in the
+    school" endpoint exists), cached per-student in memory for the rest of
+    the page session. The already-linked-parent set is subtracted from the
+    picker's options so the form doesn't re-offer someone already linked
+    (the backend call is idempotent either way — this is UX polish, not a
+    safety net). Manually verified end-to-end in a real browser: opened an
+    already-linked student's panel (existing guardian listed correctly),
+    opened an unlinked student's panel (empty-state text + picker shown),
+    linked a parent, saw the success notice and the panel update immediately.
+    Went through the `design-page` skill first per the standing instruction,
+    since this reshapes `/students`'s layout; no navbar change needed (no new
+    page, no new link).
+- **Study-plans page deepening (built 2026-07-17)**: the two pieces
+  deliberately left out of `/study-plans`'s first pass (§7 Done, "Moshavere
+  port, step 3") — `WeekCourseController` (a plan's weekly topic template)
+  and the multi-student `copyWeek` bulk action. **Zero backend change**,
+  both REST endpoints already existed. Went through the `design-page` skill
+  first since this reshapes `/study-plans`'s layout.
+  - **Weekly topics**: the per-plan row's single "تخصیص به دانش‌آموز" toggle
+    became "جزئیات برنامه", opening a panel with Bulma `tabs` — one tab for
+    the existing student-assignment list, a second, lazy-loaded
+    "سرفصل‌های هفتگی" tab listing/creating `WeekCourse` rows (week-start date
+    snapped to that week's Saturday client-side via the same
+    `mostRecentSaturday` helper `suggest`/`clear` already use, a topic
+    picker, and a sub-topic checklist capped at 10 — mirroring
+    `WeekCourseTopicEntity`'s server-side `ArrayField(size=10)` port — that
+    excludes whichever topic is currently selected as the week's main
+    topic, so a topic can't be checked as its own sub-topic). This is the
+    same expanded-row-with-Bulma-tabs pattern `/exams` already established
+    for its per-exam management panel (§7 Done, "Moshavere port, step 4").
+  - **Copy week**: a new secondary button next to `پیشنهاد خودکار`/
+    `خالی‌کردن این هفته` in the student-schedule box opens an inline panel —
+    a checkbox list of the school's *other* students (the selected student
+    excluded) plus a "کپی کردن" submit — calling the existing
+    `POST .../study-intervals/copy`. Per-target results (نام + موفق/ناموفق)
+    render in a small results table, and the top-level notice summarizes
+    "X از Y مورد با موفقیت".
+  - Manually verified end-to-end in a real browser: created a `WeekCourse`
+    with a sub-topic (confirmed the self-reference exclusion and the
+    Saturday-snap), then copied a populated week to a second student and
+    confirmed both the success notice and the per-target result row.
+    `mvn test -Dtest=StudyPlanManagementFlowIntegrationTest,ModularityTests`
+    re-verified green (no backend touched).
+- **School/class level classification (built 2026-07-18, explicit user decision —
+  resolves half of §11 Q8's blocker)**: schools can now differentiate themselves
+  as دبستان/متوسطه اول/متوسطه دوم ahead of building the actual grades feature —
+  see §4's `School` and `Class` entries for the full model
+  (`school.SchoolFacade.SchoolLevel`, `academic.ClassEntity.gradeLevel`). Four
+  explicit decisions, made with the user before implementing (not defaults):
+  (1) Iran's real 3-tier taxonomy, not a generic 2-tier primary/high split;
+  (2) the classification lives on **both** `School` (`schoolLevel`, required at
+  creation) and `Class` (`gradeLevel`, required at creation) — not just one —
+  because a real school building only ever has classes within its own level's
+  grade range, and that's only enforceable per-class; (3) the eventual grading
+  scheme (descriptive vs. numeric) will be auto-derived from `gradeLevel` by a
+  fixed platform rule (grades 1–6 → descriptive, 7–12 → numeric) once the grades
+  module is actually built — **not built in this pass**, since nothing consumes
+  it yet (YAGNI, CLAUDE.md's own top-level discipline); (4) scope for this pass
+  is the classification model only, not the grades (marks) module itself — same
+  incremental-slice precedent as curriculum → studyplan → exam each being a
+  separate pass. **Update, same day**: a parallel session built the grades
+  (marks) module concurrently, independently choosing an *explicit,
+  per-class-overridable* `gradingScheme` over a purely-derived one — the two
+  were reconciled (see the "Grades" entry immediately below): `gradeLevel`'s
+  rule now supplies `gradingScheme`'s *default*, not its only source of truth.
+  <br>
+  **New cross-module dependency**: `academic` now depends on `school.SchoolFacade`
+  (`AcademicFacadeImpl.requireValidGradeLevel`, called from `createClass`) — the
+  first time `academic` validates anything about `schoolId` beyond treating it as
+  an opaque Long. Legal per `ModularityTests` (no cycle: `school` has never
+  depended on `academic`). Two new `AcademicError` cases:
+  `SchoolNotFound` (defensive — `TenantContext` already validates `schoolId`
+  before a controller call reaches the facade, so this shouldn't be reachable
+  through the REST path) and `InvalidGradeLevel` (a real, reachable 400 when the
+  submitted grade falls outside the school's level range).
+  <br>
+  **UI**: `GET /schools/new` gained a required "مقطع تحصیلی" select (three
+  Persian-labeled options, `school-new.js`). `GET /classes` gained a required
+  "پایه" number input on the create-class form (`classes.jte`/`classes.js`) and
+  a "پایه" column in the class table; the form also fetches
+  `GET /api/admin/schools/{id}` once per page load (already existed, no backend
+  change — any active member may call it, §3's `SchoolController` entry) to show
+  the school's valid grade range as helper text and set the input's `min`/`max` —
+  best-effort only, the real validation is always server-side. Neither page
+  reshapes layout/flow enough to warrant the `design-page` skill — both are a
+  single new field on an already-designed form, not a new page or a new
+  panel/tab.
+  <br>
+  **Test fallout**: `academic.createClass`'s new validation broke every test that
+  called it (directly via `AcademicFacade` or through `POST .../classes`) with a
+  schoolId that had no real backing `SchoolEntity` — a pattern several facade-level
+  tests relied on precisely because `schoolId` used to be a fully opaque Long
+  (`FinanceFlowIntegrationTest`, `FinancePaymentFlowIntegrationTest`,
+  `BaleFlowIntegrationTest` all used synthetic/sequential schoolId literals with
+  no real school row). Fixed by having those specific tests call
+  `schoolFacade.createSchool(...)` for a real schoolId instead of fabricating one
+  — the correct fix, not a workaround, since a class genuinely cannot exist
+  without a real, level-compatible school now. Every other affected test (all
+  `POST /api/admin/schools` bodies gained `"level":"ELEMENTARY"`; all
+  `POST .../classes` bodies and direct `createClass` calls gained a `gradeLevel`
+  within the demo school's ELEMENTARY 1–6 range, regardless of what a class's
+  free-text `name` happens to say — e.g. a fixture named "پایه هشتم" may carry
+  `gradeLevel: 6`, a harmless cosmetic mismatch in test data, not a product bug)
+  needed only a field added to an existing request body. Full suite (139 tests)
+  + `ModularityTests` green after the fix.
 - **Grades (built 2026-07-18, resolving §11 Q8, an extension of `academic` —
   not a new module, same precedent as `Expense` extending `finance`)**: a
   student's grade in a class for one term — see §3, §4's Grade subsection,
   and §11 Q8 for the full model and the four explicit decisions behind it
   (per-class scheme, manual entry only, fixed four-level descriptive scale,
-  per-term cadence). New `GradingScheme`/`GradingTerm`/`DescriptiveGradeLevel`
-  enums, `ClassEntity.gradingScheme` (nullable column, defaults to `NUMERIC`
-  in `ClassController.CreateClassRequest`'s compact constructor so existing
-  callers that don't send it — other modules' tests creating a class just to
-  enroll a student — keep working unchanged), `GradeEntity`/`GradeRepository`,
+  per-term cadence). Built the same day as, and reconciled with, the
+  School/class level classification entry immediately above (a genuine
+  parallel-session collision, not a sequencing choice — see §11 Q8 for how
+  the two were merged). New `GradingScheme`/`GradingTerm`/
+  `DescriptiveGradeLevel` enums, `ClassEntity.gradingScheme` (nullable
+  column, explicit and overridable per class; when a caller doesn't set it,
+  `ClassController.CreateClassRequest`'s compact constructor defaults it from
+  `gradeLevel` — 1–6 → `DESCRIPTIVE`, 7–12 → `NUMERIC` — not a bare `NUMERIC`
+  fallback), `GradeEntity`/`GradeRepository`,
   `AcademicFacade.recordGrade`/`getGrade`/`listGradesForClass`/
   `listGradesForStudents`, four new `AcademicError` cases
   (`StudentNotInClass`, `GradingSchemeMismatch`, `InvalidGrade`,
-  `GradeNotFound`). New `GradeController` (admin gradebook,
-  `@RequiresModule("ACADEMIC")` + `GRADES_EDIT` on *both* methods — a
-  deliberate security choice, see §4's Permission section — `GRADES_VIEW`
-  alone would let a `STUDENT`/`PARENT` caller see a whole class's grades) and
-  `MyGradesController` (`GET /api/me/schools/{id}/grades`, the established
-  "my" pattern, no permission check — own grades + linked wards' grades, same
-  shape as `MyInvoicesController`). Fixed a pre-existing seed-data asymmetry
-  in passing: `GRADES_EDIT` had only ever been granted to `TEACHER`, not
-  `SCHOOL_ADMIN` (unlike every other `*_MANAGE`-tier permission) — placeholder
-  seed data from before this feature existed, corrected now that it's real.
-  Covered by `GradeManagementFlowIntegrationTest` (both schemes recorded and
-  listed, wrong-field-for-scheme rejected as `grading-scheme-mismatch`,
-  out-of-range numeric score rejected as `invalid-grade`, re-recording the
-  same student/class/term updates in place instead of duplicating, grading a
-  student against a class they're not enrolled in rejected as
-  `student-not-in-class`, `TEACHER` can record/list, `STUDENT` gets
-  `permission-denied` on the admin endpoint *despite holding* `GRADES_VIEW`
-  — the security case above — a fresh self-service school gets
+  `GradeNotFound` — on top of the classification entry's own `SchoolNotFound`/
+  `InvalidGradeLevel`, six new cases total this day). New `GradeController`
+  (admin gradebook, `@RequiresModule("ACADEMIC")` + `GRADES_EDIT` on *both*
+  methods — a deliberate security choice, see §4's Permission section —
+  `GRADES_VIEW` alone would let a `STUDENT`/`PARENT` caller see a whole
+  class's grades) and `MyGradesController` (`GET /api/me/schools/{id}/grades`,
+  the established "my" pattern, no permission check — own grades + linked
+  wards' grades, same shape as `MyInvoicesController`). Fixed a pre-existing
+  seed-data asymmetry in passing: `GRADES_EDIT` had only ever been granted to
+  `TEACHER`, not `SCHOOL_ADMIN` (unlike every other `*_MANAGE`-tier
+  permission) — placeholder seed data from before this feature existed,
+  corrected now that it's real. Covered by `GradeManagementFlowIntegrationTest`
+  (both schemes recorded and listed, wrong-field-for-scheme rejected as
+  `grading-scheme-mismatch`, out-of-range numeric score rejected as
+  `invalid-grade`, re-recording the same student/class/term updates in place
+  instead of duplicating, grading a student against a class they're not
+  enrolled in rejected as `student-not-in-class`, `TEACHER` can record/list,
+  `STUDENT` gets `permission-denied` on the admin endpoint *despite holding*
+  `GRADES_VIEW` — the security case above — a fresh self-service school gets
   `module-not-entitled`, and `MyGradesController` returns own + linked wards'
-  grades only, empty for an unrelated caller). Full suite (149 tests) +
-  `ModularityTests` run against a real Postgres via Testcontainers in the
-  authoring session and green. **No UI yet** — same posture `curriculum`/
-  `studyplan` shipped with at their own new-module time: backend + REST +
-  tests first; a `/grades` gradebook page and a `/my-grades` self-view are a
-  separate slice, through the `design-page` skill when built.
+  grades only, empty for an unrelated caller). Full suite + `ModularityTests`
+  run against a real Postgres via Testcontainers after reconciling with the
+  classification entry above, and green. **No UI yet** — same posture
+  `curriculum`/`studyplan` shipped with at their own new-module time: backend
+  + REST + tests first; a `/grades` gradebook page and a `/my-grades`
+  self-view are a separate slice, through the `design-page` skill when built.
 
 ### Open / explicitly deferred
 
@@ -3197,10 +3357,12 @@ REST + tests only, same posture `curriculum`/`studyplan` shipped with.
 - ~~Do not build a grades data model or UI~~ — **resolved 2026-07-18, §11
   Q8.** The grades data model and REST layer are built (§4's Grade
   subsection, §7 Done) — the four decisions that unblocked it (per-class
-  scheme, manual entry only, fixed descriptive scale, per-term cadence) are
-  documented there. A `/grades`/`/my-grades` **UI** is still unbuilt (not
-  forbidden, just not yet requested) — go through the `design-page` skill
-  when it is.
+  scheme defaulting from `gradeLevel` but explicit and overridable, manual
+  entry only, fixed descriptive scale, per-term cadence) are documented
+  there, including how this reconciles with the same-day School/class level
+  classification work (§7 Done). A `/grades`/`/my-grades` **UI** is still
+  unbuilt (not forbidden, just not yet requested) — go through the
+  `design-page` skill when it is.
 - **Do not scope an already-shipped endpoint to `StudentGuardianEntity` (or
   any other narrowing) as a silent side effect of unrelated work.** This is
   exactly what protected `/finance`'s `GET invoices` from being scoped as a
@@ -3286,12 +3448,24 @@ REST + tests only, same posture `curriculum`/`studyplan` shipped with.
    numeric scale... no chosen exam plan yet either~~ — **resolved
    2026-07-18.** Both original blockers are gone: the `exam` module now
    exists (moshavere port step 4, §7 Done), and the grading-scheme question
-   is answered with four explicit decisions:
-   - **Scheme is per-class**, via `ClassEntity.gradingScheme`
-     (`DESCRIPTIVE`/`NUMERIC`) — not per-school and not derived from a
-     grade-level taxonomy (`ClassEntity` still has no `gradeLevel` field, and
-     none was added just for this — a school's elementary and older classes
-     simply get different explicit `gradingScheme` values at creation).
+   is answered — via **two parallel sessions that independently tackled this
+   same question the same day and had to be reconciled** (§7 Done, "School/
+   class level classification" and "Grades" — a real instance of the
+   parallel-session-conflict pattern this project has hit before, not a
+   hypothetical). One session added `school.SchoolFacade.SchoolLevel` +
+   `academic.ClassEntity.gradeLevel` (a validated 1–12 classification, with a
+   *planned* fixed derivation rule not yet wired to anything); the other
+   built the actual `Grade` entity/REST with an *explicit, per-class*
+   `gradingScheme` field, chosen deliberately over pure derivation. Reconciled
+   as: **`gradeLevel`'s rule supplies `gradingScheme`'s default** (1–6 →
+   `DESCRIPTIVE`, 7–12 → `NUMERIC`, in
+   `ClassController.CreateClassRequest`'s compact constructor) **but the
+   field stays explicit and overridable per class** — neither session's
+   decision was silently discarded. The four decisions behind the `Grade`
+   model itself:
+   - **Scheme is per-class, explicit and overridable** (`ClassEntity.gradingScheme`),
+     not per-school — with its default now derived from `gradeLevel` per the
+     reconciliation above.
    - **Manual entry only**, not derived from `exam` results — real grades
      blend homework, participation, and exams; auto-deriving from exam scores
      is a plausible future extension, not built now.
@@ -3302,8 +3476,11 @@ REST + tests only, same posture `curriculum`/`studyplan` shipped with.
      `academicYear` string) — matching the real report-card structure, not a
      running unstructured log.
 
-   See §4's Grade subsection and §7 Done ("Grades") for the full model,
-   `GradeController`'s deliberate `GRADES_EDIT`-only gating (to prevent a
-   `STUDENT`/`PARENT` holder of `GRADES_VIEW` from seeing a whole class's
-   grades), and test coverage. **Backend + REST only — no UI yet**, same
-   posture `curriculum`/`studyplan` shipped with at their own new-module time.
+   See §4's Class and Grade subsections and §7 Done ("School/class level
+   classification", "Grades") for the full model, `GradeController`'s
+   deliberate `GRADES_EDIT`-only gating (to prevent a `STUDENT`/`PARENT`
+   holder of `GRADES_VIEW` from seeing a whole class's grades), and test
+   coverage. **Backend + REST only — no UI yet for the `Grade` model itself**
+   (the classification fields do have UI — `/schools/new` and `/classes`),
+   same posture `curriculum`/`studyplan` shipped with at their own
+   new-module time.

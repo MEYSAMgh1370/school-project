@@ -9,6 +9,8 @@ import com.example.roshdeandishe.academic.shared.AcademicError;
 import com.example.roshdeandishe.academic.shared.AcademicException;
 import com.example.roshdeandishe.iam.IamFacade;
 import com.example.roshdeandishe.iam.shared.exception.IamException;
+import com.example.roshdeandishe.school.SchoolFacade;
+import com.example.roshdeandishe.school.SchoolFacade.SchoolInfo;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -28,6 +30,7 @@ class AcademicFacadeImpl implements AcademicFacade {
     private final StudentGuardianRepository studentGuardianRepository;
     private final GradeRepository gradeRepository;
     private final IamFacade iamFacade;
+    private final SchoolFacade schoolFacade;
     private final ApplicationEventPublisher eventPublisher;
 
     AcademicFacadeImpl(
@@ -36,6 +39,7 @@ class AcademicFacadeImpl implements AcademicFacade {
             StudentGuardianRepository studentGuardianRepository,
             GradeRepository gradeRepository,
             IamFacade iamFacade,
+            SchoolFacade schoolFacade,
             ApplicationEventPublisher eventPublisher
     ) {
         this.studentRepository = studentRepository;
@@ -43,6 +47,7 @@ class AcademicFacadeImpl implements AcademicFacade {
         this.studentGuardianRepository = studentGuardianRepository;
         this.gradeRepository = gradeRepository;
         this.iamFacade = iamFacade;
+        this.schoolFacade = schoolFacade;
         this.eventPublisher = eventPublisher;
     }
 
@@ -92,8 +97,9 @@ class AcademicFacadeImpl implements AcademicFacade {
 
     @Override
     @Transactional
-    public ClassId createClass(Long schoolId, String name, Long teacherId, String section, GradingScheme gradingScheme) {
-        ClassEntity saved = classRepository.save(new ClassEntity(schoolId, name, teacherId, section, gradingScheme));
+    public ClassId createClass(Long schoolId, String name, Long teacherId, String section, int gradeLevel, GradingScheme gradingScheme) {
+        requireValidGradeLevel(schoolId, gradeLevel);
+        ClassEntity saved = classRepository.save(new ClassEntity(schoolId, name, teacherId, section, gradeLevel, gradingScheme));
         return new ClassId(saved.getId());
     }
 
@@ -244,6 +250,20 @@ class AcademicFacadeImpl implements AcademicFacade {
         }
     }
 
+    // مقطع تحصیلی مدرسه بازه‌ی مجاز gradeLevel کلاس‌هایش را تعیین می‌کند
+    // (school.SchoolFacade.SchoolLevel) - یک ساختمان دبستان فقط پایه‌های
+    // ۱ تا ۶ می‌پذیرد. schoolId ای که به هیچ SchoolEntity واقعی‌ای اشاره
+    // نکند عملاً نباید رخ دهد (TenantContext از قبل schoolId را تأیید
+    // کرده)، ولی این یک بررسی دفاعی است.
+    private void requireValidGradeLevel(Long schoolId, int gradeLevel) {
+        SchoolInfo school = schoolFacade.findSchool(new SchoolFacade.SchoolId(schoolId))
+                .orElseThrow(() -> new AcademicException(new AcademicError.SchoolNotFound(schoolId)));
+        if (!school.level().includesGrade(gradeLevel)) {
+            throw new AcademicException(new AcademicError.InvalidGradeLevel(
+                    gradeLevel, school.level().minGrade(), school.level().maxGrade()));
+        }
+    }
+
     private ClassEntity requireClassInSchool(Long schoolId, Long classId) {
         ClassEntity classEntity = classRepository.findById(classId)
                 .orElseThrow(() -> new AcademicException(new AcademicError.ClassNotFound(classId)));
@@ -255,7 +275,8 @@ class AcademicFacadeImpl implements AcademicFacade {
     }
 
     private static ClassInfo toClassInfo(ClassEntity c) {
-        return new ClassInfo(new ClassId(c.getId()), c.getSchoolId(), c.getName(), c.getTeacherId(), c.getSection(), c.getGradingScheme());
+        return new ClassInfo(new ClassId(c.getId()), c.getSchoolId(), c.getName(), c.getTeacherId(), c.getSection(),
+                c.getGradeLevel(), c.getGradingScheme());
     }
 
     private static GradeInfo toGradeInfo(GradeEntity g) {

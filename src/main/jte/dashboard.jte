@@ -23,6 +23,7 @@
                 یا منتظر دعوت‌نامه‌ی مدرسه‌تان بمانید.
             </div>
         @else
+            <div class="table-container">
             <table class="table is-fullwidth is-striped">
                 <thead>
                 <tr>
@@ -47,6 +48,7 @@
                 @endfor
                 </tbody>
             </table>
+            </div>
         @endif
     </div>
 </section>

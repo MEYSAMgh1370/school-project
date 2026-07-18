@@ -98,7 +98,7 @@ class RegistrationFlowIntegrationTest {
                         .with(csrf())
                         .session(session)
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"name\":\"مدرسه‌ی بنیان‌گذار\",\"timezone\":\"Asia/Tehran\",\"locale\":\"fa-IR\"}"))
+                        .content("{\"name\":\"مدرسه‌ی بنیان‌گذار\",\"timezone\":\"Asia/Tehran\",\"locale\":\"fa-IR\",\"level\":\"ELEMENTARY\"}"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.name").value("مدرسه‌ی بنیان‌گذار"))
                 .andReturn();

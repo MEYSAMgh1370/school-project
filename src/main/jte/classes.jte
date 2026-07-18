@@ -20,11 +20,17 @@
 
                 <div class="box">
                     <h2 class="title is-6">افزودن کلاس جدید</h2>
+                    <p class="help" x-show="school" x-text="gradeRangeHelp()"></p>
                     <form @submit.prevent="createClass">
                         <div class="field is-grouped is-grouped-multiline">
                             <div class="control is-expanded">
                                 <label class="label" for="className">نام کلاس</label>
                                 <input class="input" id="className" type="text" x-model="form.name" required>
+                            </div>
+                            <div class="control">
+                                <label class="label" for="classGradeLevel">پایه</label>
+                                <input class="input" id="classGradeLevel" type="number" x-model="form.gradeLevel"
+                                       :min="school ? school.minGrade : 1" :max="school ? school.maxGrade : 12" required>
                             </div>
                             <div class="control is-expanded">
                                 <label class="label" for="classSection">بخش</label>
@@ -50,10 +56,12 @@
                     </form>
                 </div>
 
+                <div class="table-container">
                 <table class="table is-fullwidth is-striped">
                     <thead>
                     <tr>
                         <th>نام کلاس</th>
+                        <th>پایه</th>
                         <th>بخش</th>
                         <th>معلم</th>
                         <th>دانش‌آموزان کلاس</th>
@@ -63,6 +71,7 @@
                     <template x-for="classItem in classes" :key="classItem.id">
                         <tr>
                             <td x-text="classItem.name"></td>
+                            <td x-text="classItem.gradeLevel"></td>
                             <td x-text="classItem.section || '—'"></td>
                             <td x-text="teacherName(classItem.teacherId)"></td>
                             <td>
@@ -77,6 +86,7 @@
                     </template>
                     </tbody>
                 </table>
+                </div>
 
                 <div class="notification" x-show="!loading && classes.length === 0">
                     هنوز کلاسی در این مدرسه ثبت نشده است.
@@ -92,7 +102,8 @@
                                     @click="selectedClassId = null"></button>
                         </div>
                     </div>
-                    <table class="table is-fullwidth is-narrow" x-show="rosterForSelected().length > 0">
+                    <div class="table-container" x-show="rosterForSelected().length > 0">
+                    <table class="table is-fullwidth is-narrow">
                         <thead>
                         <tr>
                             <th>نام دانش‌آموز</th>
@@ -108,6 +119,7 @@
                         </template>
                         </tbody>
                     </table>
+                    </div>
                     <p class="has-text-grey" x-show="rosterForSelected().length === 0">
                         دانش‌آموزی در این کلاس ثبت‌نام نشده است.
                     </p>

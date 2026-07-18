@@ -27,7 +27,8 @@
                                 این مدرسه هنوز آزمون تألیفی‌ای ندارد. اولین آزمون را از فرم زیر بسازید.
                             </div>
 
-                            <table class="table is-fullwidth is-striped" x-show="exams.length > 0">
+                            <div class="table-container" x-show="exams.length > 0">
+                            <table class="table is-fullwidth is-striped">
                                 <thead>
                                 <tr>
                                     <th>عنوان</th>
@@ -55,6 +56,7 @@
                                 </template>
                                 </tbody>
                             </table>
+                            </div>
 
                             <template x-for="exam in exams" :key="'panel-' + exam.id">
                                 <div class="box" x-show="expandedExamId === exam.id" x-cloak>
@@ -75,7 +77,8 @@
                                     </div>
 
                                     <div x-show="examTab === 'sections'">
-                                        <table class="table is-fullwidth is-narrow" x-show="sections.length > 0">
+                                        <div class="table-container" x-show="sections.length > 0">
+                                        <table class="table is-fullwidth is-narrow">
                                             <thead>
                                             <tr><th>سرفصل</th><th>نام بخش</th><th>تعداد سؤال</th></tr>
                                             </thead>
@@ -89,6 +92,7 @@
                                             </template>
                                             </tbody>
                                         </table>
+                                        </div>
                                         <p class="has-text-grey mb-3" x-show="sections.length === 0">
                                             هنوز بخشی برای این آزمون ساخته نشده است.
                                         </p>
@@ -174,13 +178,15 @@
                                     </div>
 
                                     <div x-show="examTab === 'assign'">
-                                        <table class="table is-fullwidth is-narrow" x-show="assignedStudentIds.length > 0">
+                                        <div class="table-container" x-show="assignedStudentIds.length > 0">
+                                        <table class="table is-fullwidth is-narrow">
                                             <tbody>
                                             <template x-for="studentId in assignedStudentIds" :key="studentId">
                                                 <tr><td x-text="studentLabel(studentId)"></td></tr>
                                             </template>
                                             </tbody>
                                         </table>
+                                        </div>
                                         <p class="has-text-grey mb-3" x-show="assignedStudentIds.length === 0">
                                             هنوز دانش‌آموزی به این آزمون تخصیص داده نشده است.
                                         </p>
@@ -207,7 +213,8 @@
                                     </div>
 
                                     <div x-show="examTab === 'results'">
-                                        <table class="table is-fullwidth is-narrow" x-show="attemptedStudents.length > 0">
+                                        <div class="table-container" x-show="attemptedStudents.length > 0">
+                                        <table class="table is-fullwidth is-narrow">
                                             <thead><tr><th>دانش‌آموز</th><th>زمان شروع</th><th></th></tr></thead>
                                             <tbody>
                                             <template x-for="attempt in attemptedStudents" :key="attempt.studentId">
@@ -225,6 +232,7 @@
                                             </template>
                                             </tbody>
                                         </table>
+                                        </div>
                                         <p class="has-text-grey" x-show="attemptedStudents.length === 0">
                                             هنوز دانش‌آموزی برای این آزمون تلاشی ثبت نکرده است.
                                         </p>
@@ -235,6 +243,7 @@
                                                     نمره‌ی کل:
                                                     <strong dir="ltr" x-text="studentResult.overallScore"></strong>
                                                 </p>
+                                                <div class="table-container">
                                                 <table class="table is-fullwidth is-narrow">
                                                     <thead>
                                                     <tr>
@@ -253,6 +262,7 @@
                                                     </template>
                                                     </tbody>
                                                 </table>
+                                                </div>
                                             </div>
                                         </template>
                                     </div>
@@ -322,6 +332,7 @@
                             <template x-if="weeklyResult">
                                 <div class="box">
                                     <p class="mb-2">آزمون هفتگی برای هفته‌ی <span dir="ltr" x-text="weeklyResult.weekStart"></span> ساخته شد:</p>
+                                    <div class="table-container">
                                     <table class="table is-fullwidth is-narrow">
                                         <thead><tr><th>سرفصل</th><th>تعداد سؤال</th></tr></thead>
                                         <tbody>
@@ -333,6 +344,7 @@
                                         </template>
                                         </tbody>
                                     </table>
+                                    </div>
                                 </div>
                             </template>
                         </div>

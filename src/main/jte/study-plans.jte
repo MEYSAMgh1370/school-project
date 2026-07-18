@@ -2,10 +2,10 @@
 
 @param NavbarModel navbar
 
-@template.layout.main(title = "برنامه‌های مطالعه", scripts = java.util.List.of("/js/navbar.js", "/js/study-plans.js"), content = @`
+@template.layout.main(title = "برنامه‌های مطالعه", styles = java.util.List.of("/css/my-study-plan.css"), scripts = java.util.List.of("/js/navbar.js", "/js/study-plans.js"), content = @`
 @template.layout.navbar(navbar = navbar)
 
-<section class="section" x-data="studyPlansPage()">
+<section class="section" x-data="studyPlansPage()" @keydown.escape.window="closeGridBlock()">
     <div class="container">
         <h1 class="title is-4">برنامه‌های مطالعه</h1>
 
@@ -27,7 +27,8 @@
                                 این مدرسه هنوز برنامه‌ی مطالعه‌ای ندارد. اولین برنامه را از فرم زیر بسازید.
                             </div>
 
-                            <table class="table is-fullwidth is-striped" x-show="plans.length > 0">
+                            <div class="table-container" x-show="plans.length > 0">
+                            <table class="table is-fullwidth is-striped">
                                 <thead>
                                 <tr>
                                     <th>عنوان</th>
@@ -43,50 +44,138 @@
                                         <td>
                                             <button type="button" class="button is-small"
                                                     :class="{ 'is-link': expandedPlanId === plan.id }"
-                                                    @click="toggleAssignments(plan.id)">
-                                                تخصیص به دانش‌آموز
+                                                    @click="togglePlanDetails(plan.id)">
+                                                جزئیات برنامه
                                             </button>
                                         </td>
                                     </tr>
                                 </template>
                                 </tbody>
                             </table>
+                            </div>
 
-                            <template x-for="plan in plans" :key="'assign-' + plan.id">
+                            <template x-for="plan in plans" :key="'detail-' + plan.id">
                                 <div class="box" x-show="expandedPlanId === plan.id" x-cloak>
-                                    <h3 class="title is-6" x-text="'دانش‌آموزان تخصیص‌یافته به: ' + plan.title"></h3>
-                                    <table class="table is-fullwidth is-narrow" x-show="assignments.length > 0">
-                                        <tbody>
-                                        <template x-for="assignment in assignments" :key="assignment.studentId">
-                                            <tr>
-                                                <td x-text="studentLabel(assignment.studentId)"></td>
-                                            </tr>
-                                        </template>
-                                        </tbody>
-                                    </table>
-                                    <p class="has-text-grey mb-3" x-show="assignments.length === 0">
-                                        هنوز دانش‌آموزی به این برنامه تخصیص داده نشده است.
-                                    </p>
-                                    <div class="field has-addons">
-                                        <div class="control is-expanded">
-                                            <div class="select is-fullwidth">
-                                                <select x-model="assignStudentIdInput">
-                                                    <option value="">— انتخاب دانش‌آموز —</option>
-                                                    <template x-for="student in students" :key="'opt-' + student.studentId">
-                                                        <option :value="student.studentId" x-text="studentLabel(student.studentId)"></option>
-                                                    </template>
-                                                </select>
+                                    <div class="tabs is-toggle is-toggle-rounded is-small">
+                                        <ul>
+                                            <li :class="{ 'is-active': planDetailTab === 'assignments' }">
+                                                <a @click.prevent="planDetailTab = 'assignments'">تخصیص به دانش‌آموز</a>
+                                            </li>
+                                            <li :class="{ 'is-active': planDetailTab === 'weekCourses' }">
+                                                <a @click.prevent="selectWeekCoursesTab(plan.id)">سرفصل‌های هفتگی</a>
+                                            </li>
+                                        </ul>
+                                    </div>
+
+                                    <template x-if="planDetailTab === 'assignments'">
+                                        <div>
+                                            <h3 class="title is-6" x-text="'دانش‌آموزان تخصیص‌یافته به: ' + plan.title"></h3>
+                                            <div class="table-container" x-show="assignments.length > 0">
+                                            <table class="table is-fullwidth is-narrow">
+                                                <tbody>
+                                                <template x-for="assignment in assignments" :key="assignment.studentId">
+                                                    <tr>
+                                                        <td x-text="studentLabel(assignment.studentId)"></td>
+                                                    </tr>
+                                                </template>
+                                                </tbody>
+                                            </table>
+                                            </div>
+                                            <p class="has-text-grey mb-3" x-show="assignments.length === 0">
+                                                هنوز دانش‌آموزی به این برنامه تخصیص داده نشده است.
+                                            </p>
+                                            <div class="field has-addons">
+                                                <div class="control is-expanded">
+                                                    <div class="select is-fullwidth">
+                                                        <select x-model="assignStudentIdInput">
+                                                            <option value="">— انتخاب دانش‌آموز —</option>
+                                                            <template x-for="student in students" :key="'opt-' + student.studentId">
+                                                                <option :value="student.studentId" x-text="studentLabel(student.studentId)"></option>
+                                                            </template>
+                                                        </select>
+                                                    </div>
+                                                </div>
+                                                <div class="control">
+                                                    <button class="button is-link" type="button"
+                                                            :disabled="!assignStudentIdInput"
+                                                            :class="{ 'is-loading': submittingAssignment }"
+                                                            @click="assignStudent(plan.id)">
+                                                        تخصیص
+                                                    </button>
+                                                </div>
                                             </div>
                                         </div>
-                                        <div class="control">
-                                            <button class="button is-link" type="button"
-                                                    :disabled="!assignStudentIdInput"
-                                                    :class="{ 'is-loading': submittingAssignment }"
-                                                    @click="assignStudent(plan.id)">
-                                                تخصیص
-                                            </button>
+                                    </template>
+
+                                    <template x-if="planDetailTab === 'weekCourses'">
+                                        <div>
+                                            <h3 class="title is-6" x-text="'سرفصل‌های هفتگیِ: ' + plan.title"></h3>
+                                            <div class="table-container" x-show="weekCourses.length > 0">
+                                            <table class="table is-fullwidth is-narrow">
+                                                <thead>
+                                                <tr>
+                                                    <th>شروع هفته</th>
+                                                    <th>سرفصل</th>
+                                                    <th>زیرسرفصل‌ها</th>
+                                                </tr>
+                                                </thead>
+                                                <tbody>
+                                                <template x-for="weekCourse in weekCourses" :key="weekCourse.id">
+                                                    <tr>
+                                                        <td dir="ltr" x-text="weekCourse.weekStart"></td>
+                                                        <td x-text="topicName(weekCourse.courseTopicId)"></td>
+                                                        <td x-text="subTopicNames(weekCourse.subTopicIds) || '—'"></td>
+                                                    </tr>
+                                                </template>
+                                                </tbody>
+                                            </table>
+                                            </div>
+                                            <p class="has-text-grey mb-3" x-show="!loadingWeekCourses && weekCourses.length === 0">
+                                                هنوز سرفصل هفتگی‌ای برای این برنامه ثبت نشده است.
+                                            </p>
+
+                                            <div class="field is-grouped is-grouped-multiline">
+                                                <div class="control">
+                                                    <label class="label" for="weekCourseStart">یک روز از هفته‌ی مورد نظر</label>
+                                                    <input class="input" dir="ltr" id="weekCourseStart" type="date"
+                                                           x-model="weekCourseForm.weekStart">
+                                                </div>
+                                                <div class="control is-expanded">
+                                                    <label class="label" for="weekCourseTopic">سرفصل هفته</label>
+                                                    <div class="select is-fullwidth">
+                                                        <select id="weekCourseTopic" x-model="weekCourseForm.courseTopicId">
+                                                            <option value="">— انتخاب کنید —</option>
+                                                            <template x-for="node in flatTopics" :key="'wc-topic-' + node.id">
+                                                                <option :value="node.id" x-text="'—'.repeat(node.depth) + ' ' + node.name"></option>
+                                                            </template>
+                                                        </select>
+                                                    </div>
+                                                </div>
+                                            </div>
+
+                                            <label class="label">زیرسرفصل‌ها (حداکثر ۱۰ مورد)</label>
+                                            <div class="field is-grouped is-grouped-multiline mb-3">
+                                                <template x-for="node in flatTopics" :key="'wc-sub-' + node.id">
+                                                    <label class="checkbox mr-4" x-show="String(node.id) !== String(weekCourseForm.courseTopicId)">
+                                                        <input type="checkbox"
+                                                               :checked="weekCourseForm.subTopicIds.includes(node.id)"
+                                                               :disabled="!weekCourseForm.subTopicIds.includes(node.id) && weekCourseForm.subTopicIds.length >= 10"
+                                                               @change="toggleWeekCourseSubTopic(node.id)">
+                                                        <span x-text="node.name"></span>
+                                                    </label>
+                                                </template>
+                                            </div>
+
+                                            <div class="field">
+                                                <button class="button is-link" type="button"
+                                                        :disabled="!weekCourseForm.weekStart || !weekCourseForm.courseTopicId"
+                                                        :class="{ 'is-loading': submittingWeekCourse }"
+                                                        @click="createWeekCourse(plan.id)">
+                                                    افزودن سرفصل هفتگی
+                                                </button>
+                                            </div>
                                         </div>
-                                    </div>
+                                    </template>
                                 </div>
                             </template>
 
@@ -208,39 +297,93 @@
                                                 خالی‌کردن این هفته
                                             </button>
                                         </div>
+                                        <div class="control" style="align-self: flex-end">
+                                            <button class="button" type="button" @click="copyPanelOpen = !copyPanelOpen">
+                                                کپی این هفته برای دانش‌آموزان دیگر
+                                            </button>
+                                        </div>
                                     </div>
 
-                                    <table class="table is-fullwidth is-striped" x-show="intervals.length > 0">
-                                        <thead>
-                                        <tr>
-                                            <th>سرفصل</th>
-                                            <th>شروع</th>
-                                            <th>پایان</th>
-                                            <th>انجام‌شده</th>
-                                            <th></th>
-                                        </tr>
-                                        </thead>
-                                        <tbody>
-                                        <template x-for="interval in intervals" :key="interval.id">
+                                    <div class="box" x-show="copyPanelOpen" x-cloak>
+                                        <h4 class="title is-6">کپی بازه‌های این هفته به دانش‌آموزان دیگر</h4>
+                                        <p class="has-text-grey" x-show="otherStudents().length === 0">
+                                            دانش‌آموز دیگری در این مدرسه برای کپی وجود ندارد.
+                                        </p>
+                                        <div class="field is-grouped is-grouped-multiline mb-3">
+                                            <template x-for="student in otherStudents()" :key="'copy-target-' + student.studentId">
+                                                <label class="checkbox mr-4">
+                                                    <input type="checkbox"
+                                                           :checked="copyTargetIds.includes(student.studentId)"
+                                                           @change="toggleCopyTarget(student.studentId)">
+                                                    <span x-text="studentLabel(student.studentId)"></span>
+                                                </label>
+                                            </template>
+                                        </div>
+                                        <div class="field">
+                                            <button class="button is-link" type="button"
+                                                    :disabled="copyTargetIds.length === 0"
+                                                    :class="{ 'is-loading': copyingWeek }" @click="copyWeekToOthers">
+                                                کپی کردن
+                                            </button>
+                                        </div>
+                                        <div class="table-container mt-3" x-show="copyResults.length > 0">
+                                        <table class="table is-fullwidth is-narrow">
+                                            <thead>
                                             <tr>
-                                                <td x-text="topicName(interval.topicId)"></td>
-                                                <td dir="ltr" x-text="interval.start.replace('T', ' ')"></td>
-                                                <td dir="ltr" x-text="interval.end.replace('T', ' ')"></td>
-                                                <td>
-                                                    <button type="button" class="button is-small"
-                                                            :class="interval.done ? 'is-success' : 'is-light'"
-                                                            @click="toggleIntervalDone(interval)">
-                                                        <span x-text="interval.done ? 'بله' : 'خیر'"></span>
-                                                    </button>
-                                                </td>
-                                                <td>
-                                                    <button type="button" class="button is-small is-danger is-light"
-                                                            @click="deleteInterval(interval)">حذف</button>
-                                                </td>
+                                                <th>دانش‌آموز</th>
+                                                <th>نتیجه</th>
                                             </tr>
-                                        </template>
-                                        </tbody>
-                                    </table>
+                                            </thead>
+                                            <tbody>
+                                            <template x-for="result in copyResults" :key="'copy-result-' + result.studentId">
+                                                <tr>
+                                                    <td x-text="studentLabel(result.studentId)"></td>
+                                                    <td>
+                                                        <span class="tag" :class="result.ok ? 'is-success' : 'is-danger'"
+                                                              x-text="result.ok ? 'موفق' : (result.message || 'ناموفق')"></span>
+                                                    </td>
+                                                </tr>
+                                            </template>
+                                            </tbody>
+                                        </table>
+                                        </div>
+                                    </div>
+
+                                    <div class="sp-legend" x-show="!loadingWeek && intervals.length > 0">
+                                        <span class="sp-legend-item"><span class="sp-swatch sp-swatch--pending"></span> در انتظار ثبت</span>
+                                        <span class="sp-legend-item"><span class="sp-swatch sp-swatch--done"></span> مطالعه انجام‌شده</span>
+                                    </div>
+
+                                    <div class="box sp-grid-box" x-show="!loadingWeek && intervals.length > 0">
+                                        <div class="sp-grid">
+                                            <div class="sp-axis">
+                                                <template x-for="h in hourMarks" :key="h">
+                                                    <div class="sp-hour" :style="'top:' + hourMarkTop(h) + 'px'" x-text="hourMarkLabel(h)"></div>
+                                                </template>
+                                            </div>
+                                            <template x-for="day in weekDays" :key="day.iso">
+                                                <div class="sp-day" :class="{ 'sp-day--today': day.isToday }">
+                                                    <div class="sp-day-head">
+                                                        <div class="sp-day-name" x-text="day.name"></div>
+                                                        <div :class="day.isToday ? 'sp-day-num sp-day-num--today' : 'sp-day-num'" x-text="day.dateNum"></div>
+                                                    </div>
+                                                    <div class="sp-day-body">
+                                                        <template x-for="block in day.blocks" :key="block.id">
+                                                            <button type="button" class="sp-block"
+                                                                    :class="block.done ? 'sp-block--done' : 'sp-block--pending'"
+                                                                    :style="'top:' + block.top + 'px; height:' + block.height + 'px'"
+                                                                    @click="openGridBlock(block)">
+                                                                <span class="sp-block-title" x-text="block.topicName"></span>
+                                                                <span class="sp-block-time" x-show="block.showTime" x-text="block.timeLabel"></span>
+                                                                <span class="sp-block-check" x-show="block.done">✓</span>
+                                                            </button>
+                                                        </template>
+                                                    </div>
+                                                </div>
+                                            </template>
+                                        </div>
+                                    </div>
+
                                     <div class="notification" x-show="!loadingWeek && intervals.length === 0">
                                         برای این هفته هنوز بازه‌ی مطالعه‌ای ثبت نشده است. از «پیشنهاد خودکار» یا فرم زیر استفاده کنید.
                                     </div>
@@ -283,6 +426,50 @@
                 </template>
             </div>
         </template>
+    </div>
+
+    <%-- ------------------------------------------------------- بازه‌ی انتخاب‌شده --%>
+    <div class="modal" :class="{ 'is-active': gridBlock }" x-cloak>
+        <div class="modal-background" @click="closeGridBlock"></div>
+        <div class="modal-card">
+            <header class="modal-card-head">
+                <p class="modal-card-title" x-text="gridBlock ? gridBlock.topicName : ''"></p>
+                <button class="delete" type="button" aria-label="close" @click="closeGridBlock"></button>
+            </header>
+            <template x-if="gridBlock && gridBlockStep === 'detail'">
+                <section class="modal-card-body">
+                    <p class="has-text-grey mb-4" x-text="gridBlock ? gridBlock.timeLabel : ''"></p>
+                    <p>
+                        وضعیت:
+                        <span class="tag" :class="gridBlock && gridBlock.done ? 'is-success' : 'is-light'"
+                              x-text="gridBlock && gridBlock.done ? 'انجام‌شده' : 'انجام‌نشده'"></span>
+                    </p>
+                </section>
+            </template>
+            <template x-if="gridBlock && gridBlockStep === 'confirm-delete'">
+                <section class="modal-card-body">
+                    <p class="has-text-weight-semibold">آیا از حذف این بازه‌ی مطالعه مطمئن هستید؟</p>
+                    <p class="has-text-grey" x-text="gridBlock ? gridBlock.topicName + ' — ' + gridBlock.timeLabel : ''"></p>
+                </section>
+            </template>
+            <footer class="modal-card-foot">
+                <template x-if="gridBlockStep === 'detail'">
+                    <div style="display: contents">
+                        <button class="button is-link" type="button" @click="toggleGridBlockDone">
+                            <span x-text="gridBlock && gridBlock.done ? 'علامت‌گذاری به‌عنوان انجام‌نشده' : 'علامت‌گذاری به‌عنوان انجام‌شده'"></span>
+                        </button>
+                        <button class="button is-danger is-light" type="button" @click="gridBlockStep = 'confirm-delete'">حذف</button>
+                        <button class="button" type="button" @click="closeGridBlock">بستن</button>
+                    </div>
+                </template>
+                <template x-if="gridBlockStep === 'confirm-delete'">
+                    <div style="display: contents">
+                        <button class="button is-danger" type="button" @click="deleteGridBlock">حذف قطعی</button>
+                        <button class="button" type="button" @click="gridBlockStep = 'detail'">انصراف</button>
+                    </div>
+                </template>
+            </footer>
+        </div>
     </div>
 </section>
 `)

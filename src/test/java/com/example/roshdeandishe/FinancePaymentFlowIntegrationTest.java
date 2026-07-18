@@ -8,6 +8,8 @@ import com.example.roshdeandishe.finance.InvoiceStatus;
 import com.example.roshdeandishe.finance.PaymentMethod;
 import com.example.roshdeandishe.finance.shared.FinanceError;
 import com.example.roshdeandishe.finance.shared.FinanceException;
+import com.example.roshdeandishe.school.SchoolFacade;
+import com.example.roshdeandishe.school.SchoolFacade.SchoolLevel;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -53,6 +55,9 @@ class FinancePaymentFlowIntegrationTest {
 
     @Autowired
     private AcademicFacade academicFacade;
+
+    @Autowired
+    private SchoolFacade schoolFacade;
 
     @Autowired
     private JdbcTemplate jdbcTemplate;
@@ -154,8 +159,12 @@ class FinancePaymentFlowIntegrationTest {
 
     @Test
     void backfillIssuesInvoicesOnlyForUninvoicedStudentsAndIsIdempotent() {
-        Long schoolId = 9204L;
-        Long classId = academicFacade.createClass(schoolId, "پایه ششم - الف", null, "الف", GradingScheme.NUMERIC).value();
+        // academicFacade.createClass اکنون schoolId را در برابر یک SchoolEntity
+        // واقعی اعتبارسنجی می‌کند (school.SchoolFacade.SchoolLevel، CLAUDE.md §4)
+        // - برخلاف بقیه‌ی این فایل، این یک متد ساختگی نمی‌تواند باشد.
+        Long schoolId = schoolFacade.createSchool(
+                "مدرسه‌ی تست backfill", "Asia/Tehran", "fa-IR", SchoolLevel.ELEMENTARY).value();
+        Long classId = academicFacade.createClass(schoolId, "پایه ششم - الف", null, "الف", 6, GradingScheme.NUMERIC).value();
 
         // ثبت‌نام قبل از تنظیم شهریه: listener مالی چیزی صادر نمی‌کند (تصمیم
         // صریح CLAUDE.md §4). صبر می‌کنیم همه‌ی publication های async تمام
@@ -277,7 +286,7 @@ class FinancePaymentFlowIntegrationTest {
                         .header("X-School-ID", "1")
                         .session(adminSession)
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"name\":\"کلاس پرداخت\",\"section\":\"الف\",\"teacherId\":null}"))
+                        .content("{\"name\":\"کلاس پرداخت\",\"section\":\"الف\",\"teacherId\":null,\"gradeLevel\":5}"))
                 .andExpect(status().isOk())
                 .andReturn();
         Long classId = objectMapper.readTree(classResult.getResponse().getContentAsString()).get("id").asLong();
@@ -366,7 +375,7 @@ class FinancePaymentFlowIntegrationTest {
                         .header("X-School-ID", "1")
                         .session(adminSession)
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"name\":\"کلاس محدود\",\"section\":\"ب\",\"teacherId\":null}"))
+                        .content("{\"name\":\"کلاس محدود\",\"section\":\"ب\",\"teacherId\":null,\"gradeLevel\":5}"))
                 .andExpect(status().isOk())
                 .andReturn();
         Long classId = objectMapper.readTree(classResult.getResponse().getContentAsString()).get("id").asLong();

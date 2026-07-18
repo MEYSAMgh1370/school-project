@@ -53,6 +53,7 @@
                                 </button>
                             </div>
                         </div>
+                        <div class="table-container">
                         <table class="table is-fullwidth is-striped">
                             <thead>
                             <tr>
@@ -88,6 +89,7 @@
                             </template>
                             </tbody>
                         </table>
+                        </div>
 
                         <template x-for="invoice in invoices" :key="'payments-' + invoice.id">
                             <div class="box" x-show="expandedInvoiceId === invoice.id" x-cloak>
@@ -97,7 +99,8 @@
                                 </h3>
 
                                 <p x-show="paymentsLoading">در حال بارگذاری...</p>
-                                <table class="table is-fullwidth" x-show="!paymentsLoading && payments.length > 0">
+                                <div class="table-container" x-show="!paymentsLoading && payments.length > 0">
+                                <table class="table is-fullwidth">
                                     <thead>
                                     <tr>
                                         <th>مبلغ</th>
@@ -117,6 +120,7 @@
                                     </template>
                                     </tbody>
                                 </table>
+                                </div>
                                 <p x-show="!paymentsLoading && payments.length === 0">
                                     هنوز پرداختی برای این فاکتور ثبت نشده است.
                                 </p>

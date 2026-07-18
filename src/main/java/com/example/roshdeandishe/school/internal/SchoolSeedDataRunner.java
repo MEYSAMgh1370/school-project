@@ -1,5 +1,6 @@
 package com.example.roshdeandishe.school.internal;
 
+import com.example.roshdeandishe.school.SchoolFacade.SchoolLevel;
 import com.example.roshdeandishe.school.SchoolFacade.SchoolStatus;
 import org.springframework.boot.ApplicationArguments;
 import org.springframework.boot.ApplicationRunner;
@@ -27,7 +28,9 @@ class SchoolSeedDataRunner implements ApplicationRunner {
         if (schoolRepository.count() > 0) {
             return;
         }
-        SchoolEntity demoSchool = new SchoolEntity("مدرسه‌ی نمونه", "Asia/Tehran", "fa-IR");
+        // دبستان: کلاس‌های نمونه‌ی seed/تست‌ها همه "پایه پنجم"/"پایه ششم" و
+        // مشابه‌اند (۱ تا ۶) - همین مقطع.
+        SchoolEntity demoSchool = new SchoolEntity("مدرسه‌ی نمونه", "Asia/Tehran", "fa-IR", SchoolLevel.ELEMENTARY);
         demoSchool.setStatus(SchoolStatus.ACTIVE);
         schoolRepository.save(demoSchool);
     }

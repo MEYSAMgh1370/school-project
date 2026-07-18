@@ -91,7 +91,7 @@ class ClassManagementFlowIntegrationTest {
                         .header("X-School-ID", "1")
                         .session(session)
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"name\":\"پایه پنجم - الف\",\"section\":\"الف\",\"teacherId\":" + teacherUserId + "}"))
+                        .content("{\"name\":\"پایه پنجم - الف\",\"section\":\"الف\",\"teacherId\":" + teacherUserId + ",\"gradeLevel\":5}"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.name").value("پایه پنجم - الف"))
                 .andExpect(jsonPath("$.teacherId").value(teacherUserId));
@@ -144,7 +144,7 @@ class ClassManagementFlowIntegrationTest {
                         .header("X-School-ID", "1")
                         .session(teacherSession)
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"name\":\"کلاس ممنوع برای معلم\",\"section\":null,\"teacherId\":null}"))
+                        .content("{\"name\":\"کلاس ممنوع برای معلم\",\"section\":null,\"teacherId\":null,\"gradeLevel\":5}"))
                 .andExpect(status().isForbidden());
     }
 
@@ -172,7 +172,7 @@ class ClassManagementFlowIntegrationTest {
                         .header("X-School-ID", "1")
                         .session(session)
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"name\":\"کلاس ممنوع\",\"section\":null,\"teacherId\":null}"))
+                        .content("{\"name\":\"کلاس ممنوع\",\"section\":null,\"teacherId\":null,\"gradeLevel\":5}"))
                 .andExpect(status().isForbidden());
     }
 }

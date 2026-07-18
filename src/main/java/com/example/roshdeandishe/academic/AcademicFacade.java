@@ -35,7 +35,18 @@ public interface AcademicFacade {
 
     List<StudentInfo> listStudents(Long schoolId);
 
-    ClassId createClass(Long schoolId, String name, Long teacherId, String section, GradingScheme gradingScheme);
+    /**
+     * gradeLevel باید در بازه‌ی مقطع تحصیلی همین مدرسه باشد (school.SchoolFacade.SchoolLevel،
+     * مثلاً یک دبستان فقط پایه‌های ۱ تا ۶ را می‌پذیرد) - وگرنه
+     * AcademicError.InvalidGradeLevel. مدرسه‌ای که schoolId اش اصلاً وجود
+     * ندارد AcademicError.SchoolNotFound می‌دهد.
+     * <p>
+     * gradingScheme صریح است، نه مشتق‌شده در پایگاه‌داده - اما وقتی صدا زننده
+     * null بدهد (ClassController.CreateClassRequest)، پیش‌فرضش از روی
+     * gradeLevel محاسبه می‌شود (۱ تا ۶ → DESCRIPTIVE، ۷ تا ۱۲ → NUMERIC، §11
+     * Q8's reconciliation با classification که در PR جداگانه‌ای اضافه شد).
+     */
+    ClassId createClass(Long schoolId, String name, Long teacherId, String section, int gradeLevel, GradingScheme gradingScheme);
 
     List<ClassInfo> listClasses(Long schoolId);
 
@@ -121,7 +132,7 @@ public interface AcademicFacade {
     record StudentInfo(StudentId id, Long userId, Long schoolId, ClassId classId) {
     }
 
-    record ClassInfo(ClassId id, Long schoolId, String name, Long teacherId, String section, GradingScheme gradingScheme) {
+    record ClassInfo(ClassId id, Long schoolId, String name, Long teacherId, String section, int gradeLevel, GradingScheme gradingScheme) {
     }
 
     record GradeInfo(GradeId id, Long schoolId, StudentId studentId, ClassId classId, String academicYear,

@@ -16,13 +16,18 @@ import lombok.Setter;
  * معلم ساخته شود (مثلاً در ابتدای سال تحصیلی، چیدمان کلاس‌ها قبل از
  * استخدام/تخصیص معلم انجام می‌شود).
  * <p>
+ * {@code gradeLevel} (پایه‌ی عددی ۱ تا ۱۲، افزوده‌شده ۲۰۲۶-۰۷-۱۸): در برابر
+ * بازه‌ی مقطع تحصیلیِ مدرسه‌ی مالک (school.SchoolFacade.SchoolLevel) در
+ * AcademicFacadeImpl.requireValidGradeLevel اعتبارسنجی می‌شود - صرفاً
+ * classification، نه چیزی که خودش شِمای نمره‌دهی را تعیین کند.
+ * <p>
  * {@code gradingScheme} (CLAUDE.md §11 Q8، حل‌شده): شِمای نمره‌دهی این کلاس
- * (توصیفی/عددی) - در سطح کلاس، نه مدرسه یا پایه، چون یک مدرسه هم‌زمان
- * کلاس‌های ابتدایی و بالاتر دارد و ClassEntity فیلد gradeLevel ای ندارد که
- * بشود این تصمیم را خودکار از روی آن مشتق کرد. ستون nullable می‌ماند (نه
- * NOT NULL) تا افزودن آن به جدول موجود، دیتابیسِ dev را نشکند؛ مقدار
- * پیش‌فرض NUMERIC در لایه‌ی درخواست (ClassController.CreateClassRequest)
- * اعمال می‌شود، نه اینجا.
+ * (توصیفی/عددی) - در سطح کلاس، نه مدرسه، و به‌صورت صریح روی خودِ کلاس
+ * ذخیره می‌شود (نه صرفاً مشتق‌شده در لحظه‌ی خواندن)، تا یک ادمین بتواند آن
+ * را به‌ازای هر کلاس override کند. پیش‌فرضش وقتی صریحاً داده نشود از
+ * gradeLevel مشتق می‌شود (۱ تا ۶ → DESCRIPTIVE، ۷ تا ۱۲ → NUMERIC) - در
+ * ClassController.CreateClassRequest، نه اینجا. ستون nullable می‌ماند (نه
+ * NOT NULL) تا افزودن آن به جدول موجود، دیتابیسِ dev را نشکند.
  */
 @Entity
 @Table(name = "classes", schema = "academic")
@@ -47,15 +52,19 @@ class ClassEntity {
     @Column(length = 32)
     private String section;
 
+    @Column(name = "grade_level", nullable = false)
+    private int gradeLevel;
+
     @Enumerated(EnumType.STRING)
     @Column(name = "grading_scheme", length = 16)
     private GradingScheme gradingScheme;
 
-    ClassEntity(Long schoolId, String name, Long teacherId, String section, GradingScheme gradingScheme) {
+    ClassEntity(Long schoolId, String name, Long teacherId, String section, int gradeLevel, GradingScheme gradingScheme) {
         this.schoolId = schoolId;
         this.name = name;
         this.teacherId = teacherId;
         this.section = section;
+        this.gradeLevel = gradeLevel;
         this.gradingScheme = gradingScheme;
     }
 }
