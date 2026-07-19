@@ -224,7 +224,7 @@ class BaleFlowIntegrationTest {
         // academicFacade.createClass اکنون schoolId را در برابر یک SchoolEntity
         // واقعی اعتبارسنجی می‌کند (CLAUDE.md §4) - uniqueSchoolId ساختگی دیگر کافی نیست.
         long schoolId = schoolFacade.createSchool(
-                "مدرسه‌ی تست بله ۱", "Asia/Tehran", "fa-IR", SchoolLevel.ELEMENTARY).value();
+                "مدرسه‌ی تست بله ۱", "Asia/Tehran", "fa-IR", SchoolLevel.ELEMENTARY, null).value();
         String parentEmail = "bale-parent-" + System.nanoTime() + "@roshdeandishe.test";
         String parentPhone = uniquePhoneNumber();
         MockHttpSession parentSession = registerAndLogin(parentEmail, "والد فرمانده");
@@ -260,7 +260,7 @@ class BaleFlowIntegrationTest {
     void invoiceIssuedNotifiesLinkedStudentAndLinkedGuardians() throws Exception {
         // همان دلیل تست بالا: schoolId باید یک SchoolEntity واقعی داشته باشد.
         long schoolId = schoolFacade.createSchool(
-                "مدرسه‌ی تست بله ۲", "Asia/Tehran", "fa-IR", SchoolLevel.ELEMENTARY).value();
+                "مدرسه‌ی تست بله ۲", "Asia/Tehran", "fa-IR", SchoolLevel.ELEMENTARY, null).value();
 
         String parentEmail = "bale-guardian-" + System.nanoTime() + "@roshdeandishe.test";
         String parentPhone = uniquePhoneNumber();

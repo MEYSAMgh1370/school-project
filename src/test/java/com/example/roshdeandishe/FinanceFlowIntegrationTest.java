@@ -85,7 +85,7 @@ class FinanceFlowIntegrationTest {
         // academicFacade.createClass اکنون schoolId را در برابر یک SchoolEntity
         // واقعی اعتبارسنجی می‌کند (school.SchoolFacade.SchoolLevel، CLAUDE.md §4).
         Long schoolId = schoolFacade.createSchool(
-                "مدرسه‌ی تست فاکتور", "Asia/Tehran", "fa-IR", SchoolLevel.ELEMENTARY).value();
+                "مدرسه‌ی تست فاکتور", "Asia/Tehran", "fa-IR", SchoolLevel.ELEMENTARY, null).value();
         financeFacade.setTuitionFee(schoolId, new BigDecimal("2500000.00"));
         Long classId = academicFacade.createClass(schoolId, "پایه پنجم - الف", null, "الف", 5, GradingScheme.NUMERIC).value();
 

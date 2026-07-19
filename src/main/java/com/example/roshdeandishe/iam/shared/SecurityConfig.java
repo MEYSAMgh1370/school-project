@@ -104,7 +104,11 @@ public class SecurityConfig {
                                 "/swagger-ui/**", "/swagger-ui.html", "/v3/api-docs/**",
                                 "/api/bale/webhook/**", "/api/exam-take/**", "/exam-take",
                                 "/activate", "/login", "/register", "/webjars/**",
-                                "/css/**", "/js/**"
+                                "/css/**", "/js/**",
+                                // درِ ورودی برنددار مدرسه (/s/{slug}) - صفحه‌ی عمومی
+                                // مثل /، فقط نام عمومی مدرسه را نشان می‌دهد
+                                // (SchoolEntryPageController).
+                                "/s/**"
                         ).permitAll()
                         .anyRequest().authenticated()
                 )

@@ -315,12 +315,14 @@ com.example.roshdeandishe
 ├── school/                     ← owns School itself (name, status, timezone,
 │   ├── SchoolFacade.java           locale). Deliberately separate from iam — iam
 │   ├── SchoolController.java       only needs schoolId as an opaque key, not
-│   ├── internal/                   school metadata.
-│   │   ├── SchoolEntity / SchoolRepository
-│   │   ├── SchoolFacadeImpl
-│   │   └── SchoolSeedDataRunner    (dev-only: seeds one demo school)
-│   └── shared/
-│       ├── SchoolError.java (sealed) + SchoolException.java
+│   ├── internal/                   school metadata. Also owns the school's
+│   │   ├── SchoolEntity / SchoolRepository     optional unique slug (branded
+│   │   ├── SchoolFacadeImpl                    entry URL /s/{slug} — §4, §11
+│   │   └── SchoolSeedDataRunner    (dev-only: seeds one demo school,          Q9; validated as a DNS label in
+│   │                                 slug "nemooneh")                          SchoolFacadeImpl so it can become
+│   └── shared/                                                                 the subdomain in Tier 2 unchanged)
+│       ├── SchoolError.java (sealed: SchoolNotFound, InvalidSlug,
+│       │                      SlugAlreadyTaken) + SchoolException.java
 │       └── SchoolExceptionHandler.java   (bean name "schoolExceptionHandler")
 │
 ├── academic/                   ← students, classes, enrollment
@@ -710,6 +712,16 @@ com.example.roshdeandishe
 ├── web/                        ← UI-composition layer (see §2 Frontend): page
     ├── LandingPageController.java     controllers that need more than one
     ├── DashboardPageController.java   module's Facade. GET / (public landing
+    ├── SchoolEntryPageController.java (GET /s/{slug} — public per-school
+    │                                   branded entry page, §4's School note,
+    │                                   §7 Done "School entry page"; permitAll
+    │                                   + excluded in TenantResolverFilter,
+    │                                   no navbar — same anonymous trust model
+    │                                   as the landing page. SUSPENDED schools
+    │                                   render the 404 not-found state — the
+    │                                   "don't advertise suspended schools"
+    │                                   presentation rule lives here, not in
+    │                                   SchoolFacade.findSchoolBySlug.)
     ├── SchoolRegistrationPageController.java  page — see below) composes iam
     ├── PeoplePageController.java      memberships + school names; GET /people
     ├── ClassesPageController.java     (first management-UI slice past the
@@ -1315,11 +1327,23 @@ SchoolEntity
 ├── status (ACTIVE | SUSPENDED)
 ├── timezone
 ├── locale
-└── schoolLevel (SchoolFacade.SchoolLevel: ELEMENTARY | LOWER_SECONDARY | UPPER_SECONDARY —
-                  added 2026-07-18, §7 Done "School/class level classification")
+├── schoolLevel (SchoolFacade.SchoolLevel: ELEMENTARY | LOWER_SECONDARY | UPPER_SECONDARY —
+│                 added 2026-07-18, §7 Done "School/class level classification")
+└── slug        (nullable, unique — added 2026-07-19, Tier 1 of §11 Q9. The school's
+                  optional branded entry URL: /s/{slug}. Validated in SchoolFacadeImpl
+                  as a DNS label on purpose — lowercase [a-z0-9] with inner hyphens,
+                  3–63 chars, reserved names (www/api/admin/…) blocked, normalized to
+                  lowercase — so the exact same value becomes the school's subdomain
+                  in Tier 2 with zero migration. Set at creation only; there is no
+                  "edit my school's slug" endpoint yet — that needs a school-settings
+                  permission decision that doesn't exist, see §11 Q9.)
 ```
 
-Created via `SchoolFacade.createSchool`, always self-service (§1). `setSchoolStatus`
+Created via `SchoolFacade.createSchool`, always self-service (§1).
+`SchoolFacade.findSchoolBySlug(slug)` backs the public entry page
+(`web.SchoolEntryPageController`, §7 Done "School entry page") — it does NOT
+filter by status; the "don't advertise a SUSPENDED school" rule is
+presentation, applied in the page controller. `setSchoolStatus`
 (suspension) exists on the facade but, like entitlement toggling, has no REST
 endpoint yet for the same platform-privilege reason.
 
@@ -3076,6 +3100,41 @@ above.
   + REST + tests first; a `/grades` gradebook page and a `/my-grades`
   self-view are a separate slice, through the `design-page` skill when built.
 
+- **School entry page — per-school branded entry URL (built 2026-07-19,
+  Tier 1 of the custom-domain decision, §11 Q9)**: a school can claim an
+  optional unique `slug` at creation (`/schools/new` gained the field with a
+  live URL preview + client-side format check) and gets a public branded
+  entry page at `GET /s/{slug}` (`web.SchoolEntryPageController` +
+  `school-entry.jte` — server-rendered from `SchoolFacade.findSchoolBySlug`,
+  no navbar/no fetch, same anonymous trust model as the landing page; went
+  through the `design-page` skill). The slug is deliberately validated as a
+  **DNS label** (`SchoolFacadeImpl`: lowercase `[a-z0-9]` + inner hyphens,
+  3–63 chars, reserved-name list, lowercased server-side; two new sealed
+  `SchoolError` cases `InvalidSlug` 400 / `SlugAlreadyTaken` 409) so the
+  same value becomes the school's subdomain in Tier 2 with zero migration.
+  CTA clicks (not page load, to avoid a drive-by visit overwriting a
+  multi-school user's selection) write `localStorage.selectedSchoolId`, so
+  post-login the navbar lands on that school — `navbar.js`'s existing
+  init-validation makes a non-member's value fall back safely. An
+  authenticated visitor is NOT redirected (unlike `GET /`) — they see an
+  "ادامه به داشبورد" CTA instead, because the localStorage write needs a
+  client-side click. Unknown *and SUSPENDED* slugs render a teaching
+  not-found state with HTTP 404 (suspended schools aren't advertised —
+  presentation rule in the controller, not the facade).
+  `SchoolFacade.createSchool` gained the `slug` param (all four test
+  call sites updated), `SchoolInfo`/`SchoolResponse` gained `slug`, demo
+  school seeds slug `nemooneh`, `/s/**` is `permitAll` + excluded in
+  `TenantResolverFilter` (`"/s/"` — no clash with `/students`, which
+  doesn't start with `"/s/"`). Covered by `SchoolEntryFlowIntegrationTest`
+  (create-with-slug → public page shows name/login CTA/localStorage write,
+  uppercase input lowercased, unknown slug 404, suspended school 404,
+  duplicate slug 409, invalid/short/reserved slugs 400, slug optional,
+  authenticated visitor sees the dashboard CTA). Deliberately NOT built
+  (see §11 Q9): editing/adding a slug after creation (needs a
+  school-settings permission decision), showing the entry URL on the
+  dashboard, Host-header tenant resolution (Tier 2 — deployment-gated),
+  and full custom domains (Tier 3 — `PLATFORM_ADMIN`-gated).
+
 ### Open / explicitly deferred
 
 1. **`PlatformContext` permission checking.** `PermissionDecisionService` denies all
@@ -3484,3 +3543,28 @@ REST + tests only, same posture `curriculum`/`studyplan` shipped with.
    (the classification fields do have UI — `/schools/new` and `/classes`),
    same posture `curriculum`/`studyplan` shipped with at their own
    new-module time.
+
+9. **New (raised 2026-07-19; Tier 1 built the same day):** Per-school domains.
+   Decided as three escalating tiers, only the first of which is built:
+   - **Tier 1 — branded entry URL `/s/{slug}` — BUILT** (§7 Done, "School
+     entry page"): an optional unique slug on `SchoolEntity`, deliberately
+     validated as a DNS label so it forward-ports to Tier 2 unchanged.
+   - **Tier 2 — subdomains (`{slug}.<platform-domain>`) — deferred until a
+     real deployment exists.** The code half is small (resolve the tenant
+     from the `Host` header in `TenantResolverFilter`, falling back to
+     `X-School-ID`); the substance is wildcard DNS + wildcard TLS +
+     reverse-proxy config, none of which can be exercised before deployment
+     (and per the standing no-deploy priority, features win until then). A
+     session cookie scoped to the parent domain keeps the multi-school
+     switcher (§11 Q2) working across subdomains.
+   - **Tier 3 — true custom domains (school-owned DNS, CNAME + per-domain
+     TLS provisioning + domain-verification flow) — deferred**, gated on
+     `PLATFORM_ADMIN` infrastructure (§7 item 1) and a paying customer who
+     actually asks; also breaks cross-school shared sessions (cookies don't
+     cross domains), which is a real model decision, not an implementation
+     detail.
+   Also deliberately unbuilt in Tier 1: editing/adding a slug *after*
+   creation — there is no school-settings surface or permission code for
+   "manage my school's own metadata," and inventing one as a drive-by would
+   violate the discipline in §10; decide it explicitly when a school-settings
+   page is actually requested.

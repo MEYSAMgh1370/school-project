@@ -47,6 +47,22 @@
                     </div>
                 </div>
 
+                <div class="field">
+                    <label class="label" for="schoolSlug">نشانی اختصاصی (اختیاری)</label>
+                    <div class="control">
+                        <input class="input" id="schoolSlug" type="text" x-model="slug"
+                               :class="{ 'is-danger': slug.trim() && !slugValid }"
+                               dir="ltr" placeholder="tizhooshan" autocomplete="off">
+                    </div>
+                    <p class="help" x-show="!slug.trim() || slugValid">
+                        حروف کوچک انگلیسی، رقم و خط تیره (۳ تا ۶۳ نویسه). درِ ورودی مدرسه‌تان می‌شود:
+                        <span dir="ltr" x-text="slugPreview"></span>
+                    </p>
+                    <p class="help is-danger" x-show="slug.trim() && !slugValid">
+                        فقط حروف کوچک انگلیسی، رقم و خط تیره (نه در ابتدا/انتها)، بین ۳ تا ۶۳ نویسه.
+                    </p>
+                </div>
+
                 <div class="field is-grouped">
                     <div class="control">
                         <button class="button is-link" type="submit" :disabled="!canSubmit" :class="{ 'is-loading': submitting }">

@@ -163,7 +163,7 @@ class FinancePaymentFlowIntegrationTest {
         // واقعی اعتبارسنجی می‌کند (school.SchoolFacade.SchoolLevel، CLAUDE.md §4)
         // - برخلاف بقیه‌ی این فایل، این یک متد ساختگی نمی‌تواند باشد.
         Long schoolId = schoolFacade.createSchool(
-                "مدرسه‌ی تست backfill", "Asia/Tehran", "fa-IR", SchoolLevel.ELEMENTARY).value();
+                "مدرسه‌ی تست backfill", "Asia/Tehran", "fa-IR", SchoolLevel.ELEMENTARY, null).value();
         Long classId = academicFacade.createClass(schoolId, "پایه ششم - الف", null, "الف", 6, GradingScheme.NUMERIC).value();
 
         // ثبت‌نام قبل از تنظیم شهریه: listener مالی چیزی صادر نمی‌کند (تصمیم

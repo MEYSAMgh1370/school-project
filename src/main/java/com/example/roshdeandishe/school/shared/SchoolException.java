@@ -16,6 +16,8 @@ public final class SchoolException extends RuntimeException {
     private static String describe(SchoolError error) {
         return switch (error) {
             case SchoolError.SchoolNotFound e -> "مدرسه‌ای با شناسه " + e.schoolId() + " یافت نشد.";
+            case SchoolError.InvalidSlug e -> "نشانی اختصاصی «" + e.slug() + "» نامعتبر است.";
+            case SchoolError.SlugAlreadyTaken e -> "نشانی اختصاصی «" + e.slug() + "» قبلاً گرفته شده است.";
         };
     }
 }
