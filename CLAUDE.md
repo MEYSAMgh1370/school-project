@@ -48,7 +48,10 @@ not solo/independent teachers as a parallel org type.
 School creation is **self-service, not admin-gated**: any authenticated user can
 create a school and automatically becomes its `SCHOOL_ADMIN` in the same call. This
 was a deliberate choice to avoid needing `PLATFORM_ADMIN` permission infrastructure
-(which doesn't exist yet — see §7) just to onboard a new tenant. Genuinely
+(which doesn't exist yet — see §7) just to onboard a new tenant. A new school also
+receives the **free tier** at creation — `ACADEMIC` + `FINANCE` entitlements
+(§11 Q10, resolved 2026-07-20); `CURRICULUM`/`STUDY_PLANNER`/`EXAM` are paid
+plans, grantable only via the facade until real billing exists. Genuinely
 platform-privileged actions (granting a school paid modules, suspending a school)
 stay facade-only, with no REST endpoint, until real platform-permission
 infrastructure and a real actor (ops tooling or a billing webhook) exist. Do not
@@ -1318,6 +1321,14 @@ genuinely platform-privileged action (granting a school paid features for free i
 misused) with no real actor or permission check behind it yet. See §7 before
 exposing it over HTTP.
 
+**Free tier (§11 Q10, resolved 2026-07-20):** `IamFacade.grantFreeTierEntitlements(schoolId)`
+grants `ACADEMIC` + `FINANCE` (the `FREE_TIER_MODULES` list in `IamFacadeImpl` —
+iam owns the pricing rule, one place to change when billing arrives), called by
+`SchoolController.createSchool` right after the creator's `SCHOOL_ADMIN`
+membership. `CURRICULUM`/`STUDY_PLANNER`/`EXAM` are paid plans — never granted
+at creation, facade-only until real billing exists. Idempotent (rides on
+`setSchoolEntitlement`).
+
 ### School (owned by the `school` module, not `iam`)
 
 ```
@@ -2115,11 +2126,14 @@ layer, for a different reason than the two above: the caller is Bale's server,
 not an authenticated browser session, so there's no `SecurityContext`/
 `TenantContext` for either aspect to check against — its authorization comes
 entirely from the data model (every query is scoped to the webhook's own
-resolved `userId`), not from these two aspects. `IamSeedDataRunner.seedDemoSchoolEntitlements()` seeds an
-`ACADEMIC` entitlement for the demo school (id 1) so the academic endpoints
-stay usable in dev; a school created self-service at runtime has zero
-entitlements and will correctly get 403 `ModuleNotEntitled` on them until
-granted via `setSchoolEntitlement` (facade-only, see §7 item 1).
+resolved `userId`), not from these two aspects. `IamSeedDataRunner.seedDemoSchoolEntitlements()` seeds all
+five B2B module entitlements for the demo school (id 1) so every module-gated
+endpoint stays usable in dev. A school created self-service at runtime gets
+the **free tier** (`ACADEMIC` + `FINANCE`) automatically at creation
+(`IamFacade.grantFreeTierEntitlements` — §11 Q10, resolved 2026-07-20) and
+will correctly get 403 `ModuleNotEntitled` on the paid modules
+(`CURRICULUM`/`STUDY_PLANNER`/`EXAM`) until granted via
+`setSchoolEntitlement` (facade-only, see §7 item 1).
 
 **Critical caveat, not yet resolved:** `PermissionDecisionService` currently
 **unconditionally denies** any check made with `AccessContext.PlatformContext`
@@ -3135,15 +3149,39 @@ above.
   dashboard, Host-header tenant resolution (Tier 2 — deployment-gated),
   and full custom domains (Tier 3 — `PLATFORM_ADMIN`-gated).
 
+- **Free-tier entitlements at school creation (built 2026-07-20, explicit
+  user decision — resolves §11 Q10, raised by the 2026-07-19 critical
+  user-journey review, UX_ROADMAP.md §6.1)**: a self-service school no longer
+  dead-ends with zero entitlements — `SchoolController.createSchool` now calls
+  the new `IamFacade.grantFreeTierEntitlements(schoolId)` (right after the
+  creator's `SCHOOL_ADMIN` membership), granting `ACADEMIC` + `FINANCE`.
+  `CURRICULUM`/`STUDY_PLANNER`/`EXAM` are paid plans: not granted, still
+  facade-only (`setSchoolEntitlement`, no REST — §10 unchanged) until real
+  billing exists. The free-module list is `FREE_TIER_MODULES` in
+  `IamFacadeImpl` — one place to change when billing arrives. Demo-school dev
+  seed unchanged (all five modules — a superset of the free tier). The three
+  fresh-school `module-not-entitled` tests on now-free modules were reworked
+  rather than deleted: each first proves the free module works immediately
+  (tuition-fee 404-not-403 / expenses 200 / classes 200), then revokes the
+  entitlement via the facade and re-asserts `module-not-entitled` — so both
+  the grant and the revocation path are covered
+  (`FinanceManagementFlowIntegrationTest`, `ExpenseManagementFlowIntegrationTest`,
+  `GradeManagementFlowIntegrationTest`); the paid-module fresh-school tests
+  (`CurriculumFlowIntegrationTest`, `StudyPlanManagementFlowIntegrationTest`,
+  `ExamFlowIntegrationTest`) pass unchanged and now double as proof the free
+  tier excludes paid modules.
+
 ### Open / explicitly deferred
 
 1. **`PlatformContext` permission checking.** `PermissionDecisionService` denies all
    non-school-scoped checks unconditionally. Blocks: REST exposure of
    `setSchoolEntitlement` and `setSchoolStatus`. Do not build until a real need
    (billing integration, ops tooling) exists — see §5. **Consequence flagged
-   2026-07-19 (§11 Q10, UX_ROADMAP.md §6.1):** with no entitlement-granting
-   path at all, a real self-service school's onboarding funnel dead-ends —
-   deciding a stopgap is now the top-priority open item.
+   2026-07-19 (§11 Q10, UX_ROADMAP.md §6.1): resolved 2026-07-20** — the
+   free tier (`ACADEMIC`+`FINANCE` granted at self-service creation, §11
+   Q10) unblocks real-school onboarding; paid modules (`CURRICULUM`/
+   `STUDY_PLANNER`/`EXAM`) still wait on this item for any REST/billing
+   exposure.
 2. ~~**Self-service account activation — email delivery.**~~ **Resolved.**
    `issueInviteToken` now emails the activation link to the invited person
    (see §4's `InviteToken` subsection). The token still also comes back in the
@@ -3572,22 +3610,25 @@ REST + tests only, same posture `curriculum`/`studyplan` shipped with.
    violate the discipline in §10; decide it explicitly when a school-settings
    page is actually requested.
 
-10. **New (raised 2026-07-19, by the critical user-journey review —
-    UX_ROADMAP.md §6):** How does a *real* (non-demo) school ever obtain a
-    module entitlement before billing exists? Today the self-service
-    onboarding funnel dead-ends immediately after school creation: a fresh
-    school has zero entitlements, `setSchoolEntitlement` is deliberately
-    facade-only (§7 item 1), and only the seeded demo school gets the five
-    module grants — so every module-gated page 403s `module-not-entitled`
-    for every real founder, and only `/people` + `/roles` work. This was an
-    acceptable consequence of deferring `PLATFORM_ADMIN` infrastructure
-    while no real school existed, but it now blocks any pilot/first
-    customer. Candidate resolutions, none chosen yet: (a) a deliberate
-    "new schools get a trial entitlement bundle at creation" rule (one
-    explicit change in the school-creation flow — a product decision about
-    what's free, not an infra project); (b) a facade-only ops script/runner
-    for manual grants (no HTTP exposure, consistent with §7 item 1);
-    (c) wait for real billing + `PlatformContext` permission checking
-    (§11 Q5) and accept that no real school can be onboarded until then.
-    Do **not** expose `setSchoolEntitlement` over REST as a shortcut — §10's
-    existing prohibition stands regardless of which option is picked.
+10. ~~How does a *real* (non-demo) school ever obtain a module entitlement
+    before billing exists?~~ (raised 2026-07-19 by the critical user-journey
+    review, UX_ROADMAP.md §6) — **Resolved 2026-07-20, explicit user
+    decision: a free tier.** `ACADEMIC` and `FINANCE` are free — granted
+    automatically at self-service school creation
+    (`IamFacade.grantFreeTierEntitlements`, called by
+    `SchoolController.createSchool` right after the creator's `SCHOOL_ADMIN`
+    membership). `CURRICULUM`, `STUDY_PLANNER`, and `EXAM` are **paid
+    plans**: not granted at creation, still obtainable only via the
+    facade-only `setSchoolEntitlement` (no REST — §10's prohibition stands)
+    until real billing + `PlatformContext` permission checking exist (Q5,
+    §7 item 1). The free-module list lives in `IamFacadeImpl`
+    (`FREE_TIER_MODULES`) — iam owns the entitlement concept, so when
+    billing arrives only that one spot changes. The demo school's dev seed
+    (all five modules, `IamSeedDataRunner`) is unchanged and now simply a
+    superset of the free tier. Covered by the reworked fresh-school tests in
+    `FinanceManagementFlowIntegrationTest`/`ExpenseManagementFlowIntegrationTest`/
+    `GradeManagementFlowIntegrationTest` (free module works immediately,
+    facade revocation restores `module-not-entitled`), while the
+    `CurriculumFlowIntegrationTest`/`StudyPlanManagementFlowIntegrationTest`/
+    `ExamFlowIntegrationTest` fresh-school cases now double as proof that
+    the free tier does *not* include the paid modules.

@@ -326,22 +326,24 @@ gap hurts. Re-run this review after each gap below is closed and update this
 section — it is the standing prioritization for the next slices.
 
 ### 6.1 CRITICAL — a real school's onboarding funnel dead-ends at creation
+### → RESOLVED 2026-07-20 (free tier, CLAUDE.md §11 Q10)
 
-Journey: visitor lands on `/` → registers → creates a school at `/schools/new`
-→ becomes `SCHOOL_ADMIN` → **cannot use the product**. A freshly created
-school has zero entitlements and there is *no path whatsoever* — no REST, no
-UI, no billing — to ever grant one (`IamFacade.setSchoolEntitlement` is
-facade-only by explicit decision, CLAUDE.md §7 item 1). Only the seeded demo
-school (id 1) gets `ACADEMIC`/`FINANCE`/`CURRICULUM`/`STUDY_PLANNER`/`EXAM`.
-A real founder can use `/people` and `/roles` (not module-gated) but every
-other navbar link — `/classes`, `/students`, `/finance`, `/expenses`,
-`/curriculum`, `/study-plans`, `/exams` — 403s `module-not-entitled`. The
-core product journey currently works **only for the demo school**.
+*(Original finding, kept for context:)* a freshly created school had zero
+entitlements and no path to ever obtain one, so every module-gated page 403'd
+`module-not-entitled` and the core journey worked only for the demo school.
 
-This is not a UI slice — it needs an explicit product decision first (trial
-entitlement bundle at creation vs. ops-script stopgap vs. wait for billing) —
-see CLAUDE.md §11 Q10. Do not bolt an entitlement-granting endpoint onto
-unrelated work (§10 discipline); decide it on purpose.
+**Resolution (explicit user decision):** `ACADEMIC` + `FINANCE` are **free**
+— granted automatically at self-service creation
+(`IamFacade.grantFreeTierEntitlements`, called from
+`SchoolController.createSchool`). `CURRICULUM`/`STUDY_PLANNER`/`EXAM` are
+**paid plans** — not granted at creation, facade-only until real billing
+exists (CLAUDE.md §7 item 1, §10 unchanged). A real founder can now run the
+full free-tier loop out of the box: `/people`, `/roles`, `/classes`,
+`/students`, `/finance`, `/expenses`; the paid pages (`/curriculum`,
+`/study-plans`, `/exams`) correctly show the module-not-entitled state, which
+is now a true "upgrade required" signal rather than a dead end. A future
+pricing/upgrade page for the paid modules is a new open UI item — blocked on
+billing, do not build speculatively.
 
 ### 6.2 HIGH — two finished backends are unreachable by any real user
 
@@ -395,8 +397,9 @@ scoping (`/my-invoices` + scoped admin endpoint); student exam-taking
 
 ### 6.6 Recommended order of attack
 
-1. Decide §6.1 (entitlement path — everything else is moot without it).
-2. Grades UI (`/grades` + `/my-grades`).
+1. ~~Decide §6.1 (entitlement path)~~ — **done 2026-07-20**: free tier
+   (`ACADEMIC`+`FINANCE`) granted at creation, rest are paid plans.
+2. Grades UI (`/grades` + `/my-grades`) — **next up.**
 3. Phone-number field (unlocks Bale + OTP), then an OTP login tab.
 4. Invite-status visibility on the enrollment funnel (§6.3).
 5. Dashboard entry-URL display (§6.4) opportunistically.

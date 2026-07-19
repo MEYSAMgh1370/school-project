@@ -36,6 +36,9 @@ class GradeManagementFlowIntegrationTest {
     @Autowired
     private MockMvc mockMvc;
 
+    @Autowired
+    private com.example.roshdeandishe.iam.IamFacade iamFacade;
+
     private final ObjectMapper objectMapper = new ObjectMapper();
 
     private MockHttpSession loginAsAdmin() throws Exception {
@@ -287,17 +290,27 @@ class GradeManagementFlowIntegrationTest {
     }
 
     @Test
-    void freshSchoolWithoutAcademicEntitlementGetsModuleNotEntitled() throws Exception {
-        MockHttpSession founder = registerAndLogin("grade.founder@roshdeandishe.test", "بنیان‌گذار بدون ماژول آموزشی");
+    void freshSchoolGetsFreeAcademicTierAndRevocationYieldsModuleNotEntitled() throws Exception {
+        MockHttpSession founder = registerAndLogin("grade.founder@roshdeandishe.test", "بنیان‌گذار بسته‌ی رایگان آموزشی");
 
         MvcResult createResult = mockMvc.perform(post("/api/admin/schools")
                         .with(csrf())
                         .session(founder)
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"name\":\"مدرسه‌ی بدون ماژول آموزشی\",\"timezone\":\"Asia/Tehran\",\"locale\":\"fa-IR\",\"level\":\"ELEMENTARY\"}"))
+                        .content("{\"name\":\"مدرسه‌ی بسته‌ی رایگان آموزشی\",\"timezone\":\"Asia/Tehran\",\"locale\":\"fa-IR\",\"level\":\"ELEMENTARY\"}"))
                 .andExpect(status().isOk())
                 .andReturn();
         long schoolId = objectMapper.readTree(createResult.getResponse().getContentAsString()).get("id").asLong();
+
+        // بسته‌ی رایگان ACADEMIC را شامل می‌شود (CLAUDE.md §11 Q10) - فهرست
+        // کلاس‌ها باید 200 (خالی) برگردد، نه module-not-entitled
+        mockMvc.perform(get("/api/admin/schools/" + schoolId + "/classes")
+                        .header("X-School-ID", String.valueOf(schoolId))
+                        .session(founder))
+                .andExpect(status().isOk());
+
+        // پس‌گرفتن ACADEMIC از طریق facade (تنها مسیر مجاز - §10)
+        iamFacade.setSchoolEntitlement(schoolId, new com.example.roshdeandishe.iam.IamFacade.ModuleCode("ACADEMIC"), false);
 
         mockMvc.perform(get("/api/admin/schools/" + schoolId + "/grades")
                         .header("X-School-ID", String.valueOf(schoolId))

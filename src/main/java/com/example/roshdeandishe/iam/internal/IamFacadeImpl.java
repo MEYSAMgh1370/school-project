@@ -367,6 +367,20 @@ class IamFacadeImpl implements IamFacade {
         schoolEntitlementRepository.save(entitlement);
     }
 
+    /**
+     * بسته‌ی رایگان (CLAUDE.md §11 Q10): فقط ACADEMIC و FINANCE.
+     * CURRICULUM/STUDY_PLANNER/EXAM پولی می‌مانند و اینجا اعطا نمی‌شوند.
+     */
+    private static final String[] FREE_TIER_MODULES = {"ACADEMIC", "FINANCE"};
+
+    @Override
+    @Transactional
+    public void grantFreeTierEntitlements(Long schoolId) {
+        for (String moduleCode : FREE_TIER_MODULES) {
+            setSchoolEntitlement(schoolId, new ModuleCode(moduleCode), true);
+        }
+    }
+
     @Override
     public List<PermissionInfo> listPermissions() {
         return permissionRepository.findAll().stream()

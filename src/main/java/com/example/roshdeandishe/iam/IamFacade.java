@@ -148,6 +148,20 @@ public interface IamFacade {
     void setSchoolEntitlement(Long schoolId, ModuleCode module, boolean active);
 
     /**
+     * اعطای بسته‌ی رایگان ماژول‌ها به یک مدرسه‌ی تازه‌ساخته - تصمیم صریح
+     * محصول (CLAUDE.md §11 Q10، حل‌شده 2026-07-20): ACADEMIC و FINANCE
+     * رایگان‌اند و در همان لحظه‌ی ساخت خودسرویسی مدرسه فعال می‌شوند؛
+     * CURRICULUM/STUDY_PLANNER/EXAM پولی‌اند و تا وقتی billing واقعی ساخته
+     * نشده فقط از طریق همین facade (setSchoolEntitlement، بدون REST -
+     * CLAUDE.md §10) قابل اعطا هستند.
+     * <p>
+     * فهرست ماژول‌های رایگان اینجا در iam نگه داشته می‌شود (مالک مفهوم
+     * Entitlement)، نه در school - وقتی billing واقعی برسد فقط همین یک
+     * نقطه باید عوض شود. idempotent (روی setSchoolEntitlement سوار است).
+     */
+    void grantFreeTierEntitlements(Long schoolId);
+
+    /**
      * پیدا کردن کاربر بر اساس شماره تلفن - مسیر اصلی «اتصال دوباره»ی ربات
      * بله: کاربری که قبلاً شماره‌اش را (وقتی با سشن معتبر وارد بود) ثبت
      * کرده، دفعه‌ی بعد فقط با اشتراک‌گذاری مخاطب در بله شناسایی می‌شود.

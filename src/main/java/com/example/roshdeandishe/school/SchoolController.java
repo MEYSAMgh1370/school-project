@@ -42,6 +42,12 @@ public class SchoolController {
         IamFacade.UserId callerId = iamFacade.currentUserId();
         iamFacade.createMembership(callerId, schoolId.value(), "SCHOOL_ADMIN");
 
+        // بسته‌ی رایگان (ACADEMIC + FINANCE) در همان لحظه‌ی ساخت فعال می‌شود
+        // تا قیف ورود مدرسه‌ی واقعی به بن‌بست «هیچ ماژولی ندارید» نخورد -
+        // تصمیم صریح CLAUDE.md §11 Q10؛ ماژول‌های پولی همچنان فقط از طریق
+        // facade اعطا می‌شوند (§10)
+        iamFacade.grantFreeTierEntitlements(schoolId.value());
+
         SchoolInfo info = schoolFacade.findSchool(schoolId)
                 .orElseThrow(() -> new SchoolException(new SchoolError.SchoolNotFound(schoolId.value())));
         return SchoolResponse.from(info);

@@ -33,6 +33,9 @@ class FinanceManagementFlowIntegrationTest {
     @Autowired
     private MockMvc mockMvc;
 
+    @Autowired
+    private com.example.roshdeandishe.iam.IamFacade iamFacade;
+
     private final ObjectMapper objectMapper = new ObjectMapper();
 
     private MockHttpSession loginAsAdmin() throws Exception {
@@ -163,20 +166,30 @@ class FinanceManagementFlowIntegrationTest {
     }
 
     @Test
-    void schoolWithoutFinanceEntitlementGetsModuleNotEntitled() throws Exception {
-        MockHttpSession founderSession = registerAndLogin("finance.founder@roshdeandishe.test", "بنیان‌گذار بدون ماژول مالی");
+    void freshSchoolGetsFreeFinanceTierAndRevocationYieldsModuleNotEntitled() throws Exception {
+        MockHttpSession founderSession = registerAndLogin("finance.founder@roshdeandishe.test", "بنیان‌گذار بسته‌ی رایگان مالی");
 
         MvcResult createResult = mockMvc.perform(post("/api/admin/schools")
                         .with(csrf())
                         .session(founderSession)
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"name\":\"مدرسه‌ی بدون ماژول مالی\",\"timezone\":\"Asia/Tehran\",\"locale\":\"fa-IR\",\"level\":\"ELEMENTARY\"}"))
+                        .content("{\"name\":\"مدرسه‌ی بسته‌ی رایگان مالی\",\"timezone\":\"Asia/Tehran\",\"locale\":\"fa-IR\",\"level\":\"ELEMENTARY\"}"))
                 .andExpect(status().isOk())
                 .andReturn();
         long schoolId = objectMapper.readTree(createResult.getResponse().getContentAsString()).get("id").asLong();
 
-        // مدرسه‌ی تازه‌ساخته‌ی خودسرویس هیچ entitlement ای ندارد (CLAUDE.md §5) -
-        // حتی SCHOOL_ADMIN خودش هم باید module-not-entitled بگیرد، نه permission-denied
+        // مدرسه‌ی تازه‌ساخته‌ی خودسرویس بسته‌ی رایگان (ACADEMIC + FINANCE) را
+        // در لحظه‌ی ساخت می‌گیرد (CLAUDE.md §11 Q10) - پس tuition-fee باید
+        // 404 «تنظیم نشده» بدهد، نه 403 module-not-entitled
+        mockMvc.perform(get("/api/admin/schools/" + schoolId + "/tuition-fee")
+                        .header("X-School-ID", String.valueOf(schoolId))
+                        .session(founderSession))
+                .andExpect(status().isNotFound());
+
+        // با پس‌گرفتن FINANCE از طریق facade (تنها مسیر مجاز - §10)، حتی
+        // SCHOOL_ADMIN خودش هم باید module-not-entitled بگیرد، نه permission-denied
+        iamFacade.setSchoolEntitlement(schoolId, new com.example.roshdeandishe.iam.IamFacade.ModuleCode("FINANCE"), false);
+
         mockMvc.perform(get("/api/admin/schools/" + schoolId + "/tuition-fee")
                         .header("X-School-ID", String.valueOf(schoolId))
                         .session(founderSession))
