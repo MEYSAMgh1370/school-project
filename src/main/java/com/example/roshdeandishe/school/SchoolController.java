@@ -35,7 +35,8 @@ public class SchoolController {
 
     @PostMapping
     public SchoolResponse createSchool(@RequestBody CreateSchoolRequest request) {
-        SchoolId schoolId = schoolFacade.createSchool(request.name(), request.timezone(), request.locale(), request.level());
+        SchoolId schoolId = schoolFacade.createSchool(
+                request.name(), request.timezone(), request.locale(), request.level(), request.slug());
 
         // سازنده‌ی مدرسه بلافاصله SCHOOL_ADMIN همان مدرسه می‌شود
         IamFacade.UserId callerId = iamFacade.currentUserId();
@@ -65,14 +66,16 @@ public class SchoolController {
         return SchoolResponse.from(info);
     }
 
-    public record CreateSchoolRequest(String name, String timezone, String locale, SchoolFacade.SchoolLevel level) {
+    public record CreateSchoolRequest(String name, String timezone, String locale, SchoolFacade.SchoolLevel level,
+                                      String slug) {
     }
 
-    public record SchoolResponse(Long id, String name, String status, String timezone, String locale, String level) {
+    public record SchoolResponse(Long id, String name, String status, String timezone, String locale, String level,
+                                 String slug) {
         static SchoolResponse from(SchoolInfo info) {
             return new SchoolResponse(
                     info.id().value(), info.name(), info.status().name(), info.timezone(), info.locale(),
-                    info.level().name()
+                    info.level().name(), info.slug()
             );
         }
     }

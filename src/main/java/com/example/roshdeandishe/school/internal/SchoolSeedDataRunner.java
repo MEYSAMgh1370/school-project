@@ -29,8 +29,9 @@ class SchoolSeedDataRunner implements ApplicationRunner {
             return;
         }
         // دبستان: کلاس‌های نمونه‌ی seed/تست‌ها همه "پایه پنجم"/"پایه ششم" و
-        // مشابه‌اند (۱ تا ۶) - همین مقطع.
-        SchoolEntity demoSchool = new SchoolEntity("مدرسه‌ی نمونه", "Asia/Tehran", "fa-IR", SchoolLevel.ELEMENTARY);
+        // مشابه‌اند (۱ تا ۶) - همین مقطع. slug نمونه هم دارد تا صفحه‌ی
+        // /s/{slug} در dev بدون هیچ قدم دستی قابل دیدن باشد.
+        SchoolEntity demoSchool = new SchoolEntity("مدرسه‌ی نمونه", "Asia/Tehran", "fa-IR", SchoolLevel.ELEMENTARY, "nemooneh");
         demoSchool.setStatus(SchoolStatus.ACTIVE);
         schoolRepository.save(demoSchool);
     }

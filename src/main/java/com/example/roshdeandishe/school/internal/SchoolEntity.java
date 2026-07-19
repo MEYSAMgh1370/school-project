@@ -39,11 +39,20 @@ class SchoolEntity {
     @Column(name = "school_level", nullable = false, length = 32)
     private SchoolLevel schoolLevel;
 
-    SchoolEntity(String name, String timezone, String locale, SchoolLevel schoolLevel) {
+    /**
+     * نشانی اختصاصی مدرسه (اختیاری) - /s/{slug}. nullable چون مدرسه‌های
+     * موجود (و هر مدرسه‌ای که نخواهد) نشانی ندارند. طول ۶۳ = سقف DNS label،
+     * عمداً، تا در فاز ساب‌دامین همین مقدار بدون migration قابل استفاده باشد.
+     */
+    @Column(unique = true, length = 63)
+    private String slug;
+
+    SchoolEntity(String name, String timezone, String locale, SchoolLevel schoolLevel, String slug) {
         this.name = name;
         this.timezone = timezone;
         this.locale = locale;
         this.schoolLevel = schoolLevel;
+        this.slug = slug;
         this.status = SchoolStatus.ACTIVE;
     }
 }

@@ -39,6 +39,16 @@ public class SchoolExceptionHandler {
                     "مدرسه یافت نشد",
                     "مدرسه‌ای با شناسه " + e.schoolId() + " یافت نشد."
             );
+            case SchoolError.InvalidSlug e -> ProblemDetailFactory.problem(
+                    HttpStatus.BAD_REQUEST, "invalid-slug",
+                    "نشانی اختصاصی نامعتبر است",
+                    "نشانی «" + e.slug() + "» مجاز نیست. فقط حروف کوچک انگلیسی، رقم و خط تیره (نه در ابتدا/انتها)، بین ۳ تا ۶۳ نویسه."
+            );
+            case SchoolError.SlugAlreadyTaken e -> ProblemDetailFactory.problem(
+                    HttpStatus.CONFLICT, "slug-already-taken",
+                    "نشانی اختصاصی قبلاً گرفته شده",
+                    "نشانی «" + e.slug() + "» قبلاً توسط مدرسه‌ی دیگری ثبت شده است. نشانی دیگری انتخاب کنید."
+            );
         };
     }
 }

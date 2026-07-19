@@ -7,10 +7,31 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
+import java.util.Locale;
 import java.util.Optional;
+import java.util.Set;
+import java.util.regex.Pattern;
 
 @Service
 class SchoolFacadeImpl implements SchoolFacade {
+
+    /**
+     * قالب یک DNS label (بدون خط تیره در ابتدا/انتها) - عمداً، تا slug در
+     * فاز ساب‌دامین (Tier 2 دامنه‌ی اختصاصی، CLAUDE.md §11) بدون migration
+     * قابل استفاده باشد. طول ۳ تا ۶۳ جداگانه چک می‌شود.
+     */
+    private static final Pattern SLUG_PATTERN = Pattern.compile("^[a-z0-9](?:[a-z0-9-]*[a-z0-9])?$");
+
+    /**
+     * نام‌هایی که در فاز ساب‌دامین معنای زیرساختی دارند و هیچ مدرسه‌ای
+     * نباید بتواند آن‌ها را بگیرد - الان رزرو می‌شوند، نه بعداً که یک
+     * مدرسه‌ی واقعی آن‌ها را گرفته باشد.
+     */
+    private static final Set<String> RESERVED_SLUGS = Set.of(
+            "www", "api", "app", "admin", "mail", "smtp", "static", "assets",
+            "cdn", "dev", "test", "staging", "demo", "login", "register",
+            "dashboard", "activate", "roshdeandishe"
+    );
 
     private final SchoolRepository schoolRepository;
 
@@ -20,14 +41,23 @@ class SchoolFacadeImpl implements SchoolFacade {
 
     @Override
     @Transactional
-    public SchoolId createSchool(String name, String timezone, String locale, SchoolLevel level) {
-        SchoolEntity entity = schoolRepository.save(new SchoolEntity(name, timezone, locale, level));
+    public SchoolId createSchool(String name, String timezone, String locale, SchoolLevel level, String slug) {
+        String normalizedSlug = normalizeAndValidateSlug(slug);
+        SchoolEntity entity = schoolRepository.save(new SchoolEntity(name, timezone, locale, level, normalizedSlug));
         return new SchoolId(entity.getId());
     }
 
     @Override
     public Optional<SchoolInfo> findSchool(SchoolId schoolId) {
         return schoolRepository.findById(schoolId.value()).map(this::toInfo);
+    }
+
+    @Override
+    public Optional<SchoolInfo> findSchoolBySlug(String slug) {
+        if (slug == null || slug.isBlank()) {
+            return Optional.empty();
+        }
+        return schoolRepository.findBySlug(slug.trim().toLowerCase(Locale.ROOT)).map(this::toInfo);
     }
 
     @Override
@@ -44,6 +74,25 @@ class SchoolFacadeImpl implements SchoolFacade {
         schoolRepository.save(entity);
     }
 
+    /**
+     * null/خالی مجاز است (مدرسه بدون نشانی اختصاصی)؛ در غیر این صورت
+     * lowercase می‌شود و باید قالب/طول/رزرونبودن/یکتایی را پاس کند.
+     */
+    private String normalizeAndValidateSlug(String slug) {
+        if (slug == null || slug.isBlank()) {
+            return null;
+        }
+        String normalized = slug.trim().toLowerCase(Locale.ROOT);
+        if (normalized.length() < 3 || normalized.length() > 63 || !SLUG_PATTERN.matcher(normalized).matches()
+                || RESERVED_SLUGS.contains(normalized)) {
+            throw new SchoolException(new SchoolError.InvalidSlug(normalized));
+        }
+        if (schoolRepository.existsBySlug(normalized)) {
+            throw new SchoolException(new SchoolError.SlugAlreadyTaken(normalized));
+        }
+        return normalized;
+    }
+
     private SchoolInfo toInfo(SchoolEntity entity) {
         return new SchoolInfo(
                 new SchoolId(entity.getId()),
@@ -51,7 +100,8 @@ class SchoolFacadeImpl implements SchoolFacade {
                 entity.getStatus(),
                 entity.getTimezone(),
                 entity.getLocale(),
-                entity.getSchoolLevel()
+                entity.getSchoolLevel(),
+                entity.getSlug()
         );
     }
 }

@@ -19,11 +19,24 @@ document.addEventListener('alpine:init', () => {
             { value: 'LOWER_SECONDARY', label: 'متوسطه اول (پایه‌های ۷ تا ۹)' },
             { value: 'UPPER_SECONDARY', label: 'متوسطه دوم (پایه‌های ۱۰ تا ۱۲)' }
         ],
+        // نشانی اختصاصی (اختیاری): درِ ورودی برنددار مدرسه در /s/{slug}.
+        // قالب همان قالب DNS label سرور است (SchoolFacadeImpl) - چک
+        // client-side فقط UX است، اعتبارسنجی واقعی همیشه سمت سرور.
+        slug: '',
         submitting: false,
         errorMessage: '',
+        get slugValid() {
+            const s = this.slug.trim().toLowerCase();
+            return s.length >= 3 && s.length <= 63 && /^[a-z0-9](?:[a-z0-9-]*[a-z0-9])?$/.test(s);
+        },
+        get slugPreview() {
+            const s = this.slug.trim().toLowerCase();
+            return window.location.origin + '/s/' + (s || 'tizhooshan');
+        },
         get canSubmit() {
             return this.name.trim().length > 0 && this.timezone.trim().length > 0
-                && this.locale.trim().length > 0 && !this.submitting;
+                && this.locale.trim().length > 0 && !this.submitting
+                && (!this.slug.trim() || this.slugValid);
         },
         csrfToken() {
             const match = document.cookie.match(/(?:^|;\s*)XSRF-TOKEN=([^;]*)/);
@@ -40,7 +53,8 @@ document.addEventListener('alpine:init', () => {
                         name: this.name.trim(),
                         timezone: this.timezone.trim(),
                         locale: this.locale.trim(),
-                        level: this.level
+                        level: this.level,
+                        slug: this.slug.trim().toLowerCase() || null
                     })
                 });
                 if (response.ok) {

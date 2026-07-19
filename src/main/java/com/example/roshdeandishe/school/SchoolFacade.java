@@ -16,10 +16,23 @@ public interface SchoolFacade {
      * ثبت یک مدرسه‌ی جدید در پلتفرم. این اولین قدم برای هر فرآیند
      * onboarding مدرسه‌ی جدید است؛ تا این متد صدا زده نشود، schoolId ای
      * که در IamFacade استفاده می‌شود معنای واقعی ندارد.
+     * <p>
+     * {@code slug} اختیاری است (null/خالی = بدون نشانی اختصاصی): نشانی
+     * ورودیِ برنددارِ مدرسه در /s/{slug}. قالب مجاز عمداً قالب یک DNS label
+     * است (SchoolError.InvalidSlug) تا در فاز «دامنه‌ی اختصاصی» همین مقدار
+     * ساب‌دامین مدرسه شود - تصمیم Tier 1، CLAUDE.md §11.
      */
-    SchoolId createSchool(String name, String timezone, String locale, SchoolLevel level);
+    SchoolId createSchool(String name, String timezone, String locale, SchoolLevel level, String slug);
 
     Optional<SchoolInfo> findSchool(SchoolId schoolId);
+
+    /**
+     * یافتن مدرسه از روی نشانی اختصاصی‌اش - پشتوانه‌ی صفحه‌ی عمومی
+     * /s/{slug} (web.SchoolEntryPageController). وضعیت مدرسه (ACTIVE یا
+     * SUSPENDED) فیلتر نمی‌شود؛ تصمیمِ «مدرسه‌ی معلق را تبلیغ نکن» یک
+     * قاعده‌ی presentation است و در خود صفحه اعمال می‌شود، نه اینجا.
+     */
+    Optional<SchoolInfo> findSchoolBySlug(String slug);
 
     /**
      * برای پنل مدیریت پلتفرم (PLATFORM_ADMIN) - لیست همه‌ی مدرسه‌های ثبت‌شده.
@@ -36,7 +49,8 @@ public interface SchoolFacade {
     record SchoolId(Long value) {
     }
 
-    record SchoolInfo(SchoolId id, String name, SchoolStatus status, String timezone, String locale, SchoolLevel level) {
+    record SchoolInfo(SchoolId id, String name, SchoolStatus status, String timezone, String locale, SchoolLevel level,
+                      String slug) {
     }
 
     enum SchoolStatus {

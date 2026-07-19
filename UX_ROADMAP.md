@@ -196,6 +196,20 @@ coherent as more pages are added by different people/sessions over time.
    `web.LandingPageController`: login/register CTAs plus the "ثبت مدرسه" link
    to `/schools/new`, for anonymous visitors. An already-authenticated visitor
    is redirected straight to `/dashboard`.
+10. **School entry page** — `GET /s/{slug}` — **built 2026-07-19** (Tier 1 of
+   the per-school-domain decision, CLAUDE.md §11 Q9). Public branded entry
+   page per school: school name + ورود CTA (or "ادامه به داشبورد" for an
+   already-authenticated visitor — deliberately no redirect, the CTA click
+   writes `localStorage.selectedSchoolId` so post-login the switcher lands on
+   that school), invite-activation link, and a teaching 404 state for
+   unknown/suspended slugs. Server-rendered (`web.SchoolEntryPageController`
+   + `school-entry.jte`), no navbar (anonymous trust model, same as `/`), no
+   fetch — an explicit deviation from the management-page contract. Not in
+   the navbar: entry-point-flow exception (same as `/` and `/schools/new`) —
+   the school distributes its own URL, and the admin picks the slug on
+   `/schools/new` (new optional field with live URL preview). See CLAUDE.md
+   §7 Done ("School entry page") for the slug's DNS-label validation and
+   what Tier 2/3 defer.
 
 ### FINANCE_ADMIN
 
