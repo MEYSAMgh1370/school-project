@@ -3140,7 +3140,10 @@ above.
 1. **`PlatformContext` permission checking.** `PermissionDecisionService` denies all
    non-school-scoped checks unconditionally. Blocks: REST exposure of
    `setSchoolEntitlement` and `setSchoolStatus`. Do not build until a real need
-   (billing integration, ops tooling) exists — see §5.
+   (billing integration, ops tooling) exists — see §5. **Consequence flagged
+   2026-07-19 (§11 Q10, UX_ROADMAP.md §6.1):** with no entitlement-granting
+   path at all, a real self-service school's onboarding funnel dead-ends —
+   deciding a stopgap is now the top-priority open item.
 2. ~~**Self-service account activation — email delivery.**~~ **Resolved.**
    `issueInviteToken` now emails the activation link to the invited person
    (see §4's `InviteToken` subsection). The token still also comes back in the
@@ -3568,3 +3571,23 @@ REST + tests only, same posture `curriculum`/`studyplan` shipped with.
    "manage my school's own metadata," and inventing one as a drive-by would
    violate the discipline in §10; decide it explicitly when a school-settings
    page is actually requested.
+
+10. **New (raised 2026-07-19, by the critical user-journey review —
+    UX_ROADMAP.md §6):** How does a *real* (non-demo) school ever obtain a
+    module entitlement before billing exists? Today the self-service
+    onboarding funnel dead-ends immediately after school creation: a fresh
+    school has zero entitlements, `setSchoolEntitlement` is deliberately
+    facade-only (§7 item 1), and only the seeded demo school gets the five
+    module grants — so every module-gated page 403s `module-not-entitled`
+    for every real founder, and only `/people` + `/roles` work. This was an
+    acceptable consequence of deferring `PLATFORM_ADMIN` infrastructure
+    while no real school existed, but it now blocks any pilot/first
+    customer. Candidate resolutions, none chosen yet: (a) a deliberate
+    "new schools get a trial entitlement bundle at creation" rule (one
+    explicit change in the school-creation flow — a product decision about
+    what's free, not an infra project); (b) a facade-only ops script/runner
+    for manual grants (no HTTP exposure, consistent with §7 item 1);
+    (c) wait for real billing + `PlatformContext` permission checking
+    (§11 Q5) and accept that no real school can be onboarded until then.
+    Do **not** expose `setSchoolEntitlement` over REST as a shortcut — §10's
+    existing prohibition stands regardless of which option is picked.
