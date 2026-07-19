@@ -741,7 +741,9 @@ com.example.roshdeandishe
     ├── ExamsPageController.java
     ├── MyExamsPageController.java
     ├── ExamTakePageController.java
-    └── MyStudyPlanPageController.java
+    ├── MyStudyPlanPageController.java
+    ├── GradesPageController.java
+    └── MyGradesPageController.java
                                   (fourth slice) sets/views the
                                   tuition fee, lists invoices, records payments,
                                   and runs invoice backfill; GET /expenses
@@ -843,7 +845,28 @@ com.example.roshdeandishe
                                   shell like /my-exams — no X-School-ID, data
                                   entirely client-side against the new
                                   studyplan.MyStudyIntervalController. Navbar
-                                  link visible for STUDENT only.
+                                  link visible for STUDENT only. GradesPageController
+                                  (GET /grades, built 2026-07-20 via the
+                                  `design-page` skill — first UI slice for the
+                                  Grade model, §11 Q8, backend-only until now)
+                                  is a thin shell like /finance: class + academic
+                                  year + term selector, then an editable
+                                  gradebook table (one row per enrolled student,
+                                  a select for DESCRIPTIVE classes or a 0–20
+                                  number input for NUMERIC ones, resolved from
+                                  each class's own `gradingScheme`), entirely
+                                  client-side against the existing
+                                  `academic.GradeController` — reuses the
+                                  `classifyError` two-403 pattern verbatim
+                                  (ACADEMIC is now free-tier, §11 Q10, but can
+                                  still be revoked via the facade, so the
+                                  module-not-entitled state is still real).
+                                  Navbar link visible for SCHOOL_ADMIN/TEACHER.
+                                  MyGradesPageController (GET /my-grades, same
+                                  pass) is a thin shell like /my-invoices —
+                                  no X-School-ID, data entirely client-side
+                                  against the existing `academic.MyGradesController`.
+                                  Navbar link visible for STUDENT/PARENT.
 │
 └── bale/                       ← Bale (بله) messenger bot integration — outbound
     ├── BaleFacade.java             notifications + inbound self-service queries.
@@ -3109,10 +3132,10 @@ above.
   `module-not-entitled`, and `MyGradesController` returns own + linked wards'
   grades only, empty for an unrelated caller). Full suite + `ModularityTests`
   run against a real Postgres via Testcontainers after reconciling with the
-  classification entry above, and green. **No UI yet** — same posture
-  `curriculum`/`studyplan` shipped with at their own new-module time: backend
-  + REST + tests first; a `/grades` gradebook page and a `/my-grades`
-  self-view are a separate slice, through the `design-page` skill when built.
+  classification entry above, and green. ~~No UI yet~~ **UI built
+  2026-07-20** — see "Grades UI" entry below (§7 Done), through the
+  `design-page` skill, resolving the critical user-journey review's
+  highest-priority gap (UX_ROADMAP.md §6.2).
 
 - **School entry page — per-school branded entry URL (built 2026-07-19,
   Tier 1 of the custom-domain decision, §11 Q9)**: a school can claim an
@@ -3170,6 +3193,58 @@ above.
   (`CurriculumFlowIntegrationTest`, `StudyPlanManagementFlowIntegrationTest`,
   `ExamFlowIntegrationTest`) pass unchanged and now double as proof the free
   tier excludes paid modules.
+- **Grades UI (built 2026-07-20, via the `design-page` skill — resolves the
+  highest-priority gap from the 2026-07-19 critical user-journey review,
+  UX_ROADMAP.md §6.2)**: `GET /grades` (`web.GradesPageController`,
+  `grades.jte` + `grades.js`) and `GET /my-grades`
+  (`web.MyGradesPageController`, `my-grades.jte` + `my-grades.js`) — the two
+  pages the Grade backend (§7 Done, "Grades", above) had been missing since
+  2026-07-18. Both are thin shells, zero backend changes — entirely
+  client-side against the existing `academic.GradeController`/
+  `academic.MyGradesController`.
+  - **`/grades`** (SCHOOL_ADMIN + TEACHER, same visibility as `/classes`):
+    a class + academic-year + term selector box (`بارگذاری` submits it, same
+    boxed-form-with-its-own-button convention as `/finance`'s tuition-fee
+    box and `/classes`'s create-class box — no page-header primary button,
+    consistent with every existing management page), then an editable
+    gradebook table — one row per student currently enrolled in the
+    selected class (`academic.StudentController`'s roster, filtered by
+    `classId`, same composition pattern `/students` already uses for names
+    via `iam.MembershipController`). Each row's editable cell is chosen from
+    the *selected class's own* `gradingScheme` (already present on
+    `ClassController`'s `ClassResponse`, no extra call needed): a
+    `DESCRIPTIVE` class gets a four-option select (خیلی خوب/خوب/قابل قبول/
+    نیازمند تلاش), a `NUMERIC` class gets a 0–20 number input. Existing
+    grades for the selected class/year/term pre-fill their row (matched by
+    `studentId` from `GradeController`'s `GET`); submitting a row calls the
+    same idempotent `POST` per CLAUDE.md's `recordGrade` semantics. Inline
+    validation (a row can't submit blank/out-of-range) plus a summarized
+    notice on failure, per `DESIGN.md` §5/§6. Reuses the `classifyError`
+    two-403 pattern verbatim (`finance.js`/`expenses.js`/now `grades.js`) —
+    `ACADEMIC` is free-tier as of the entry above, but remains revocable via
+    the facade, so `module-not-entitled` is still a real, reachable state,
+    not dead code. `academicYear` is free text (e.g. "۱۴۰۴-۱۴۰۵"); per
+    `DESIGN.md` §8's digit-normalization rule, `grades.js` normalizes
+    Persian/Arabic-Indic digits to ASCII before sending — the first place in
+    this codebase that rule is actually implemented (kept inline per the
+    rule-of-three, not extracted to a shared helper on its first use).
+  - **`/my-grades`** (STUDENT + PARENT, same visibility as `/my-invoices`):
+    a flat read-only table, own grades (STUDENT) + linked wards' grades
+    (PARENT), exactly the `/my-invoices` shape (no `X-School-ID`, `schoolId`
+    from the path, no `@RequiresPermission`/`@RequiresModule` to react to —
+    the "my" pattern never needs the two-403 split). Numeric scores render
+    with `Jalali.toPersianDigits` (`jalali.js`, already loaded by
+    `/my-study-plan`/`/expenses`); descriptive levels render as their
+    Persian label — never the raw enum code.
+  - Both routes added to `TenantResolverFilter.EXCLUDED_PATHS` (own-route
+    exclusion, same reasoning documented there for every other management/
+    "my" page) and to `layout/navbar.jte` (`نمرات` for SCHOOL_ADMIN/TEACHER,
+    `نمره‌های من` for STUDENT/PARENT — no orphan URLs). Covered by
+    `GradesPageFlowIntegrationTest`/`MyGradesPageFlowIntegrationTest`
+    (page-shell only, same shape as `MyInvoicesPageFlowIntegrationTest` —
+    the REST behavior itself is already fully covered by
+    `GradeManagementFlowIntegrationTest`). Full suite + `ModularityTests`
+    green.
 
 ### Open / explicitly deferred
 
@@ -3460,9 +3535,9 @@ REST + tests only, same posture `curriculum`/`studyplan` shipped with.
   scheme defaulting from `gradeLevel` but explicit and overridable, manual
   entry only, fixed descriptive scale, per-term cadence) are documented
   there, including how this reconciles with the same-day School/class level
-  classification work (§7 Done). A `/grades`/`/my-grades` **UI** is still
-  unbuilt (not forbidden, just not yet requested) — go through the
-  `design-page` skill when it is.
+  classification work (§7 Done). The `/grades`/`/my-grades` **UI** is also
+  now built (2026-07-20, §7 Done "Grades UI") — went through the
+  `design-page` skill as required.
 - **Do not scope an already-shipped endpoint to `StudentGuardianEntity` (or
   any other narrowing) as a silent side effect of unrelated work.** This is
   exactly what protected `/finance`'s `GET invoices` from being scoped as a
@@ -3580,10 +3655,8 @@ REST + tests only, same posture `curriculum`/`studyplan` shipped with.
    classification", "Grades") for the full model, `GradeController`'s
    deliberate `GRADES_EDIT`-only gating (to prevent a `STUDENT`/`PARENT`
    holder of `GRADES_VIEW` from seeing a whole class's grades), and test
-   coverage. **Backend + REST only — no UI yet for the `Grade` model itself**
-   (the classification fields do have UI — `/schools/new` and `/classes`),
-   same posture `curriculum`/`studyplan` shipped with at their own
-   new-module time.
+   coverage. **UI built 2026-07-20** (§7 Done, "Grades UI") — `/grades`
+   (admin/teacher gradebook) and `/my-grades` (student/parent self-view).
 
 9. **New (raised 2026-07-19; Tier 1 built the same day):** Per-school domains.
    Decided as three escalating tiers, only the first of which is built:

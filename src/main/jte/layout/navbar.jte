@@ -39,9 +39,11 @@
                 <a class="navbar-item" href="/my-exams" x-cloak x-show="selectedRole === 'STUDENT'">آزمون‌های من</a>
                 <a class="navbar-item" href="/my-study-plan" x-cloak x-show="selectedRole === 'STUDENT'">برنامه‌ی مطالعه‌ی من</a>
                 <a class="navbar-item" href="/students" x-cloak x-show="selectedRole === 'SCHOOL_ADMIN' || selectedRole === 'TEACHER'">دانش‌آموزان</a>
+                <a class="navbar-item" href="/grades" x-cloak x-show="selectedRole === 'SCHOOL_ADMIN' || selectedRole === 'TEACHER'">نمرات</a>
                 <a class="navbar-item" href="/finance" x-cloak x-show="selectedRole === 'SCHOOL_ADMIN' || selectedRole === 'FINANCE_ADMIN'">امور مالی</a>
                 <a class="navbar-item" href="/expenses" x-cloak x-show="selectedRole === 'SCHOOL_ADMIN' || selectedRole === 'FINANCE_ADMIN'">هزینه‌ها</a>
                 <a class="navbar-item" href="/my-invoices" x-cloak x-show="selectedRole === 'STUDENT' || selectedRole === 'PARENT'">فاکتورهای من</a>
+                <a class="navbar-item" href="/my-grades" x-cloak x-show="selectedRole === 'STUDENT' || selectedRole === 'PARENT'">نمره‌های من</a>
             @endif
         </div>
         <div class="navbar-end">
