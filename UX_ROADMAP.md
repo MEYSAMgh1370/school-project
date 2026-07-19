@@ -217,23 +217,29 @@ fallback-name bug found and fixed while building it.
 
 ### PARENT / STUDENT
 
-The existing read-only `/dashboard` only, for now. Grades views are blocked:
-`GRADES_VIEW`/`GRADES_EDIT` permissions exist in the seed data but **no grades
-feature or data model exists yet** — do not build UI ahead of the backend.
-**Explicitly deferred 2026-07-07 (CLAUDE.md §11 Q8)**, not just unscheduled:
-elementary grading in Iranian schools is typically descriptive/qualitative
-(توصیفی) while higher levels use a numeric scale, and no exam plan is chosen
-yet either — both need a real product decision before a `Grade` shape can be
-designed. A PARENT's own self-service data (which children are theirs, their
-tuition status) is available today through the Bale bot, and — since the
-2026-07-12 payments deepening — also via `GET /api/me/schools/{schoolId}/invoices`
-(`finance.MyInvoicesController`, CLAUDE.md §4's `Invoice` subsection). **A
-dedicated page now exists: `/my-invoices`** (`web.MyInvoicesPageController`,
-built 2026-07-13 on explicit request) — read-only, for both STUDENT (own
-invoices) and PARENT (linked wards' invoices), no new REST behind it. Navbar
-link visible while the selected role is `STUDENT` or `PARENT`. See CLAUDE.md
-§7 Done ("Finance deepening, phase 3"). Neither this nor the Bale bot is a
-substitute for a real `/grades` web page.
+The existing read-only `/dashboard` only, plus `/my-invoices` and
+`/my-study-plan` (below), for now. **Grades backend is built (CLAUDE.md §11
+Q8, resolved 2026-07-18) but there is still no `/grades`/`/my-grades` UI** —
+`academic.GradeController` (admin gradebook) and `academic.MyGradesController`
+(`GET /api/me/schools/{schoolId}/grades`, the established "my" pattern — own
+grades + linked wards' grades) exist and are tested
+(`GradeManagementFlowIntegrationTest`), same posture `curriculum`/`studyplan`
+shipped with at their own new-module time: backend + REST first, UI as a
+separate slice through the `design-page` skill. When built, `/my-grades`
+should follow the same shape as `/my-invoices` below (STUDENT: own; PARENT:
+linked wards'), and an admin/teacher gradebook page (`/grades`) should follow
+`/finance`'s pattern (`GRADES_EDIT`-gated — deliberately not `GRADES_VIEW`,
+see CLAUDE.md §4's Grade subsection for why). A PARENT's own self-service data
+(which children are theirs, their tuition status) is available today through
+the Bale bot, and — since the 2026-07-12 payments deepening — also via
+`GET /api/me/schools/{schoolId}/invoices` (`finance.MyInvoicesController`,
+CLAUDE.md §4's `Invoice` subsection). **A dedicated page now exists:
+`/my-invoices`** (`web.MyInvoicesPageController`, built 2026-07-13 on explicit
+request) — read-only, for both STUDENT (own invoices) and PARENT (linked
+wards' invoices), no new REST behind it. Navbar link visible while the
+selected role is `STUDENT` or `PARENT`. See CLAUDE.md §7 Done ("Finance
+deepening, phase 3"). Neither this nor the Bale bot is a substitute for a
+real `/grades`/`/my-grades` web page.
 
 **A study-plan self-view now also exists: `/my-study-plan`**
 (`web.MyStudyPlanPageController`, built 2026-07-17 from a Claude Design

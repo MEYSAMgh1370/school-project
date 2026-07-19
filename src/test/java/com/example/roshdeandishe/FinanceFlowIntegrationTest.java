@@ -1,6 +1,7 @@
 package com.example.roshdeandishe;
 
 import com.example.roshdeandishe.academic.AcademicFacade;
+import com.example.roshdeandishe.academic.GradingScheme;
 import com.example.roshdeandishe.finance.FinanceFacade;
 import com.example.roshdeandishe.finance.FinanceFacade.InvoiceInfo;
 import com.example.roshdeandishe.finance.shared.FinanceException;
@@ -86,7 +87,7 @@ class FinanceFlowIntegrationTest {
         Long schoolId = schoolFacade.createSchool(
                 "مدرسه‌ی تست فاکتور", "Asia/Tehran", "fa-IR", SchoolLevel.ELEMENTARY).value();
         financeFacade.setTuitionFee(schoolId, new BigDecimal("2500000.00"));
-        Long classId = academicFacade.createClass(schoolId, "پایه پنجم - الف", null, "الف", 5).value();
+        Long classId = academicFacade.createClass(schoolId, "پایه پنجم - الف", null, "الف", 5, GradingScheme.NUMERIC).value();
 
         academicFacade.enrollStudent(
                 "finance-flow-student@example.com", "Finance Flow Student", schoolId, classId

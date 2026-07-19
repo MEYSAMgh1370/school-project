@@ -1,6 +1,7 @@
 package com.example.roshdeandishe;
 
 import com.example.roshdeandishe.academic.AcademicFacade;
+import com.example.roshdeandishe.academic.GradingScheme;
 import com.example.roshdeandishe.finance.FinanceFacade;
 import com.example.roshdeandishe.finance.FinanceFacade.InvoiceInfo;
 import com.example.roshdeandishe.finance.InvoiceStatus;
@@ -163,7 +164,7 @@ class FinancePaymentFlowIntegrationTest {
         // - برخلاف بقیه‌ی این فایل، این یک متد ساختگی نمی‌تواند باشد.
         Long schoolId = schoolFacade.createSchool(
                 "مدرسه‌ی تست backfill", "Asia/Tehran", "fa-IR", SchoolLevel.ELEMENTARY).value();
-        Long classId = academicFacade.createClass(schoolId, "پایه ششم - الف", null, "الف", 6).value();
+        Long classId = academicFacade.createClass(schoolId, "پایه ششم - الف", null, "الف", 6, GradingScheme.NUMERIC).value();
 
         // ثبت‌نام قبل از تنظیم شهریه: listener مالی چیزی صادر نمی‌کند (تصمیم
         // صریح CLAUDE.md §4). صبر می‌کنیم همه‌ی publication های async تمام

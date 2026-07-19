@@ -1,16 +1,21 @@
 package com.example.roshdeandishe.academic.internal;
 
 import com.example.roshdeandishe.academic.AcademicFacade;
+import com.example.roshdeandishe.academic.DescriptiveGradeLevel;
+import com.example.roshdeandishe.academic.GradingScheme;
+import com.example.roshdeandishe.academic.GradingTerm;
 import com.example.roshdeandishe.academic.StudentEnrolledEvent;
 import com.example.roshdeandishe.academic.shared.AcademicError;
 import com.example.roshdeandishe.academic.shared.AcademicException;
 import com.example.roshdeandishe.iam.IamFacade;
+import com.example.roshdeandishe.iam.shared.exception.IamException;
 import com.example.roshdeandishe.school.SchoolFacade;
 import com.example.roshdeandishe.school.SchoolFacade.SchoolInfo;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
@@ -18,9 +23,12 @@ import java.util.Optional;
 @Service
 class AcademicFacadeImpl implements AcademicFacade {
 
+    private static final BigDecimal MAX_NUMERIC_SCORE = new BigDecimal("20");
+
     private final StudentRepository studentRepository;
     private final ClassRepository classRepository;
     private final StudentGuardianRepository studentGuardianRepository;
+    private final GradeRepository gradeRepository;
     private final IamFacade iamFacade;
     private final SchoolFacade schoolFacade;
     private final ApplicationEventPublisher eventPublisher;
@@ -29,6 +37,7 @@ class AcademicFacadeImpl implements AcademicFacade {
             StudentRepository studentRepository,
             ClassRepository classRepository,
             StudentGuardianRepository studentGuardianRepository,
+            GradeRepository gradeRepository,
             IamFacade iamFacade,
             SchoolFacade schoolFacade,
             ApplicationEventPublisher eventPublisher
@@ -36,6 +45,7 @@ class AcademicFacadeImpl implements AcademicFacade {
         this.studentRepository = studentRepository;
         this.classRepository = classRepository;
         this.studentGuardianRepository = studentGuardianRepository;
+        this.gradeRepository = gradeRepository;
         this.iamFacade = iamFacade;
         this.schoolFacade = schoolFacade;
         this.eventPublisher = eventPublisher;
@@ -44,7 +54,7 @@ class AcademicFacadeImpl implements AcademicFacade {
     @Override
     @Transactional
     public StudentId enrollStudent(String email, String fullName, Long schoolId, Long classId) {
-        requireClassExists(schoolId, classId);
+        requireClassInSchool(schoolId, classId);
 
         // همان الگوی SchoolController: پیدا/ساخت کاربر در iam، سپس Membership
         // نقش STUDENT برای او در این مدرسه (idempotent در هر دو مرحله)
@@ -87,16 +97,91 @@ class AcademicFacadeImpl implements AcademicFacade {
 
     @Override
     @Transactional
-    public ClassId createClass(Long schoolId, String name, Long teacherId, String section, int gradeLevel) {
+    public ClassId createClass(Long schoolId, String name, Long teacherId, String section, int gradeLevel, GradingScheme gradingScheme) {
         requireValidGradeLevel(schoolId, gradeLevel);
-        ClassEntity saved = classRepository.save(new ClassEntity(schoolId, name, teacherId, section, gradeLevel));
+        ClassEntity saved = classRepository.save(new ClassEntity(schoolId, name, teacherId, section, gradeLevel, gradingScheme));
         return new ClassId(saved.getId());
     }
 
     @Override
     public List<ClassInfo> listClasses(Long schoolId) {
         return classRepository.findBySchoolId(schoolId).stream()
-                .map(c -> new ClassInfo(new ClassId(c.getId()), c.getSchoolId(), c.getName(), c.getTeacherId(), c.getSection(), c.getGradeLevel()))
+                .map(AcademicFacadeImpl::toClassInfo)
+                .toList();
+    }
+
+    @Override
+    @Transactional
+    public GradeId recordGrade(Long schoolId, Long studentId, Long classId, String academicYear, GradingTerm term,
+                                DescriptiveGradeLevel descriptiveLevel, BigDecimal numericScore, String comment) {
+        ClassEntity classEntity = requireClassInSchool(schoolId, classId);
+        StudentEntity student = studentRepository.findById(studentId)
+                .orElseThrow(() -> new AcademicException(new AcademicError.StudentNotFound(studentId)));
+        if (!student.getSchoolId().equals(schoolId) || !student.getClassId().equals(classId)) {
+            throw new AcademicException(new AcademicError.StudentNotInClass(studentId, classId));
+        }
+        if (academicYear == null || academicYear.isBlank()) {
+            throw new AcademicException(new AcademicError.InvalidGrade("سال تحصیلی الزامی است"));
+        }
+
+        GradingScheme scheme = classEntity.getGradingScheme() != null ? classEntity.getGradingScheme() : GradingScheme.NUMERIC;
+        switch (scheme) {
+            case DESCRIPTIVE -> {
+                if (descriptiveLevel == null || numericScore != null) {
+                    throw new AcademicException(new AcademicError.GradingSchemeMismatch(classId, scheme));
+                }
+            }
+            case NUMERIC -> {
+                if (numericScore == null || descriptiveLevel != null) {
+                    throw new AcademicException(new AcademicError.GradingSchemeMismatch(classId, scheme));
+                }
+                if (numericScore.compareTo(BigDecimal.ZERO) < 0 || numericScore.compareTo(MAX_NUMERIC_SCORE) > 0) {
+                    throw new AcademicException(new AcademicError.InvalidGrade("نمره باید بین ۰ تا ۲۰ باشد"));
+                }
+            }
+        }
+
+        GradeEntity grade = gradeRepository
+                .findByStudentIdAndClassIdAndAcademicYearAndTerm(studentId, classId, academicYear, term)
+                .orElseGet(GradeEntity::new);
+        grade.setSchoolId(schoolId);
+        grade.setStudentId(studentId);
+        grade.setClassId(classId);
+        grade.setAcademicYear(academicYear);
+        grade.setTerm(term);
+        grade.setScheme(scheme);
+        grade.setDescriptiveLevel(descriptiveLevel);
+        grade.setNumericScore(numericScore);
+        grade.setComment(comment);
+        grade.setRecordedByUserId(currentActorOrNull());
+        grade.setRecordedAt(Instant.now());
+        GradeEntity saved = gradeRepository.save(grade);
+        return new GradeId(saved.getId());
+    }
+
+    @Override
+    public GradeInfo getGrade(Long gradeId) {
+        return gradeRepository.findById(gradeId)
+                .map(AcademicFacadeImpl::toGradeInfo)
+                .orElseThrow(() -> new AcademicException(new AcademicError.GradeNotFound(gradeId)));
+    }
+
+    @Override
+    public List<GradeInfo> listGradesForClass(Long schoolId, Long classId, String academicYear, GradingTerm term) {
+        requireClassInSchool(schoolId, classId);
+        return gradeRepository.findByClassIdAndAcademicYearAndTerm(classId, academicYear, term).stream()
+                .map(AcademicFacadeImpl::toGradeInfo)
+                .toList();
+    }
+
+    @Override
+    public List<GradeInfo> listGradesForStudents(Long schoolId, List<Long> studentIds) {
+        if (studentIds.isEmpty()) {
+            return List.of();
+        }
+        return gradeRepository.findByStudentIdIn(studentIds).stream()
+                .filter(g -> g.getSchoolId().equals(schoolId))
+                .map(AcademicFacadeImpl::toGradeInfo)
                 .toList();
     }
 
@@ -179,12 +264,40 @@ class AcademicFacadeImpl implements AcademicFacade {
         }
     }
 
-    private void requireClassExists(Long schoolId, Long classId) {
+    private ClassEntity requireClassInSchool(Long schoolId, Long classId) {
         ClassEntity classEntity = classRepository.findById(classId)
                 .orElseThrow(() -> new AcademicException(new AcademicError.ClassNotFound(classId)));
         if (!classEntity.getSchoolId().equals(schoolId)) {
             // کلاس متعلق به مدرسه‌ی دیگری است - از دید academic همان "یافت نشد" است
             throw new AcademicException(new AcademicError.ClassNotFound(classId));
+        }
+        return classEntity;
+    }
+
+    private static ClassInfo toClassInfo(ClassEntity c) {
+        return new ClassInfo(new ClassId(c.getId()), c.getSchoolId(), c.getName(), c.getTeacherId(), c.getSection(),
+                c.getGradeLevel(), c.getGradingScheme());
+    }
+
+    private static GradeInfo toGradeInfo(GradeEntity g) {
+        return new GradeInfo(
+                new GradeId(g.getId()), g.getSchoolId(), new StudentId(g.getStudentId()), new ClassId(g.getClassId()),
+                g.getAcademicYear(), g.getTerm(), g.getScheme(), g.getDescriptiveLevel(), g.getNumericScore(),
+                g.getComment(), g.getRecordedByUserId(), g.getRecordedAt()
+        );
+    }
+
+    /**
+     * این متد می‌تواند هم از یک درخواست HTTP واقعی (کاربر احراز هویت‌شده
+     * موجود است) و هم از یک فراخوانِ بدون کاربر احراز هویت‌شده صدا زده شود؛
+     * در حالت دوم actor را null می‌گذاریم - همان الگوی
+     * FinanceFacadeImpl.currentActorOrNull.
+     */
+    private Long currentActorOrNull() {
+        try {
+            return iamFacade.currentUserId().value();
+        } catch (IamException e) {
+            return null;
         }
     }
 }
