@@ -317,3 +317,86 @@ page shell and the REST flow behind it.
 - [ ] `mvn test -Dtest=ModularityTests` still green (module boundaries intact).
 - [ ] CLAUDE.md updated (module structure §3, "Done" list §7) if the slice adds
       a new controller, facade method, or resolves an open item.
+
+## 6. Critical user-journey review (2026-07-19)
+
+A persona-by-persona walkthrough of every journey against what is actually
+built (pages, navbar links, permissions, seed data), ranked by how badly each
+gap hurts. Re-run this review after each gap below is closed and update this
+section — it is the standing prioritization for the next slices.
+
+### 6.1 CRITICAL — a real school's onboarding funnel dead-ends at creation
+
+Journey: visitor lands on `/` → registers → creates a school at `/schools/new`
+→ becomes `SCHOOL_ADMIN` → **cannot use the product**. A freshly created
+school has zero entitlements and there is *no path whatsoever* — no REST, no
+UI, no billing — to ever grant one (`IamFacade.setSchoolEntitlement` is
+facade-only by explicit decision, CLAUDE.md §7 item 1). Only the seeded demo
+school (id 1) gets `ACADEMIC`/`FINANCE`/`CURRICULUM`/`STUDY_PLANNER`/`EXAM`.
+A real founder can use `/people` and `/roles` (not module-gated) but every
+other navbar link — `/classes`, `/students`, `/finance`, `/expenses`,
+`/curriculum`, `/study-plans`, `/exams` — 403s `module-not-entitled`. The
+core product journey currently works **only for the demo school**.
+
+This is not a UI slice — it needs an explicit product decision first (trial
+entitlement bundle at creation vs. ops-script stopgap vs. wait for billing) —
+see CLAUDE.md §11 Q10. Do not bolt an entitlement-granting endpoint onto
+unrelated work (§10 discipline); decide it on purpose.
+
+### 6.2 HIGH — two finished backends are unreachable by any real user
+
+1. **Grades has no UI at all.** A teacher cannot enter term grades and a
+   student/parent cannot see them — backend + REST + tests done 2026-07-18
+   (CLAUDE.md §11 Q8), journey completeness 0%. Next slices: `/grades`
+   (teacher/admin gradebook, `GRADES_EDIT`-gated, `/finance`-style) and
+   `/my-grades` (`/my-invoices`-shaped: STUDENT own, PARENT linked wards) —
+   both through the `design-page` skill, as §3 above already specifies.
+2. **Phone number has no UI, stranding Bale + OTP entirely.**
+   `PUT /api/me/phone` is called from no page or JS, and `/login` has no OTP
+   form — so no real user can ever link the Bale bot or use OTP login through
+   the UI; both features are curl-only today. Smallest unlock: a phone-number
+   field on `/dashboard` (or a future profile surface) calling the existing
+   endpoint; an OTP tab on `/login` is a separate follow-up slice.
+
+### 6.3 MEDIUM — activation-funnel friction on the highest-volume flow
+
+Enrolling a student on `/students` creates a passwordless account, but the
+invite step lives on a different page (`/people` → find membership → issue
+invite) with nothing pointing there, and `/people` doesn't show which members
+have never activated (no password yet). For a school onboarding dozens of
+students/parents this is the main drop-off point. Candidate fixes (one
+slice): an "activated / awaiting invite" indicator on `/people` rows (needs a
+small `MembershipInfo` enrichment, e.g. a `hasPassword` flag), and an invite
+shortcut in `/students`' enrollment success path. Also note: SMTP defaults to
+localhost:1025, so until deployment config exists the *real* journey is
+`emailSent=false` + manual link handover.
+
+### 6.4 LOW — degraded-but-working day-to-day paths
+
+- **TEACHER sees "نامشخص" for student names on `/students`** — name
+  resolution is gated by `MEMBERSHIP_MANAGE`, which TEACHER lacks. Known
+  (CLAUDE.md §7 Done, "TEACHER persona"); the real fix is a narrower
+  member-name read endpoint — a permission-model decision, still parked.
+- **FINANCE_ADMIN sees `#id` instead of student names on `/finance`** (lacks
+  `STUDENT_ENROLL`) — same class of gap, same parked fix.
+- **School entry URL is write-only**: the slug can only be set at creation
+  (no school-settings surface — deliberate, CLAUDE.md §11 Q9) and the
+  dashboard never displays the `/s/{slug}` URL afterward. Showing the
+  school's own entry URL on `/dashboard` for `SCHOOL_ADMIN` is a small,
+  decision-free display slice; *editing* the slug stays gated on the
+  school-settings permission decision.
+
+### 6.5 Verified solid end-to-end
+
+Login/register/activate; school/role switcher incl. zero memberships; the
+full SCHOOL_ADMIN management loop *for an entitled school*; parent invoice
+scoping (`/my-invoices` + scoped admin endpoint); student exam-taking
+(`/my-exams` → `/exam-take`); `/my-study-plan`.
+
+### 6.6 Recommended order of attack
+
+1. Decide §6.1 (entitlement path — everything else is moot without it).
+2. Grades UI (`/grades` + `/my-grades`).
+3. Phone-number field (unlocks Bale + OTP), then an OTP login tab.
+4. Invite-status visibility on the enrollment funnel (§6.3).
+5. Dashboard entry-URL display (§6.4) opportunistically.
