@@ -48,7 +48,10 @@ not solo/independent teachers as a parallel org type.
 School creation is **self-service, not admin-gated**: any authenticated user can
 create a school and automatically becomes its `SCHOOL_ADMIN` in the same call. This
 was a deliberate choice to avoid needing `PLATFORM_ADMIN` permission infrastructure
-(which doesn't exist yet — see §7) just to onboard a new tenant. Genuinely
+(which doesn't exist yet — see §7) just to onboard a new tenant. A new school also
+receives the **free tier** at creation — `ACADEMIC` + `FINANCE` entitlements
+(§11 Q10, resolved 2026-07-20); `CURRICULUM`/`STUDY_PLANNER`/`EXAM` are paid
+plans, grantable only via the facade until real billing exists. Genuinely
 platform-privileged actions (granting a school paid modules, suspending a school)
 stay facade-only, with no REST endpoint, until real platform-permission
 infrastructure and a real actor (ops tooling or a billing webhook) exist. Do not
@@ -738,7 +741,9 @@ com.example.roshdeandishe
     ├── ExamsPageController.java
     ├── MyExamsPageController.java
     ├── ExamTakePageController.java
-    └── MyStudyPlanPageController.java
+    ├── MyStudyPlanPageController.java
+    ├── GradesPageController.java
+    └── MyGradesPageController.java
                                   (fourth slice) sets/views the
                                   tuition fee, lists invoices, records payments,
                                   and runs invoice backfill; GET /expenses
@@ -840,7 +845,28 @@ com.example.roshdeandishe
                                   shell like /my-exams — no X-School-ID, data
                                   entirely client-side against the new
                                   studyplan.MyStudyIntervalController. Navbar
-                                  link visible for STUDENT only.
+                                  link visible for STUDENT only. GradesPageController
+                                  (GET /grades, built 2026-07-20 via the
+                                  `design-page` skill — first UI slice for the
+                                  Grade model, §11 Q8, backend-only until now)
+                                  is a thin shell like /finance: class + academic
+                                  year + term selector, then an editable
+                                  gradebook table (one row per enrolled student,
+                                  a select for DESCRIPTIVE classes or a 0–20
+                                  number input for NUMERIC ones, resolved from
+                                  each class's own `gradingScheme`), entirely
+                                  client-side against the existing
+                                  `academic.GradeController` — reuses the
+                                  `classifyError` two-403 pattern verbatim
+                                  (ACADEMIC is now free-tier, §11 Q10, but can
+                                  still be revoked via the facade, so the
+                                  module-not-entitled state is still real).
+                                  Navbar link visible for SCHOOL_ADMIN/TEACHER.
+                                  MyGradesPageController (GET /my-grades, same
+                                  pass) is a thin shell like /my-invoices —
+                                  no X-School-ID, data entirely client-side
+                                  against the existing `academic.MyGradesController`.
+                                  Navbar link visible for STUDENT/PARENT.
 │
 └── bale/                       ← Bale (بله) messenger bot integration — outbound
     ├── BaleFacade.java             notifications + inbound self-service queries.
@@ -1317,6 +1343,14 @@ different billing source, different query patterns.
 genuinely platform-privileged action (granting a school paid features for free if
 misused) with no real actor or permission check behind it yet. See §7 before
 exposing it over HTTP.
+
+**Free tier (§11 Q10, resolved 2026-07-20):** `IamFacade.grantFreeTierEntitlements(schoolId)`
+grants `ACADEMIC` + `FINANCE` (the `FREE_TIER_MODULES` list in `IamFacadeImpl` —
+iam owns the pricing rule, one place to change when billing arrives), called by
+`SchoolController.createSchool` right after the creator's `SCHOOL_ADMIN`
+membership. `CURRICULUM`/`STUDY_PLANNER`/`EXAM` are paid plans — never granted
+at creation, facade-only until real billing exists. Idempotent (rides on
+`setSchoolEntitlement`).
 
 ### School (owned by the `school` module, not `iam`)
 
@@ -2115,11 +2149,14 @@ layer, for a different reason than the two above: the caller is Bale's server,
 not an authenticated browser session, so there's no `SecurityContext`/
 `TenantContext` for either aspect to check against — its authorization comes
 entirely from the data model (every query is scoped to the webhook's own
-resolved `userId`), not from these two aspects. `IamSeedDataRunner.seedDemoSchoolEntitlements()` seeds an
-`ACADEMIC` entitlement for the demo school (id 1) so the academic endpoints
-stay usable in dev; a school created self-service at runtime has zero
-entitlements and will correctly get 403 `ModuleNotEntitled` on them until
-granted via `setSchoolEntitlement` (facade-only, see §7 item 1).
+resolved `userId`), not from these two aspects. `IamSeedDataRunner.seedDemoSchoolEntitlements()` seeds all
+five B2B module entitlements for the demo school (id 1) so every module-gated
+endpoint stays usable in dev. A school created self-service at runtime gets
+the **free tier** (`ACADEMIC` + `FINANCE`) automatically at creation
+(`IamFacade.grantFreeTierEntitlements` — §11 Q10, resolved 2026-07-20) and
+will correctly get 403 `ModuleNotEntitled` on the paid modules
+(`CURRICULUM`/`STUDY_PLANNER`/`EXAM`) until granted via
+`setSchoolEntitlement` (facade-only, see §7 item 1).
 
 **Critical caveat, not yet resolved:** `PermissionDecisionService` currently
 **unconditionally denies** any check made with `AccessContext.PlatformContext`
@@ -3095,10 +3132,10 @@ above.
   `module-not-entitled`, and `MyGradesController` returns own + linked wards'
   grades only, empty for an unrelated caller). Full suite + `ModularityTests`
   run against a real Postgres via Testcontainers after reconciling with the
-  classification entry above, and green. **No UI yet** — same posture
-  `curriculum`/`studyplan` shipped with at their own new-module time: backend
-  + REST + tests first; a `/grades` gradebook page and a `/my-grades`
-  self-view are a separate slice, through the `design-page` skill when built.
+  classification entry above, and green. ~~No UI yet~~ **UI built
+  2026-07-20** — see "Grades UI" entry below (§7 Done), through the
+  `design-page` skill, resolving the critical user-journey review's
+  highest-priority gap (UX_ROADMAP.md §6.2).
 
 - **School entry page — per-school branded entry URL (built 2026-07-19,
   Tier 1 of the custom-domain decision, §11 Q9)**: a school can claim an
@@ -3135,15 +3172,91 @@ above.
   dashboard, Host-header tenant resolution (Tier 2 — deployment-gated),
   and full custom domains (Tier 3 — `PLATFORM_ADMIN`-gated).
 
+- **Free-tier entitlements at school creation (built 2026-07-20, explicit
+  user decision — resolves §11 Q10, raised by the 2026-07-19 critical
+  user-journey review, UX_ROADMAP.md §6.1)**: a self-service school no longer
+  dead-ends with zero entitlements — `SchoolController.createSchool` now calls
+  the new `IamFacade.grantFreeTierEntitlements(schoolId)` (right after the
+  creator's `SCHOOL_ADMIN` membership), granting `ACADEMIC` + `FINANCE`.
+  `CURRICULUM`/`STUDY_PLANNER`/`EXAM` are paid plans: not granted, still
+  facade-only (`setSchoolEntitlement`, no REST — §10 unchanged) until real
+  billing exists. The free-module list is `FREE_TIER_MODULES` in
+  `IamFacadeImpl` — one place to change when billing arrives. Demo-school dev
+  seed unchanged (all five modules — a superset of the free tier). The three
+  fresh-school `module-not-entitled` tests on now-free modules were reworked
+  rather than deleted: each first proves the free module works immediately
+  (tuition-fee 404-not-403 / expenses 200 / classes 200), then revokes the
+  entitlement via the facade and re-asserts `module-not-entitled` — so both
+  the grant and the revocation path are covered
+  (`FinanceManagementFlowIntegrationTest`, `ExpenseManagementFlowIntegrationTest`,
+  `GradeManagementFlowIntegrationTest`); the paid-module fresh-school tests
+  (`CurriculumFlowIntegrationTest`, `StudyPlanManagementFlowIntegrationTest`,
+  `ExamFlowIntegrationTest`) pass unchanged and now double as proof the free
+  tier excludes paid modules.
+- **Grades UI (built 2026-07-20, via the `design-page` skill — resolves the
+  highest-priority gap from the 2026-07-19 critical user-journey review,
+  UX_ROADMAP.md §6.2)**: `GET /grades` (`web.GradesPageController`,
+  `grades.jte` + `grades.js`) and `GET /my-grades`
+  (`web.MyGradesPageController`, `my-grades.jte` + `my-grades.js`) — the two
+  pages the Grade backend (§7 Done, "Grades", above) had been missing since
+  2026-07-18. Both are thin shells, zero backend changes — entirely
+  client-side against the existing `academic.GradeController`/
+  `academic.MyGradesController`.
+  - **`/grades`** (SCHOOL_ADMIN + TEACHER, same visibility as `/classes`):
+    a class + academic-year + term selector box (`بارگذاری` submits it, same
+    boxed-form-with-its-own-button convention as `/finance`'s tuition-fee
+    box and `/classes`'s create-class box — no page-header primary button,
+    consistent with every existing management page), then an editable
+    gradebook table — one row per student currently enrolled in the
+    selected class (`academic.StudentController`'s roster, filtered by
+    `classId`, same composition pattern `/students` already uses for names
+    via `iam.MembershipController`). Each row's editable cell is chosen from
+    the *selected class's own* `gradingScheme` (already present on
+    `ClassController`'s `ClassResponse`, no extra call needed): a
+    `DESCRIPTIVE` class gets a four-option select (خیلی خوب/خوب/قابل قبول/
+    نیازمند تلاش), a `NUMERIC` class gets a 0–20 number input. Existing
+    grades for the selected class/year/term pre-fill their row (matched by
+    `studentId` from `GradeController`'s `GET`); submitting a row calls the
+    same idempotent `POST` per CLAUDE.md's `recordGrade` semantics. Inline
+    validation (a row can't submit blank/out-of-range) plus a summarized
+    notice on failure, per `DESIGN.md` §5/§6. Reuses the `classifyError`
+    two-403 pattern verbatim (`finance.js`/`expenses.js`/now `grades.js`) —
+    `ACADEMIC` is free-tier as of the entry above, but remains revocable via
+    the facade, so `module-not-entitled` is still a real, reachable state,
+    not dead code. `academicYear` is free text (e.g. "۱۴۰۴-۱۴۰۵"); per
+    `DESIGN.md` §8's digit-normalization rule, `grades.js` normalizes
+    Persian/Arabic-Indic digits to ASCII before sending — the first place in
+    this codebase that rule is actually implemented (kept inline per the
+    rule-of-three, not extracted to a shared helper on its first use).
+  - **`/my-grades`** (STUDENT + PARENT, same visibility as `/my-invoices`):
+    a flat read-only table, own grades (STUDENT) + linked wards' grades
+    (PARENT), exactly the `/my-invoices` shape (no `X-School-ID`, `schoolId`
+    from the path, no `@RequiresPermission`/`@RequiresModule` to react to —
+    the "my" pattern never needs the two-403 split). Numeric scores render
+    with `Jalali.toPersianDigits` (`jalali.js`, already loaded by
+    `/my-study-plan`/`/expenses`); descriptive levels render as their
+    Persian label — never the raw enum code.
+  - Both routes added to `TenantResolverFilter.EXCLUDED_PATHS` (own-route
+    exclusion, same reasoning documented there for every other management/
+    "my" page) and to `layout/navbar.jte` (`نمرات` for SCHOOL_ADMIN/TEACHER,
+    `نمره‌های من` for STUDENT/PARENT — no orphan URLs). Covered by
+    `GradesPageFlowIntegrationTest`/`MyGradesPageFlowIntegrationTest`
+    (page-shell only, same shape as `MyInvoicesPageFlowIntegrationTest` —
+    the REST behavior itself is already fully covered by
+    `GradeManagementFlowIntegrationTest`). Full suite + `ModularityTests`
+    green.
+
 ### Open / explicitly deferred
 
 1. **`PlatformContext` permission checking.** `PermissionDecisionService` denies all
    non-school-scoped checks unconditionally. Blocks: REST exposure of
    `setSchoolEntitlement` and `setSchoolStatus`. Do not build until a real need
    (billing integration, ops tooling) exists — see §5. **Consequence flagged
-   2026-07-19 (§11 Q10, UX_ROADMAP.md §6.1):** with no entitlement-granting
-   path at all, a real self-service school's onboarding funnel dead-ends —
-   deciding a stopgap is now the top-priority open item.
+   2026-07-19 (§11 Q10, UX_ROADMAP.md §6.1): resolved 2026-07-20** — the
+   free tier (`ACADEMIC`+`FINANCE` granted at self-service creation, §11
+   Q10) unblocks real-school onboarding; paid modules (`CURRICULUM`/
+   `STUDY_PLANNER`/`EXAM`) still wait on this item for any REST/billing
+   exposure.
 2. ~~**Self-service account activation — email delivery.**~~ **Resolved.**
    `issueInviteToken` now emails the activation link to the invited person
    (see §4's `InviteToken` subsection). The token still also comes back in the
@@ -3422,9 +3535,9 @@ REST + tests only, same posture `curriculum`/`studyplan` shipped with.
   scheme defaulting from `gradeLevel` but explicit and overridable, manual
   entry only, fixed descriptive scale, per-term cadence) are documented
   there, including how this reconciles with the same-day School/class level
-  classification work (§7 Done). A `/grades`/`/my-grades` **UI** is still
-  unbuilt (not forbidden, just not yet requested) — go through the
-  `design-page` skill when it is.
+  classification work (§7 Done). The `/grades`/`/my-grades` **UI** is also
+  now built (2026-07-20, §7 Done "Grades UI") — went through the
+  `design-page` skill as required.
 - **Do not scope an already-shipped endpoint to `StudentGuardianEntity` (or
   any other narrowing) as a silent side effect of unrelated work.** This is
   exactly what protected `/finance`'s `GET invoices` from being scoped as a
@@ -3542,10 +3655,8 @@ REST + tests only, same posture `curriculum`/`studyplan` shipped with.
    classification", "Grades") for the full model, `GradeController`'s
    deliberate `GRADES_EDIT`-only gating (to prevent a `STUDENT`/`PARENT`
    holder of `GRADES_VIEW` from seeing a whole class's grades), and test
-   coverage. **Backend + REST only — no UI yet for the `Grade` model itself**
-   (the classification fields do have UI — `/schools/new` and `/classes`),
-   same posture `curriculum`/`studyplan` shipped with at their own
-   new-module time.
+   coverage. **UI built 2026-07-20** (§7 Done, "Grades UI") — `/grades`
+   (admin/teacher gradebook) and `/my-grades` (student/parent self-view).
 
 9. **New (raised 2026-07-19; Tier 1 built the same day):** Per-school domains.
    Decided as three escalating tiers, only the first of which is built:
@@ -3572,22 +3683,25 @@ REST + tests only, same posture `curriculum`/`studyplan` shipped with.
    violate the discipline in §10; decide it explicitly when a school-settings
    page is actually requested.
 
-10. **New (raised 2026-07-19, by the critical user-journey review —
-    UX_ROADMAP.md §6):** How does a *real* (non-demo) school ever obtain a
-    module entitlement before billing exists? Today the self-service
-    onboarding funnel dead-ends immediately after school creation: a fresh
-    school has zero entitlements, `setSchoolEntitlement` is deliberately
-    facade-only (§7 item 1), and only the seeded demo school gets the five
-    module grants — so every module-gated page 403s `module-not-entitled`
-    for every real founder, and only `/people` + `/roles` work. This was an
-    acceptable consequence of deferring `PLATFORM_ADMIN` infrastructure
-    while no real school existed, but it now blocks any pilot/first
-    customer. Candidate resolutions, none chosen yet: (a) a deliberate
-    "new schools get a trial entitlement bundle at creation" rule (one
-    explicit change in the school-creation flow — a product decision about
-    what's free, not an infra project); (b) a facade-only ops script/runner
-    for manual grants (no HTTP exposure, consistent with §7 item 1);
-    (c) wait for real billing + `PlatformContext` permission checking
-    (§11 Q5) and accept that no real school can be onboarded until then.
-    Do **not** expose `setSchoolEntitlement` over REST as a shortcut — §10's
-    existing prohibition stands regardless of which option is picked.
+10. ~~How does a *real* (non-demo) school ever obtain a module entitlement
+    before billing exists?~~ (raised 2026-07-19 by the critical user-journey
+    review, UX_ROADMAP.md §6) — **Resolved 2026-07-20, explicit user
+    decision: a free tier.** `ACADEMIC` and `FINANCE` are free — granted
+    automatically at self-service school creation
+    (`IamFacade.grantFreeTierEntitlements`, called by
+    `SchoolController.createSchool` right after the creator's `SCHOOL_ADMIN`
+    membership). `CURRICULUM`, `STUDY_PLANNER`, and `EXAM` are **paid
+    plans**: not granted at creation, still obtainable only via the
+    facade-only `setSchoolEntitlement` (no REST — §10's prohibition stands)
+    until real billing + `PlatformContext` permission checking exist (Q5,
+    §7 item 1). The free-module list lives in `IamFacadeImpl`
+    (`FREE_TIER_MODULES`) — iam owns the entitlement concept, so when
+    billing arrives only that one spot changes. The demo school's dev seed
+    (all five modules, `IamSeedDataRunner`) is unchanged and now simply a
+    superset of the free tier. Covered by the reworked fresh-school tests in
+    `FinanceManagementFlowIntegrationTest`/`ExpenseManagementFlowIntegrationTest`/
+    `GradeManagementFlowIntegrationTest` (free module works immediately,
+    facade revocation restores `module-not-entitled`), while the
+    `CurriculumFlowIntegrationTest`/`StudyPlanManagementFlowIntegrationTest`/
+    `ExamFlowIntegrationTest` fresh-school cases now double as proof that
+    the free tier does *not* include the paid modules.

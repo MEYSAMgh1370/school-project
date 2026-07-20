@@ -71,6 +71,13 @@ public class TenantResolverFilter extends OncePerRequestFilter {
             // خودش هم زیرمجموعه‌ی پیشوند /api/me است و بدون X-School-ID کار
             // می‌کند (schoolId از path می‌آید، نه هدر)
             "/my-invoices",
+            // همان استدلال /people برای دفترچه‌نمره‌ی ادمین/معلم
+            "/grades",
+            // صفحه‌ی «نمره‌های من»: مثل /my-invoices خودِ صفحه یک route است؛
+            // فراخوانی fetch آن به GET /api/me/schools/{id}/grades می‌رود که
+            // خودش هم زیرمجموعه‌ی پیشوند /api/me است و بدون X-School-ID کار
+            // می‌کند (schoolId از path می‌آید، نه هدر)
+            "/my-grades",
             // صفحه‌ی ثبت مدرسه: مدرسه هنوز وجود ندارد که schoolId داشته باشد
             "/schools/new",
             // درِ ورودی برنددار مدرسه (/s/{slug}): صفحه‌ی عمومی، بازدیدکننده

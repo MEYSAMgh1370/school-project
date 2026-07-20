@@ -38,6 +38,9 @@ class ExpenseManagementFlowIntegrationTest {
     @Autowired
     private JdbcTemplate jdbcTemplate;
 
+    @Autowired
+    private com.example.roshdeandishe.iam.IamFacade iamFacade;
+
     private final ObjectMapper objectMapper = new ObjectMapper();
 
     private MockHttpSession loginAsAdmin() throws Exception {
@@ -333,18 +336,28 @@ class ExpenseManagementFlowIntegrationTest {
     }
 
     @Test
-    void schoolWithoutFinanceEntitlementGetsModuleNotEntitled() throws Exception {
+    void freshSchoolGetsFreeFinanceTierAndRevocationYieldsModuleNotEntitled() throws Exception {
         MockHttpSession founderSession = registerAndLogin(
-                "expense.founder@roshdeandishe.test", "بنیان‌گذار بدون ماژول مالی هزینه");
+                "expense.founder@roshdeandishe.test", "بنیان‌گذار بسته‌ی رایگان هزینه");
 
         MvcResult createResult = mockMvc.perform(post("/api/admin/schools")
                         .with(csrf())
                         .session(founderSession)
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"name\":\"مدرسه‌ی بدون ماژول مالی هزینه\",\"timezone\":\"Asia/Tehran\",\"locale\":\"fa-IR\",\"level\":\"ELEMENTARY\"}"))
+                        .content("{\"name\":\"مدرسه‌ی بسته‌ی رایگان هزینه\",\"timezone\":\"Asia/Tehran\",\"locale\":\"fa-IR\",\"level\":\"ELEMENTARY\"}"))
                 .andExpect(status().isOk())
                 .andReturn();
         long schoolId = objectMapper.readTree(createResult.getResponse().getContentAsString()).get("id").asLong();
+
+        // بسته‌ی رایگان FINANCE را شامل می‌شود (CLAUDE.md §11 Q10) - فهرست
+        // هزینه‌ها باید 200 (خالی) برگردد، نه module-not-entitled
+        mockMvc.perform(get("/api/admin/schools/" + schoolId + "/expenses")
+                        .header("X-School-ID", String.valueOf(schoolId))
+                        .session(founderSession))
+                .andExpect(status().isOk());
+
+        // پس‌گرفتن FINANCE از طریق facade (تنها مسیر مجاز - §10)
+        iamFacade.setSchoolEntitlement(schoolId, new com.example.roshdeandishe.iam.IamFacade.ModuleCode("FINANCE"), false);
 
         mockMvc.perform(get("/api/admin/schools/" + schoolId + "/expenses")
                         .header("X-School-ID", String.valueOf(schoolId))

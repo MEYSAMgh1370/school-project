@@ -231,29 +231,31 @@ fallback-name bug found and fixed while building it.
 
 ### PARENT / STUDENT
 
-The existing read-only `/dashboard` only, plus `/my-invoices` and
-`/my-study-plan` (below), for now. **Grades backend is built (CLAUDE.md §11
-Q8, resolved 2026-07-18) but there is still no `/grades`/`/my-grades` UI** —
-`academic.GradeController` (admin gradebook) and `academic.MyGradesController`
-(`GET /api/me/schools/{schoolId}/grades`, the established "my" pattern — own
-grades + linked wards' grades) exist and are tested
-(`GradeManagementFlowIntegrationTest`), same posture `curriculum`/`studyplan`
-shipped with at their own new-module time: backend + REST first, UI as a
-separate slice through the `design-page` skill. When built, `/my-grades`
-should follow the same shape as `/my-invoices` below (STUDENT: own; PARENT:
-linked wards'), and an admin/teacher gradebook page (`/grades`) should follow
-`/finance`'s pattern (`GRADES_EDIT`-gated — deliberately not `GRADES_VIEW`,
-see CLAUDE.md §4's Grade subsection for why). A PARENT's own self-service data
-(which children are theirs, their tuition status) is available today through
-the Bale bot, and — since the 2026-07-12 payments deepening — also via
+The existing read-only `/dashboard`, plus `/my-invoices`, `/my-study-plan`,
+and `/my-grades` (all below). **Grades UI now built (2026-07-20, via the
+`design-page` skill — see CLAUDE.md §7 Done, "Grades UI")** — resolving
+CLAUDE.md §11 Q8's backend-only gap and the critical user-journey review's
+top finding (§6.2 below). `/grades` (`web.GradesPageController`) is an
+admin/teacher gradebook following `/finance`'s pattern (thin shell,
+`GRADES_EDIT`-gated on both read and write — deliberately not `GRADES_VIEW`,
+see CLAUDE.md §4's Grade subsection for why): a class + academic-year + term
+selector, then an editable table of that class's roster with a
+scheme-appropriate input per row (select for `DESCRIPTIVE`, 0–20 number
+input for `NUMERIC`, derived from the selected class's own `gradingScheme`).
+`/my-grades` (`web.MyGradesPageController`) follows the exact `/my-invoices`
+shape below — STUDENT sees own grades, PARENT sees linked wards' — against
+the pre-existing `academic.MyGradesController` (`GET /api/me/schools/{schoolId}/grades`,
+the "my" pattern), no new REST behind either page. Navbar links: `نمرات`
+(SCHOOL_ADMIN/TEACHER), `نمره‌های من` (STUDENT/PARENT). A PARENT's own
+self-service data (which children are theirs, their tuition status) is also
+available through the Bale bot, and via
 `GET /api/me/schools/{schoolId}/invoices` (`finance.MyInvoicesController`,
 CLAUDE.md §4's `Invoice` subsection). **A dedicated page now exists:
 `/my-invoices`** (`web.MyInvoicesPageController`, built 2026-07-13 on explicit
 request) — read-only, for both STUDENT (own invoices) and PARENT (linked
 wards' invoices), no new REST behind it. Navbar link visible while the
 selected role is `STUDENT` or `PARENT`. See CLAUDE.md §7 Done ("Finance
-deepening, phase 3"). Neither this nor the Bale bot is a substitute for a
-real `/grades`/`/my-grades` web page.
+deepening, phase 3").
 
 **A study-plan self-view now also exists: `/my-study-plan`**
 (`web.MyStudyPlanPageController`, built 2026-07-17 from a Claude Design
@@ -326,31 +328,32 @@ gap hurts. Re-run this review after each gap below is closed and update this
 section — it is the standing prioritization for the next slices.
 
 ### 6.1 CRITICAL — a real school's onboarding funnel dead-ends at creation
+### → RESOLVED 2026-07-20 (free tier, CLAUDE.md §11 Q10)
 
-Journey: visitor lands on `/` → registers → creates a school at `/schools/new`
-→ becomes `SCHOOL_ADMIN` → **cannot use the product**. A freshly created
-school has zero entitlements and there is *no path whatsoever* — no REST, no
-UI, no billing — to ever grant one (`IamFacade.setSchoolEntitlement` is
-facade-only by explicit decision, CLAUDE.md §7 item 1). Only the seeded demo
-school (id 1) gets `ACADEMIC`/`FINANCE`/`CURRICULUM`/`STUDY_PLANNER`/`EXAM`.
-A real founder can use `/people` and `/roles` (not module-gated) but every
-other navbar link — `/classes`, `/students`, `/finance`, `/expenses`,
-`/curriculum`, `/study-plans`, `/exams` — 403s `module-not-entitled`. The
-core product journey currently works **only for the demo school**.
+*(Original finding, kept for context:)* a freshly created school had zero
+entitlements and no path to ever obtain one, so every module-gated page 403'd
+`module-not-entitled` and the core journey worked only for the demo school.
 
-This is not a UI slice — it needs an explicit product decision first (trial
-entitlement bundle at creation vs. ops-script stopgap vs. wait for billing) —
-see CLAUDE.md §11 Q10. Do not bolt an entitlement-granting endpoint onto
-unrelated work (§10 discipline); decide it on purpose.
+**Resolution (explicit user decision):** `ACADEMIC` + `FINANCE` are **free**
+— granted automatically at self-service creation
+(`IamFacade.grantFreeTierEntitlements`, called from
+`SchoolController.createSchool`). `CURRICULUM`/`STUDY_PLANNER`/`EXAM` are
+**paid plans** — not granted at creation, facade-only until real billing
+exists (CLAUDE.md §7 item 1, §10 unchanged). A real founder can now run the
+full free-tier loop out of the box: `/people`, `/roles`, `/classes`,
+`/students`, `/finance`, `/expenses`; the paid pages (`/curriculum`,
+`/study-plans`, `/exams`) correctly show the module-not-entitled state, which
+is now a true "upgrade required" signal rather than a dead end. A future
+pricing/upgrade page for the paid modules is a new open UI item — blocked on
+billing, do not build speculatively.
 
-### 6.2 HIGH — two finished backends are unreachable by any real user
+### 6.2 HIGH — two finished backends were unreachable by any real user
 
-1. **Grades has no UI at all.** A teacher cannot enter term grades and a
-   student/parent cannot see them — backend + REST + tests done 2026-07-18
-   (CLAUDE.md §11 Q8), journey completeness 0%. Next slices: `/grades`
-   (teacher/admin gradebook, `GRADES_EDIT`-gated, `/finance`-style) and
-   `/my-grades` (`/my-invoices`-shaped: STUDENT own, PARENT linked wards) —
-   both through the `design-page` skill, as §3 above already specifies.
+1. ~~**Grades has no UI at all.**~~ **RESOLVED 2026-07-20.** `/grades`
+   (teacher/admin gradebook, `GRADES_EDIT`-gated, `/finance`-style selector
+   + editable table) and `/my-grades` (`/my-invoices`-shaped: STUDENT own,
+   PARENT linked wards) are both built — see §3's PARENT/STUDENT persona
+   section and CLAUDE.md §7 Done ("Grades UI").
 2. **Phone number has no UI, stranding Bale + OTP entirely.**
    `PUT /api/me/phone` is called from no page or JS, and `/login` has no OTP
    form — so no real user can ever link the Bale bot or use OTP login through
@@ -395,8 +398,9 @@ scoping (`/my-invoices` + scoped admin endpoint); student exam-taking
 
 ### 6.6 Recommended order of attack
 
-1. Decide §6.1 (entitlement path — everything else is moot without it).
-2. Grades UI (`/grades` + `/my-grades`).
-3. Phone-number field (unlocks Bale + OTP), then an OTP login tab.
+1. ~~Decide §6.1 (entitlement path)~~ — **done 2026-07-20**: free tier
+   (`ACADEMIC`+`FINANCE`) granted at creation, rest are paid plans.
+2. ~~Grades UI (`/grades` + `/my-grades`)~~ — **done 2026-07-20.**
+3. Phone-number field (unlocks Bale + OTP), then an OTP login tab — **next up.**
 4. Invite-status visibility on the enrollment funnel (§6.3).
 5. Dashboard entry-URL display (§6.4) opportunistically.
