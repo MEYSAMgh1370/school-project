@@ -1,5 +1,6 @@
 package com.example.roshdeandishe;
 
+import com.example.roshdeandishe.iam.IamFacade;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.Test;
@@ -42,6 +43,9 @@ class ExamFlowIntegrationTest {
 
     @Autowired
     private MockMvc mockMvc;
+
+    @Autowired
+    private IamFacade iamFacade;
 
     private final ObjectMapper objectMapper = new ObjectMapper();
 
@@ -428,6 +432,11 @@ class ExamFlowIntegrationTest {
                 .andExpect(status().isOk())
                 .andReturn();
         long schoolId = objectMapper.readTree(createResult.getResponse().getContentAsString()).get("id").asLong();
+
+        // ساخت خودسرویس یک بسته‌ی اشتراک آزمایشی می‌دهد (CLAUDE.md §11 Q10) -
+        // برای تست مسیر module-not-entitled، همان entitlement تازه‌اعطاشده را
+        // صراحتاً لغو می‌کنیم (facade-only، بدون REST - CLAUDE.md §10)
+        iamFacade.setSchoolEntitlement(schoolId, new IamFacade.ModuleCode("EXAM"), false);
 
         mockMvc.perform(get("/api/admin/schools/" + schoolId + "/exams")
                         .header("X-School-ID", String.valueOf(schoolId))

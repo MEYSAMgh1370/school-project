@@ -1,5 +1,6 @@
 package com.example.roshdeandishe;
 
+import com.example.roshdeandishe.iam.IamFacade;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -32,6 +33,9 @@ class FinanceManagementFlowIntegrationTest {
 
     @Autowired
     private MockMvc mockMvc;
+
+    @Autowired
+    private IamFacade iamFacade;
 
     private final ObjectMapper objectMapper = new ObjectMapper();
 
@@ -175,8 +179,11 @@ class FinanceManagementFlowIntegrationTest {
                 .andReturn();
         long schoolId = objectMapper.readTree(createResult.getResponse().getContentAsString()).get("id").asLong();
 
-        // مدرسه‌ی تازه‌ساخته‌ی خودسرویس هیچ entitlement ای ندارد (CLAUDE.md §5) -
-        // حتی SCHOOL_ADMIN خودش هم باید module-not-entitled بگیرد، نه permission-denied
+        // ساخت خودسرویس یک بسته‌ی اشتراک آزمایشی می‌دهد (CLAUDE.md §11 Q10) -
+        // برای تست مسیر module-not-entitled، همان entitlement تازه‌اعطاشده را
+        // صراحتاً لغو می‌کنیم (facade-only، بدون REST - CLAUDE.md §10). حتی
+        // SCHOOL_ADMIN خودش هم باید module-not-entitled بگیرد، نه permission-denied
+        iamFacade.setSchoolEntitlement(schoolId, new IamFacade.ModuleCode("FINANCE"), false);
         mockMvc.perform(get("/api/admin/schools/" + schoolId + "/tuition-fee")
                         .header("X-School-ID", String.valueOf(schoolId))
                         .session(founderSession))

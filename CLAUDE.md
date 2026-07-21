@@ -3134,16 +3134,55 @@ above.
   school-settings permission decision), showing the entry URL on the
   dashboard, Host-header tenant resolution (Tier 2 — deployment-gated),
   and full custom domains (Tier 3 — `PLATFORM_ADMIN`-gated).
+- **Trial entitlement bundle at school creation (built 2026-07-20, resolves
+  §11 Q10 / §6.1's CRITICAL finding)**: closes the onboarding dead-end the
+  critical user-journey review flagged the day before — a self-service-created
+  school previously got zero module entitlements with no path (REST, UI, or
+  otherwise) to ever grant one, so every real founder's `/classes`,
+  `/students`, `/finance`, `/expenses`, `/curriculum`, `/study-plans`, and
+  `/exams` link 403'd `module-not-entitled` forever; only the seeded demo
+  school worked. **Explicit product decision, chosen over the other two
+  candidates §11 Q10 listed** (a facade-only ops-script stopgap, or waiting for
+  real billing + `PlatformContext` permission checking): every school created
+  through `POST /api/admin/schools` now automatically receives the same
+  five-module trial bundle the demo school has always had — `ACADEMIC`,
+  `FINANCE`, `CURRICULUM`, `STUDY_PLANNER`, `EXAM` (every `SCHOOL`-scoped
+  module actually built so far, not an arbitrary subset). Implemented as a
+  loop in `SchoolController.createSchool` calling the pre-existing
+  facade-only `IamFacade.setSchoolEntitlement` once per module, right after
+  the creator's `SCHOOL_ADMIN` membership is created — **no new REST
+  endpoint**, so §10's standing prohibition on exposing
+  `setSchoolEntitlement`/`setSchoolStatus` over HTTP is untouched;
+  `setSchoolEntitlement` itself is unchanged, just called from one more
+  legitimate internal call site (the same pattern `IamSeedDataRunner`
+  already used for the demo school). This is deliberately a product-level
+  "what's free during this phase" decision, not infrastructure — it does not
+  touch `PermissionDecisionService`/`PlatformContext` (§11 Q10's option (c)
+  is effectively deferred further, not built) and does not add any
+  billing/quota/expiry concept; when real billing exists, replacing this
+  fixed bundle with an actual plan-driven entitlement set is a distinct,
+  future decision. Required updating six existing tests
+  (`FinanceManagementFlowIntegrationTest`, `ExpenseManagementFlowIntegrationTest`,
+  `ExamFlowIntegrationTest`, `GradeManagementFlowIntegrationTest`,
+  `StudyPlanManagementFlowIntegrationTest`, `CurriculumFlowIntegrationTest`)
+  whose `module-not-entitled` coverage had relied on a freshly-created
+  school having no entitlements at all — each now explicitly revokes its one
+  relevant module via `IamFacade.setSchoolEntitlement(schoolId, ..., false)`
+  right after creation, so the `ModuleNotEntitled` code path (a fully
+  suspended/revoked module, a real reachable state) stays covered instead of
+  relying on a default that no longer exists. Full suite (165 tests) +
+  `ModularityTests` green.
 
 ### Open / explicitly deferred
 
 1. **`PlatformContext` permission checking.** `PermissionDecisionService` denies all
    non-school-scoped checks unconditionally. Blocks: REST exposure of
    `setSchoolEntitlement` and `setSchoolStatus`. Do not build until a real need
-   (billing integration, ops tooling) exists — see §5. **Consequence flagged
-   2026-07-19 (§11 Q10, UX_ROADMAP.md §6.1):** with no entitlement-granting
-   path at all, a real self-service school's onboarding funnel dead-ends —
-   deciding a stopgap is now the top-priority open item.
+   (billing integration, ops tooling) exists — see §5. **The onboarding-funnel
+   consequence flagged 2026-07-19 (§11 Q10, UX_ROADMAP.md §6.1) is resolved**
+   (see §7 Done, "Trial entitlement bundle at school creation") via a fixed
+   trial bundle at creation, not via building this — this item itself is
+   still open and still waits on a real need.
 2. ~~**Self-service account activation — email delivery.**~~ **Resolved.**
    `issueInviteToken` now emails the activation link to the invited person
    (see §4's `InviteToken` subsection). The token still also comes back in the
@@ -3572,22 +3611,19 @@ REST + tests only, same posture `curriculum`/`studyplan` shipped with.
    violate the discipline in §10; decide it explicitly when a school-settings
    page is actually requested.
 
-10. **New (raised 2026-07-19, by the critical user-journey review —
+10. ~~**New (raised 2026-07-19, by the critical user-journey review —
     UX_ROADMAP.md §6):** How does a *real* (non-demo) school ever obtain a
-    module entitlement before billing exists? Today the self-service
-    onboarding funnel dead-ends immediately after school creation: a fresh
-    school has zero entitlements, `setSchoolEntitlement` is deliberately
-    facade-only (§7 item 1), and only the seeded demo school gets the five
-    module grants — so every module-gated page 403s `module-not-entitled`
-    for every real founder, and only `/people` + `/roles` work. This was an
-    acceptable consequence of deferring `PLATFORM_ADMIN` infrastructure
-    while no real school existed, but it now blocks any pilot/first
-    customer. Candidate resolutions, none chosen yet: (a) a deliberate
-    "new schools get a trial entitlement bundle at creation" rule (one
-    explicit change in the school-creation flow — a product decision about
-    what's free, not an infra project); (b) a facade-only ops script/runner
-    for manual grants (no HTTP exposure, consistent with §7 item 1);
-    (c) wait for real billing + `PlatformContext` permission checking
-    (§11 Q5) and accept that no real school can be onboarded until then.
-    Do **not** expose `setSchoolEntitlement` over REST as a shortcut — §10's
-    existing prohibition stands regardless of which option is picked.
+    module entitlement before billing exists?~~ **Resolved 2026-07-20,
+    explicit user decision: option (a).** Every school created via
+    `POST /api/admin/schools` now automatically receives the same
+    five-module trial bundle the seeded demo school always had (`ACADEMIC`,
+    `FINANCE`, `CURRICULUM`, `STUDY_PLANNER`, `EXAM`) — see §7 Done, "Trial
+    entitlement bundle at school creation" for the implementation (a loop in
+    `SchoolController.createSchool` calling the pre-existing facade-only
+    `IamFacade.setSchoolEntitlement`, no new REST surface). Options (b)
+    (ops-script stopgap) and (c) (wait for billing) were explicitly not
+    chosen. §10's prohibition on exposing `setSchoolEntitlement`/
+    `setSchoolStatus` over REST is unaffected — this call happens
+    server-side inside an existing endpoint, not through a new one. This is
+    a "what's free during this phase" product decision, not a permanent
+    pricing model — revisit when real billing exists.

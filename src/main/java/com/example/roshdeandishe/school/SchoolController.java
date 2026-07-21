@@ -25,6 +25,19 @@ import org.springframework.web.bind.annotation.*;
 @RequestMapping("/api/admin/schools")
 public class SchoolController {
 
+    /**
+     * بسته‌ی اشتراک آزمایشی: مجموعه‌ی ماژول‌های SCHOOL-scoped که هر مدرسه‌ی
+     * خودسرویس تازه‌ساخته‌شده بلافاصله دریافت می‌کند (CLAUDE.md §11 Q10،
+     * تصمیم گرفته‌شده 2026-07-20 - بدون این، هیچ مدرسه‌ی واقعی‌ای نمی‌توانست
+     * از محصول استفاده کند، چون setSchoolEntitlement هیچ مسیر REST یا UI ای
+     * نداشت). همان مجموعه‌ای که مدرسه‌ی seed دمو از قبل دارد
+     * (IamSeedDataRunner.seedDemoSchoolEntitlements) - هر ماژول SCHOOL-scoped
+     * ساخته‌شده‌ی واقعی، نه یک زیرمجموعه‌ی دلخواه.
+     */
+    private static final String[] TRIAL_MODULE_CODES = {
+            "ACADEMIC", "FINANCE", "CURRICULUM", "STUDY_PLANNER", "EXAM"
+    };
+
     private final SchoolFacade schoolFacade;
     private final IamFacade iamFacade;
 
@@ -41,6 +54,10 @@ public class SchoolController {
         // سازنده‌ی مدرسه بلافاصله SCHOOL_ADMIN همان مدرسه می‌شود
         IamFacade.UserId callerId = iamFacade.currentUserId();
         iamFacade.createMembership(callerId, schoolId.value(), "SCHOOL_ADMIN");
+
+        for (String moduleCode : TRIAL_MODULE_CODES) {
+            iamFacade.setSchoolEntitlement(schoolId.value(), new IamFacade.ModuleCode(moduleCode), true);
+        }
 
         SchoolInfo info = schoolFacade.findSchool(schoolId)
                 .orElseThrow(() -> new SchoolException(new SchoolError.SchoolNotFound(schoolId.value())));

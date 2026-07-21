@@ -325,23 +325,25 @@ built (pages, navbar links, permissions, seed data), ranked by how badly each
 gap hurts. Re-run this review after each gap below is closed and update this
 section — it is the standing prioritization for the next slices.
 
-### 6.1 CRITICAL — a real school's onboarding funnel dead-ends at creation
+### 6.1 RESOLVED 2026-07-20 — a real school's onboarding funnel dead-ended at creation
 
 Journey: visitor lands on `/` → registers → creates a school at `/schools/new`
-→ becomes `SCHOOL_ADMIN` → **cannot use the product**. A freshly created
-school has zero entitlements and there is *no path whatsoever* — no REST, no
-UI, no billing — to ever grant one (`IamFacade.setSchoolEntitlement` is
+→ becomes `SCHOOL_ADMIN` → **could not use the product**. A freshly created
+school got zero entitlements and there was *no path whatsoever* — no REST, no
+UI, no billing — to ever grant one (`IamFacade.setSchoolEntitlement` was
 facade-only by explicit decision, CLAUDE.md §7 item 1). Only the seeded demo
-school (id 1) gets `ACADEMIC`/`FINANCE`/`CURRICULUM`/`STUDY_PLANNER`/`EXAM`.
-A real founder can use `/people` and `/roles` (not module-gated) but every
+school (id 1) got `ACADEMIC`/`FINANCE`/`CURRICULUM`/`STUDY_PLANNER`/`EXAM`.
+A real founder could use `/people` and `/roles` (not module-gated) but every
 other navbar link — `/classes`, `/students`, `/finance`, `/expenses`,
-`/curriculum`, `/study-plans`, `/exams` — 403s `module-not-entitled`. The
-core product journey currently works **only for the demo school**.
+`/curriculum`, `/study-plans`, `/exams` — 403'd `module-not-entitled`.
 
-This is not a UI slice — it needs an explicit product decision first (trial
-entitlement bundle at creation vs. ops-script stopgap vs. wait for billing) —
-see CLAUDE.md §11 Q10. Do not bolt an entitlement-granting endpoint onto
-unrelated work (§10 discipline); decide it on purpose.
+**Fixed:** every self-service `POST /api/admin/schools` now grants the same
+five-module trial bundle automatically (CLAUDE.md §7 Done, "Trial
+entitlement bundle at school creation" / §11 Q10) — a deliberate "what's
+free during this phase" product decision, not new infrastructure; no REST
+endpoint was added, `setSchoolEntitlement` stays facade-only per §10. Every
+navbar link now works for a real founder immediately after creating a
+school, same as the demo school.
 
 ### 6.2 HIGH — two finished backends are unreachable by any real user
 
@@ -395,7 +397,8 @@ scoping (`/my-invoices` + scoped admin endpoint); student exam-taking
 
 ### 6.6 Recommended order of attack
 
-1. Decide §6.1 (entitlement path — everything else is moot without it).
+1. ~~Decide §6.1 (entitlement path — everything else is moot without it).~~
+   **Done 2026-07-20** — see §6.1.
 2. Grades UI (`/grades` + `/my-grades`).
 3. Phone-number field (unlocks Bale + OTP), then an OTP login tab.
 4. Invite-status visibility on the enrollment funnel (§6.3).
