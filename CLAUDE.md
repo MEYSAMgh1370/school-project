@@ -26,6 +26,25 @@ manage Y"). Visual rules live in [`DESIGN.md`](DESIGN.md) (subordinate to
 this file and `UX_ROADMAP.md` §2); token *values* live in the `:root` block
 of `src/main/resources/static/css/app.css`.
 
+**Before starting substantive work on anything listed in §7 "Open /
+explicitly deferred", any §11 Open Question, or a priority item from
+`UX_ROADMAP.md`** (§6.6's order of attack, or any item flagged as the next
+thing to build), you MUST first run `git fetch origin master` and check
+`git log HEAD..origin/master` plus `gh pr list --state open` for work already
+in flight on the same item. **This file being up to date is not sufficient
+proof no one else is already on it** — a parallel session's doc update only
+lands here once it merges, so an in-progress branch is invisible to this
+check by construction. This project has repeatedly hit parallel Claude Code
+sessions independently resolving the same open item differently (twice for a
+moshavere-port module, once for the §11 Q10 free-tier/entitlement decision —
+see the "merge note" entries in §7 for the module case) — if you find
+overlapping in-flight work, stop and tell the user rather than building a
+second independent resolution. Once you do resolve an item, keep following
+this repo's existing convention of updating the relevant CLAUDE.md/
+UX_ROADMAP.md section in the *same* commit as the code, not a follow-up one —
+see any §7 Done entry for the expected shape (what changed, why, what was
+explicitly deferred, test coverage).
+
 ---
 
 ## 1. What This Product Is
