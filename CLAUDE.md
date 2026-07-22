@@ -26,6 +26,40 @@ manage Y"). Visual rules live in [`DESIGN.md`](DESIGN.md) (subordinate to
 this file and `UX_ROADMAP.md` §2); token *values* live in the `:root` block
 of `src/main/resources/static/css/app.css`.
 
+**Before starting substantive work on anything listed in §7 "Open /
+explicitly deferred", any §11 Open Question, or a priority item from
+`UX_ROADMAP.md`** (§6.6's order of attack, or any item flagged as the next
+thing to build), you MUST first run `git fetch origin master`, then check
+BOTH of the following — they catch two different failure modes, not one:
+
+1. **Already finished (no concurrency involved at all):** run
+   `git log HEAD..origin/master --oneline` and, if your branch/worktree is
+   behind, read **master's own copy** of the relevant CLAUDE.md/
+   UX_ROADMAP.md section (`git show origin/master:CLAUDE.md`), not just the
+   copy checked out in your worktree. A worktree/branch created from an
+   older commit can sit stale for a long time; treating your local
+   checkout's "Open" marker as ground truth, without ever diffing against
+   current master, is how an already-merged, already-documented resolution
+   gets silently redone from scratch. **This file being up to date in your
+   worktree proves nothing about whether master has moved past it.**
+2. **In flight right now (genuine concurrency):** run `gh pr list --state
+   open` for work already in progress on the same item. A parallel
+   session's doc update only lands here once it merges, so an in-progress
+   branch is invisible to a plain file read by construction.
+
+This project has repeatedly hit both: parallel sessions independently
+resolving the same open item differently (twice for a moshavere-port
+module, once for the §11 Q10 free-tier/entitlement decision — see the
+"merge note" entries in §7 for the module case), and separately, work
+resuming on a stale worktree that redid something master had already
+finished. If you find either — overlapping in-flight work, or the item
+already resolved on master — stop and tell the user rather than building a
+second independent resolution or silently redoing finished work. Once you
+do resolve an item, keep following this repo's existing convention of
+updating the relevant CLAUDE.md/UX_ROADMAP.md section in the *same* commit
+as the code, not a follow-up one — see any §7 Done entry for the expected
+shape (what changed, why, what was explicitly deferred, test coverage).
+
 ---
 
 ## 1. What This Product Is
