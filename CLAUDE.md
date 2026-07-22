@@ -3327,6 +3327,45 @@ above.
     (phone field renders empty then pre-filled after a real
     `PUT /api/me/phone` round-trip; `/login` renders both tab labels). Full
     suite (171 tests) + `ModularityTests` green.
+- **Invite-status visibility on the enrollment funnel (built 2026-07-20,
+  resolves UX_ROADMAP.md §6.3 / §6.6 item 4)**: closes the "highest-volume
+  flow" friction the critical user-journey review flagged — enrolling a
+  student created a passwordless account with no visible signal of whether
+  it had ever been activated, and inviting one meant navigating away to
+  `/people` to find the right row. Two pieces, both UI/composition-only:
+  - **`IamFacade.MembershipInfo` gains a `hasPassword` boolean**
+    (`user.getPasswordHash() != null`, read in the same `toMembershipInfo`
+    helper that already loads the `UserEntity` — no new query).
+    `MembershipController.MembershipResponse` carries it through
+    unchanged otherwise. **`/people`** now renders a second tag per row
+    ("فعال‌سازی شده" / "در انتظار فعال‌سازی") alongside the existing
+    active/inactive tag — same "وضعیت" column, no new column, so the table
+    doesn't grow on mobile.
+  - **`/students`' enrollment success path** gains an inline "میان‌بر
+    دعوت" box: right after a successful enroll, `students.js` finds the
+    just-created student's own membership row in the membership list it
+    already fetches for name resolution (`this.pupils`, matched by the
+    enroll response's `userId` — no new fetch), then offers a "ارسال
+    دعوت‌نامه" button calling the *existing*
+    `POST .../memberships/{membershipId}/invite-token` directly — the same
+    endpoint `/people`'s own `sendInvite` already uses, reused verbatim
+    (idempotent, same three outcomes: email sent / manual link to copy /
+    already activated). **No new REST endpoint** — `academic` gained no
+    new dependency on `iam`, same "compose in JS, not Java" precedent
+    `classes.js`/`students.js` already established for teacher/student name
+    resolution. A `TEACHER` (who lacks `MEMBERSHIP_MANAGE`) still sees the
+    button per this app's "never hide by permission" rule and gets the
+    standard `permission-denied` notice on click — no special-casing
+    needed. Went through the `design-page` skill first since both pages
+    were reshaped. Covered by extending
+    `MembershipManagementFlowIntegrationTest` (asserts `hasPassword: false`
+    right after creation, `true` after a real `/api/auth/activate`
+    redemption, and that both tag labels render in `/people`'s static
+    markup) and a new case in `StudentManagementFlowIntegrationTest`
+    (`enrolledStudentsMembershipIsFindableAndInvitableRightAfterEnrollment`
+    — proves the exact enroll → list-memberships → invite-token chain
+    `students.js` performs, end to end, over real REST calls). Full suite
+    (172 tests) + `ModularityTests` green.
 
 ### Open / explicitly deferred
 

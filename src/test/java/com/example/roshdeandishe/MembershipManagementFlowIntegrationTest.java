@@ -61,7 +61,10 @@ class MembershipManagementFlowIntegrationTest {
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("اعضای مدرسه")))
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("مدرسه‌ی نمونه")))
                 // لینک‌های ناوبری navbar روی همه‌ی صفحه‌های مدیریتی هستند
-                .andExpect(content().string(org.hamcrest.Matchers.containsString("href=\"/dashboard\"")));
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("href=\"/dashboard\"")))
+                // نشانگر وضعیت فعال‌سازی (UX_ROADMAP.md §6.3)
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("فعال‌سازی شده")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("در انتظار فعال‌سازی")));
     }
 
     @Test
@@ -115,13 +118,16 @@ class MembershipManagementFlowIntegrationTest {
         Long membershipId = objectMapper.readTree(createResult.getResponse().getContentAsString())
                 .get("membershipId").asLong();
 
-        // لیست باید همان عضو تازه را با email/fullName نشان دهد
+        // لیست باید همان عضو تازه را با email/fullName نشان دهد - و چون
+        // findOrCreateUser رمز عبور نمی‌سازد، hasPassword باید false باشد
+        // (UX_ROADMAP.md §6.3 - نشانگر فعال‌سازی روی /people)
         mockMvc.perform(get("/api/admin/schools/1/memberships")
                         .header("X-School-ID", "1")
                         .session(session))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath(
-                        "$[?(@.email == 'new.teacher@roshdeandishe.test' && @.fullName == 'معلم تازه')]"
+                        "$[?(@.email == 'new.teacher@roshdeandishe.test' && @.fullName == 'معلم تازه'"
+                                + " && @.hasPassword == false)]"
                 ).exists());
 
         // غیرفعال کردن
@@ -142,12 +148,30 @@ class MembershipManagementFlowIntegrationTest {
                 ).exists());
 
         // صدور توکن دعوت - کاربر تازه هنوز رمز عبور ندارد پس issued=true
-        mockMvc.perform(post("/api/admin/schools/1/memberships/" + membershipId + "/invite-token")
+        MvcResult inviteResult = mockMvc.perform(post("/api/admin/schools/1/memberships/" + membershipId + "/invite-token")
                         .with(csrf())
                         .header("X-School-ID", "1")
                         .session(session))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.issued").value(true))
-                .andExpect(jsonPath("$.inviteToken").isNotEmpty());
+                .andExpect(jsonPath("$.inviteToken").isNotEmpty())
+                .andReturn();
+        String inviteToken = objectMapper.readTree(inviteResult.getResponse().getContentAsString())
+                .get("inviteToken").asText();
+
+        // بعد از فعال‌سازی (redeem توکن)، hasPassword باید true شود
+        mockMvc.perform(post("/api/auth/activate")
+                        .with(csrf())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"token\":\"" + inviteToken + "\",\"newPassword\":\"newpassword123\"}"))
+                .andExpect(status().isOk());
+
+        mockMvc.perform(get("/api/admin/schools/1/memberships")
+                        .header("X-School-ID", "1")
+                        .session(session))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath(
+                        "$[?(@.membershipId == " + membershipId + " && @.hasPassword == true)]"
+                ).exists());
     }
 }

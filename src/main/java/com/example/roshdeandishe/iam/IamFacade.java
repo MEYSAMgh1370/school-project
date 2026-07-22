@@ -263,7 +263,8 @@ public interface IamFacade {
             String fullName,
             Long schoolId,
             String roleCode,
-            boolean active
+            boolean active,
+            boolean hasPassword
     ) {
     }
 

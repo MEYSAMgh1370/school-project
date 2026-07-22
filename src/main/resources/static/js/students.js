@@ -16,6 +16,12 @@ document.addEventListener('alpine:init', () => {
         notice: '',
         form: { email: '', fullName: '', classId: '' },
 
+        // میان‌بر دعوت بعد از ثبت‌نام (UX_ROADMAP.md §6.3) - دانش‌آموزِ تازه‌
+        // ثبت‌نام‌شده‌ای که هنوز رمز عبور ندارد
+        pendingInviteStudent: null,
+        pendingInviteResult: null,
+        invitingPending: false,
+
         init() {
             const saved = parseInt(localStorage.getItem('selectedSchoolId') || '', 10);
             this.schoolId = Number.isInteger(saved) ? saved : null;
@@ -25,6 +31,8 @@ document.addEventListener('alpine:init', () => {
                 this.notice = '';
                 this.selectedStudentId = null;
                 this.guardiansByStudent = {};
+                this.pendingInviteStudent = null;
+                this.pendingInviteResult = null;
                 this.load();
             });
             if (this.schoolId) {
@@ -205,6 +213,8 @@ document.addEventListener('alpine:init', () => {
             this.submitting = true;
             this.error = '';
             this.notice = '';
+            this.pendingInviteStudent = null;
+            this.pendingInviteResult = null;
             try {
                 const response = await fetch(this.studentsBase(), {
                     method: 'POST',
@@ -225,14 +235,66 @@ document.addEventListener('alpine:init', () => {
                     await this.showError(response);
                     return;
                 }
+                const enrolled = await response.json();
                 this.notice = 'دانش‌آموز با موفقیت ثبت‌نام شد.';
                 this.form = { email: '', fullName: '', classId: '' };
                 await this.load();
+
+                // عضویتِ متناظرِ دانش‌آموزِ تازه‌ثبت‌نام‌شده را از همان فهرست
+                // عضویت‌هایی که load() همین حالا تازه کرد پیدا می‌کنیم - بدون
+                // fetch اضافه؛ اگر یافت نشد (مثلاً TEACHER بدون MEMBERSHIP_MANAGE
+                // نتوانسته فهرست را بگیرد) میان‌بر به‌سادگی نمایش داده نمی‌شود.
+                const pupilMembership = this.pupils.find(p => p.userId === enrolled.userId);
+                this.pendingInviteStudent = pupilMembership
+                    ? { membershipId: pupilMembership.membershipId, fullName: pupilMembership.fullName }
+                    : null;
             } catch (e) {
                 this.error = 'ارتباط با سرور برقرار نشد.';
             } finally {
                 this.submitting = false;
             }
+        },
+
+        async sendInviteForPendingStudent() {
+            if (!this.pendingInviteStudent) {
+                return;
+            }
+            this.invitingPending = true;
+            this.error = '';
+            try {
+                const response = await fetch(`${this.membershipsBase()}/${this.pendingInviteStudent.membershipId}/invite-token`, {
+                    method: 'POST',
+                    headers: {
+                        'X-School-ID': this.schoolId,
+                        'X-XSRF-TOKEN': this.csrfToken()
+                    }
+                });
+                if (!response.ok) {
+                    await this.showError(response);
+                    return;
+                }
+                const body = await response.json();
+                if (!body.issued) {
+                    this.pendingInviteResult = { alreadyActivated: true };
+                } else if (body.emailSent) {
+                    this.pendingInviteResult = { emailSent: true };
+                } else {
+                    this.pendingInviteResult = {
+                        emailSent: false,
+                        link: `${location.origin}/activate?token=${body.inviteToken}`
+                    };
+                }
+            } catch (e) {
+                this.error = 'ارتباط با سرور برقرار نشد.';
+            } finally {
+                this.invitingPending = false;
+            }
+        },
+
+        copyPendingInviteLink() {
+            const input = this.$refs.pendingInviteLink;
+            input.select();
+            navigator.clipboard.writeText(input.value).catch(() => document.execCommand('copy'));
         }
     }));
 });

@@ -459,7 +459,8 @@ class IamFacadeImpl implements IamFacade {
                 user.getFullName(),
                 membership.getSchoolId(),
                 roleCode,
-                membership.isActive()
+                membership.isActive(),
+                user.getPasswordHash() != null
         );
     }
 }
