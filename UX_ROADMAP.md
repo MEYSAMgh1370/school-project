@@ -354,12 +354,13 @@ billing, do not build speculatively.
    + editable table) and `/my-grades` (`/my-invoices`-shaped: STUDENT own,
    PARENT linked wards) are both built — see §3's PARENT/STUDENT persona
    section and CLAUDE.md §7 Done ("Grades UI").
-2. **Phone number has no UI, stranding Bale + OTP entirely.**
-   `PUT /api/me/phone` is called from no page or JS, and `/login` has no OTP
-   form — so no real user can ever link the Bale bot or use OTP login through
-   the UI; both features are curl-only today. Smallest unlock: a phone-number
-   field on `/dashboard` (or a future profile surface) calling the existing
-   endpoint; an OTP tab on `/login` is a separate follow-up slice.
+2. ~~**Phone number has no UI, stranding Bale + OTP entirely.**~~
+   **RESOLVED 2026-07-20.** A phone-number field on `/dashboard` (calling
+   the existing `PUT /api/me/phone`) and an OTP tab on `/login` (calling
+   the existing `POST /api/auth/otp/request`/`verify`) are both built — see
+   CLAUDE.md §7 Done ("Phone-number UI + OTP login tab"). No backend
+   changes; both features were curl-only before this, now reachable by any
+   real user.
 
 ### 6.3 MEDIUM — activation-funnel friction on the highest-volume flow
 
@@ -401,6 +402,7 @@ scoping (`/my-invoices` + scoped admin endpoint); student exam-taking
 1. ~~Decide §6.1 (entitlement path)~~ — **done 2026-07-20**: free tier
    (`ACADEMIC`+`FINANCE`) granted at creation, rest are paid plans.
 2. ~~Grades UI (`/grades` + `/my-grades`)~~ — **done 2026-07-20.**
-3. Phone-number field (unlocks Bale + OTP), then an OTP login tab — **next up.**
-4. Invite-status visibility on the enrollment funnel (§6.3).
+3. ~~Phone-number field (unlocks Bale + OTP), then an OTP login tab~~ —
+   **done 2026-07-20.**
+4. Invite-status visibility on the enrollment funnel (§6.3) — **next up.**
 5. Dashboard entry-URL display (§6.4) opportunistically.

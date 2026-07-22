@@ -109,13 +109,13 @@ class IamFacadeImpl implements IamFacade {
     @Override
     public Optional<UserProfile> findUser(UserId userId) {
         return userRepository.findById(userId.value())
-                .map(u -> new UserProfile(new UserId(u.getId()), u.getEmail(), u.getFullName()));
+                .map(u -> new UserProfile(new UserId(u.getId()), u.getEmail(), u.getFullName(), u.getPhoneNumber()));
     }
 
     @Override
     public Optional<UserProfile> findUserByPhoneNumber(String phoneNumber) {
         return userRepository.findByPhoneNumber(phoneNumber)
-                .map(u -> new UserProfile(new UserId(u.getId()), u.getEmail(), u.getFullName()));
+                .map(u -> new UserProfile(new UserId(u.getId()), u.getEmail(), u.getFullName(), u.getPhoneNumber()));
     }
 
     @Override
@@ -176,7 +176,7 @@ class IamFacadeImpl implements IamFacade {
         verificationCode.setConsumedAt(Instant.now());
         verificationCodeRepository.save(verificationCode);
 
-        return new UserProfile(new UserId(user.getId()), user.getEmail(), user.getFullName());
+        return new UserProfile(new UserId(user.getId()), user.getEmail(), user.getFullName(), user.getPhoneNumber());
     }
 
     private static String generateOtp() {

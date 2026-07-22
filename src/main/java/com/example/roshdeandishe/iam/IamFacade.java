@@ -253,7 +253,7 @@ public interface IamFacade {
     record PermissionCode(String value) {
     }
 
-    record UserProfile(UserId id, String email, String fullName) {
+    record UserProfile(UserId id, String email, String fullName, String phoneNumber) {
     }
 
     record MembershipInfo(

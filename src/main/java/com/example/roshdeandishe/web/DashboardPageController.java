@@ -56,12 +56,13 @@ public class DashboardPageController {
                 .map(m -> new MembershipRow(m.schoolId(), schoolNames.get(m.schoolId()), m.roleCode(), m.active()))
                 .toList();
 
-        model.addAttribute("model", new DashboardModel(profile.fullName(), profile.email(), rows));
+        model.addAttribute("model",
+                new DashboardModel(profile.fullName(), profile.email(), profile.phoneNumber(), rows));
         model.addAttribute("navbar", navbarModelAssembler.assemble(profile, memberships));
         return "dashboard";
     }
 
-    public record DashboardModel(String fullName, String email, List<MembershipRow> memberships) {
+    public record DashboardModel(String fullName, String email, String phoneNumber, List<MembershipRow> memberships) {
     }
 
     public record MembershipRow(Long schoolId, String schoolName, String roleCode, boolean active) {
