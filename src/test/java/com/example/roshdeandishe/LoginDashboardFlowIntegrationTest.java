@@ -14,6 +14,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
 @SpringBootTest
@@ -111,6 +112,43 @@ class LoginDashboardFlowIntegrationTest {
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("href=\"/people\"")))
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("عضویت‌های من")))
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("مدرسه‌ی نمونه")));
+    }
+
+    @Test
+    void dashboardShowsPhoneNumberFieldEmptyThenPrefilledAfterSaving() throws Exception {
+        MvcResult loginResult = mockMvc.perform(post("/api/auth/login")
+                        .with(csrf())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"email\":\"admin@roshdeandishe.test\",\"password\":\"password\"}"))
+                .andExpect(status().isOk())
+                .andReturn();
+        MockHttpSession session = (MockHttpSession) loginResult.getRequest().getSession(false);
+
+        // ادمین نمونه شماره تلفنی seed نشده - فیلد باید خالی رندر شود
+        mockMvc.perform(get("/dashboard").session(session))
+                .andExpect(status().isOk())
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("data-phone-number=\"\"")));
+
+        mockMvc.perform(put("/api/me/phone")
+                        .with(csrf())
+                        .session(session)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"phoneNumber\":\"09121234567\"}"))
+                .andExpect(status().isOk());
+
+        // بعد از ذخیره، رندر بعدیِ داشبورد باید مقدار را در data-attribute
+        // پیش‌آماده کند (IamFacade.findUser اکنون phoneNumber را برمی‌گرداند)
+        mockMvc.perform(get("/dashboard").session(session))
+                .andExpect(status().isOk())
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("data-phone-number=\"09121234567\"")));
+    }
+
+    @Test
+    void loginPageOffersBothPasswordAndOtpTabs() throws Exception {
+        mockMvc.perform(get("/login"))
+                .andExpect(status().isOk())
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("رمز عبور")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("کد پیامکی")));
     }
 
     @Test

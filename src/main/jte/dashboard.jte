@@ -5,13 +5,41 @@
 @param DashboardModel model
 @param NavbarModel navbar
 
-@template.layout.main(title = "داشبورد", scripts = java.util.List.of("/js/navbar.js"), content = @`
+@template.layout.main(title = "داشبورد", scripts = java.util.List.of("/js/navbar.js", "/js/dashboard.js"), content = @`
 @template.layout.navbar(navbar = navbar)
 
 <section class="section">
     <div class="container">
         <h1 class="title is-4">عضویت‌های من</h1>
         <p class="subtitle is-6" dir="ltr">${model.email()}</p>
+
+        <%-- شماره تلفن روی data-attribute (نه داخل عبارت x-data) قرار می‌گیرد
+             تا از escape شدنِ صحیحِ HTML مطمئن باشیم - setPhoneNumber فقط طول
+             را اعتبارسنجی می‌کند، نه نویسه‌ها، پس درج مستقیم داخل یک عبارت JS
+             می‌توانست با یک تکِ‌کوتیشن در مقدار بشکند. --%>
+        <div class="box" data-phone-number="${model.phoneNumber() == null ? "" : model.phoneNumber()}"
+             x-data="phoneNumberField()" x-init="phoneNumber = $el.dataset.phoneNumber">
+            <h2 class="title is-5">شماره تلفن</h2>
+            <p class="is-size-7 has-text-grey mb-3">
+                با ثبت شماره تلفن می‌توانید ربات بله را به حساب خود متصل کنید و
+                با کدِ پیامکی (به‌جای رمز عبور) وارد شوید.
+            </p>
+            <form @submit.prevent="save">
+                <div class="field has-addons">
+                    <div class="control is-expanded">
+                        <input class="input" type="tel" dir="ltr" x-model="phoneNumber"
+                               placeholder="۰۹۱۲۳۴۵۶۷۸۹" required>
+                    </div>
+                    <div class="control">
+                        <button class="button is-link" type="submit" :class="{ 'is-loading': submitting }">
+                            ذخیره
+                        </button>
+                    </div>
+                </div>
+            </form>
+            <div class="notification is-danger mt-3" x-show="errorMessage" x-text="errorMessage"></div>
+            <div class="notification is-success mt-3" x-show="successMessage" x-text="successMessage"></div>
+        </div>
 
         <%-- CTA ثبت مدرسه فقط در حالت بدون عضویت (جریان بنیان‌گذار):
              به دانش‌آموز/والدِ دعوت‌شده پیشنهاد «مدرسه بسازید» نمی‌دهیم

@@ -3279,6 +3279,54 @@ above.
     the REST behavior itself is already fully covered by
     `GradeManagementFlowIntegrationTest`). Full suite + `ModularityTests`
     green.
+- **Phone-number UI + OTP login tab (built 2026-07-20, resolves
+  UX_ROADMAP.md §6.2 item 2 / §6.6 item 3)**: `PUT /api/me/phone` and the
+  OTP endpoints (`POST /api/auth/otp/request`/`verify`, both from the
+  earlier moshavere-port step) existed with zero UI — no real user could
+  ever link the Bale bot or log in without a password. Went through the
+  `design-page` skill first since both `/dashboard` and `/login` were
+  meaningfully restructured.
+  - **`/dashboard`** gained a "شماره تلفن" box (own primary action, same
+    boxed-form-with-its-own-submit convention as `/expenses`/`/finance`) —
+    a `tel` input pre-filled from the caller's current phone number, saving
+    via the existing `PUT /api/me/phone`. `IamFacade.UserProfile` gained a
+    fourth field, `phoneNumber` (nullable) — the only way `findUser` could
+    expose it to `DashboardPageController`'s server-side render; three
+    construction call sites in `IamFacadeImpl` updated together with it (no
+    other call sites existed). The initial value is passed through a
+    `data-phone-number` HTML attribute, read via `x-init`, deliberately
+    **not** interpolated into the `x-data(...)` JS expression itself —
+    `setPhoneNumber` validates only length, not characters, so a phone
+    number containing a stray `'` would have broken (or, worse, injected
+    into) the JS source if inlined directly into an Alpine expression;
+    `data-*` + `.dataset` keeps it a plain string no matter its content.
+    First JS file for `/dashboard` (`static/js/dashboard.js`).
+  - **`/login`** gained a second tab ("کد پیامکی") alongside the existing
+    password form, via Bulma `tabs is-toggle` (same tabs pattern as
+    `/exams`'s per-exam panel) — a two-step flow inside the tab (enter
+    phone → "دریافت کد" → enter code → "ورود"), calling the pre-existing
+    OTP endpoints exactly as `OtpLoginFlowIntegrationTest` already proved
+    them: `otp-incorrect` (400) keeps the user on the code step for a retry
+    (the facade deliberately doesn't consume the code on a wrong guess,
+    §4's `VerificationCode` note), `otp-expired` (410) surfaces a message
+    plus a way back to the phone step, `phone-not-registered` (404) tells
+    an unregistered visitor to log in with a password first and set their
+    number on `/dashboard` — there is still no unauthenticated way to claim
+    a phone number, unchanged from §4 User's security reasoning. Both phone
+    and code inputs normalize Persian/Arabic-Indic digits to ASCII before
+    sending, per `DESIGN.md` §8 (same rule `grades.js` implemented first).
+    `login.jte` predates the 2026-07-05 code-placement rule and had kept
+    its Alpine inline until now — CLAUDE.md's own grandfather clause says
+    to apply the rule "when meaningfully editing" such a page, and adding a
+    whole second auth flow qualified, so the component moved to
+    `static/js/login.js` in the same change, unchanged in behavior for the
+    password tab.
+  - No new REST endpoints, no new permission/module code — every call was
+    already built and tested by earlier moshavere-port work; this slice is
+    UI-only. Covered by two new cases in `LoginDashboardFlowIntegrationTest`
+    (phone field renders empty then pre-filled after a real
+    `PUT /api/me/phone` round-trip; `/login` renders both tab labels). Full
+    suite (171 tests) + `ModularityTests` green.
 
 ### Open / explicitly deferred
 
