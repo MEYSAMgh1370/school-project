@@ -18,6 +18,37 @@
                 <div class="notification is-danger" x-show="error" x-text="error"></div>
                 <div class="notification is-success" x-show="notice" x-text="notice"></div>
 
+                <%-- میان‌بر دعوت درست بعد از ثبت‌نام موفق (UX_ROADMAP.md §6.3) -
+                     تا ادمین برای دعوت‌کردنِ دانش‌آموزِ تازه‌ثبت‌نام‌شده مجبور
+                     نباشد به /people برود. همان endpoint موجودِ
+                     iam.MembershipController که people.js هم استفاده می‌کند. --%>
+                <div class="box" x-show="pendingInviteStudent" x-cloak>
+                    <p class="mb-2">
+                        دانش‌آموز <strong x-text="pendingInviteStudent && pendingInviteStudent.fullName"></strong>
+                        ثبت‌نام شد و هنوز رمز عبور ندارد.
+                    </p>
+                    <button class="button is-small is-link" type="button" x-show="!pendingInviteResult"
+                            @click="sendInviteForPendingStudent" :class="{ 'is-loading': invitingPending }">
+                        ارسال دعوت‌نامه
+                    </button>
+                    <p class="has-text-success" x-show="pendingInviteResult && pendingInviteResult.alreadyActivated">
+                        این کاربر قبلاً حسابش را فعال کرده است.
+                    </p>
+                    <p class="has-text-success" x-show="pendingInviteResult && pendingInviteResult.emailSent">
+                        ایمیل دعوت ارسال شد.
+                    </p>
+                    <div class="field has-addons mt-2"
+                         x-show="pendingInviteResult && pendingInviteResult.emailSent === false">
+                        <div class="control is-expanded">
+                            <input class="input" type="text" dir="ltr" readonly x-ref="pendingInviteLink"
+                                   :value="pendingInviteResult && pendingInviteResult.link">
+                        </div>
+                        <div class="control">
+                            <button class="button" type="button" @click="copyPendingInviteLink">کپی</button>
+                        </div>
+                    </div>
+                </div>
+
                 <div class="notification is-warning" x-show="!loading && classes.length === 0">
                     ابتدا باید حداقل یک کلاس بسازید (صفحه‌ی کلاس‌ها).
                 </div>

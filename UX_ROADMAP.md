@@ -363,17 +363,23 @@ billing, do not build speculatively.
    real user.
 
 ### 6.3 MEDIUM — activation-funnel friction on the highest-volume flow
+### → RESOLVED 2026-07-20
 
-Enrolling a student on `/students` creates a passwordless account, but the
-invite step lives on a different page (`/people` → find membership → issue
-invite) with nothing pointing there, and `/people` doesn't show which members
-have never activated (no password yet). For a school onboarding dozens of
-students/parents this is the main drop-off point. Candidate fixes (one
-slice): an "activated / awaiting invite" indicator on `/people` rows (needs a
-small `MembershipInfo` enrichment, e.g. a `hasPassword` flag), and an invite
-shortcut in `/students`' enrollment success path. Also note: SMTP defaults to
-localhost:1025, so until deployment config exists the *real* journey is
-`emailSent=false` + manual link handover.
+*(Original finding, kept for context:)* enrolling a student on `/students`
+created a passwordless account, but the invite step lived on a different
+page (`/people` → find membership → issue invite) with nothing pointing
+there, and `/people` didn't show which members had never activated.
+
+**Resolution:** `/people` rows now show a "فعال‌سازی شده"/"در انتظار
+فعال‌سازی" tag (`IamFacade.MembershipInfo.hasPassword`, backed by the
+existing `passwordHash != null` check — no new query), and `/students`'
+enrollment success path offers an inline "ارسال دعوت‌نامه" shortcut right
+after enrolling, reusing the existing invite-token endpoint directly (no
+new REST) — see CLAUDE.md §7 Done ("Invite-status visibility on the
+enrollment funnel"). Note unchanged: SMTP still defaults to localhost:1025,
+so until deployment config exists the *real* journey remains
+`emailSent=false` + manual link handover — the shortcut surfaces that
+manual-link box in `/students` too now, not just `/people`.
 
 ### 6.4 LOW — degraded-but-working day-to-day paths
 
@@ -404,5 +410,6 @@ scoping (`/my-invoices` + scoped admin endpoint); student exam-taking
 2. ~~Grades UI (`/grades` + `/my-grades`)~~ — **done 2026-07-20.**
 3. ~~Phone-number field (unlocks Bale + OTP), then an OTP login tab~~ —
    **done 2026-07-20.**
-4. Invite-status visibility on the enrollment funnel (§6.3) — **next up.**
-5. Dashboard entry-URL display (§6.4) opportunistically.
+4. ~~Invite-status visibility on the enrollment funnel (§6.3)~~ —
+   **done 2026-07-20.**
+5. Dashboard entry-URL display (§6.4) opportunistically — **next up.**

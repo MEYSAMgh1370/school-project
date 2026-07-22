@@ -84,12 +84,12 @@ public class MembershipController {
 
     public record MembershipResponse(
             Long membershipId, Long userId, String email, String fullName,
-            Long schoolId, String roleCode, boolean active
+            Long schoolId, String roleCode, boolean active, boolean hasPassword
     ) {
         static MembershipResponse from(Long membershipId, MembershipInfo info) {
             return new MembershipResponse(
                     membershipId, info.userId().value(), info.email(), info.fullName(),
-                    info.schoolId(), info.roleCode(), info.active()
+                    info.schoolId(), info.roleCode(), info.active(), info.hasPassword()
             );
         }
     }

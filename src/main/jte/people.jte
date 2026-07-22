@@ -84,6 +84,8 @@
                             <td>
                                 <span class="tag is-success" x-show="member.active">فعال</span>
                                 <span class="tag is-danger" x-show="!member.active">غیرفعال</span>
+                                <span class="tag is-light" x-show="member.hasPassword">فعال‌سازی شده</span>
+                                <span class="tag is-warning" x-show="!member.hasPassword">در انتظار فعال‌سازی</span>
                             </td>
                             <td>
                                 <button class="button is-small" type="button" @click="toggleActive(member)">
