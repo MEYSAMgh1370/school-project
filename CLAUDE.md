@@ -3202,8 +3202,9 @@ above.
   duplicate slug 409, invalid/short/reserved slugs 400, slug optional,
   authenticated visitor sees the dashboard CTA). Deliberately NOT built
   (see §11 Q9): editing/adding a slug after creation (needs a
-  school-settings permission decision), showing the entry URL on the
-  dashboard, Host-header tenant resolution (Tier 2 — deployment-gated),
+  school-settings permission decision), ~~showing the entry URL on the
+  dashboard~~ (**built 2026-07-24** — see "Dashboard entry-URL display"
+  below), Host-header tenant resolution (Tier 2 — deployment-gated),
   and full custom domains (Tier 3 — `PLATFORM_ADMIN`-gated).
 
 - **Free-tier entitlements at school creation (built 2026-07-20, explicit
@@ -3366,6 +3367,68 @@ above.
     — proves the exact enroll → list-memberships → invite-token chain
     `students.js` performs, end to end, over real REST calls). Full suite
     (172 tests) + `ModularityTests` green.
+- **Dashboard entry-URL display (built 2026-07-24, resolves UX_ROADMAP.md
+  §6.4 / §6.6 item 5 — the last item on that review's order of attack)**:
+  the school entry slug (§11 Q9 Tier 1, built 2026-07-19) was **write-only**
+  — settable at creation and never shown again, so an admin who claimed
+  `/s/{slug}` had no way to find it afterward. `/dashboard` now renders a
+  "نشانی ورود مدرسه" box listing every school where the caller holds an
+  *active* `SCHOOL_ADMIN` membership, each with its absolute entry URL
+  (clickable, `dir="ltr"`) and a secondary "کپی نشانی" button. Went
+  through the `design-page` skill first (it reshapes `/dashboard`'s
+  layout). **Zero backend change** — no new REST endpoint, no new
+  permission code, no new module dependency (`web` → `school` already
+  existed via `NavbarModelAssembler`).
+  - `DashboardPageController` now injects `SchoolFacade` directly and
+    resolves each distinct `schoolId` to a full `SchoolInfo` **once**,
+    taking both the display name and the slug from that single lookup —
+    replacing its previous per-school `NavbarModelAssembler.schoolName`
+    call (same lookup count, two fields instead of one; the assembler's
+    own navbar lookup is unchanged, so the pre-existing
+    controller/assembler duplication is neither widened nor fixed here).
+    The `"مدرسه #id"` fallback for an unresolvable school is preserved
+    verbatim.
+  - **Deliberately server-rendered, not a management-page fetch**: no
+    `X-School-ID`, no CSRF, and **no `school-changed` listener** — the box
+    lists *all* of the caller's admin schools at once, so the navbar's
+    selected school doesn't scope it. No module-gated call is made, so the
+    `classifyError` two-403 pattern is deliberately absent (it would be
+    dead code here). The only JS is `schoolEntryLinks()` in the existing
+    `static/js/dashboard.js` — building the absolute URL client-side from
+    `window.location.origin`, so the server needs no "public base URL"
+    config property (`roshdeandishe.mail.activation-base-url` stays
+    email-only), and what's displayed is exactly what's copied.
+  - The role check is the literal string `SCHOOL_ADMIN`, same convention
+    as `finance.FinanceController`'s literal `SCHOOL_ADMIN`/`FINANCE_ADMIN`
+    check and academic's literal `PARENT` — custom roles (§4's Role
+    subsection) deliberately don't affect it, and it is **not** a security
+    boundary: `/s/{slug}` is a public page by design, so this only decides
+    who gets shown the link. A caller with no active admin membership
+    doesn't render the box at all.
+  - A school with **no slug** is still listed, with a caption saying the
+    address is chosen at registration — honest about §11 Q9's unbuilt
+    edit path rather than implying one exists. `slug` reaches Alpine via a
+    `data-slug` attribute rather than interpolation into a JS expression,
+    following the convention the phone-number box on this same page
+    documents (the slug *is* DNS-label-validated server-side, so this is
+    consistency, not a live escaping bug).
+  - Clipboard failure (unavailable outside a secure context, or denied) is
+    a real, handled state: an `is-danger` notice telling the user to select
+    and copy manually, never a silent no-op. Success echoes the button's
+    verb (کپی → کپی شد), per DESIGN.md §8.
+  - Covered by two new cases in `LoginDashboardFlowIntegrationTest`
+    (`dashboardShowsEntryUrlForSchoolsWhereUserIsAdmin` — the seeded demo
+    school's `nemooneh` link renders; and
+    `dashboardHidesEntryUrlBoxWithoutAdminMembershipAndExplainsMissingSlug`
+    — a freshly registered user with zero memberships sees no box at all,
+    then creates a slug-less school and sees the box with the caption and
+    no link). `mvn test -Dtest=ModularityTests` green. **The
+    `*FlowIntegrationTest` suite was NOT run in the authoring session** —
+    no Docker and no local Postgres available, the same gap documented for
+    the `MyStudyPlanFlowIntegrationTest` and Bale Phase 1 slices; the code
+    and tests compile (`mvn test-compile`, which also precompiles the JTE
+    template) and CI runs the suite for real. Treat this slice as fully
+    verified only once CI is green.
 
 ### Open / explicitly deferred
 
@@ -3802,7 +3865,11 @@ REST + tests only, same posture `curriculum`/`studyplan` shipped with.
    creation — there is no school-settings surface or permission code for
    "manage my school's own metadata," and inventing one as a drive-by would
    violate the discipline in §10; decide it explicitly when a school-settings
-   page is actually requested.
+   page is actually requested. **Still unbuilt as of 2026-07-24**, when the
+   read-only half (displaying the entry URL on `/dashboard`) shipped
+   without touching it — a school whose slug is empty gets a caption
+   saying the address is chosen at registration, deliberately *not* an
+   edit affordance (§7 Done, "Dashboard entry-URL display").
 
 10. ~~How does a *real* (non-demo) school ever obtain a module entitlement
     before billing exists?~~ (raised 2026-07-19 by the critical user-journey

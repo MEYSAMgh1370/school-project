@@ -143,6 +143,76 @@ class LoginDashboardFlowIntegrationTest {
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("data-phone-number=\"09121234567\"")));
     }
 
+    /**
+     * نشانی ورودِ مدرسه (/s/{slug}) تا پیش از این فقط هنگام ثبت مدرسه نوشته
+     * می‌شد و هیچ‌جا نمایش داده نمی‌شد (UX_ROADMAP.md §6.4). مدرسه‌ی نمونه
+     * با slug «nemooneh» seed شده و ادمین نمونه در آن SCHOOL_ADMIN است.
+     */
+    @Test
+    void dashboardShowsEntryUrlForSchoolsWhereUserIsAdmin() throws Exception {
+        MvcResult loginResult = mockMvc.perform(post("/api/auth/login")
+                        .with(csrf())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"email\":\"admin@roshdeandishe.test\",\"password\":\"password\"}"))
+                .andExpect(status().isOk())
+                .andReturn();
+        MockHttpSession session = (MockHttpSession) loginResult.getRequest().getSession(false);
+
+        mockMvc.perform(get("/dashboard").session(session))
+                .andExpect(status().isOk())
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("نشانی ورود مدرسه")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("href=\"/s/nemooneh\"")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("data-slug=\"nemooneh\"")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("کپی نشانی")));
+    }
+
+    /**
+     * کاربر بدون هیچ عضویتِ مدیریتی نباید اصلاً این باکس را ببیند - و
+     * مدرسه‌ی بدون slug به‌جای لینک، توضیح می‌گیرد (ویرایش slug بعد از ثبت
+     * عمداً ساخته نشده، CLAUDE.md §11 Q9).
+     */
+    @Test
+    void dashboardHidesEntryUrlBoxWithoutAdminMembershipAndExplainsMissingSlug() throws Exception {
+        String email = "entry-url-" + System.nanoTime() + "@example.test";
+        mockMvc.perform(post("/api/auth/register")
+                        .with(csrf())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"email\":\"" + email + "\",\"fullName\":\"بنیان‌گذار آزمون\","
+                                + "\"password\":\"password123\"}"))
+                .andExpect(status().isOk());
+        MvcResult loginResult = mockMvc.perform(post("/api/auth/login")
+                        .with(csrf())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"email\":\"" + email + "\",\"password\":\"password123\"}"))
+                .andExpect(status().isOk())
+                .andReturn();
+        MockHttpSession session = (MockHttpSession) loginResult.getRequest().getSession(false);
+
+        // هنوز هیچ عضویتی ندارد - باکس نباید رندر شود
+        mockMvc.perform(get("/dashboard").session(session))
+                .andExpect(status().isOk())
+                .andExpect(content().string(org.hamcrest.Matchers.not(
+                        org.hamcrest.Matchers.containsString("نشانی ورود مدرسه"))));
+
+        // مدرسه‌ای بدون slug می‌سازد (slug اختیاری است) و SCHOOL_ADMIN آن می‌شود
+        mockMvc.perform(post("/api/admin/schools")
+                        .with(csrf())
+                        .session(session)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"name\":\"مدرسه‌ی بی‌نشانی\",\"timezone\":\"Asia/Tehran\","
+                                + "\"locale\":\"fa-IR\",\"level\":\"ELEMENTARY\"}"))
+                .andExpect(status().isOk());
+
+        mockMvc.perform(get("/dashboard").session(session))
+                .andExpect(status().isOk())
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("نشانی ورود مدرسه")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("مدرسه‌ی بی‌نشانی")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString(
+                        "این مدرسه نشانی اختصاصی ندارد")))
+                .andExpect(content().string(org.hamcrest.Matchers.not(
+                        org.hamcrest.Matchers.containsString("data-slug="))));
+    }
+
     @Test
     void loginPageOffersBothPasswordAndOtpTabs() throws Exception {
         mockMvc.perform(get("/login"))
