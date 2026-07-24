@@ -3422,13 +3422,14 @@ above.
     `dashboardHidesEntryUrlBoxWithoutAdminMembershipAndExplainsMissingSlug`
     — a freshly registered user with zero memberships sees no box at all,
     then creates a slug-less school and sees the box with the caption and
-    no link). `mvn test -Dtest=ModularityTests` green. **The
-    `*FlowIntegrationTest` suite was NOT run in the authoring session** —
-    no Docker and no local Postgres available, the same gap documented for
-    the `MyStudyPlanFlowIntegrationTest` and Bale Phase 1 slices; the code
-    and tests compile (`mvn test-compile`, which also precompiles the JTE
-    template) and CI runs the suite for real. Treat this slice as fully
-    verified only once CI is green.
+    no link). The `*FlowIntegrationTest` suite could not be run in the
+    authoring session (no Docker and no local Postgres — the same gap
+    documented for the `MyStudyPlanFlowIntegrationTest` and Bale Phase 1
+    slices), so it was **verified in CI instead**: the PR's `build` job
+    (`mvnw clean verify`) ran the full suite against real Testcontainers
+    Postgres green — 165 tests, 0 failures, with
+    `LoginDashboardFlowIntegrationTest` itself at 13 (11 pre-existing +
+    the 2 above). No outstanding verification gap for this slice.
 
 ### Open / explicitly deferred
 
