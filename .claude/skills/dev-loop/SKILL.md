@@ -10,7 +10,10 @@ You are the **orchestrator**. You run on the expensive, high-judgment model (Opu
 ## Model policy (non-negotiable)
 
 - Main session: `opus` (set in `.claude/settings.json`; do not override).
-- All subagents spawned by this workflow: `model: sonnet` (already set in their frontmatter — never pass `model: inherit`, that would silently run them on Opus and destroy the cost advantage).
+- All subagents spawned by this workflow: `model: sonnet` (already set in their frontmatter — never pass `model: inherit`, and never omit the field, since `inherit` is its default; either would silently run them on Opus and destroy the cost advantage).
+- `code-explorer` may be spawned with a **per-invocation `model: haiku`** for narrow factual lookups you can cheaply verify ("which file defines `X`", "list every class annotated `@Y`"). Leave it on its Sonnet default for open-ended mapping ("how does entitlement checking flow end to end"). The split is **per question, not per agent**: Haiku for retrieval you will check, Sonnet for judgment you will trust without re-deriving.
+- Never route `task-implementer`/`ui-implementer` to Haiku. They must judge whether their own tests actually passed, and a false DONE costs a full review cycle plus a corrective respawn — more than the saving.
+- Do not set `CLAUDE_CODE_SUBAGENT_MODEL`. It sits *above* both the per-invocation parameter and frontmatter in Claude Code's resolution order, so setting it silently flattens every choice above.
 - If a subagent's output is repeatedly wrong on a genuinely hard reasoning task, do that one task yourself in the main session instead of retrying a third time.
 
 ## Phase 1 — Understand & Plan (orchestrator, Opus)
@@ -22,10 +25,11 @@ You are the **orchestrator**. You run on the expensive, high-judgment model (Opu
    - **Independently verifiable**: has explicit acceptance criteria (see "Default verification" below).
    - **Scoped to files**: lists the exact files/paths it may touch.
    - **Module-aligned**: task boundaries follow Spring Modulith module boundaries wherever possible. A task never reaches into another module's internals — public API or application events only.
-4. Route tasks to the right worker: JTE templates, HTMX fragments, or any user-facing page → `ui-implementer`; everything else → `task-implementer`.
+4. Route tasks to the right worker: JTE templates, Alpine.js components, or any user-facing page → `ui-implementer`; everything else → `task-implementer`.
 5. Skill composition:
-   - A "new module" task → run the `new-module` skill first (spec-first OpenAPI workflow), then delegate the implementation via this loop.
-   - Any UI task's delegation prompt must reference `DESIGN.md` and `design-tokens.css` as authoritative.
+   - A "new module" task → run the `new-module` skill first (package layout, error-handling stack, facade, entitlement registration), then delegate the implementation via this loop.
+   - A new page, or a substantial restructure of an existing one → run the `design-page` skill first. CLAUDE.md makes this mandatory, and it settles goal/hierarchy/primary action/states before any JTE is written.
+   - Any UI task's delegation prompt must reference `DESIGN.md` and the `:root` token block in `src/main/resources/static/css/app.css` as authoritative.
 6. Mark which tasks are independent → those get spawned **in parallel**. Dependent tasks run in sequence, each receiving the relevant results of its predecessors inside its prompt.
 7. Present the task plan to the user briefly before executing (skip only if the user said to proceed autonomously).
 
@@ -33,10 +37,11 @@ You are the **orchestrator**. You run on the expensive, high-judgment model (Opu
 
 Include the matching command(s) as the acceptance criteria in every delegation prompt:
 
-- Any module change: `./mvnw test -pl <module>`
-- Structural / cross-module change: run the Modulith verification test (`ApplicationModules.verify()`)
-- New Flyway migration: `./mvnw flyway:validate` + check version naming and ordering
-- UI change: template compiles and the affected page's tests (if any) pass
+- Any module change: `./mvnw test -Dtest=<RelevantFlowIntegrationTest>`. This project is **one Maven artifact, not a reactor** (CLAUDE.md §2), so there is no `-pl <module>`. Integration tests live flat in `com.example.roshdeandishe`, named `*FlowIntegrationTest`, and need Docker — they run against a real Postgres via Testcontainers.
+- Full suite, exactly as CI runs it: `./mvnw clean verify`
+- Structural / cross-module change: `./mvnw test -Dtest=ModularityTests` (`ApplicationModules.verify()`)
+- New module or new Postgres schema: there is **no Flyway/Liquibase** in this project (CLAUDE.md §7 item 5) — schema comes from `ddl-auto: update` plus dev-only seed runners. So instead: add `CREATE SCHEMA IF NOT EXISTS <module>;` to `init-schemas.sql`, and make every seed addition per-code idempotent rather than guarded by a row-count check (that trap has bitten this repo three times).
+- UI change: the JTE template compiles — JTE is precompiled, so `./mvnw clean verify` catches template errors — and the affected page's `*FlowIntegrationTest` passes.
 
 "It compiles" is never sufficient grounds for reporting success.
 
@@ -64,7 +69,7 @@ This phase compensates for the workflow's structural weakness: you could not cor
 3. Check the **project-specific review checklist**:
    - Display uses Persian digits and Jalali calendar; anything on the wire (APIs, DB, logs) is ISO-8601 only.
    - RTL-first: layout and Bulma classes are correct for RTL; no accidental LTR-only styling.
-   - Mapping goes through MapStruct — no hand-written mapping code.
+   - Entity → facade-record/DTO mapping is hand-written in the facade impl or controller, matching neighbouring code. This project has no MapStruct; a change must not introduce one.
    - No change loosens the security config: no newly exposed actuator endpoints, no weakened CSRF/session settings.
    - Week starts on Saturday anywhere calendars/schedules are involved.
 4. Run the full verification the subagent claimed passed. Trust but verify.
