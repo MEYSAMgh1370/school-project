@@ -45,4 +45,38 @@ document.addEventListener('alpine:init', () => {
             }
         }
     }));
+
+    // نشانی ورودِ اختصاصیِ مدرسه (/s/{slug}) برای مدیرِ مدرسه - تا امروز
+    // slug فقط هنگام ثبت مدرسه نوشته می‌شد و هیچ‌جا دیده نمی‌شد
+    // (UX_ROADMAP.md §6.4). داده از رندر سمت سرور می‌آید؛ اینجا فقط نشانیِ
+    // مطلق ساخته و کپی می‌شود - هیچ fetch ای در کار نیست.
+    Alpine.data('schoolEntryLinks', () => ({
+        errorMessage: '',
+        successMessage: '',
+
+        // نشانیِ مطلق سمت کلاینت ساخته می‌شود تا سرور به یک تنظیمِ
+        // «نشانیِ عمومیِ پلتفرم» نیاز پیدا نکند؛ همان چیزی که نمایش داده
+        // می‌شود دقیقاً همان چیزی است که کپی می‌شود.
+        entryUrl(slug) {
+            return window.location.origin + '/s/' + slug;
+        },
+
+        async copy(slug) {
+            this.errorMessage = '';
+            this.successMessage = '';
+            const url = this.entryUrl(slug);
+            // clipboard فقط در context امن (https یا localhost) در دسترس است -
+            // در غیر این صورت به‌جای شکستِ خاموش، به کاربر می‌گوییم چه کند.
+            if (!navigator.clipboard) {
+                this.errorMessage = 'کپی خودکار در این مرورگر ممکن نیست. نشانی را دستی انتخاب و کپی کنید.';
+                return;
+            }
+            try {
+                await navigator.clipboard.writeText(url);
+                this.successMessage = 'نشانی کپی شد.';
+            } catch (e) {
+                this.errorMessage = 'کپی خودکار انجام نشد. نشانی را دستی انتخاب و کپی کنید.';
+            }
+        }
+    }));
 });

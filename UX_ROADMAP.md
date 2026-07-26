@@ -389,12 +389,14 @@ manual-link box in `/students` too now, not just `/people`.
   member-name read endpoint — a permission-model decision, still parked.
 - **FINANCE_ADMIN sees `#id` instead of student names on `/finance`** (lacks
   `STUDENT_ENROLL`) — same class of gap, same parked fix.
-- **School entry URL is write-only**: the slug can only be set at creation
-  (no school-settings surface — deliberate, CLAUDE.md §11 Q9) and the
-  dashboard never displays the `/s/{slug}` URL afterward. Showing the
-  school's own entry URL on `/dashboard` for `SCHOOL_ADMIN` is a small,
-  decision-free display slice; *editing* the slug stays gated on the
-  school-settings permission decision.
+- ~~**School entry URL is write-only**~~ — **the display half is RESOLVED
+  2026-07-24.** `/dashboard` now shows a "نشانی ورود مدرسه" box with the
+  `/s/{slug}` URL and a copy button, for every school where the caller
+  holds an active `SCHOOL_ADMIN` membership (a slug-less school is listed
+  with a caption explaining the address is chosen at registration) — see
+  CLAUDE.md §7 Done ("Dashboard entry-URL display"). Zero backend change.
+  *Editing* the slug remains unbuilt and still gated on the
+  school-settings permission decision (CLAUDE.md §11 Q9) — unchanged.
 
 ### 6.5 Verified solid end-to-end
 
@@ -412,4 +414,15 @@ scoping (`/my-invoices` + scoped admin endpoint); student exam-taking
    **done 2026-07-20.**
 4. ~~Invite-status visibility on the enrollment funnel (§6.3)~~ —
    **done 2026-07-20.**
-5. Dashboard entry-URL display (§6.4) opportunistically — **next up.**
+5. ~~Dashboard entry-URL display (§6.4) opportunistically~~ — **done
+   2026-07-24.**
+
+**This closes out every item on the 2026-07-19 review's order of attack.**
+The remaining known gaps in §6.4 are both the *same* parked decision — a
+narrower member-name read endpoint, so `TEACHER` on `/students` and
+`FINANCE_ADMIN` on `/finance` stop seeing "نامشخص"/`#id` instead of
+student names. That is a permission-model decision (widen
+`MEMBERSHIP_MANAGE` vs. add a read-only name endpoint), not a UI slice, and
+per §6's own instruction this review should be **re-run from scratch**
+against the now-current app before picking the next batch of work — the
+prioritization above is spent.

@@ -41,6 +41,45 @@
             <div class="notification is-success mt-3" x-show="successMessage" x-text="successMessage"></div>
         </div>
 
+        <%-- نشانی ورود مدرسه: فقط برای مدرسه‌هایی که کاربر در آن‌ها مدیرِ
+             فعال است. داده سمت سرور رندر می‌شود (بدون fetch، بدون
+             X-School-ID) و به سوییچرِ ناوبار واکنش نشان نمی‌دهد چون هر
+             مدرسه‌ی مدیریت‌شده هم‌زمان فهرست می‌شود، نه فقط مدرسه‌ی انتخابی. --%>
+        @if(!model.schoolEntries().isEmpty())
+            <div class="box" x-data="schoolEntryLinks()">
+                <h2 class="title is-5">نشانی ورود مدرسه</h2>
+                <p class="is-size-7 has-text-grey mb-3">
+                    این نشانی را بین معلم‌ها، دانش‌آموزان و والدین پخش کنید تا
+                    از درِ اختصاصیِ مدرسه‌ی شما وارد شوند.
+                </p>
+                @for(var entry : model.schoolEntries())
+                    <div class="mb-4">
+                        <h3 class="title is-6 mb-2">${entry.schoolName()}</h3>
+                        @if(entry.hasSlug())
+                            <%-- slug از طریق data-attribute به Alpine می‌رسد، نه
+                                 با درج مستقیم در عبارت JS - همان قاعده‌ای که
+                                 باکس شماره تلفن بالاتر رعایت می‌کند. --%>
+                            <p class="mb-2">
+                                <a href="/s/${entry.slug()}" dir="ltr" data-slug="${entry.slug()}"
+                                   x-text="entryUrl($el.dataset.slug)"></a>
+                            </p>
+                            <button class="button is-light is-small" data-slug="${entry.slug()}"
+                                    @click="copy($el.dataset.slug)">
+                                کپی نشانی
+                            </button>
+                        @else
+                            <p class="is-size-7 has-text-grey">
+                                این مدرسه نشانی اختصاصی ندارد. نشانی فقط هنگام
+                                ثبت مدرسه انتخاب می‌شود.
+                            </p>
+                        @endif
+                    </div>
+                @endfor
+                <div class="notification is-danger mt-3" x-show="errorMessage" x-text="errorMessage"></div>
+                <div class="notification is-success mt-3" x-show="successMessage" x-text="successMessage"></div>
+            </div>
+        @endif
+
         <%-- CTA ثبت مدرسه فقط در حالت بدون عضویت (جریان بنیان‌گذار):
              به دانش‌آموز/والدِ دعوت‌شده پیشنهاد «مدرسه بسازید» نمی‌دهیم
              (تصمیم ۲۰۲۶-۰۷-۰۶؛ فرم به /schools/new منتقل شد). --%>
