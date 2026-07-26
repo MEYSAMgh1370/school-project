@@ -31,3 +31,6 @@ build/
 
 ### VS Code ###
 .vscode/
+
+# dev-loop workflow backup
+dev-loop-backup.zip

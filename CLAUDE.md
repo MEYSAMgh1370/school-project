@@ -3826,3 +3826,9 @@ REST + tests only, same posture `curriculum`/`studyplan` shipped with.
     `CurriculumFlowIntegrationTest`/`StudyPlanManagementFlowIntegrationTest`/
     `ExamFlowIntegrationTest` fresh-school cases now double as proof that
     the free tier does *not* include the paid modules.
+
+---
+
+## Workflow
+
+For multi-file features, new modules, or cross-cutting refactors, use the dev-loop skill (orchestrator on Opus, delegation to Sonnet subagents).
