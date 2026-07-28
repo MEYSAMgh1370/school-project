@@ -53,11 +53,28 @@ document.addEventListener('alpine:init', () => {
             return `/api/admin/schools/${this.schoolId}/memberships`;
         },
 
+        // نسخه‌ی محدودترِ membershipsBase - فقط userId/fullName برای شناسه‌های
+        // داده‌شده (MEMBER_NAMES_VIEW، UX_ROADMAP.md §6.4) - همان کمکی که
+        // students.js دارد.
+        async resolveMemberNames(userIds) {
+            const unique = [...new Set(userIds)].filter(id => id != null);
+            if (unique.length === 0) {
+                return [];
+            }
+            const params = new URLSearchParams();
+            unique.forEach(id => params.append('userIds', id));
+            const response = await fetch(`${this.membershipsBase()}/names?${params.toString()}`, {
+                headers: { 'X-School-ID': this.schoolId }
+            });
+            return response.ok ? await response.json() : [];
+        },
+
         // فاکتور فقط studentId (شناسه‌ی academic) دارد، نه نام - همان دلیل
         // teacherName در classes.js: باید از academic.StudentController (id
-        // به userId) و iam.MembershipController (userId به نام) ترکیب شود.
-        // اگر نقش کاربر (مثلاً FINANCE_ADMIN) اجازه‌ی STUDENT_ENROLL نداشته
-        // باشد، این دو فراخوانی 403 می‌شوند - صفحه نمی‌شکند، فقط شناسه‌ی خام نشان داده می‌شود.
+        // به userId) و iam.MembershipController/memberships/names (userId به
+        // نام) ترکیب شود. FINANCE_ADMIN حالا STUDENT_VIEW و MEMBER_NAMES_VIEW
+        // را دارد (UX_ROADMAP.md §6.4) پس این resolve معمولاً موفق می‌شود؛ اگر
+        // به هر دلیلی موفق نشد، صفحه نمی‌شکند، فقط شناسه‌ی خام نشان داده می‌شود.
         studentName(studentId) {
             const student = this.students.find(s => s.studentId === studentId);
             if (!student) {
@@ -145,16 +162,21 @@ document.addEventListener('alpine:init', () => {
                 }
                 this.invoices = await invoicesResponse.json();
 
-                // بهترین تلاش برای نام دانش‌آموز - اگر نقش فعلی اجازه‌ی
-                // STUDENT_ENROLL نداشته باشد، فقط شناسه‌ی خام نمایش داده می‌شود
+                // بهترین تلاش برای نام دانش‌آموز - studentsBase به STUDENT_VIEW
+                // نیاز دارد (نه دیگر STUDENT_ENROLL - UX_ROADMAP.md §6.4)، پس
+                // FINANCE_ADMIN هم آن را دارد؛ membershipsBase هم‌چنان
+                // MEMBERSHIP_MANAGE می‌خواهد که FINANCE_ADMIN ندارد - در آن حالت
+                // به مسیر محدودترِ resolveMemberNames (MEMBER_NAMES_VIEW) برمی‌گردیم.
                 const [studentsResponse, membershipsResponse] = await Promise.all([
                     fetch(this.studentsBase(), { headers: { 'X-School-ID': this.schoolId } }),
                     fetch(this.membershipsBase(), { headers: { 'X-School-ID': this.schoolId } })
                 ]);
                 this.students = studentsResponse.ok ? await studentsResponse.json() : [];
-                this.pupils = membershipsResponse.ok
-                    ? (await membershipsResponse.json()).filter(m => m.active && m.roleCode === 'STUDENT')
-                    : [];
+                if (membershipsResponse.ok) {
+                    this.pupils = (await membershipsResponse.json()).filter(m => m.active && m.roleCode === 'STUDENT');
+                } else {
+                    this.pupils = await this.resolveMemberNames(this.students.map(s => s.userId));
+                }
             } catch (e) {
                 this.error = 'ارتباط با سرور برقرار نشد.';
             } finally {

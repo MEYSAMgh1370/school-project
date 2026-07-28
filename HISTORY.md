@@ -1209,6 +1209,56 @@ elsewhere in CLAUDE.md remains accurate.
     Postgres green — 165 tests, 0 failures, with
     `LoginDashboardFlowIntegrationTest` itself at 13 (11 pre-existing +
     the 2 above). No outstanding verification gap for this slice.
+- **Name-resolution gap on `/students`/`/finance` closed (built 2026-07-26,
+  resolves UX_ROADMAP.md §6.4 — the one item the 2026-07-19 critical-journey
+  review left parked across two re-runs).** A fresh, from-scratch re-run of
+  that review (§6.7) turned up no new CRITICAL/HIGH findings and confirmed
+  this was the only real remaining gap: `TEACHER` on `/students` and
+  `FINANCE_ADMIN` on `/finance` fell back to "نامشخص"/`#id` placeholders
+  because resolving a display name needs two lookups —
+  `academic.StudentController` (`studentId`→`userId`) then
+  `iam.MembershipController` (`userId`→`fullName`) — and each role was
+  missing the permission for one or both.
+  - Two new permissions, each a narrow read split from an existing
+    write/broad permission (the same shape as the earlier `CLASS_VIEW`/
+    `CLASS_MANAGE` split): `STUDENT_VIEW` (split from `STUDENT_ENROLL` —
+    `StudentController.listStudents`/`getStudent` now require it, `enrollStudent`
+    keeps `STUDENT_ENROLL`) and `MEMBER_NAMES_VIEW` (a new
+    `GET /api/admin/schools/{schoolId}/memberships/names?userIds=…` on
+    `MembershipController`, returning only `{userId, fullName}` for active
+    memberships matching the given ids — not the full `MembershipResponse`
+    shape, which also carries email/role/activation status).
+  - Deliberately **not** solved by widening `STUDENT_ENROLL` (grants
+    enrollment, a write action) or `MEMBERSHIP_MANAGE` (grants adding/
+    deactivating members, issuing invite tokens, and full membership
+    disclosure) to `TEACHER`/`FINANCE_ADMIN` — both permissions grant far
+    more than "read a name," which is all either role actually needed. This
+    was an explicit choice between two options put to the user; the narrower-
+    permission approach was chosen over widening `MEMBERSHIP_MANAGE`.
+  - Granted: `STUDENT_VIEW` → `SCHOOL_ADMIN`, `TEACHER`, `FINANCE_ADMIN`;
+    `MEMBER_NAMES_VIEW` → `SCHOOL_ADMIN` (redundant with `MEMBERSHIP_MANAGE`,
+    granted anyway so `SCHOOL_ADMIN` never needs a different permission for
+    an equivalent read), `TEACHER`, `FINANCE_ADMIN`.
+  - `students.js`/`finance.js`: both already fetched the full membership list
+    best-effort; on a 403 they now fall back to the new `/memberships/names`
+    endpoint, scoped to just the student `userId`s each page already knows
+    from its own `academic.StudentController` call. `SCHOOL_ADMIN`'s path is
+    unchanged (the full list still succeeds for it).
+  - Explicitly left alone: the dead `GRADES_VIEW` permission (seeded to four
+    roles, checked by zero `@RequiresPermission` anywhere) surfaced by the
+    same review re-run — confirmed harmless (student/parent grade access
+    goes through `MyGradesController`'s unguarded "my" pattern instead) and
+    kept as-is on explicit user decision, not folded into this change.
+  - Test coverage: three new cases in `StudentManagementFlowIntegrationTest`
+    (`financeAdminCanListStudentsButCannotEnroll`,
+    `financeAdminCanResolveStudentNamesViaNarrowMemberNamesEndpoint` — proves
+    the full end-to-end chain `finance.js` relies on: `STUDENT_VIEW` for the
+    roster, `MEMBER_NAMES_VIEW` for the name, and that the full membership
+    list still 403s for `FINANCE_ADMIN` — and
+    `studentWithoutMemberNamesViewCannotResolveMemberNames`, a negative case
+    for a role with neither permission). Full suite green: 168 tests, 0
+    failures; `ModularityTests` green (3/3) — run directly in this session
+    (Testcontainers available).
 
 
 ---

@@ -43,6 +43,31 @@ class StudentManagementFlowIntegrationTest {
         return session;
     }
 
+    private MockHttpSession registerLoginAndGrantRole(MockHttpSession adminSession, String email,
+                                                       String fullName, String roleCode) throws Exception {
+        mockMvc.perform(post("/api/auth/register")
+                        .with(csrf())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"email\":\"" + email + "\",\"fullName\":\"" + fullName + "\",\"password\":\"password123\"}"))
+                .andExpect(status().isOk());
+        MvcResult loginResult = mockMvc.perform(post("/api/auth/login")
+                        .with(csrf())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"email\":\"" + email + "\",\"password\":\"password123\"}"))
+                .andExpect(status().isOk())
+                .andReturn();
+        MockHttpSession session = (MockHttpSession) loginResult.getRequest().getSession(false);
+
+        mockMvc.perform(post("/api/admin/schools/1/memberships")
+                        .with(csrf())
+                        .header("X-School-ID", "1")
+                        .session(adminSession)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"email\":\"" + email + "\",\"fullName\":\"" + fullName + "\",\"roleCode\":\"" + roleCode + "\"}"))
+                .andExpect(status().isOk());
+        return session;
+    }
+
     @Test
     void unauthenticatedStudentsPageRedirectsToLogin() throws Exception {
         mockMvc.perform(get("/students"))
@@ -183,5 +208,94 @@ class StudentManagementFlowIntegrationTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"email\":\"blocked.pupil@roshdeandishe.test\",\"fullName\":\"Blocked\",\"classId\":null}"))
                 .andExpect(status().isForbidden());
+    }
+
+    @Test
+    void financeAdminCanListStudentsButCannotEnroll() throws Exception {
+        // STUDENT_VIEW از STUDENT_ENROLL جدا شد (UX_ROADMAP.md §6.4) دقیقاً
+        // برای این نقش: FINANCE_ADMIN باید بتواند فهرست دانش‌آموزها را برای
+        // resolve کردن نام روی /finance بخواند، بدون این‌که اجازه‌ی ثبت‌نام
+        // (نوشتن) داشته باشد.
+        MockHttpSession adminSession = loginAsAdmin();
+        MockHttpSession financeAdminSession = registerLoginAndGrantRole(
+                adminSession, "students.financeadmin@roshdeandishe.test", "مدیر مالی دانش‌آموزان", "FINANCE_ADMIN");
+
+        mockMvc.perform(get("/api/admin/schools/1/students")
+                        .header("X-School-ID", "1")
+                        .session(financeAdminSession))
+                .andExpect(status().isOk());
+
+        mockMvc.perform(post("/api/admin/schools/1/students")
+                        .with(csrf())
+                        .header("X-School-ID", "1")
+                        .session(financeAdminSession)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"email\":\"finance.blocked.pupil@roshdeandishe.test\",\"fullName\":\"Blocked\",\"classId\":null}"))
+                .andExpect(status().isForbidden())
+                .andExpect(jsonPath("$.type").value(org.hamcrest.Matchers.endsWith("permission-denied")));
+    }
+
+    @Test
+    void financeAdminCanResolveStudentNamesViaNarrowMemberNamesEndpoint() throws Exception {
+        // مسیر واقعی‌ای که finance.js دنبال می‌کند: STUDENT_VIEW برای
+        // studentId→userId، بعد MEMBER_NAMES_VIEW برای userId→نام - بدون
+        // این‌که MEMBERSHIP_MANAGE کامل (که فهرست همه‌ی اعضا شامل ایمیل/نقش/
+        // وضعیت فعال‌سازی را افشا می‌کند) به FINANCE_ADMIN داده شود.
+        MockHttpSession adminSession = loginAsAdmin();
+
+        MvcResult classResult = mockMvc.perform(post("/api/admin/schools/1/classes")
+                        .with(csrf())
+                        .header("X-School-ID", "1")
+                        .session(adminSession)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"name\":\"پایه دوم - نام‌ها\",\"section\":null,\"teacherId\":null,\"gradeLevel\":2}"))
+                .andExpect(status().isOk())
+                .andReturn();
+        Long classId = objectMapper.readTree(classResult.getResponse().getContentAsString())
+                .get("id").asLong();
+
+        MvcResult enrollResult = mockMvc.perform(post("/api/admin/schools/1/students")
+                        .with(csrf())
+                        .header("X-School-ID", "1")
+                        .session(adminSession)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"email\":\"names.pupil@roshdeandishe.test\",\"fullName\":\"دانش‌آموز نام‌ها\",\"classId\":" + classId + "}"))
+                .andExpect(status().isOk())
+                .andReturn();
+        Long pupilUserId = objectMapper.readTree(enrollResult.getResponse().getContentAsString())
+                .get("userId").asLong();
+
+        MockHttpSession financeAdminSession = registerLoginAndGrantRole(
+                adminSession, "names.financeadmin@roshdeandishe.test", "مدیر مالی نام‌ها", "FINANCE_ADMIN");
+
+        // FINANCE_ADMIN فهرست کامل عضویت‌ها را نمی‌بیند...
+        mockMvc.perform(get("/api/admin/schools/1/memberships")
+                        .header("X-School-ID", "1")
+                        .session(financeAdminSession))
+                .andExpect(status().isForbidden());
+
+        // ...اما مسیر محدودترِ نام‌ها را برای همان userId می‌بیند
+        mockMvc.perform(get("/api/admin/schools/1/memberships/names")
+                        .param("userIds", String.valueOf(pupilUserId))
+                        .header("X-School-ID", "1")
+                        .session(financeAdminSession))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath(
+                        "$[?(@.userId == " + pupilUserId + " && @.fullName == 'دانش‌آموز نام‌ها')]"
+                ).exists());
+    }
+
+    @Test
+    void studentWithoutMemberNamesViewCannotResolveMemberNames() throws Exception {
+        MockHttpSession adminSession = loginAsAdmin();
+        MockHttpSession studentSession = registerLoginAndGrantRole(
+                adminSession, "names.student@roshdeandishe.test", "دانش‌آموز بدون دسترسی نام‌ها", "STUDENT");
+
+        mockMvc.perform(get("/api/admin/schools/1/memberships/names")
+                        .param("userIds", "1")
+                        .header("X-School-ID", "1")
+                        .session(studentSession))
+                .andExpect(status().isForbidden())
+                .andExpect(jsonPath("$.type").value(org.hamcrest.Matchers.endsWith("permission-denied")));
     }
 }
