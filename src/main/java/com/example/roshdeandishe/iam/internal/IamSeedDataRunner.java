@@ -3,6 +3,7 @@ package com.example.roshdeandishe.iam.internal;
 import com.example.roshdeandishe.iam.internal.ModuleEntity.ModuleScope;
 import org.springframework.boot.ApplicationArguments;
 import org.springframework.boot.ApplicationRunner;
+import org.springframework.core.env.Environment;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
@@ -18,8 +19,30 @@ import java.util.Map;
  * <p>
  * از این فاز به بعد، یک کاربر ادمین نمونه هم seed می‌شود
  * (admin@roshdeandishe.test / password: "password") تا لاگین session-based
- * از ابتدا قابل تست باشد. این فقط برای dev است - در production باید
- * حذف شود (یا پشت یک profile مثل "dev" قرار بگیرد).
+ * از ابتدا قابل تست باشد.
+ * <p>
+ * <b>این کلاس دو نوع کاملاً متفاوت داده seed می‌کند</b> و از زمان استقرار
+ * واقعی، این تفکیک اجباری شد (رجوع به DEPLOYMENT.md):
+ * <ul>
+ *   <li><b>داده‌ی مرجع/کاتالوگ</b> (Module، Role، Permission،
+ *       RolePermission): بدون این‌ها اپلیکیشن اصلاً کار نمی‌کند - مثلاً
+ *       {@code SchoolController.createSchool} بلافاصله
+ *       {@code createMembership(..., "SCHOOL_ADMIN")} صدا می‌زند و بدون
+ *       ردیف نقش‌ها با RoleNotFound شکست می‌خورد، و
+ *       {@code grantFreeTierEntitlements} بدون ردیف ماژول‌ها. پس این بخش
+ *       در production هم <i>باید</i> اجرا شود. تا وقتی Flyway معرفی نشده
+ *       (CLAUDE.md §7 مورد ۵)، اینجا تنها جایی است که این ردیف‌ها ساخته
+ *       می‌شوند؛ هر متد هم به‌ازای هر کد idempotent است.</li>
+ *   <li><b>داده‌ی نمایشی</b> (ادمین نمونه با رمز معلوم، عضویت و
+ *       entitlementهای مدرسه‌ی نمونه‌ی id=1): در production یعنی یک
+ *       SCHOOL_ADMIN عمومی با رمز «password» روی اینترنت. این بخش پشت
+ *       {@link #seedDemoData} می‌رود.</li>
+ * </ul>
+ * شرط منفی ({@code !prod}) عمدی است، نه {@code dev}: اجرای محلی و تست‌ها
+ * هیچ profile فعالی ندارند و باید دقیقاً مثل قبل seed شوند (کل سوییت
+ * integration به همین داده‌ها - مدرسه‌ی نمونه با id=1 و همین ادمین - تکیه
+ * دارد)؛ فقط production مستثناست. با {@code dev} باید هر اجرای محلی و CI
+ * هم profile ست می‌کرد و فراموش کردنش بی‌سروصدا تست‌ها را می‌شکست.
  */
 @Component
 class IamSeedDataRunner implements ApplicationRunner {
@@ -37,6 +60,14 @@ class IamSeedDataRunner implements ApplicationRunner {
     private final SchoolMembershipRepository schoolMembershipRepository;
     private final PasswordEncoder passwordEncoder;
 
+    /**
+     * آیا داده‌ی نمایشی هم seed شود؟ (توضیح کامل در جاوادوک کلاس.) عمداً از
+     * روی profile محاسبه می‌شود و نه یک property جداگانه: یک property با
+     * پیش‌فرض true را می‌شود در استقرار واقعی فراموش کرد، ولی profile
+     * production همیشه ست است - در Dockerfile داخل خود image باک شده.
+     */
+    private final boolean seedDemoData;
+
     IamSeedDataRunner(
             UserRepository userRepository,
             RoleRepository roleRepository,
@@ -45,8 +76,10 @@ class IamSeedDataRunner implements ApplicationRunner {
             RolePermissionRepository rolePermissionRepository,
             SchoolEntitlementRepository schoolEntitlementRepository,
             SchoolMembershipRepository schoolMembershipRepository,
-            PasswordEncoder passwordEncoder
+            PasswordEncoder passwordEncoder,
+            Environment environment
     ) {
+        this.seedDemoData = environment.matchesProfiles("!prod");
         this.userRepository = userRepository;
         this.roleRepository = roleRepository;
         this.moduleRepository = moduleRepository;
@@ -64,6 +97,11 @@ class IamSeedDataRunner implements ApplicationRunner {
         Map<String, RoleEntity> roles = seedRoles();
         Map<String, PermissionEntity> permissions = seedPermissions();
         seedRolePermissions(roles, permissions);
+
+        // از اینجا به بعد فقط داده‌ی نمایشی است - در production اجرا نمی‌شود.
+        if (!seedDemoData) {
+            return;
+        }
         seedDemoAdminUser();
         seedDemoSchoolEntitlements();
         seedDemoAdminMembership();
@@ -102,9 +140,22 @@ class IamSeedDataRunner implements ApplicationRunner {
         }
     }
 
+    /**
+     * فقط نقش‌های سیستمی (schoolId = null) به این map می‌روند - و این فیلتر
+     * صرفاً تمیزکاری نیست، جلوی یک crash در زمان بالا آمدن را می‌گیرد:
+     * از وقتی نقش سفارشی per-school وجود دارد (CLAUDE.md §4، Open Question 3)
+     * جدول {@code iam.roles} نقش‌های سفارشی مدرسه‌ها را هم نگه می‌دارد، و طبق
+     * همان تصمیم، دو مدرسه‌ی مختلف <i>مجازند</i> هر دو نقشی با کد یکسان
+     * (مثلاً LIBRARIAN) بسازند. {@code toMap} روی کلید تکراری
+     * IllegalStateException می‌اندازد، یعنی از اولین restart بعد از آن،
+     * اپلیکیشن دیگر بالا نمی‌آمد. خروجی این متد فقط برای
+     * {@link #seedRolePermissions} است که صرفاً نقش‌های سیستمی را lookup
+     * می‌کند، پس فیلتر کردن معنای متد را هم دقیق‌تر می‌کند.
+     */
     private Map<String, RoleEntity> seedRoles() {
         if (roleRepository.count() > 0) {
             return roleRepository.findAll().stream()
+                    .filter(r -> r.getSchoolId() == null)
                     .collect(java.util.stream.Collectors.toMap(RoleEntity::getCode, r -> r));
         }
 

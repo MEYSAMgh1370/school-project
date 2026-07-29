@@ -24,21 +24,17 @@ separate build artifacts.
 
 ## Running locally
 
-1. **Postgres**, with the per-module schemas created up front (Hibernate's
-   `ddl-auto: update` creates tables, not schemas):
+1. **Postgres** — just the database; the per-module schemas are created for you:
    ```sql
    CREATE DATABASE roshdeandishe_iam;
-   \c roshdeandishe_iam
-   CREATE SCHEMA IF NOT EXISTS school;
-   CREATE SCHEMA IF NOT EXISTS academic;
-   CREATE SCHEMA IF NOT EXISTS finance;
-   CREATE SCHEMA IF NOT EXISTS bale;
-   CREATE SCHEMA IF NOT EXISTS curriculum;
-   CREATE SCHEMA IF NOT EXISTS studyplan;
-   CREATE SCHEMA IF NOT EXISTS exam;
    ```
-   Connection defaults live in `src/main/resources/application.yml`
-   (`localhost:5432/roshdeandishe_iam`, `postgres`/`postgres`).
+   `src/main/resources/schema.sql` runs the eight `CREATE SCHEMA IF NOT EXISTS`
+   statements (`iam`, `school`, `academic`, `finance`, `bale`, `curriculum`,
+   `studyplan`, `exam`) at startup, before Hibernate creates any table —
+   `ddl-auto: update` creates tables but never schemas, so this used to be a
+   manual step. Connection defaults live in `src/main/resources/application.yml`
+   (`localhost:5432/roshdeandishe_iam`, `postgres`/`postgres`) and each is
+   overridable via `DATABASE_URL`/`DATABASE_USERNAME`/`DATABASE_PASSWORD`.
 
 2. **(Optional) local SMTP** for invite/activation emails — dev default is
    `localhost:1025` (e.g. [Mailpit](https://github.com/axllent/mailpit):
@@ -52,9 +48,17 @@ separate build artifacts.
    ```
    The app starts on `http://localhost:8080`. `IamSeedDataRunner` and
    `SchoolSeedDataRunner` seed dev-only data on startup, including a demo
-   admin login: `admin@roshdeandishe.test` / `password`.
+   admin login: `admin@roshdeandishe.test` / `password`. That demo data is
+   skipped under the `prod` profile — see [`DEPLOYMENT.md`](DEPLOYMENT.md).
 
-4. **Swagger UI**: `http://localhost:8080/swagger-ui.html`.
+4. **Swagger UI**: `http://localhost:8080/swagger-ui.html` (off by default in
+   production).
+
+## Deploying
+
+See [`DEPLOYMENT.md`](DEPLOYMENT.md) — Docker image, `liara.json`, the full
+environment-variable list, and the known limitations of this deployment
+(single instance, `ddl-auto` instead of Flyway).
 
 ## Testing
 

@@ -1210,6 +1210,112 @@ elsewhere in CLAUDE.md remains accurate.
     `LoginDashboardFlowIntegrationTest` itself at 13 (11 pre-existing +
     the 2 above). No outstanding verification gap for this slice.
 
+- **Deployment to Liara — production configuration (2026-07-29).** The first
+  real deployment setup for this project: `Dockerfile` (multi-stage Maven →
+  JRE 21), `liara.json` (Docker platform, port 8080, `/actuator/health`
+  health check, German build server so Maven Central resolves reliably),
+  `.dockerignore`, a `prod` Spring profile, and [`DEPLOYMENT.md`](DEPLOYMENT.md)
+  as the runbook. The user deploys themselves; this commit prepares the repo.
+
+  **Four production blockers found and fixed**, three of them only visible by
+  actually booting the app under the `prod` profile against an empty database —
+  none would have shown up in the test suite, which always runs seeded and
+  never runs the prod profile:
+
+  1. **Dev seed data would have run in production.** `IamSeedDataRunner` and
+     `SchoolSeedDataRunner` were plain unguarded `@Component`s, so a public
+     deployment would have booted with `admin@roshdeandishe.test` / password
+     `password` holding `SCHOOL_ADMIN` — the seed runner's own comment had
+     asked for a profile gate since it was written. Gating *all* of it,
+     however, produced a **non-functional** production instance: with
+     `iam.roles`/`iam.modules` empty, `SchoolController.createSchool` fails
+     with `RoleNotFound` the moment it tries to grant the founder
+     `SCHOOL_ADMIN`, and `grantFreeTierEntitlements` has no module rows to
+     grant. So the runner is split by *kind*, not switched off wholesale:
+     the **catalog half** (Module/Role/Permission/RolePermission) always
+     runs — until Flyway exists it is the only thing creating those rows
+     anywhere — and only the **demo half** (demo admin, demo school
+     membership, demo school entitlements) is skipped, via
+     `Environment.matchesProfiles("!prod")`. `SchoolSeedDataRunner` (a pure
+     demo school) keeps a plain `@Profile("!prod")`. The negative form is
+     deliberate: local runs and the whole integration suite have no active
+     profile and must keep seeding exactly as before.
+  2. **`/actuator/health` never existed.** `spring-boot-starter-actuator` was
+     not a dependency — only `spring-modulith-actuator`, which drags in the
+     `spring-boot-actuator` jar but not `spring-boot-actuator-autoconfigure`,
+     so no endpoint was ever mapped and the entire `management:` block in
+     `application.yml` (`exposure: health, info, modulith`) had been inert
+     since it was written. Harmless until now; fatal for a PaaS health check.
+     Starter added; the pre-existing config became live as originally intended.
+  3. **The health endpoint reported `DOWN` anyway.** Boot's mail health
+     indicator connects to SMTP and marks the *whole* endpoint `DOWN` (503)
+     when it can't — so an unconfigured mail server, an explicitly
+     best-effort optional feature in this codebase, would have had Liara
+     flagging every deploy unhealthy and restarting the container. Disabled
+     in prod (`management.health.mail.enabled: false`, env-toggleable). The
+     `db` indicator stays on: database reachability is what genuinely makes
+     this app unusable.
+  4. **`seedRoles()` would have crashed on restart once two schools created
+     a same-coded custom role.** Its `count() > 0` path collects *all* of
+     `iam.roles` with `Collectors.toMap(RoleEntity::getCode, …)`, but since
+     custom per-school roles shipped (§11 Q3) that table holds them too, and
+     two schools are explicitly *allowed* to each define e.g. `LIBRARIAN` —
+     a duplicate key, so `toMap` throws `IllegalStateException` and the
+     application never starts again. Fixed by filtering to system roles
+     (`schoolId == null`), which is also all the returned map is used for.
+     Pre-existing latent bug, unreachable before custom roles existed, and a
+     total outage triggered by ordinary tenant behaviour once deployed.
+
+  **Externalized configuration.** `application-prod.yml` makes `DATABASE_URL`/
+  `DATABASE_USERNAME`/`DATABASE_PASSWORD`, `APP_BASE_URL`, `JWT_SECRET`, and
+  `EXAM_TOKEN_SECRET` **required with no defaults** — the app refuses to boot
+  without them, deliberately: the failure mode being prevented is a silent one
+  (running on the dev signing keys committed in `application.yml`, or emailing
+  activation links pointing at `localhost:8080`). Everything optional keeps a
+  default. Also in prod: Swagger/`api-docs` off (both are `permitAll`, so
+  leaving them on publishes the whole API surface), actuator exposure narrowed
+  to `health` with details hidden, `forward-headers-strategy: framework` (so
+  cookies and redirects are `https` behind Liara's proxy), and `Secure`/
+  `HttpOnly`/`SameSite=Lax` session cookies. SMTP is deliberately *not*
+  required — missing mail config degrades one best-effort feature, it does not
+  block startup.
+
+  **Schema creation is no longer manual** (CLAUDE.md §7 item 4):
+  `src/main/resources/schema.sql` + `spring.sql.init.mode: always` create all
+  eight per-module schemas at DataSource initialization, before the
+  `EntityManagerFactory` exists. Previously eight `CREATE SCHEMA` statements
+  had to be run by hand or first boot failed — an unacceptable step against a
+  managed database. Tests already did this via
+  `TestcontainersConfiguration.withInitScript("init-schemas.sql")`; this gives
+  real runs the same guarantee.
+
+  **Explicitly not built**: session persistence (`spring-session-jdbc`) or
+  sticky sessions, so the deployment is **single-instance only** — scaling is
+  a real decision, not a config tweak, and nobody has asked to scale yet;
+  Flyway (§7 item 5) — still `ddl-auto: update`, now in production, with the
+  consequences documented rather than papered over; any REST exposure of
+  paid-module entitlement granting (§10's prohibition stands — it is a
+  documented SQL statement in `DEPLOYMENT.md` instead); Tier 2 per-school
+  subdomains (§11 Q9), which were blocked on a deployment existing and are now
+  merely unbuilt.
+
+  **Verification.** The full `*FlowIntegrationTest` suite could **not** be run
+  in the authoring session (no Docker daemon, so Testcontainers is
+  unavailable) — CI runs it on this PR. What *was* verified here, against a
+  real local Postgres 16 and a genuinely empty database: `ModularityTests` 3/3
+  green (module boundaries intact after the actuator dependency); prod-profile
+  boot with secrets missing **fails fast** with `Could not resolve placeholder`
+  rather than starting; prod-profile boot fully configured starts in ~17s and
+  creates all 8 schemas + 42 tables; catalog data present (13 modules, 6 roles,
+  19 permissions, 36 role-permission grants) with **zero** demo rows (0 users,
+  0 schools, 0 memberships, 0 entitlements); `/actuator/health` returns 200
+  `{"status":"UP"}` with details hidden while `/actuator/env`,
+  `/actuator/modulith`, and `/swagger-ui.html` all 404; and the whole
+  production onboarding journey end-to-end — register → login → create school →
+  founder receives `SCHOOL_ADMIN` → free tier `ACADEMIC`+`FINANCE` granted
+  automatically → a free-module endpoint returns 200 → a paid-module endpoint
+  returns 403 `module-not-entitled` → the public `/s/{slug}` entry page renders.
+
 
 ---
 

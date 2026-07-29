@@ -138,6 +138,19 @@
             <artifactId>spring-modulith-starter-jpa</artifactId>
         </dependency>
 
+        <!-- Actuator. تا پیش از استقرار واقعی، فقط spring-modulith-actuator
+             اینجا بود؛ آن وابستگی صرفاً jar خودِ spring-boot-actuator را
+             ترنزیتیو می‌آورد، نه spring-boot-actuator-autoconfigure را - یعنی
+             هیچ endpointای هرگز map نمی‌شد و کل بلوک management در
+             application.yml (exposure: health, info, modulith) بی‌اثر بود:
+             /actuator/health همیشه 404 می‌داد. با استقرار روی لیارا این دیگر
+             بی‌اهمیت نیست - healthCheck در liara.json دقیقاً همین مسیر را
+             صدا می‌زند و بدون آن هر دیپلوی ناسالم علامت می‌خورد. -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-actuator</artifactId>
+        </dependency>
+
         <!-- پشتیبانی از ActuatorObservability ماژول‌ها (اختیاری ولی توصیه‌شده) -->
         <dependency>
             <groupId>org.springframework.modulith</groupId>

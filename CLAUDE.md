@@ -127,6 +127,17 @@ too narrow.
   project is **one Maven artifact**, not a multi-module reactor — Spring Modulith
   detects module boundaries by package, and a multi-module Maven split would break
   illegal-dependency detection and the Event Publication Registry.
+  **Target platform is Liara** (Iranian PaaS), as a Docker app — `Dockerfile` +
+  `liara.json` at the repo root, full runbook in [`DEPLOYMENT.md`](DEPLOYMENT.md)
+  (added 2026-07-29). Production runs under the **`prod` profile**, baked into
+  the image rather than left to a dashboard env var: it is what suppresses the
+  demo seed data and makes the two JWT signing secrets + `APP_BASE_URL`
+  mandatory (the app refuses to start without them, deliberately — booting with
+  the committed dev key is a silent failure). `application-prod.yml` holds every
+  production override; `application.yml`'s dev defaults are unchanged.
+  **One instance only**: web auth is in-memory `HttpSession`, so horizontal
+  scaling needs sticky sessions or `spring-session-jdbc` — neither is built, and
+  it is a real decision, not an implementation detail (see `DEPLOYMENT.md`).
 - **Architecture documentation:** generated, never hand-drawn —
   `ModularityTests.writeDocumentationSnippets()` (Spring Modulith `Documenter`)
   writes C4/PlantUML diagrams + per-module AsciiDoc canvases to
@@ -2275,11 +2286,25 @@ unchanged, only its location.
 4. **Multi-DataSource.** Single shared datasource. Per-module DataSource routing is
    a distinct, not-yet-started phase. Each module's tables live in their own Postgres
    *schema* already (`iam`, `school`, `academic`, `finance`) but all through one
-   connection — schemas must currently be created manually
-   (`CREATE SCHEMA IF NOT EXISTS <name>;`) since Hibernate's `ddl-auto` creates
-   tables, not schemas.
-5. **Flyway/Liquibase.** All seed runners + `ddl-auto: update` are dev-only
-   stand-ins.
+   connection. Hibernate's `ddl-auto` still creates tables and not schemas, but
+   the schemas themselves are **no longer a manual step** (changed 2026-07-29,
+   with the Liara deployment — see `DEPLOYMENT.md`): `src/main/resources/schema.sql`
+   runs all eight `CREATE SCHEMA IF NOT EXISTS` statements at DataSource
+   initialization, i.e. before the `EntityManagerFactory` is built, via
+   `spring.sql.init.mode: always`. It needs a database user with `CREATE`
+   privilege; the manual SQL remains the documented fallback if that isn't
+   available.
+5. **Flyway/Liquibase.** `ddl-auto: update` is still the only schema mechanism,
+   and as of 2026-07-29 it is what production runs on too — so this is no longer
+   only a dev-time shortcut: a rename or type change won't be applied to a
+   deployed database (Hibernate only adds, never drops or narrows), and the
+   entities can drift out of step with the schema silently. Take a backup before
+   deploying any release that changes an entity. The seed runners are split by
+   kind rather than being wholesale dev-only: `IamSeedDataRunner`'s
+   **catalog half** (Module/Role/Permission/RolePermission) is required in
+   production — nothing works without those rows — while its demo half and all
+   of `SchoolSeedDataRunner` are skipped under the `prod` profile. Until Flyway
+   exists, that catalog seeding is the only thing creating those rows anywhere.
 6. **Broader admin/teacher frontend — management UI.** The login page and a
    read-only dashboard now exist (see Done). What's still missing is every
    *mutating* UI: membership/class/student/finance management pages. Angular was
