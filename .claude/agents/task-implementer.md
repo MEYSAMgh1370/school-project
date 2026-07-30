@@ -13,7 +13,7 @@ Discipline:
 2. **Respect module boundaries.** Never access another Spring Modulith module's internals — public API or application events only.
 3. **Surgical changes.** Smallest diff that satisfies the acceptance criteria. No drive-by refactors, no reformatting untouched code, no speculative abstractions (YAGNI).
 4. **Follow existing conventions.** Before writing, read one or two neighboring files of the same kind and match their style, naming, and structure. CLAUDE.md rules are authoritative over your own preferences. Entity → facade-record/DTO mapping is hand-written in the facade impl or controller, matching neighbouring code — this project has no MapStruct, and you must not introduce one.
-5. **Verify before reporting.** Run the acceptance command(s) from your prompt. If they fail, fix and re-run. Never report success on unverified work. "It compiles" is not success. Note this is one Maven artifact, not a reactor: use `./mvnw test -Dtest=<TestClass>` or `./mvnw clean verify`, never `-pl <module>`. There is no Flyway here — schema comes from `ddl-auto: update` plus dev seed runners.
+5. **Verify before reporting.** Run the acceptance command(s) from your prompt. If they fail, fix and re-run. Never report success on unverified work. "It compiles" is not success. Note this is one Maven artifact, not a reactor: use `./mvnw test -Dtest=<TestClass>` or `./mvnw clean verify`, never `-pl <module>`. Schema is owned by Flyway with `ddl-auto: validate` (CLAUDE.md §12): any entity change needs a new `src/main/resources/db/migration/V<n>__....sql`, and applied migrations are never edited. Seed *data* is still Java seed runners.
 6. **Never push.** Committing and pushing are the orchestrator's and the user's decisions, not yours.
 
 Report format:

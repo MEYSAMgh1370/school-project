@@ -77,17 +77,20 @@ file in the image:
 | `SPRING_MAIL_HOST` / `SPRING_MAIL_PORT` / `SPRING_MAIL_USERNAME` / `SPRING_MAIL_PASSWORD` | real SMTP; without it invite email just fails soft (`emailSent=false`) |
 | `ROSHDEANDISHE_BALE_BOTTOKEN`, `ROSHDEANDISHE_BALE_WEBHOOKSECRET`, `ROSHDEANDISHE_SMS_APIKEY` | only if those integrations are actually in use |
 
-The per-module schemas (`school`, `academic`, …) no longer need to be created
-by hand on a server: `hibernate.hbm2ddl.create_namespaces` is enabled in
-`application.yml`, so Hibernate creates them alongside the tables. The manual
-`CREATE SCHEMA` list above is still valid, and still the fallback if a managed
-Postgres refuses schema creation to the app's user.
+The per-module schemas (`school`, `academic`, …) do not need to be created by
+hand: Flyway creates all eight from `spring.flyway.schemas` on first start, then
+applies `src/main/resources/db/migration/`. The app's DB user needs `CREATE`
+on the database; the manual `CREATE SCHEMA` list above is the fallback if a
+managed Postgres refuses that.
 
-Still unresolved for a real production deployment (see `CLAUDE.md` §7 item 5):
-schema management is `ddl-auto: update` + dev seed runners, not Flyway, and
-`IamSeedDataRunner`/`SchoolSeedDataRunner` will seed demo data — including the
+Pointing this release at a database built by an earlier version (which used
+`ddl-auto: update`) is safe: Flyway baselines it at v1 and skips the baseline
+migration, leaving existing rows alone.
+
+Still unresolved for a real production deployment: `IamSeedDataRunner` /
+`SchoolSeedDataRunner` will seed demo data — including the
 `admin@roshdeandishe.test` / `password` login — on any database they start
-against.
+against. Schema management itself is no longer a gap (see `CLAUDE.md` §12).
 
 ## Testing
 

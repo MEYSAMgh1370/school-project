@@ -1260,6 +1260,58 @@ elsewhere in CLAUDE.md remains accurate.
     failures; `ModularityTests` green (3/3) — run directly in this session
     (Testcontainers available).
 
+- **Flyway (2026-07-30)** — resolves CLAUDE.md §7 item 5, open since the
+  project's first commit. `ddl-auto` moves from `update` to **`validate`**;
+  the schema is now owned by `src/main/resources/db/migration/`. Working
+  rules are documented as CLAUDE.md **§12**.
+  - `V1__baseline_schema.sql` — all 41 entity tables across the eight module
+    schemas plus Spring Modulith's `iam.event_publication`. **Generated from
+    the entity model**, not hand-written: a throwaway test booted the real
+    persistence unit with Hibernate's `schema-generation` script action, so
+    the baseline is provably identical to what `ddl-auto: update` had been
+    producing rather than a re-typed approximation. Two edits to the
+    generated output, both cosmetic: the duplicated `create schema` lines
+    were dropped (Flyway creates schemas itself), and `invoices.amount_paid`'s
+    doubled `not null` — `InvoiceEntity` supplies it via both
+    `columnDefinition` and `nullable=false` — was written once.
+  - **No foreign keys**, deliberately. Cross-module references here are
+    opaque `Long`s validated at the Facade (CLAUDE.md §4); the baseline
+    mirrors the existing schema instead of redesigning it. Adding FKs stays
+    its own decision.
+  - **Schema creation stopped being a manual step.** Flyway creates all eight
+    schemas from `spring.flyway.schemas`, replacing both the `CREATE SCHEMA`
+    runbook in `application.yml`'s comments and
+    `hibernate.hbm2ddl.create_namespaces`. `src/test/resources/init-schemas.sql`
+    and `TestcontainersConfiguration`'s `withInitScript` were deleted with it —
+    every test run now starts from a genuinely empty database and re-verifies
+    the fresh-deployment path.
+  - **Existing databases** (dev, and the live Liara deployment) are handled by
+    `baseline-on-migrate: true` + `baseline-version: 1`: Flyway finds tables
+    but no history table, records a baseline at v1, skips `V1`, resumes at
+    `V2`. Verified directly rather than assumed — a Postgres container was
+    loaded with the 42-table legacy layout plus a sentinel row, then the app
+    booted against it: baselined at v1, `V1` skipped, sentinel row intact,
+    catalog seeding unaffected, startup clean.
+  - **Three dependencies, not two.** `flyway-core` and
+    `flyway-database-postgresql` (Flyway 10+ splits per-database support out),
+    plus `org.springframework.boot:spring-boot-flyway` — Spring Boot 4 moved
+    autoconfiguration into per-technology artifacts. Without the third, Flyway
+    is on the classpath and silently never runs; it surfaced only as Hibernate
+    `validate` failing with `missing table [academic.classes]`, which is why
+    it's called out in §12.
+  - **Deliberately not done:** moving the Module/Role/Permission catalog out of
+    `IamSeedDataRunner` into a data migration. Put to the user as an explicit
+    choice and declined — every integration test depends on that seeding, and
+    schema-only is the smaller correct step. §3's "replace w/ Flyway pre-prod"
+    note on `IamSeedDataRunner` therefore stays open, and is now the only
+    surviving part of §7 item 5.
+  - Test coverage: no new test class — the migration is exercised by the whole
+    suite, since every `*FlowIntegrationTest` now boots through Flyway against
+    an empty container. Full suite green: **168 tests, 0 failures, 0 errors**,
+    `ModularityTests` 3/3, run in this session with Docker available. The
+    legacy-database upgrade path was verified manually as described above,
+    since Testcontainers only ever produces fresh databases.
+
 
 ---
 
