@@ -13,6 +13,9 @@ drift out of sync with the real source of truth again.
   conventions for this repo.
 - [`UX_ROADMAP.md`](UX_ROADMAP.md) — frontend page inventory, build order, and
   shared UI conventions for the management UI.
+- [`FRONTEND.md`](FRONTEND.md) — onboarding guide for a frontend developer: the
+  stack, how a page is built end to end, the rules every page follows, and the
+  full REST surface the UI calls.
 
 ## Stack
 
