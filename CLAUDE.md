@@ -301,8 +301,12 @@ com.example.roshdeandishe
 │   │   └── IamSeedDataRunner          (dev-only seed, incl. one demo admin user
 │   │                                    with a working password + their
 │   │                                    SCHOOL_ADMIN membership and the demo
-│   │                                    school's ACADEMIC+FINANCE entitlements;
-│   │                                    replace w/ Flyway pre-prod)
+│   │                                    school's ACADEMIC+FINANCE entitlements.
+│   │                                    Flyway now owns the schema (§12) but NOT
+│   │                                    this seed data — moving the catalog rows
+│   │                                    into a data migration was considered and
+│   │                                    declined 2026-07-30; still open, see §7
+│   │                                    item 5)
 │   └── shared/
 │       ├── RequiresModule.java + ModuleAccessAspect.java     (@Order(10))
 │       ├── RequiresPermission.java + PermissionAccessAspect.java (@Order(11))
@@ -2325,12 +2329,21 @@ unchanged, only its location.
    and per-class/per-grade pricing — each waits for a concrete request.
 4. **Multi-DataSource.** Single shared datasource. Per-module DataSource routing is
    a distinct, not-yet-started phase. Each module's tables live in their own Postgres
-   *schema* already (`iam`, `school`, `academic`, `finance`) but all through one
-   connection — schemas must currently be created manually
-   (`CREATE SCHEMA IF NOT EXISTS <name>;`) since Hibernate's `ddl-auto` creates
-   tables, not schemas.
-5. **Flyway/Liquibase.** All seed runners + `ddl-auto: update` are dev-only
-   stand-ins.
+   *schema* already (`iam`, `school`, `academic`, `finance`, `bale`, `curriculum`,
+   `studyplan`, `exam`) but all through one connection. Schema *creation* is no
+   longer a manual step — Flyway creates all eight from `spring.flyway.schemas`
+   (see item 5).
+5. ~~**Flyway/Liquibase.**~~ **Resolved 2026-07-30 — Flyway is in.**
+   `ddl-auto` is now `validate`, not `update`: the schema is owned by
+   `src/main/resources/db/migration/`, and **every entity change from here on
+   needs its own `V<n>__....sql` file** or the app fails to start. See §12 for
+   the working rules. What deliberately did *not* change: the seed runners.
+   `IamSeedDataRunner` still seeds the Module/Role/Permission catalog and
+   `SchoolSeedDataRunner` still seeds the demo school, both as idempotent Java
+   — moving catalog rows into a data migration was considered and explicitly
+   declined (every integration test depends on that seeding), so `IamSeedDataRunner`'s
+   own "replace w/ Flyway pre-prod" note in §3 is **still open**, now the only
+   remaining part of this item.
 6. **Broader admin/teacher frontend — management UI.** The login page and a
    read-only dashboard now exist (see Done). What's still missing is every
    *mutating* UI: membership/class/student/finance management pages. Angular was
@@ -2608,6 +2621,47 @@ The full phase-by-phase build history (Phases A through O) has moved to
     the free tier does *not* include the paid modules.
 
 ---
+
+## 12. Database Migrations (Flyway)
+
+Added 2026-07-30, resolving §7 item 5. **Flyway owns the schema; Hibernate only
+validates it.**
+
+- Migrations live in `src/main/resources/db/migration/`, named
+  `V<n>__snake_case_description.sql`. `V1__baseline_schema.sql` is the baseline —
+  all 41 entity tables across the eight module schemas, plus Spring Modulith's
+  `iam.event_publication`. It was **generated from the entity model**
+  (Hibernate schema-generation), not hand-written, so it is exactly what
+  `ddl-auto: update` had been producing.
+- `spring.jpa.hibernate.ddl-auto` is **`validate`**. Adding a field to an entity
+  without a matching migration now fails startup with
+  `SchemaManagementException: missing column ...` instead of silently altering
+  the table. This is the point of the change — do not "fix" such a failure by
+  setting `ddl-auto` back to `update`.
+- **Never edit an already-applied migration**, including `V1`. Flyway checksums
+  them; a changed file makes every existing database refuse to start. Add
+  `V<n+1>__...` instead.
+- **Schema creation is no longer manual.** Flyway creates all eight schemas from
+  `spring.flyway.schemas` in `application.yml`; a new module's schema is added to
+  that list, *not* to a `CREATE SCHEMA` runbook step and no longer to a test init
+  script (`src/test/resources/init-schemas.sql` was deleted — Testcontainers now
+  starts an empty database and the migrations do the rest, so every test run
+  re-verifies the fresh-deployment path).
+- `baseline-on-migrate: true` + `baseline-version: 1` exist for databases built by
+  the old `ddl-auto: update` (current dev databases and the Liara deployment):
+  Flyway finds tables but no history table, writes a baseline row at v1, skips
+  `V1`, and carries on from `V2`. Verified end-to-end against a simulated legacy
+  database — existing rows untouched. On an empty database this setting is inert
+  and `V1` runs normally.
+- **No foreign keys** anywhere in `V1`, deliberately: cross-module references in
+  this codebase are opaque `Long`s validated at the Facade (§4), and the baseline
+  mirrors the existing schema rather than redesigning it. Adding FKs would be its
+  own explicit decision.
+- Both `flyway-core` **and** `flyway-database-postgresql` **and**
+  `org.springframework.boot:spring-boot-flyway` are required. Spring Boot 4 splits
+  autoconfiguration into per-technology artifacts, so without the third one Flyway
+  sits on the classpath and never runs — a silent no-op that surfaces only as a
+  confusing Hibernate "missing table" error.
 
 ## Workflow
 
