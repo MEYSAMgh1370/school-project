@@ -40,6 +40,13 @@ spring:
       hibernate:
         format_sql: true
         default_schema: iam
+        # ddl-auto=update به‌تنهایی فقط جدول می‌سازد نه schema (کامنت بالای
+        # datasource). روی سرور - جایی که دسترسیِ psql برای اجرای دستیِ
+        # CREATE SCHEMA بدیهی نیست - همین یک تنظیم باعث می‌شود Hibernate
+        # خودش schemaهای school/academic/finance/... را هم بسازد. در dev
+        # بی‌اثر است چون آن schemaها از قبل دستی ساخته شده‌اند.
+        hbm2ddl:
+          create_namespaces: true
 
   # ارسال ایمیل دعوت/فعال‌سازی (iam/internal/InviteEmailSender).
   # پیش‌فرض dev: یک SMTP محلی مثل Mailpit/MailHog روی پورت 1025

@@ -1,0 +1,9 @@
+target/
+android/
+.git/
+.github/
+.claude/
+.idea/
+.vscode/
+*.md
+dev-loop-backup.zip

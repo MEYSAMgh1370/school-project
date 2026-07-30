@@ -56,6 +56,39 @@ separate build artifacts.
 
 4. **Swagger UI**: `http://localhost:8080/swagger-ui.html`.
 
+## Deploying (Liara / any Docker host)
+
+The repo root carries a multi-stage [`Dockerfile`](Dockerfile) (Maven +
+Temurin 21 to build, `eclipse-temurin:21-jre` to run) and a minimal
+[`liara.json`](liara.json) (`platform: docker`, `port: 8080`). Tests are
+skipped in the image build on purpose — they need Testcontainers, i.e. a
+Docker daemon, which a PaaS build environment doesn't provide.
+
+Everything environment-specific is an env var, set in the Liara panel, not a
+file in the image:
+
+| Env var | Why |
+|---|---|
+| `SPRING_DATASOURCE_URL` | `jdbc:postgresql://<liara-db-host>:<port>/<db>` |
+| `SPRING_DATASOURCE_USERNAME` / `SPRING_DATASOURCE_PASSWORD` | DB credentials |
+| `ROSHDEANDISHE_JWT_SECRET` | mobile bearer JWT signing key — the value in `application.yml` is dev-only |
+| `ROSHDEANDISHE_EXAM_TOKENSECRET` | exam-take token signing key — same |
+| `ROSHDEANDISHE_MAIL_ACTIVATIONBASEURL` | public URL, so invite emails link somewhere real |
+| `SPRING_MAIL_HOST` / `SPRING_MAIL_PORT` / `SPRING_MAIL_USERNAME` / `SPRING_MAIL_PASSWORD` | real SMTP; without it invite email just fails soft (`emailSent=false`) |
+| `ROSHDEANDISHE_BALE_BOTTOKEN`, `ROSHDEANDISHE_BALE_WEBHOOKSECRET`, `ROSHDEANDISHE_SMS_APIKEY` | only if those integrations are actually in use |
+
+The per-module schemas (`school`, `academic`, …) no longer need to be created
+by hand on a server: `hibernate.hbm2ddl.create_namespaces` is enabled in
+`application.yml`, so Hibernate creates them alongside the tables. The manual
+`CREATE SCHEMA` list above is still valid, and still the fallback if a managed
+Postgres refuses schema creation to the app's user.
+
+Still unresolved for a real production deployment (see `CLAUDE.md` §7 item 5):
+schema management is `ddl-auto: update` + dev seed runners, not Flyway, and
+`IamSeedDataRunner`/`SchoolSeedDataRunner` will seed demo data — including the
+`admin@roshdeandishe.test` / `password` login — on any database they start
+against.
+
 ## Testing
 
 ```bash
