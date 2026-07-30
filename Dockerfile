@@ -17,11 +17,23 @@ RUN mvn -B -ntp -DskipTests package
 FROM eclipse-temurin:21-jre
 WORKDIR /app
 
+# curl فقط برای اینکه دستور healthCheck در liara.json چیزی برای اجرا داشته
+# باشد؛ ایمیج پایه‌ی JRE آن را ندارد.
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends curl \
+    && rm -rf /var/lib/apt/lists/*
+
 # دیتای این سامانه تقویم شمسی/زمان ایران است؛ کانتینر پیش‌فرض UTC است.
 ENV TZ=Asia/Tehran
 # JVM سقف heap را از cgroup کانتینر می‌خواند - بدون این، روی پلن‌های کم‌حافظه‌ی
 # لیارا یا زیادی heap برمی‌دارد یا زیادی محافظه‌کار می‌شود.
 ENV JAVA_OPTS="-XX:MaxRAMPercentage=75"
+# پروفایل production عمداً داخل خود image باک شده و به یک متغیر در پنل واگذار
+# نشده: فراموش کردنش یک اشتباه کوچک نیست. بدون آن، seed داده‌ی نمایشی اجرا
+# می‌شود (یک SCHOOL_ADMIN عمومی با رمز معلوم) و کلیدهای امضای dev که در گیت
+# هستند به قوت خود باقی می‌مانند. فقط وقتی این image را عامدانه غیرproduction
+# اجرا می‌کنید، با -e SPRING_PROFILES_ACTIVE=... بازنویسی‌اش کنید.
+ENV SPRING_PROFILES_ACTIVE=prod
 
 COPY --from=build /workspace/target/roshdeandishe-*.jar /app/app.jar
 

@@ -4,6 +4,7 @@ import com.example.roshdeandishe.school.SchoolFacade.SchoolLevel;
 import com.example.roshdeandishe.school.SchoolFacade.SchoolStatus;
 import org.springframework.boot.ApplicationArguments;
 import org.springframework.boot.ApplicationRunner;
+import org.springframework.context.annotation.Profile;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -12,7 +13,13 @@ import org.springframework.transaction.annotation.Transactional;
  * اپلیکیشن، یک schoolId واقعی برای تست دستی (Postman/curl با هدر
  * X-School-ID) در دسترس باشد. عمداً در ماژول school است، نه iam - چون
  * این ماژول مالک SchoolEntity است؛ iam هیچ وابستگی‌ای به این Seeder ندارد.
+ * <p>
+ * {@code @Profile("!prod")} به همان دلیل و با همان شکل منفیِ
+ * {@code IamSeedDataRunner} - این دو با هم معنا دارند: عضویت
+ * SCHOOL_ADMIN که آن یکی seed می‌کند به مدرسه‌ی نمونه‌ی همین‌جا
+ * (id=1) اشاره دارد، پس نباید یکی بدون دیگری در production فعال بماند.
  */
+@Profile("!prod")
 @Component
 class SchoolSeedDataRunner implements ApplicationRunner {
 

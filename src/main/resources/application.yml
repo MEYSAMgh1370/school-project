@@ -12,9 +12,12 @@ spring:
   # spring.flyway پایین)، خودِ Flyway هر هشت schema را از روی لیست
   # spring.flyway.schemas می‌سازد. کافی است دیتابیس خالی وجود داشته باشد.
   datasource:
-    url: jdbc:postgresql://localhost:5432/roshdeandishe_iam
-    username: postgres
-    password: postgres
+    # مقادیر پیش‌فرض، dev محلی هستند و دست‌نخورده باقی مانده‌اند؛ در استقرار
+    # واقعی از طریق متغیر محیطی override می‌شوند (application-prod.yml این سه
+    # را *بدون* پیش‌فرض و در نتیجه اجباری می‌کند).
+    url: ${DATABASE_URL:jdbc:postgresql://localhost:5432/roshdeandishe_iam}
+    username: ${DATABASE_USERNAME:postgres}
+    password: ${DATABASE_PASSWORD:postgres}
 
   # Flyway مالکِ schema است (CLAUDE.md §12؛ §7 مورد ۵ با همین تغییر بسته شد).
   # مهاجرت‌ها در src/main/resources/db/migration، هر تغییر Entity نیازمند یک
@@ -51,8 +54,8 @@ spring:
   # اگر SMTP در دسترس نباشد، صدور توکن شکست نمی‌خورد - فقط emailSent=false
   # برمی‌گردد و ادمین مثل قبل لینک را دستی تحویل می‌دهد.
   mail:
-    host: localhost
-    port: 1025
+    host: ${MAIL_HOST:localhost}
+    port: ${MAIL_PORT:1025}
     properties:
       mail.smtp.connectiontimeout: 5000
       mail.smtp.timeout: 5000
@@ -72,6 +75,11 @@ spring:
       # ثبت رویدادهای منتشرشده در دیتابیس برای قابلیت Retry/Audit
       jdbc-schema-initialization:
         enabled: true
+
+server:
+  # لیارا پورت کانتینر را از liara.json می‌خواند (8080)؛ PORT فقط برای
+  # سازگاری با میزبان‌هایی است که پورت را از محیط تزریق می‌کنند.
+  port: ${PORT:8080}
 
 management:
   endpoints:
@@ -104,8 +112,9 @@ roshdeandishe:
     # آدرس فرستنده‌ی ایمیل‌های سیستم
     from: no-reply@roshdeandishe.test
     # پایه‌ی لینک فعال‌سازی که داخل ایمیل دعوت قرار می‌گیرد
-    # (به /activate?token=... ختم می‌شود)
-    activation-base-url: http://localhost:8080
+    # (به /activate?token=... ختم می‌شود). در production اجباری است -
+    # رجوع به application-prod.yml.
+    activation-base-url: ${APP_BASE_URL:http://localhost:8080}
   bale:
     # Bot API بله - عمداً کلون Telegram Bot API (همان شکل .../bot<token>/METHOD)
     api-base-url: https://tapi.bale.ai

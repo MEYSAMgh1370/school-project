@@ -1,0 +1,114 @@
+# پروفایل production (در Dockerfile با SPRING_PROFILES_ACTIVE=prod فعال است).
+#
+# قاعده‌ی این فایل: هر چیزی که *باید* در استقرار واقعی ست شود، اینجا بدون
+# مقدار پیش‌فرض نوشته می‌شود - یعنی اگر متغیر محیطی‌اش ست نشده باشد،
+# اپلیکیشن همان لحظه‌ی بالا آمدن با خطای صریح می‌افتد. این عمدی است: یک
+# اپلیکیشنِ بالا آمده با کلید امضای dev (که در گیت commit شده) یا با لینک
+# فعال‌سازیِ localhost، بدترین حالت است - چون بی‌سروصدا کار می‌کند و کسی
+# متوجه نمی‌شود. فهرست کامل متغیرها در DEPLOYMENT.md.
+
+spring:
+  datasource:
+    url: ${DATABASE_URL}
+    username: ${DATABASE_USERNAME}
+    password: ${DATABASE_PASSWORD}
+    hikari:
+      # سقف connection pool. پلن‌های کوچکِ Postgres سقف اتصال پایینی دارند و
+      # پیش‌فرض هیکاری (۱۰) می‌تواند آن را اشباع کند.
+      maximum-pool-size: ${DATABASE_POOL_SIZE:10}
+
+  jpa:
+    properties:
+      hibernate:
+        # لاگ SQLهای فرمت‌شده فقط برای dev مفید است.
+        format_sql: false
+
+  # برخلاف بقیه‌ی این فایل، SMTP عمداً required نیست: ارسال ایمیل دعوت در این
+  # پروژه از ابتدا best-effort است (شکست SMTP هرگز صدور توکن را fail نمی‌کند،
+  # فقط emailSent=false برمی‌گردد و ادمین لینک را دستی تحویل می‌دهد - رجوع به
+  # CLAUDE.md §4، InviteToken). پس نبودن SMTP نباید مانع بالا آمدن اپلیکیشن
+  # شود؛ فقط این یک قابلیت را غیرفعال می‌کند.
+  mail:
+    host: ${MAIL_HOST:localhost}
+    port: ${MAIL_PORT:587}
+    username: ${MAIL_USERNAME:}
+    password: ${MAIL_PASSWORD:}
+    properties:
+      mail.smtp.auth: ${MAIL_SMTP_AUTH:true}
+      mail.smtp.starttls.enable: ${MAIL_SMTP_STARTTLS:true}
+      mail.smtp.connectiontimeout: 5000
+      mail.smtp.timeout: 5000
+      mail.smtp.writetimeout: 5000
+
+server:
+  # پشت reverse proxy لیارا: بدون این، Spring آدرس‌ها را http می‌بیند و
+  # ری‌دایرکت‌ها/کوکی‌ها اشتباه (http به‌جای https) ساخته می‌شوند. کوکی
+  # XSRF-TOKEN هم پرچم secure خود را از همین تشخیص می‌گیرد.
+  forward-headers-strategy: framework
+  servlet:
+    session:
+      cookie:
+        secure: ${SESSION_COOKIE_SECURE:true}
+        http-only: true
+        same-site: lax
+
+management:
+  endpoints:
+    web:
+      exposure:
+        # فقط health (که healthCheck لیارا به آن نیاز دارد). در dev علاوه بر
+        # آن info و modulith هم باز بودند؛ در production ساختار ماژول‌ها را
+        # عمومی نمی‌کنیم - مسیر /actuator/** در SecurityConfig یک
+        # permitAll است.
+        include: health
+  endpoint:
+    health:
+      show-details: never
+  health:
+    # اندیکاتور mail عمداً خاموش است. Boot به‌طور خودکار به SMTP وصل می‌شود و
+    # اگر نتواند، *کل* /actuator/health را DOWN و 503 می‌کند - و همان مسیر
+    # چیزی است که healthCheck لیارا صدا می‌زند. یعنی نبودِ SMTP (که در این
+    # پروژه یک قابلیت اختیاری و best-effort است، نه یک وابستگی حیاتی) باعث
+    # می‌شد هر دیپلوی ناسالم علامت بخورد و کانتینر ری‌استارت شود. سلامت واقعی
+    # این اپلیکیشن یعنی «دیتابیس در دسترس است»، که اندیکاتور db آن را پوشش
+    # می‌دهد و روشن می‌ماند.
+    mail:
+      enabled: ${HEALTH_CHECK_MAIL:false}
+
+# مستندات API در production پیش‌فرض خاموش است: /swagger-ui.html و
+# /v3/api-docs در SecurityConfig هر دو permitAll هستند، یعنی هر کسی روی
+# اینترنت کل سطح API را می‌بیند. اگر لازمش دارید، SWAGGER_ENABLED=true.
+springdoc:
+  api-docs:
+    enabled: ${SWAGGER_ENABLED:false}
+  swagger-ui:
+    enabled: ${SWAGGER_ENABLED:false}
+
+logging:
+  level:
+    # در dev روی DEBUG است؛ در production نویز خالص است.
+    org.springframework.modulith: INFO
+
+roshdeandishe:
+  mail:
+    from: ${MAIL_FROM:no-reply@roshdeandishe.ir}
+    # پایه‌ی لینک فعال‌سازی داخل ایمیل دعوت - این یکی *required* است، حتی
+    # وقتی SMTP پیکربندی نشده: در آن حالت هم ادمین همین لینک را از پاسخ JSON
+    # برمی‌دارد و دستی تحویل می‌دهد، و یک لینک localhost:8080 دقیقاً همان
+    # «بی‌سروصدا خراب» است که این فایل جلویش را می‌گیرد.
+    activation-base-url: ${APP_BASE_URL}
+  jwt:
+    # کلید HMAC-SHA256 (حداقل ۲۵۶ بیت). مقدار dev در application.yml در گیت
+    # است، پس در production حتماً باید یک کلید تازه باشد.
+    secret: ${JWT_SECRET}
+  exam:
+    # کلید مستقلِ توکن جلسه‌ی آزمون - عمداً همان کلید JWT موبایل نیست.
+    token-secret: ${EXAM_TOKEN_SECRET}
+  bale:
+    # این دو خالی می‌مانند تا وقتی یک ربات واقعی در بله ثبت شود: خالی بودن
+    # bot-token یعنی BaleClient فقط لاگ می‌کند، و خالی بودن webhook-secret
+    # یعنی وب‌هوک همیشه 404 می‌دهد (fail closed) - رجوع به application.yml.
+    bot-token: ${BALE_BOT_TOKEN:}
+    webhook-secret: ${BALE_WEBHOOK_SECRET:}
+  sms:
+    api-key: ${SMS_API_KEY:}

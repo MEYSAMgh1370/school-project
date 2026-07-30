@@ -127,6 +127,17 @@ too narrow.
   project is **one Maven artifact**, not a multi-module reactor — Spring Modulith
   detects module boundaries by package, and a multi-module Maven split would break
   illegal-dependency detection and the Event Publication Registry.
+  **Target platform is Liara** (Iranian PaaS), as a Docker app — `Dockerfile` +
+  `liara.json` at the repo root, full runbook in [`DEPLOYMENT.md`](DEPLOYMENT.md)
+  (added 2026-07-29). Production runs under the **`prod` profile**, baked into
+  the image rather than left to a dashboard env var: it is what suppresses the
+  demo seed data and makes the two JWT signing secrets + `APP_BASE_URL`
+  mandatory (the app refuses to start without them, deliberately — booting with
+  the committed dev key is a silent failure). `application-prod.yml` holds every
+  production override; `application.yml`'s dev defaults are unchanged.
+  **One instance only**: web auth is in-memory `HttpSession`, so horizontal
+  scaling needs sticky sessions or `spring-session-jdbc` — neither is built, and
+  it is a real decision, not an implementation detail (see `DEPLOYMENT.md`).
 - **Architecture documentation:** generated, never hand-drawn —
   `ModularityTests.writeDocumentationSnippets()` (Spring Modulith `Documenter`)
   writes C4/PlantUML diagrams + per-module AsciiDoc canvases to
@@ -2337,13 +2348,19 @@ unchanged, only its location.
    `ddl-auto` is now `validate`, not `update`: the schema is owned by
    `src/main/resources/db/migration/`, and **every entity change from here on
    needs its own `V<n>__....sql` file** or the app fails to start. See §12 for
-   the working rules. What deliberately did *not* change: the seed runners.
-   `IamSeedDataRunner` still seeds the Module/Role/Permission catalog and
-   `SchoolSeedDataRunner` still seeds the demo school, both as idempotent Java
-   — moving catalog rows into a data migration was considered and explicitly
-   declined (every integration test depends on that seeding), so `IamSeedDataRunner`'s
+   the working rules. What deliberately did *not* change: catalog seeding.
+   `IamSeedDataRunner` still seeds the Module/Role/Permission catalog as
+   idempotent Java — moving those rows into a data migration was considered and
+   explicitly declined (every integration test depends on that seeding), so its
    own "replace w/ Flyway pre-prod" note in §3 is **still open**, now the only
-   remaining part of this item.
+   remaining part of this item. What *did* change, in the same pass that added
+   the `prod` profile (2026-07-30, see `DEPLOYMENT.md`): the **demo** half is
+   no longer unconditional. `IamSeedDataRunner` now splits catalog seeding
+   (always runs — nothing works without those rows, and until Flyway owns them
+   this is the only thing creating them anywhere) from demo seeding (demo admin,
+   demo membership, demo entitlements), and `SchoolSeedDataRunner` is
+   `@Profile("!prod")` outright — otherwise a production deploy boots with a
+   public `SCHOOL_ADMIN` whose password is `password`.
 6. **Broader admin/teacher frontend — management UI.** The login page and a
    read-only dashboard now exist (see Done). What's still missing is every
    *mutating* UI: membership/class/student/finance management pages. Angular was

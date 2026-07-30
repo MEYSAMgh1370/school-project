@@ -1,9 +1,24 @@
+# Build output — the image builds its own.
 target/
 android/
+
+# VCS + CI
 .git/
 .github/
+.gitignore
+
+# Agent / editor tooling
 .claude/
 .idea/
 .vscode/
-*.md
+*.iml
 dev-loop-backup.zip
+
+# Docs: not needed in the build context, and excluding them keeps a docs-only
+# edit from invalidating the Docker layer cache.
+*.md
+
+# Local env files must never reach the build context — secrets are set in the
+# Liara dashboard, not baked into the image.
+.env
+.env.*

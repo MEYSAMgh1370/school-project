@@ -24,21 +24,18 @@ separate build artifacts.
 
 ## Running locally
 
-1. **Postgres**, with the per-module schemas created up front (Hibernate's
-   `ddl-auto: update` creates tables, not schemas):
+1. **Postgres** — just the database; the per-module schemas are created for you:
    ```sql
    CREATE DATABASE roshdeandishe_iam;
-   \c roshdeandishe_iam
-   CREATE SCHEMA IF NOT EXISTS school;
-   CREATE SCHEMA IF NOT EXISTS academic;
-   CREATE SCHEMA IF NOT EXISTS finance;
-   CREATE SCHEMA IF NOT EXISTS bale;
-   CREATE SCHEMA IF NOT EXISTS curriculum;
-   CREATE SCHEMA IF NOT EXISTS studyplan;
-   CREATE SCHEMA IF NOT EXISTS exam;
    ```
-   Connection defaults live in `src/main/resources/application.yml`
-   (`localhost:5432/roshdeandishe_iam`, `postgres`/`postgres`).
+   Flyway creates the eight per-module schemas (`iam`, `school`, `academic`,
+   `finance`, `bale`, `curriculum`, `studyplan`, `exam`) from
+   `spring.flyway.schemas` on first start, then applies
+   `src/main/resources/db/migration/` — so an empty database is enough, and
+   `CREATE SCHEMA` by hand is no longer a step. Connection defaults live in
+   `src/main/resources/application.yml` (`localhost:5432/roshdeandishe_iam`,
+   `postgres`/`postgres`) and each is overridable via
+   `DATABASE_URL`/`DATABASE_USERNAME`/`DATABASE_PASSWORD`.
 
 2. **(Optional) local SMTP** for invite/activation emails — dev default is
    `localhost:1025` (e.g. [Mailpit](https://github.com/axllent/mailpit):
@@ -52,9 +49,11 @@ separate build artifacts.
    ```
    The app starts on `http://localhost:8080`. `IamSeedDataRunner` and
    `SchoolSeedDataRunner` seed dev-only data on startup, including a demo
-   admin login: `admin@roshdeandishe.test` / `password`.
+   admin login: `admin@roshdeandishe.test` / `password`. That demo data is
+   skipped under the `prod` profile — see [`DEPLOYMENT.md`](DEPLOYMENT.md).
 
-4. **Swagger UI**: `http://localhost:8080/swagger-ui.html`.
+4. **Swagger UI**: `http://localhost:8080/swagger-ui.html` (off by default in
+   production).
 
 ## Deploying (Liara / any Docker host)
 
@@ -69,13 +68,18 @@ file in the image:
 
 | Env var | Why |
 |---|---|
-| `SPRING_DATASOURCE_URL` | `jdbc:postgresql://<liara-db-host>:<port>/<db>` |
-| `SPRING_DATASOURCE_USERNAME` / `SPRING_DATASOURCE_PASSWORD` | DB credentials |
-| `ROSHDEANDISHE_JWT_SECRET` | mobile bearer JWT signing key — the value in `application.yml` is dev-only |
-| `ROSHDEANDISHE_EXAM_TOKENSECRET` | exam-take token signing key — same |
-| `ROSHDEANDISHE_MAIL_ACTIVATIONBASEURL` | public URL, so invite emails link somewhere real |
-| `SPRING_MAIL_HOST` / `SPRING_MAIL_PORT` / `SPRING_MAIL_USERNAME` / `SPRING_MAIL_PASSWORD` | real SMTP; without it invite email just fails soft (`emailSent=false`) |
-| `ROSHDEANDISHE_BALE_BOTTOKEN`, `ROSHDEANDISHE_BALE_WEBHOOKSECRET`, `ROSHDEANDISHE_SMS_APIKEY` | only if those integrations are actually in use |
+| `DATABASE_URL` | `jdbc:postgresql://<liara-db-host>:<port>/<db>` |
+| `DATABASE_USERNAME` / `DATABASE_PASSWORD` | DB credentials |
+| `JWT_SECRET` | mobile bearer JWT signing key — the value in `application.yml` is dev-only |
+| `EXAM_TOKEN_SECRET` | exam-take token signing key — same |
+| `APP_BASE_URL` | public URL, so invite emails link somewhere real |
+| `MAIL_HOST` / `MAIL_PORT` / `MAIL_USERNAME` / `MAIL_PASSWORD` | real SMTP; without it invite email just fails soft (`emailSent=false`) |
+| `BALE_BOT_TOKEN`, `BALE_WEBHOOK_SECRET`, `SMS_API_KEY` | only if those integrations are actually in use |
+
+The first six are **required** under the `prod` profile — the app refuses to
+start without them rather than quietly running on the dev signing keys
+committed in `application.yml`. [`DEPLOYMENT.md`](DEPLOYMENT.md) is the full
+runbook, including every optional variable and its default.
 
 The per-module schemas (`school`, `academic`, …) do not need to be created by
 hand: Flyway creates all eight from `spring.flyway.schemas` on first start, then
@@ -87,10 +91,11 @@ Pointing this release at a database built by an earlier version (which used
 `ddl-auto: update`) is safe: Flyway baselines it at v1 and skips the baseline
 migration, leaving existing rows alone.
 
-Still unresolved for a real production deployment: `IamSeedDataRunner` /
-`SchoolSeedDataRunner` will seed demo data — including the
-`admin@roshdeandishe.test` / `password` login — on any database they start
-against. Schema management itself is no longer a gap (see `CLAUDE.md` §12).
+The demo seed data — including the `admin@roshdeandishe.test` / `password`
+login — is **not** created under the `prod` profile, which the Docker image
+sets itself. Only the Module/Role/Permission catalog is seeded there, since
+nothing works without it. Schema management is likewise no longer a gap (see
+`CLAUDE.md` §12).
 
 ## Testing
 

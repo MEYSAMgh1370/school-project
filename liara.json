@@ -1,4 +1,14 @@
 {
   "platform": "docker",
-  "port": 8080
+  "port": 8080,
+  "build": {
+    "location": "germany"
+  },
+  "healthCheck": {
+    "command": "CMD curl --fail http://localhost:8080/actuator/health || exit 1",
+    "interval": 30,
+    "timeout": 10,
+    "retries": 3,
+    "startPeriod": 90
+  }
 }
