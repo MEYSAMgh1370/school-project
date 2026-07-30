@@ -234,7 +234,20 @@ com.example.roshdeandishe
 │   │                                 Granted | Denied)
 │   ├── MembershipController.java   (REST: create/list memberships, toggle active,
 │   │                                 issue invite-token —
-│   │                                 @RequiresPermission("MEMBERSHIP_MANAGE"))
+│   │                                 @RequiresPermission("MEMBERSHIP_MANAGE").
+│   │                                 Plus GET .../memberships/names?userIds=…
+│   │                                 (UX_ROADMAP.md §6.4, resolved 2026-07-26)
+│   │                                 — a deliberately narrower read: only
+│   │                                 userId/fullName for active memberships
+│   │                                 matching the given ids, gated by the new
+│   │                                 MEMBER_NAMES_VIEW permission rather than
+│   │                                 MEMBERSHIP_MANAGE, so TEACHER/FINANCE_ADMIN
+│   │                                 can resolve names on /students and
+│   │                                 /finance without also gaining
+│   │                                 MEMBERSHIP_MANAGE's much wider surface
+│   │                                 (add/deactivate members, issue invite
+│   │                                 tokens, see every member's email/role/
+│   │                                 activation status))
 │   ├── RoleController.java         (REST: GET permissions (full fixed catalog),
 │   │                                 GET/POST roles (system + this school's
 │   │                                 custom roles; POST creates a new custom
@@ -372,11 +385,19 @@ com.example.roshdeandishe
 │   │                                 @RequiresModule("ACADEMIC"), per-method
 │   │                                 @RequiresPermission)
 │   ├── StudentController.java      (REST: enroll/get/list students —
-│   │                                 class-level @RequiresModule("ACADEMIC") +
-│   │                                 @RequiresPermission("STUDENT_ENROLL"),
-│   │                                 SCHOOL_ADMIN + TEACHER. Also POST+GET
-│   │                                 .../students/{studentId}/guardians —
-│   │                                 @RequiresPermission("GUARDIAN_MANAGE"),
+│   │                                 class-level @RequiresModule("ACADEMIC").
+│   │                                 enroll (POST) is @RequiresPermission
+│   │                                 ("STUDENT_ENROLL"), SCHOOL_ADMIN + TEACHER;
+│   │                                 get/list (GET) are @RequiresPermission
+│   │                                 ("STUDENT_VIEW") — split out 2026-07-26
+│   │                                 (UX_ROADMAP.md §6.4, same read/write split
+│   │                                 as CLASS_VIEW/CLASS_MANAGE below) so
+│   │                                 FINANCE_ADMIN can read the roster (to
+│   │                                 resolve studentId→userId for /finance's
+│   │                                 name display) without gaining
+│   │                                 STUDENT_ENROLL's write access. Also
+│   │                                 POST+GET .../students/{studentId}/guardians
+│   │                                 — @RequiresPermission("GUARDIAN_MANAGE"),
 │   │                                 SCHOOL_ADMIN only, see §4's Guardian note)
 │   ├── MyEnrollmentController.java (REST: GET /api/me/enrollment?schoolId= —
 │   │                                 "what class am I in at this school", for the
@@ -1183,9 +1204,11 @@ different access levels without any code change.
 PermissionEntity
 ├── id
 ├── code (GRADES_VIEW, GRADES_EDIT, FINANCE_VIEW, FINANCE_MANAGE,
-│         MEMBERSHIP_MANAGE, STUDENT_ENROLL, CLASS_MANAGE, CLASS_VIEW,
-│         GUARDIAN_MANAGE, EXPENSE_VIEW, EXPENSE_MANAGE, EXPENSE_APPROVE,
-│         ROLE_MANAGE, CURRICULUM_VIEW, CURRICULUM_MANAGE)
+│         MEMBERSHIP_MANAGE, MEMBER_NAMES_VIEW, STUDENT_ENROLL, STUDENT_VIEW,
+│         CLASS_MANAGE, CLASS_VIEW, GUARDIAN_MANAGE, EXPENSE_VIEW,
+│         EXPENSE_MANAGE, EXPENSE_APPROVE, ROLE_MANAGE, CURRICULUM_VIEW,
+│         CURRICULUM_MANAGE, STUDYPLAN_VIEW, STUDYPLAN_MANAGE, EXAM_VIEW,
+│         EXAM_MANAGE)
 └── displayName
 
 RolePermissionEntity  (join table: which roles have which permissions — for a
@@ -1198,10 +1221,10 @@ Current grants (seeded in `IamSeedDataRunner`):
 | Role | Permissions |
 |---|---|
 | `STUDENT` | `GRADES_VIEW` |
-| `TEACHER` | `GRADES_VIEW`, `GRADES_EDIT`, `STUDENT_ENROLL`, `CLASS_VIEW`, `CURRICULUM_VIEW`, `CURRICULUM_MANAGE`, `STUDYPLAN_VIEW`, `STUDYPLAN_MANAGE`, `EXAM_VIEW`, `EXAM_MANAGE` |
+| `TEACHER` | `GRADES_VIEW`, `GRADES_EDIT`, `STUDENT_ENROLL`, `STUDENT_VIEW`, `MEMBER_NAMES_VIEW`, `CLASS_VIEW`, `CURRICULUM_VIEW`, `CURRICULUM_MANAGE`, `STUDYPLAN_VIEW`, `STUDYPLAN_MANAGE`, `EXAM_VIEW`, `EXAM_MANAGE` |
 | `PARENT` | `GRADES_VIEW`, `FINANCE_VIEW` |
-| `SCHOOL_ADMIN` | `GRADES_VIEW`, `GRADES_EDIT`, `FINANCE_VIEW`, `FINANCE_MANAGE`, `MEMBERSHIP_MANAGE`, `CLASS_MANAGE`, `CLASS_VIEW`, `STUDENT_ENROLL`, `GUARDIAN_MANAGE`, `EXPENSE_VIEW`, `EXPENSE_MANAGE`, `EXPENSE_APPROVE`, `ROLE_MANAGE`, `CURRICULUM_VIEW`, `CURRICULUM_MANAGE`, `STUDYPLAN_VIEW`, `STUDYPLAN_MANAGE`, `EXAM_VIEW`, `EXAM_MANAGE` |
-| `FINANCE_ADMIN` | `FINANCE_VIEW`, `FINANCE_MANAGE`, `EXPENSE_VIEW`, `EXPENSE_MANAGE` |
+| `SCHOOL_ADMIN` | `GRADES_VIEW`, `GRADES_EDIT`, `FINANCE_VIEW`, `FINANCE_MANAGE`, `MEMBERSHIP_MANAGE`, `MEMBER_NAMES_VIEW`, `CLASS_MANAGE`, `CLASS_VIEW`, `STUDENT_ENROLL`, `STUDENT_VIEW`, `GUARDIAN_MANAGE`, `EXPENSE_VIEW`, `EXPENSE_MANAGE`, `EXPENSE_APPROVE`, `ROLE_MANAGE`, `CURRICULUM_VIEW`, `CURRICULUM_MANAGE`, `STUDYPLAN_VIEW`, `STUDYPLAN_MANAGE`, `EXAM_VIEW`, `EXAM_MANAGE` |
+| `FINANCE_ADMIN` | `FINANCE_VIEW`, `FINANCE_MANAGE`, `EXPENSE_VIEW`, `EXPENSE_MANAGE`, `STUDENT_VIEW`, `MEMBER_NAMES_VIEW` |
 
 **`GRADES_EDIT` granted to `SCHOOL_ADMIN` (added 2026-07-18, alongside actually
 building the grades feature — §11 Q8, resolved):** `GRADES_VIEW`/`GRADES_EDIT`
@@ -1282,6 +1305,34 @@ today. `TEACHER` does **not** get it, unlike `STUDENT_ENROLL` — this is a
 deliberate asymmetry: enrolling is day-to-day, but granting a stranger access
 to a specific child's data is treated as admin-only, same sensitivity tier as
 `MEMBERSHIP_MANAGE`.
+
+**`STUDENT_VIEW` (split from `STUDENT_ENROLL`) and `MEMBER_NAMES_VIEW` (split
+from `MEMBERSHIP_MANAGE`) — added 2026-07-26, resolving UX_ROADMAP.md §6.4:**
+the same `CLASS_VIEW`/`CLASS_MANAGE` read/write split (below) applied to two
+more permissions, closing the last gap the 2026-07-19 critical-journey review
+had left parked across two re-runs. Before this, `TEACHER` on `/students` and
+`FINANCE_ADMIN` on `/finance` fell back to "نامشخص"/`#id` placeholders instead
+of real student names, because resolving a name requires two lookups
+(`academic.StudentController` for `studentId`→`userId`, then
+`iam.MembershipController` for `userId`→`fullName`) and each role was missing
+one or both of the permissions those lookups required. The fix is deliberately
+*not* widening `STUDENT_ENROLL`/`MEMBERSHIP_MANAGE` themselves — those also
+grant write actions (enrolling students; adding/deactivating members, issuing
+invite tokens) and disclosure of every member's email/role/activation status,
+none of which `FINANCE_ADMIN` or (for the names endpoint) `TEACHER` need just
+to display a name. Instead:
+- `StudentController.listStudents`/`getStudent` now require `STUDENT_VIEW`
+  (enroll stays `STUDENT_ENROLL`) — granted to `SCHOOL_ADMIN`, `TEACHER`, and
+  now `FINANCE_ADMIN`.
+- A new `GET .../memberships/names?userIds=…` endpoint on
+  `MembershipController` (§3) returns only `{userId, fullName}` for active
+  memberships matching the given ids, gated by `MEMBER_NAMES_VIEW` — granted
+  to `SCHOOL_ADMIN` (redundantly, since `MEMBERSHIP_MANAGE` already covers
+  everything this endpoint does — granted anyway so `SCHOOL_ADMIN` never 403s
+  on it), `TEACHER`, and `FINANCE_ADMIN`.
+`students.js`/`finance.js` try the full `GET .../memberships` list first
+(unchanged for `SCHOOL_ADMIN`) and fall back to the narrower `/names` lookup,
+scoped to just the userIds they already know about, only when that 403s.
 
 Design intent behind the split: **class creation is administrative/scheduling
 (`SCHOOL_ADMIN` only)**, while **student enrollment is a day-to-day task
