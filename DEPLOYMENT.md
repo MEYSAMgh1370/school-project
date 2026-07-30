@@ -32,11 +32,12 @@ several are deliberate, documented choices rather than oversights, and one
 2. **Database**: create a PostgreSQL instance. Note the host, port, database
    name, username, and password — the app needs them as environment variables.
 
-   The application creates its own schemas on first boot (`src/main/resources/schema.sql`
-   runs the eight `CREATE SCHEMA IF NOT EXISTS` statements before Hibernate
-   builds any table), so **no manual SQL is required** — provided the database
-   user owns the database, which is the default for a Liara-provisioned one. If
-   your user lacks `CREATE` privilege, run this once by hand instead:
+   **An empty database is all you need.** Flyway owns the schema (`CLAUDE.md`
+   §12): on first start it creates all eight per-module schemas from
+   `spring.flyway.schemas`, then applies `src/main/resources/db/migration/`.
+   No manual SQL — provided the database user can `CREATE`, which is the
+   default for a Liara-provisioned one. If yours can't, create the schemas by
+   hand once:
 
    ```sql
    CREATE SCHEMA IF NOT EXISTS iam;
@@ -48,6 +49,10 @@ several are deliberate, documented choices rather than oversights, and one
    CREATE SCHEMA IF NOT EXISTS studyplan;
    CREATE SCHEMA IF NOT EXISTS exam;
    ```
+
+   Pointing this release at a database built by an older `ddl-auto: update`
+   build is safe: `baseline-on-migrate` baselines it at v1 and skips the
+   baseline migration, leaving existing rows alone.
 
 ---
 
@@ -204,12 +209,14 @@ would land on an instance that has never seen the session. Scaling needs either
 sticky sessions or `spring-session-jdbc` to move sessions into Postgres. Neither
 is built; decide it deliberately when you actually need to scale.
 
-**The schema is managed by `ddl-auto: update`, not Flyway.** Hibernate creates
-and additively alters tables at startup. It never drops or narrows a column, so
-a rename or type change will not be applied and can leave the schema silently
-out of step with the entities. This is the project's own documented stand-in
-(CLAUDE.md §7 item 5), fine for early production on a young database, but
-**take a backup before deploying a release that changes any entity.**
+**Every entity change needs a migration file.** Flyway owns the schema and
+`ddl-auto` is `validate`, so Hibernate no longer creates or alters anything: if
+an entity and the real schema drift apart, the application **fails to start**
+rather than silently adding a column. That is the intended behaviour — but it
+means a release whose entities changed without a matching
+`src/main/resources/db/migration/V<n>__....sql` will not boot. See `CLAUDE.md`
+§12 for the working rules. Take a backup before deploying a migration that
+drops or rewrites anything.
 
 **There is no platform-admin path.** Granting paid modules and suspending a
 school are facade-only, with no REST endpoint, because no real permission check

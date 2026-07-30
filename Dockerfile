@@ -1,58 +1,45 @@
-# syntax=docker/dockerfile:1
-
-# ---------------------------------------------------------------------------
-# Stage 1 — build the single Boot fat jar.
-#
-# Tests are deliberately skipped here: the integration suite runs against
-# Testcontainers (a real Postgres per run), which needs a Docker daemon that a
-# PaaS build server does not provide. Tests are CI's job (.github/workflows),
-# not the deploy image's.
-# ---------------------------------------------------------------------------
+# ---------- مرحله‌ی build ----------
 FROM maven:3.9-eclipse-temurin-21 AS build
+WORKDIR /workspace
 
-WORKDIR /build
-
-# Dependency layer first, so a source-only change does not re-download the
-# world on every deploy. This step is a cache warm, not a correctness gate —
-# `mvn package` below is authoritative and can still fetch anything missing,
-# so an incomplete go-offline must not fail the build.
+# pom.xml جدا از src کپی می‌شود تا تا وقتی وابستگی‌ها عوض نشده‌اند،
+# build بعدی دوباره کل مخزن Maven را دانلود نکند.
 COPY pom.xml ./
-RUN mvn -B dependency:go-offline || echo "go-offline incomplete — package will resolve the rest"
+RUN mvn -B -ntp dependency:go-offline
 
-# JTE templates are precompiled at build time (jte-maven-plugin, bound to
-# generate-sources) because gg.jte.use-precompiled-templates=true at runtime.
-COPY src/ src/
-RUN mvn -B -DskipTests package
+COPY src ./src
+# تست‌ها عمداً skip می‌شوند: تست‌های این پروژه Testcontainers هستند و به
+# دسترسیِ Docker-in-Docker نیاز دارند که در محیط build لیارا وجود ندارد.
+# اجرای تست‌ها جای خودش (لوکال / CI) است، نه مسیر استقرار.
+RUN mvn -B -ntp -DskipTests package
 
-# ---------------------------------------------------------------------------
-# Stage 2 — runtime.
-# ---------------------------------------------------------------------------
-FROM eclipse-temurin:21-jre AS runtime
+# ---------- مرحله‌ی runtime ----------
+FROM eclipse-temurin:21-jre
+WORKDIR /app
 
-# curl is here only so liara.json's healthCheck command has something to run.
+# curl فقط برای اینکه دستور healthCheck در liara.json چیزی برای اجرا داشته
+# باشد؛ ایمیج پایه‌ی JRE آن را ندارد.
 RUN apt-get update \
     && apt-get install -y --no-install-recommends curl \
     && rm -rf /var/lib/apt/lists/*
 
-WORKDIR /app
-
-COPY --from=build /build/target/*.jar app.jar
-
-RUN useradd --system --uid 1001 spring \
-    && chown -R spring:spring /app
-USER spring
-
-# The prod profile is baked in rather than left to a dashboard env var on
-# purpose: forgetting it is not a small mistake. Without it the dev seed data
-# runs (a public SCHOOL_ADMIN with a known password) and the committed dev JWT
-# signing keys stay in effect. Override with -e SPRING_PROFILES_ACTIVE=... only
-# when you deliberately want a non-production run of this image.
+# دیتای این سامانه تقویم شمسی/زمان ایران است؛ کانتینر پیش‌فرض UTC است.
+ENV TZ=Asia/Tehran
+# JVM سقف heap را از cgroup کانتینر می‌خواند - بدون این، روی پلن‌های کم‌حافظه‌ی
+# لیارا یا زیادی heap برمی‌دارد یا زیادی محافظه‌کار می‌شود.
+ENV JAVA_OPTS="-XX:MaxRAMPercentage=75"
+# پروفایل production عمداً داخل خود image باک شده و به یک متغیر در پنل واگذار
+# نشده: فراموش کردنش یک اشتباه کوچک نیست. بدون آن، seed داده‌ی نمایشی اجرا
+# می‌شود (یک SCHOOL_ADMIN عمومی با رمز معلوم) و کلیدهای امضای dev که در گیت
+# هستند به قوت خود باقی می‌مانند. فقط وقتی این image را عامدانه غیرproduction
+# اجرا می‌کنید، با -e SPRING_PROFILES_ACTIVE=... بازنویسی‌اش کنید.
 ENV SPRING_PROFILES_ACTIVE=prod
 
-# MaxRAMPercentage lets the JVM size its heap from the container limit, so the
-# same image behaves correctly on any Liara plan without a hardcoded -Xmx.
-ENV JAVA_OPTS="-XX:MaxRAMPercentage=75.0"
+COPY --from=build /workspace/target/roshdeandishe-*.jar /app/app.jar
+
+RUN useradd --uid 1001 app && chown app:app /app/app.jar
+USER app
 
 EXPOSE 8080
-
+# exec تا JVM خودش PID 1 شود و SIGTERM لیارا به graceful shutdown اسپرینگ برسد.
 ENTRYPOINT ["sh", "-c", "exec java $JAVA_OPTS -jar /app/app.jar"]

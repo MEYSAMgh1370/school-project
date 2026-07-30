@@ -40,15 +40,21 @@ public class StudentController {
     }
 
     @GetMapping("/{studentId}")
-    @RequiresPermission("STUDENT_ENROLL")
+    @RequiresPermission("STUDENT_VIEW")
     public StudentResponse getStudent(@PathVariable Long schoolId, @PathVariable Long studentId) {
         TenantContext.requireMatches(schoolId);
 
         return toResponse(academicFacade.getStudentInfo(studentId));
     }
 
+    /**
+     * جدا از STUDENT_ENROLL (UX_ROADMAP.md §6.4، همان الگوی CLASS_VIEW/
+     * CLASS_MANAGE در ClassController) - این نقش‌ها را قادر می‌کند فهرست
+     * دانش‌آموزها را فقط بخوانند (مثلاً برای resolve کردن نام روی /finance)
+     * بدون این‌که اجازه‌ی ثبت‌نام (نوشتن) داشته باشند.
+     */
     @GetMapping
-    @RequiresPermission("STUDENT_ENROLL")
+    @RequiresPermission("STUDENT_VIEW")
     public List<StudentResponse> listStudents(@PathVariable Long schoolId) {
         TenantContext.requireMatches(schoolId);
 

@@ -81,6 +81,31 @@
             <scope>runtime</scope>
         </dependency>
 
+        <!-- Flyway - مالکِ schema از این پس (ddl-auto دیگر روی update نیست،
+             روی validate است). نسخه‌ها توسط spring-boot-dependencies مدیریت
+             می‌شوند. هر سه لازم‌اند و هیچ‌کدام اضافه نیست:
+               * flyway-core: خود موتور مهاجرت.
+               * flyway-database-postgresql: از Flyway 10 به بعد پشتیبانیِ هر
+                 دیتابیس در ماژول جدای خودش است، وگرنه Flyway در زمان اجرا
+                 Postgres را نمی‌شناسد.
+               * spring-boot-flyway: در Spring Boot 4، autoconfiguration ها از
+                 spring-boot-autoconfigure جدا شده و هر کدام artifact خودشان را
+                 دارند. بدون این یکی، flyway-core در classpath هست ولی هیچ‌وقت
+                 اجرا نمی‌شود و Hibernate با «missing table» بالا نمی‌آید -
+                 یک شکستِ خاموش، نه خطای وابستگی. -->
+        <dependency>
+            <groupId>org.flywaydb</groupId>
+            <artifactId>flyway-core</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.flywaydb</groupId>
+            <artifactId>flyway-database-postgresql</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-flyway</artifactId>
+        </dependency>
+
         <!-- Security (برای IAM ماژول) -->
         <dependency>
             <groupId>org.springframework.boot</groupId>

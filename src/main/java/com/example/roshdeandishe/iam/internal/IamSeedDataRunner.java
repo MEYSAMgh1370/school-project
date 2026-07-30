@@ -30,8 +30,9 @@ import java.util.Map;
  *       {@code createMembership(..., "SCHOOL_ADMIN")} صدا می‌زند و بدون
  *       ردیف نقش‌ها با RoleNotFound شکست می‌خورد، و
  *       {@code grantFreeTierEntitlements} بدون ردیف ماژول‌ها. پس این بخش
- *       در production هم <i>باید</i> اجرا شود. تا وقتی Flyway معرفی نشده
- *       (CLAUDE.md §7 مورد ۵)، اینجا تنها جایی است که این ردیف‌ها ساخته
+ *       در production هم <i>باید</i> اجرا شود. Flyway مالک <i>schema</i> است
+ *       (CLAUDE.md §12) ولی این ردیف‌های کاتالوگ عمداً به مهاجرت داده‌ای
+ *       منتقل نشدند (§7 مورد ۵)، پس اینجا همچنان تنها جایی است که ساخته
  *       می‌شوند؛ هر متد هم به‌ازای هر کد idempotent است.</li>
  *   <li><b>داده‌ی نمایشی</b> (ادمین نمونه با رمز معلوم، عضویت و
  *       entitlementهای مدرسه‌ی نمونه‌ی id=1): در production یعنی یک
@@ -185,7 +186,9 @@ class IamSeedDataRunner implements ApplicationRunner {
         permission(permissions, "FINANCE_VIEW", "مشاهده وضعیت مالی");
         permission(permissions, "FINANCE_MANAGE", "صدور/مدیریت فاکتور");
         permission(permissions, "MEMBERSHIP_MANAGE", "مدیریت عضویت‌ها (فعال/غیرفعال‌سازی دسترسی)");
+        permission(permissions, "MEMBER_NAMES_VIEW", "مشاهده‌ی نام اعضا (بدون ایمیل و وضعیت عضویت)");
         permission(permissions, "STUDENT_ENROLL", "ثبت‌نام دانش‌آموز در کلاس");
+        permission(permissions, "STUDENT_VIEW", "مشاهده‌ی فهرست دانش‌آموزان");
         permission(permissions, "CLASS_MANAGE", "ایجاد و مدیریت کلاس‌ها");
         permission(permissions, "CLASS_VIEW", "مشاهده‌ی فهرست کلاس‌ها");
         permission(permissions, "GUARDIAN_MANAGE", "لینک کردن ولی به دانش‌آموز");
@@ -214,6 +217,17 @@ class IamSeedDataRunner implements ApplicationRunner {
         grant(roles.get("TEACHER"), permissions.get("GRADES_EDIT"));
         // طبق تصمیم صریح: ثبت‌نام دانش‌آموز، هم برای SCHOOL_ADMIN هم TEACHER مجاز است
         grant(roles.get("TEACHER"), permissions.get("STUDENT_ENROLL"));
+        // STUDENT_VIEW از STUDENT_ENROLL جدا شد (UX_ROADMAP.md §6.4 - همان
+        // الگوی CLASS_VIEW/CLASS_MANAGE پایین‌تر) - TEACHER از قبل STUDENT_ENROLL
+        // دارد، پس این عملاً چیزی برای TEACHER عوض نمی‌کند، فقط FINANCE_ADMIN
+        // (که STUDENT_ENROLL ندارد و نباید داشته باشد) را قادر می‌کند فهرست
+        // دانش‌آموزها را فقط برای resolve کردن نام در /finance بخواند.
+        grant(roles.get("TEACHER"), permissions.get("STUDENT_VIEW"));
+        // MEMBER_NAMES_VIEW از MEMBERSHIP_MANAGE جدا شد (همان §6.4) - TEACHER
+        // در /students باید نام دانش‌آموزهایی که خودش ثبت‌نام کرده را ببیند،
+        // بدون این‌که کل فهرست عضویت‌های مدرسه (ایمیل، نقش، وضعیت فعال‌سازی هر
+        // عضو) را که MEMBERSHIP_MANAGE افشا می‌کند در اختیار داشته باشد.
+        grant(roles.get("TEACHER"), permissions.get("MEMBER_NAMES_VIEW"));
         // بدون این، TEACHER نمی‌تواند فهرست کلاس‌ها را برای پر کردن دراپ‌داون
         // انتخاب کلاس در صفحه‌ی ثبت‌نام (/students) ببیند - ساخت کلاس همچنان
         // فقط با CLASS_MANAGE (پایین‌تر) مخصوص SCHOOL_ADMIN می‌ماند
@@ -250,11 +264,16 @@ class IamSeedDataRunner implements ApplicationRunner {
         grant(roles.get("SCHOOL_ADMIN"), permissions.get("FINANCE_VIEW"));
         grant(roles.get("SCHOOL_ADMIN"), permissions.get("FINANCE_MANAGE"));
         grant(roles.get("SCHOOL_ADMIN"), permissions.get("MEMBERSHIP_MANAGE"));
+        // MEMBERSHIP_MANAGE از قبل هر آنچه MEMBER_NAMES_VIEW می‌دهد را پوشش
+        // می‌دهد، اما این را هم صریحاً می‌گیرد تا SCHOOL_ADMIN هرگز به یک
+        // Permission نیازمندِ endpointِ محدودترِ نام‌ها 403 نگیرد
+        grant(roles.get("SCHOOL_ADMIN"), permissions.get("MEMBER_NAMES_VIEW"));
         // ساخت کلاس یک تصمیم چیدمانی/اداری است، فرض شده فقط کار SCHOOL_ADMIN
         // است، نه TEACHER (بر خلاف ثبت‌نام دانش‌آموز که هر دو مجازند)
         grant(roles.get("SCHOOL_ADMIN"), permissions.get("CLASS_MANAGE"));
         grant(roles.get("SCHOOL_ADMIN"), permissions.get("CLASS_VIEW"));
         grant(roles.get("SCHOOL_ADMIN"), permissions.get("STUDENT_ENROLL"));
+        grant(roles.get("SCHOOL_ADMIN"), permissions.get("STUDENT_VIEW"));
         // لینک کردن ولی به دانش‌آموز، دسترسی به داده‌ی مالی/تحصیلی آن دانش‌آموز
         // را به کاربر دیگری می‌دهد - هم‌سطح حساسیتِ MEMBERSHIP_MANAGE، پس فقط
         // SCHOOL_ADMIN (نه TEACHER، بر خلاف STUDENT_ENROLL)
@@ -279,6 +298,15 @@ class IamSeedDataRunner implements ApplicationRunner {
         grant(roles.get("FINANCE_ADMIN"), permissions.get("FINANCE_MANAGE"));
         grant(roles.get("FINANCE_ADMIN"), permissions.get("EXPENSE_VIEW"));
         grant(roles.get("FINANCE_ADMIN"), permissions.get("EXPENSE_MANAGE"));
+        // STUDENT_VIEW/MEMBER_NAMES_VIEW (UX_ROADMAP.md §6.4): بدون این دو،
+        // FINANCE_ADMIN روی /finance فقط شناسه‌ی خام دانش‌آموز را می‌بیند، نه
+        // نامش - چون تا این‌جا نه STUDENT_ENROLL داشت (studentId→userId) نه
+        // MEMBERSHIP_MANAGE (userId→نام). این دو Permission تازه دقیقاً همان
+        // دو حلقه‌ی گم‌شده را می‌بندند، بدون این‌که STUDENT_ENROLL (ثبت‌نام) یا
+        // MEMBERSHIP_MANAGE (افزودن/غیرفعال‌سازی عضو، صدور دعوت‌نامه) را - که
+        // هر دو فراتر از نیاز واقعی این نقش‌اند - به FINANCE_ADMIN بدهیم.
+        grant(roles.get("FINANCE_ADMIN"), permissions.get("STUDENT_VIEW"));
+        grant(roles.get("FINANCE_ADMIN"), permissions.get("MEMBER_NAMES_VIEW"));
     }
 
     private void grant(RoleEntity role, PermissionEntity permission) {

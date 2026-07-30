@@ -1,12 +1,8 @@
 {
-  "app": "roshdeandishe",
   "platform": "docker",
   "port": 8080,
-  "timezone": "Asia/Tehran",
   "build": {
-    "location": "germany",
-    "cache": true,
-    "dockerfile": "./Dockerfile"
+    "location": "germany"
   },
   "healthCheck": {
     "command": "CMD curl --fail http://localhost:8080/actuator/health || exit 1",

@@ -383,12 +383,21 @@ manual-link box in `/students` too now, not just `/people`.
 
 ### 6.4 LOW — degraded-but-working day-to-day paths
 
-- **TEACHER sees "نامشخص" for student names on `/students`** — name
-  resolution is gated by `MEMBERSHIP_MANAGE`, which TEACHER lacks. Known
-  (CLAUDE.md §7 Done, "TEACHER persona"); the real fix is a narrower
-  member-name read endpoint — a permission-model decision, still parked.
-- **FINANCE_ADMIN sees `#id` instead of student names on `/finance`** (lacks
-  `STUDENT_ENROLL`) — same class of gap, same parked fix.
+- ~~**TEACHER sees "نامشخص" for student names on `/students`**~~ — **RESOLVED
+  2026-07-26.** New `STUDENT_VIEW` (split from `STUDENT_ENROLL`) and
+  `MEMBER_NAMES_VIEW` (split from `MEMBERSHIP_MANAGE`) permissions, granted to
+  `TEACHER` and `FINANCE_ADMIN` — see CLAUDE.md §4's Permission section for
+  the full rationale. `students.js` now falls back to the new narrow
+  `GET .../memberships/names?userIds=…` endpoint when the full membership
+  list 403s.
+- ~~**FINANCE_ADMIN sees `#id` instead of student names on `/finance`**~~ —
+  **RESOLVED 2026-07-26**, same fix as above (`finance.js` uses the same
+  fallback). Both gaps were the *same* parked permission-model decision this
+  section had carried across two review cycles — closed as a narrow new
+  read-only permission per side, deliberately not by widening
+  `STUDENT_ENROLL`/`MEMBERSHIP_MANAGE` themselves (which also grant unrelated
+  write actions and, for the latter, full member email/role/activation
+  disclosure).
 - ~~**School entry URL is write-only**~~ — **the display half is RESOLVED
   2026-07-24.** `/dashboard` now shows a "نشانی ورود مدرسه" box with the
   `/s/{slug}` URL and a copy button, for every school where the caller
@@ -417,12 +426,31 @@ scoping (`/my-invoices` + scoped admin endpoint); student exam-taking
 5. ~~Dashboard entry-URL display (§6.4) opportunistically~~ — **done
    2026-07-24.**
 
-**This closes out every item on the 2026-07-19 review's order of attack.**
-The remaining known gaps in §6.4 are both the *same* parked decision — a
-narrower member-name read endpoint, so `TEACHER` on `/students` and
-`FINANCE_ADMIN` on `/finance` stop seeing "نامشخص"/`#id` instead of
-student names. That is a permission-model decision (widen
-`MEMBERSHIP_MANAGE` vs. add a read-only name endpoint), not a UI slice, and
-per §6's own instruction this review should be **re-run from scratch**
-against the now-current app before picking the next batch of work — the
-prioritization above is spent.
+**This closed out every item on the 2026-07-19 review's order of attack.**
+
+### 6.7 Review re-run (2026-07-26)
+
+Per §6.6's own instruction, this review was re-run from scratch against the
+current app (navbar links vs. page inventory, seeded permission grants vs.
+every `@RequiresPermission` check, each page's own controller+JS, the B2C/
+no-school journey, and `/api/me/**` coverage) before picking the next batch of
+work. **No new CRITICAL or HIGH findings.** Everything the 2026-07-19 review
+flagged still holds: no orphan pages, no permission code checked by zero
+roles, the "my-*" pages correctly skip module/permission checks by design
+(verified this degrades to an empty state, not a bypass, for a school that
+hasn't paid for `EXAM`/`STUDY_PLANNER`). Two things surfaced:
+
+1. The §6.4 name-resolution gap (the only item still parked across two prior
+   review cycles) — **resolved this same pass**, see §6.4 above.
+2. `GRADES_VIEW` is seeded to four roles but checked by zero
+   `@RequiresPermission` anywhere in the codebase — harmless (student/parent
+   grade access goes through `MyGradesController`'s unguarded "my" pattern
+   instead) and left as-is on explicit user decision; not a user-facing gap,
+   just a dead permission row.
+
+With §6.4 now closed, there is **no remaining item on this review** ready to
+build without a new product decision (B2C/individual module UI is still
+explicitly blocked per CLAUDE.md §11 Q7; paid-module upgrade UI is still
+blocked on billing per §6.1). Re-run this section again, from scratch, before
+picking the next batch of work — do not resume from this prioritization
+without first checking whether the app has moved on since 2026-07-26.

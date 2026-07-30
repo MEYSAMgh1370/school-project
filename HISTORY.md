@@ -1209,6 +1209,108 @@ elsewhere in CLAUDE.md remains accurate.
     Postgres green — 165 tests, 0 failures, with
     `LoginDashboardFlowIntegrationTest` itself at 13 (11 pre-existing +
     the 2 above). No outstanding verification gap for this slice.
+- **Name-resolution gap on `/students`/`/finance` closed (built 2026-07-26,
+  resolves UX_ROADMAP.md §6.4 — the one item the 2026-07-19 critical-journey
+  review left parked across two re-runs).** A fresh, from-scratch re-run of
+  that review (§6.7) turned up no new CRITICAL/HIGH findings and confirmed
+  this was the only real remaining gap: `TEACHER` on `/students` and
+  `FINANCE_ADMIN` on `/finance` fell back to "نامشخص"/`#id` placeholders
+  because resolving a display name needs two lookups —
+  `academic.StudentController` (`studentId`→`userId`) then
+  `iam.MembershipController` (`userId`→`fullName`) — and each role was
+  missing the permission for one or both.
+  - Two new permissions, each a narrow read split from an existing
+    write/broad permission (the same shape as the earlier `CLASS_VIEW`/
+    `CLASS_MANAGE` split): `STUDENT_VIEW` (split from `STUDENT_ENROLL` —
+    `StudentController.listStudents`/`getStudent` now require it, `enrollStudent`
+    keeps `STUDENT_ENROLL`) and `MEMBER_NAMES_VIEW` (a new
+    `GET /api/admin/schools/{schoolId}/memberships/names?userIds=…` on
+    `MembershipController`, returning only `{userId, fullName}` for active
+    memberships matching the given ids — not the full `MembershipResponse`
+    shape, which also carries email/role/activation status).
+  - Deliberately **not** solved by widening `STUDENT_ENROLL` (grants
+    enrollment, a write action) or `MEMBERSHIP_MANAGE` (grants adding/
+    deactivating members, issuing invite tokens, and full membership
+    disclosure) to `TEACHER`/`FINANCE_ADMIN` — both permissions grant far
+    more than "read a name," which is all either role actually needed. This
+    was an explicit choice between two options put to the user; the narrower-
+    permission approach was chosen over widening `MEMBERSHIP_MANAGE`.
+  - Granted: `STUDENT_VIEW` → `SCHOOL_ADMIN`, `TEACHER`, `FINANCE_ADMIN`;
+    `MEMBER_NAMES_VIEW` → `SCHOOL_ADMIN` (redundant with `MEMBERSHIP_MANAGE`,
+    granted anyway so `SCHOOL_ADMIN` never needs a different permission for
+    an equivalent read), `TEACHER`, `FINANCE_ADMIN`.
+  - `students.js`/`finance.js`: both already fetched the full membership list
+    best-effort; on a 403 they now fall back to the new `/memberships/names`
+    endpoint, scoped to just the student `userId`s each page already knows
+    from its own `academic.StudentController` call. `SCHOOL_ADMIN`'s path is
+    unchanged (the full list still succeeds for it).
+  - Explicitly left alone: the dead `GRADES_VIEW` permission (seeded to four
+    roles, checked by zero `@RequiresPermission` anywhere) surfaced by the
+    same review re-run — confirmed harmless (student/parent grade access
+    goes through `MyGradesController`'s unguarded "my" pattern instead) and
+    kept as-is on explicit user decision, not folded into this change.
+  - Test coverage: three new cases in `StudentManagementFlowIntegrationTest`
+    (`financeAdminCanListStudentsButCannotEnroll`,
+    `financeAdminCanResolveStudentNamesViaNarrowMemberNamesEndpoint` — proves
+    the full end-to-end chain `finance.js` relies on: `STUDENT_VIEW` for the
+    roster, `MEMBER_NAMES_VIEW` for the name, and that the full membership
+    list still 403s for `FINANCE_ADMIN` — and
+    `studentWithoutMemberNamesViewCannotResolveMemberNames`, a negative case
+    for a role with neither permission). Full suite green: 168 tests, 0
+    failures; `ModularityTests` green (3/3) — run directly in this session
+    (Testcontainers available).
+
+- **Flyway (2026-07-30)** — resolves CLAUDE.md §7 item 5, open since the
+  project's first commit. `ddl-auto` moves from `update` to **`validate`**;
+  the schema is now owned by `src/main/resources/db/migration/`. Working
+  rules are documented as CLAUDE.md **§12**.
+  - `V1__baseline_schema.sql` — all 41 entity tables across the eight module
+    schemas plus Spring Modulith's `iam.event_publication`. **Generated from
+    the entity model**, not hand-written: a throwaway test booted the real
+    persistence unit with Hibernate's `schema-generation` script action, so
+    the baseline is provably identical to what `ddl-auto: update` had been
+    producing rather than a re-typed approximation. Two edits to the
+    generated output, both cosmetic: the duplicated `create schema` lines
+    were dropped (Flyway creates schemas itself), and `invoices.amount_paid`'s
+    doubled `not null` — `InvoiceEntity` supplies it via both
+    `columnDefinition` and `nullable=false` — was written once.
+  - **No foreign keys**, deliberately. Cross-module references here are
+    opaque `Long`s validated at the Facade (CLAUDE.md §4); the baseline
+    mirrors the existing schema instead of redesigning it. Adding FKs stays
+    its own decision.
+  - **Schema creation stopped being a manual step.** Flyway creates all eight
+    schemas from `spring.flyway.schemas`, replacing both the `CREATE SCHEMA`
+    runbook in `application.yml`'s comments and
+    `hibernate.hbm2ddl.create_namespaces`. `src/test/resources/init-schemas.sql`
+    and `TestcontainersConfiguration`'s `withInitScript` were deleted with it —
+    every test run now starts from a genuinely empty database and re-verifies
+    the fresh-deployment path.
+  - **Existing databases** (dev, and the live Liara deployment) are handled by
+    `baseline-on-migrate: true` + `baseline-version: 1`: Flyway finds tables
+    but no history table, records a baseline at v1, skips `V1`, resumes at
+    `V2`. Verified directly rather than assumed — a Postgres container was
+    loaded with the 42-table legacy layout plus a sentinel row, then the app
+    booted against it: baselined at v1, `V1` skipped, sentinel row intact,
+    catalog seeding unaffected, startup clean.
+  - **Three dependencies, not two.** `flyway-core` and
+    `flyway-database-postgresql` (Flyway 10+ splits per-database support out),
+    plus `org.springframework.boot:spring-boot-flyway` — Spring Boot 4 moved
+    autoconfiguration into per-technology artifacts. Without the third, Flyway
+    is on the classpath and silently never runs; it surfaced only as Hibernate
+    `validate` failing with `missing table [academic.classes]`, which is why
+    it's called out in §12.
+  - **Deliberately not done:** moving the Module/Role/Permission catalog out of
+    `IamSeedDataRunner` into a data migration. Put to the user as an explicit
+    choice and declined — every integration test depends on that seeding, and
+    schema-only is the smaller correct step. §3's "replace w/ Flyway pre-prod"
+    note on `IamSeedDataRunner` therefore stays open, and is now the only
+    surviving part of §7 item 5.
+  - Test coverage: no new test class — the migration is exercised by the whole
+    suite, since every `*FlowIntegrationTest` now boots through Flyway against
+    an empty container. Full suite green: **168 tests, 0 failures, 0 errors**,
+    `ModularityTests` 3/3, run in this session with Docker available. The
+    legacy-database upgrade path was verified manually as described above,
+    since Testcontainers only ever produces fresh databases.
 
 - **Deployment to Liara — production configuration (2026-07-29).** The first
   real deployment setup for this project: `Dockerfile` (multi-stage Maven →
@@ -1280,20 +1382,31 @@ elsewhere in CLAUDE.md remains accurate.
   required — missing mail config degrades one best-effort feature, it does not
   block startup.
 
-  **Schema creation is no longer manual** (CLAUDE.md §7 item 4):
-  `src/main/resources/schema.sql` + `spring.sql.init.mode: always` create all
-  eight per-module schemas at DataSource initialization, before the
-  `EntityManagerFactory` exists. Previously eight `CREATE SCHEMA` statements
-  had to be run by hand or first boot failed — an unacceptable step against a
-  managed database. Tests already did this via
-  `TestcontainersConfiguration.withInitScript("init-schemas.sql")`; this gives
-  real runs the same guarantee.
+  **Reconciled with two parallel sessions' work** (the pattern CLAUDE.md's
+  pre-work gate exists to catch — hit again here, and worth recording).
+  The gate was run at the start of this slice: master was level and the only
+  open PR was #61 (unrelated). While this was being built, two overlapping
+  PRs merged — **#63**, an independently-written `Dockerfile` + minimal
+  `liara.json` for the same Liara deployment, and **#64**, Flyway adoption.
+  Neither was discarded, and neither silently overwrote this work:
+  - **#63's `Dockerfile` won outright** — it is the merged one, and it is
+    good (`TZ=Asia/Tehran`, `-ntp`, an `exec` so the JVM is PID 1 and Liara's
+    SIGTERM reaches Spring's graceful shutdown). Only two things were added
+    to it: `curl` (so `liara.json`'s health-check command has something to
+    run) and `ENV SPRING_PROFILES_ACTIVE=prod` (without which none of the
+    production hardening below activates at all). `liara.json` likewise kept
+    #63's minimal shape, plus the health check and a German build server.
+  - **#64's Flyway adoption superseded this slice's `schema.sql` +
+    `spring.sql.init.mode: always`, which was deleted.** Flyway now creates
+    the eight per-module schemas from `spring.flyway.schemas` and owns the
+    schema outright (`ddl-auto: validate`, CLAUDE.md §12), which is strictly
+    better than the `CREATE SCHEMA IF NOT EXISTS` script this slice had
+    added; keeping both would have been two mechanisms for one job.
 
   **Explicitly not built**: session persistence (`spring-session-jdbc`) or
   sticky sessions, so the deployment is **single-instance only** — scaling is
   a real decision, not a config tweak, and nobody has asked to scale yet;
-  Flyway (§7 item 5) — still `ddl-auto: update`, now in production, with the
-  consequences documented rather than papered over; any REST exposure of
+  any REST exposure of
   paid-module entitlement granting (§10's prohibition stands — it is a
   documented SQL statement in `DEPLOYMENT.md` instead); Tier 2 per-school
   subdomains (§11 Q9), which were blocked on a deployment existing and are now
@@ -1301,20 +1414,23 @@ elsewhere in CLAUDE.md remains accurate.
 
   **Verification.** The full `*FlowIntegrationTest` suite could **not** be run
   in the authoring session (no Docker daemon, so Testcontainers is
-  unavailable) — CI runs it on this PR. What *was* verified here, against a
-  real local Postgres 16 and a genuinely empty database: `ModularityTests` 3/3
-  green (module boundaries intact after the actuator dependency); prod-profile
-  boot with secrets missing **fails fast** with `Could not resolve placeholder`
-  rather than starting; prod-profile boot fully configured starts in ~17s and
-  creates all 8 schemas + 42 tables; catalog data present (13 modules, 6 roles,
-  19 permissions, 36 role-permission grants) with **zero** demo rows (0 users,
-  0 schools, 0 memberships, 0 entitlements); `/actuator/health` returns 200
-  `{"status":"UP"}` with details hidden while `/actuator/env`,
-  `/actuator/modulith`, and `/swagger-ui.html` all 404; and the whole
-  production onboarding journey end-to-end — register → login → create school →
-  founder receives `SCHOOL_ADMIN` → free tier `ACADEMIC`+`FINANCE` granted
-  automatically → a free-module endpoint returns 200 → a paid-module endpoint
-  returns 403 `module-not-entitled` → the public `/s/{slug}` entry page renders.
+  unavailable) — CI runs it on this PR; it was green (165 tests) on the
+  pre-merge revision of this branch. Everything below was then **re-run after
+  merging master's #63/#64**, against a real local Postgres 16 and a genuinely
+  empty database, since Flyway changed how the schema comes into existence:
+  `ModularityTests` 3/3 green (module boundaries intact after the actuator
+  dependency); prod-profile boot with secrets missing **fails fast** with
+  `Could not resolve placeholder` rather than starting; prod-profile boot fully
+  configured starts in ~14s, with Flyway creating all 8 schemas and applying
+  `V1__baseline_schema.sql` to give 43 tables; catalog data present (13
+  modules, 6 roles, 21 permissions) with **zero** demo rows (0 users, 0
+  schools); `/actuator/health` returns 200 `{"status":"UP"}` with details
+  hidden while `/actuator/env`, `/actuator/modulith`, and `/swagger-ui.html`
+  all 404; and the whole production onboarding journey end-to-end — register →
+  login → create school → founder receives `SCHOOL_ADMIN` → free tier
+  `ACADEMIC`+`FINANCE` granted automatically → a free-module endpoint returns
+  200 → a paid-module endpoint returns 403 `module-not-entitled` → the public
+  `/s/{slug}` entry page renders.
 
 
 ---

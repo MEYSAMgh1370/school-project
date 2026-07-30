@@ -1,7 +1,6 @@
 # Build output — the image builds its own.
 target/
-android/build/
-android/.gradle/
+android/
 
 # VCS + CI
 .git/
@@ -18,7 +17,6 @@ dev-loop-backup.zip
 # Docs: not needed in the build context, and excluding them keeps a docs-only
 # edit from invalidating the Docker layer cache.
 *.md
-!README.md
 
 # Local env files must never reach the build context — secrets are set in the
 # Liara dashboard, not baked into the image.

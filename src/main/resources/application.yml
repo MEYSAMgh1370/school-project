@@ -8,15 +8,9 @@ spring:
   # با @ConfigurationProperties و @Primary مشخص خواهد شد - این کار نیازمند
   # کلاس‌های پیکربندی جداگانه (DataSourceConfig) در هر ماژول است.
   #
-  # ⚠️ نکته‌ی مهم Postgres: Hibernate با ddl-auto=update فقط جدول‌ها را
-  # می‌سازد، نه خود schema را. چون SchoolEntity با schema="school"،
-  # FinanceAuditEntity با schema="finance"، ClassEntity/StudentEntity با
-  # schema="academic"، BaleLinkEntity با schema="bale"، و حالا
-  # TopicEntity/QuestionEntity با schema="curriculum"، و حالا
-  # ExamEntity/... با schema="exam" تعریف شده‌اند، این schemaها باید *قبل از*
-  # ساخته شدن EntityManagerFactory وجود داشته باشند. این کار دیگر دستی نیست:
-  # schema.sql (کنار همین فایل) هر هشت schema را با IF NOT EXISTS می‌سازد و
-  # با sql.init.mode=always پایین اجرا می‌شود.
+  # ساخت دستیِ schemaها دیگر لازم نیست: از وقتی Flyway اضافه شده (بخش
+  # spring.flyway پایین)، خودِ Flyway هر هشت schema را از روی لیست
+  # spring.flyway.schemas می‌سازد. کافی است دیتابیس خالی وجود داشته باشد.
   datasource:
     # مقادیر پیش‌فرض، dev محلی هستند و دست‌نخورده باقی مانده‌اند؛ در استقرار
     # واقعی از طریق متغیر محیطی override می‌شوند (application-prod.yml این سه
@@ -25,22 +19,30 @@ spring:
     username: ${DATABASE_USERNAME:postgres}
     password: ${DATABASE_PASSWORD:postgres}
 
-  sql:
-    init:
-      # پیش‌فرض Boot فقط دیتابیس‌های embedded را مقداردهی می‌کند؛ Postgres ما
-      # embedded نیست، پس always لازم است تا schema.sql واقعاً اجرا شود.
-      # اجرای مکرر بی‌خطر است (هر هشت دستور IF NOT EXISTS دارند).
-      mode: always
+  # Flyway مالکِ schema است (CLAUDE.md §12؛ §7 مورد ۵ با همین تغییر بسته شد).
+  # مهاجرت‌ها در src/main/resources/db/migration، هر تغییر Entity نیازمند یک
+  # فایل V<n>__... جدید است و فایلِ اعمال‌شده هرگز ویرایش نمی‌شود.
+  flyway:
+    enabled: true
+    # هر هشت schemaی ماژول‌ها. Flyway هر کدام را که نباشد می‌سازد - همان
+    # کاری که تا امروز باید دستی با CREATE SCHEMA انجام می‌شد. اولین مورد
+    # لیست، محلِ جدول flyway_schema_history هم هست.
+    schemas: iam,school,academic,finance,bale,curriculum,studyplan,exam
+    default-schema: iam
+    # برای دیتابیس‌هایی که از قبل با ddl-auto=update ساخته شده‌اند (dev فعلی
+    # و استقرار Liara): جدول‌ها موجودند ولی flyway_schema_history نیست، پس
+    # Flyway آن‌ها را در نسخه‌ی ۱ baseline می‌کند و V1 را - که دقیقاً همان
+    # جدول‌ها را می‌سازد - رد می‌کند. روی دیتابیس خالی این تنظیم بی‌اثر است
+    # و V1 عادی اجرا می‌شود.
+    baseline-on-migrate: true
+    baseline-version: 1
 
   jpa:
     hibernate:
-      # توجه: validate در نسخه‌ی قبلی بود؛ چون پروژه هنوز در فاز dev است و
-      # migration رسمی (Flyway/Liquibase) معرفی نشده، فعلاً روی update
-      # گذاشته شده تا جدول‌های جدید (users, roles, school_memberships,
-      # modules, school_entitlements, user_entitlements) خودکار ساخته شوند.
-      # قبل از نزدیک شدن به production، حتماً باید Flyway اضافه و این مقدار
-      # به validate برگردانده شود.
-      ddl-auto: update
+      # ddl-auto دیگر جدول نمی‌سازد. validate یعنی اگر مدل Entity و schemaی
+      # واقعی از هم فاصله بگیرند (یک فیلد جدید بدون فایل مهاجرت)، اپلیکیشن
+      # همان لحظه fail می‌کند - نه اینکه بی‌صدا ستون اضافه کند.
+      ddl-auto: validate
     properties:
       hibernate:
         format_sql: true

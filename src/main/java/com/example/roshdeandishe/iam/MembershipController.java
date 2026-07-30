@@ -7,6 +7,7 @@ import com.example.roshdeandishe.platform.TenantContext;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.Set;
 
 /**
  * مدیریت عضویت‌های یک مدرسه‌ی مشخص - همان قابلیتی که "ادمین یک معلم جدید
@@ -65,6 +66,30 @@ public class MembershipController {
         iamFacade.setMembershipActive(membershipId, request.active());
     }
 
+    /**
+     * نسخه‌ی محدودترِ {@link #listMemberships} (UX_ROADMAP.md §6.4) - فقط
+     * userId/fullName را برای مجموعه‌ای مشخص از کاربران برمی‌گرداند (نه
+     * ایمیل، نقش، وضعیت فعال‌سازی هر عضو که MEMBERSHIP_MANAGE افشا می‌کند).
+     * برای نقش‌هایی ساخته شده که باید نام چند کاربرِ *از قبل شناخته‌شده* (مثلاً
+     * دانش‌آموزهای یک فاکتور یا یک کلاس) را resolve کنند، بدون این‌که کل
+     * فهرست عضویت‌های مدرسه در اختیارشان باشد - همان دلیلی که TEACHER/
+     * FINANCE_ADMIN عمداً MEMBERSHIP_MANAGE ندارند (CLAUDE.md §4). فقط
+     * عضویت‌های فعال را برمی‌گرداند - همان فیلتری که کلاینت‌ها (people.js و
+     * غیره) روی فهرست کامل هم اعمال می‌کنند.
+     */
+    @GetMapping("/names")
+    @RequiresPermission("MEMBER_NAMES_VIEW")
+    public List<MemberNameResponse> listMemberNames(@PathVariable Long schoolId, @RequestParam List<Long> userIds) {
+        TenantContext.requireMatches(schoolId);
+
+        Set<Long> requested = Set.copyOf(userIds);
+        return iamFacade.findMembershipsBySchool(schoolId).stream()
+                .filter(info -> info.active() && requested.contains(info.userId().value()))
+                .map(info -> new MemberNameResponse(info.userId().value(), info.fullName()))
+                .distinct()
+                .toList();
+    }
+
     @PostMapping("/{membershipId}/invite-token")
     @RequiresPermission("MEMBERSHIP_MANAGE")
     public InviteTokenResponse issueInviteToken(@PathVariable Long schoolId, @PathVariable Long membershipId) {
@@ -80,6 +105,9 @@ public class MembershipController {
     }
 
     public record SetActiveRequest(boolean active) {
+    }
+
+    public record MemberNameResponse(Long userId, String fullName) {
     }
 
     public record MembershipResponse(

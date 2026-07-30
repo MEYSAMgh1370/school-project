@@ -245,7 +245,20 @@ com.example.roshdeandishe
 │   │                                 Granted | Denied)
 │   ├── MembershipController.java   (REST: create/list memberships, toggle active,
 │   │                                 issue invite-token —
-│   │                                 @RequiresPermission("MEMBERSHIP_MANAGE"))
+│   │                                 @RequiresPermission("MEMBERSHIP_MANAGE").
+│   │                                 Plus GET .../memberships/names?userIds=…
+│   │                                 (UX_ROADMAP.md §6.4, resolved 2026-07-26)
+│   │                                 — a deliberately narrower read: only
+│   │                                 userId/fullName for active memberships
+│   │                                 matching the given ids, gated by the new
+│   │                                 MEMBER_NAMES_VIEW permission rather than
+│   │                                 MEMBERSHIP_MANAGE, so TEACHER/FINANCE_ADMIN
+│   │                                 can resolve names on /students and
+│   │                                 /finance without also gaining
+│   │                                 MEMBERSHIP_MANAGE's much wider surface
+│   │                                 (add/deactivate members, issue invite
+│   │                                 tokens, see every member's email/role/
+│   │                                 activation status))
 │   ├── RoleController.java         (REST: GET permissions (full fixed catalog),
 │   │                                 GET/POST roles (system + this school's
 │   │                                 custom roles; POST creates a new custom
@@ -299,8 +312,12 @@ com.example.roshdeandishe
 │   │   └── IamSeedDataRunner          (dev-only seed, incl. one demo admin user
 │   │                                    with a working password + their
 │   │                                    SCHOOL_ADMIN membership and the demo
-│   │                                    school's ACADEMIC+FINANCE entitlements;
-│   │                                    replace w/ Flyway pre-prod)
+│   │                                    school's ACADEMIC+FINANCE entitlements.
+│   │                                    Flyway now owns the schema (§12) but NOT
+│   │                                    this seed data — moving the catalog rows
+│   │                                    into a data migration was considered and
+│   │                                    declined 2026-07-30; still open, see §7
+│   │                                    item 5)
 │   └── shared/
 │       ├── RequiresModule.java + ModuleAccessAspect.java     (@Order(10))
 │       ├── RequiresPermission.java + PermissionAccessAspect.java (@Order(11))
@@ -383,11 +400,19 @@ com.example.roshdeandishe
 │   │                                 @RequiresModule("ACADEMIC"), per-method
 │   │                                 @RequiresPermission)
 │   ├── StudentController.java      (REST: enroll/get/list students —
-│   │                                 class-level @RequiresModule("ACADEMIC") +
-│   │                                 @RequiresPermission("STUDENT_ENROLL"),
-│   │                                 SCHOOL_ADMIN + TEACHER. Also POST+GET
-│   │                                 .../students/{studentId}/guardians —
-│   │                                 @RequiresPermission("GUARDIAN_MANAGE"),
+│   │                                 class-level @RequiresModule("ACADEMIC").
+│   │                                 enroll (POST) is @RequiresPermission
+│   │                                 ("STUDENT_ENROLL"), SCHOOL_ADMIN + TEACHER;
+│   │                                 get/list (GET) are @RequiresPermission
+│   │                                 ("STUDENT_VIEW") — split out 2026-07-26
+│   │                                 (UX_ROADMAP.md §6.4, same read/write split
+│   │                                 as CLASS_VIEW/CLASS_MANAGE below) so
+│   │                                 FINANCE_ADMIN can read the roster (to
+│   │                                 resolve studentId→userId for /finance's
+│   │                                 name display) without gaining
+│   │                                 STUDENT_ENROLL's write access. Also
+│   │                                 POST+GET .../students/{studentId}/guardians
+│   │                                 — @RequiresPermission("GUARDIAN_MANAGE"),
 │   │                                 SCHOOL_ADMIN only, see §4's Guardian note)
 │   ├── MyEnrollmentController.java (REST: GET /api/me/enrollment?schoolId= —
 │   │                                 "what class am I in at this school", for the
@@ -1194,9 +1219,11 @@ different access levels without any code change.
 PermissionEntity
 ├── id
 ├── code (GRADES_VIEW, GRADES_EDIT, FINANCE_VIEW, FINANCE_MANAGE,
-│         MEMBERSHIP_MANAGE, STUDENT_ENROLL, CLASS_MANAGE, CLASS_VIEW,
-│         GUARDIAN_MANAGE, EXPENSE_VIEW, EXPENSE_MANAGE, EXPENSE_APPROVE,
-│         ROLE_MANAGE, CURRICULUM_VIEW, CURRICULUM_MANAGE)
+│         MEMBERSHIP_MANAGE, MEMBER_NAMES_VIEW, STUDENT_ENROLL, STUDENT_VIEW,
+│         CLASS_MANAGE, CLASS_VIEW, GUARDIAN_MANAGE, EXPENSE_VIEW,
+│         EXPENSE_MANAGE, EXPENSE_APPROVE, ROLE_MANAGE, CURRICULUM_VIEW,
+│         CURRICULUM_MANAGE, STUDYPLAN_VIEW, STUDYPLAN_MANAGE, EXAM_VIEW,
+│         EXAM_MANAGE)
 └── displayName
 
 RolePermissionEntity  (join table: which roles have which permissions — for a
@@ -1209,10 +1236,10 @@ Current grants (seeded in `IamSeedDataRunner`):
 | Role | Permissions |
 |---|---|
 | `STUDENT` | `GRADES_VIEW` |
-| `TEACHER` | `GRADES_VIEW`, `GRADES_EDIT`, `STUDENT_ENROLL`, `CLASS_VIEW`, `CURRICULUM_VIEW`, `CURRICULUM_MANAGE`, `STUDYPLAN_VIEW`, `STUDYPLAN_MANAGE`, `EXAM_VIEW`, `EXAM_MANAGE` |
+| `TEACHER` | `GRADES_VIEW`, `GRADES_EDIT`, `STUDENT_ENROLL`, `STUDENT_VIEW`, `MEMBER_NAMES_VIEW`, `CLASS_VIEW`, `CURRICULUM_VIEW`, `CURRICULUM_MANAGE`, `STUDYPLAN_VIEW`, `STUDYPLAN_MANAGE`, `EXAM_VIEW`, `EXAM_MANAGE` |
 | `PARENT` | `GRADES_VIEW`, `FINANCE_VIEW` |
-| `SCHOOL_ADMIN` | `GRADES_VIEW`, `GRADES_EDIT`, `FINANCE_VIEW`, `FINANCE_MANAGE`, `MEMBERSHIP_MANAGE`, `CLASS_MANAGE`, `CLASS_VIEW`, `STUDENT_ENROLL`, `GUARDIAN_MANAGE`, `EXPENSE_VIEW`, `EXPENSE_MANAGE`, `EXPENSE_APPROVE`, `ROLE_MANAGE`, `CURRICULUM_VIEW`, `CURRICULUM_MANAGE`, `STUDYPLAN_VIEW`, `STUDYPLAN_MANAGE`, `EXAM_VIEW`, `EXAM_MANAGE` |
-| `FINANCE_ADMIN` | `FINANCE_VIEW`, `FINANCE_MANAGE`, `EXPENSE_VIEW`, `EXPENSE_MANAGE` |
+| `SCHOOL_ADMIN` | `GRADES_VIEW`, `GRADES_EDIT`, `FINANCE_VIEW`, `FINANCE_MANAGE`, `MEMBERSHIP_MANAGE`, `MEMBER_NAMES_VIEW`, `CLASS_MANAGE`, `CLASS_VIEW`, `STUDENT_ENROLL`, `STUDENT_VIEW`, `GUARDIAN_MANAGE`, `EXPENSE_VIEW`, `EXPENSE_MANAGE`, `EXPENSE_APPROVE`, `ROLE_MANAGE`, `CURRICULUM_VIEW`, `CURRICULUM_MANAGE`, `STUDYPLAN_VIEW`, `STUDYPLAN_MANAGE`, `EXAM_VIEW`, `EXAM_MANAGE` |
+| `FINANCE_ADMIN` | `FINANCE_VIEW`, `FINANCE_MANAGE`, `EXPENSE_VIEW`, `EXPENSE_MANAGE`, `STUDENT_VIEW`, `MEMBER_NAMES_VIEW` |
 
 **`GRADES_EDIT` granted to `SCHOOL_ADMIN` (added 2026-07-18, alongside actually
 building the grades feature — §11 Q8, resolved):** `GRADES_VIEW`/`GRADES_EDIT`
@@ -1293,6 +1320,34 @@ today. `TEACHER` does **not** get it, unlike `STUDENT_ENROLL` — this is a
 deliberate asymmetry: enrolling is day-to-day, but granting a stranger access
 to a specific child's data is treated as admin-only, same sensitivity tier as
 `MEMBERSHIP_MANAGE`.
+
+**`STUDENT_VIEW` (split from `STUDENT_ENROLL`) and `MEMBER_NAMES_VIEW` (split
+from `MEMBERSHIP_MANAGE`) — added 2026-07-26, resolving UX_ROADMAP.md §6.4:**
+the same `CLASS_VIEW`/`CLASS_MANAGE` read/write split (below) applied to two
+more permissions, closing the last gap the 2026-07-19 critical-journey review
+had left parked across two re-runs. Before this, `TEACHER` on `/students` and
+`FINANCE_ADMIN` on `/finance` fell back to "نامشخص"/`#id` placeholders instead
+of real student names, because resolving a name requires two lookups
+(`academic.StudentController` for `studentId`→`userId`, then
+`iam.MembershipController` for `userId`→`fullName`) and each role was missing
+one or both of the permissions those lookups required. The fix is deliberately
+*not* widening `STUDENT_ENROLL`/`MEMBERSHIP_MANAGE` themselves — those also
+grant write actions (enrolling students; adding/deactivating members, issuing
+invite tokens) and disclosure of every member's email/role/activation status,
+none of which `FINANCE_ADMIN` or (for the names endpoint) `TEACHER` need just
+to display a name. Instead:
+- `StudentController.listStudents`/`getStudent` now require `STUDENT_VIEW`
+  (enroll stays `STUDENT_ENROLL`) — granted to `SCHOOL_ADMIN`, `TEACHER`, and
+  now `FINANCE_ADMIN`.
+- A new `GET .../memberships/names?userIds=…` endpoint on
+  `MembershipController` (§3) returns only `{userId, fullName}` for active
+  memberships matching the given ids, gated by `MEMBER_NAMES_VIEW` — granted
+  to `SCHOOL_ADMIN` (redundantly, since `MEMBERSHIP_MANAGE` already covers
+  everything this endpoint does — granted anyway so `SCHOOL_ADMIN` never 403s
+  on it), `TEACHER`, and `FINANCE_ADMIN`.
+`students.js`/`finance.js` try the full `GET .../memberships` list first
+(unchanged for `SCHOOL_ADMIN`) and fall back to the narrower `/names` lookup,
+scoped to just the userIds they already know about, only when that 403s.
 
 Design intent behind the split: **class creation is administrative/scheduling
 (`SCHOOL_ADMIN` only)**, while **student enrollment is a day-to-day task
@@ -2285,26 +2340,27 @@ unchanged, only its location.
    and per-class/per-grade pricing — each waits for a concrete request.
 4. **Multi-DataSource.** Single shared datasource. Per-module DataSource routing is
    a distinct, not-yet-started phase. Each module's tables live in their own Postgres
-   *schema* already (`iam`, `school`, `academic`, `finance`) but all through one
-   connection. Hibernate's `ddl-auto` still creates tables and not schemas, but
-   the schemas themselves are **no longer a manual step** (changed 2026-07-29,
-   with the Liara deployment — see `DEPLOYMENT.md`): `src/main/resources/schema.sql`
-   runs all eight `CREATE SCHEMA IF NOT EXISTS` statements at DataSource
-   initialization, i.e. before the `EntityManagerFactory` is built, via
-   `spring.sql.init.mode: always`. It needs a database user with `CREATE`
-   privilege; the manual SQL remains the documented fallback if that isn't
-   available.
-5. **Flyway/Liquibase.** `ddl-auto: update` is still the only schema mechanism,
-   and as of 2026-07-29 it is what production runs on too — so this is no longer
-   only a dev-time shortcut: a rename or type change won't be applied to a
-   deployed database (Hibernate only adds, never drops or narrows), and the
-   entities can drift out of step with the schema silently. Take a backup before
-   deploying any release that changes an entity. The seed runners are split by
-   kind rather than being wholesale dev-only: `IamSeedDataRunner`'s
-   **catalog half** (Module/Role/Permission/RolePermission) is required in
-   production — nothing works without those rows — while its demo half and all
-   of `SchoolSeedDataRunner` are skipped under the `prod` profile. Until Flyway
-   exists, that catalog seeding is the only thing creating those rows anywhere.
+   *schema* already (`iam`, `school`, `academic`, `finance`, `bale`, `curriculum`,
+   `studyplan`, `exam`) but all through one connection. Schema *creation* is no
+   longer a manual step — Flyway creates all eight from `spring.flyway.schemas`
+   (see item 5).
+5. ~~**Flyway/Liquibase.**~~ **Resolved 2026-07-30 — Flyway is in.**
+   `ddl-auto` is now `validate`, not `update`: the schema is owned by
+   `src/main/resources/db/migration/`, and **every entity change from here on
+   needs its own `V<n>__....sql` file** or the app fails to start. See §12 for
+   the working rules. What deliberately did *not* change: catalog seeding.
+   `IamSeedDataRunner` still seeds the Module/Role/Permission catalog as
+   idempotent Java — moving those rows into a data migration was considered and
+   explicitly declined (every integration test depends on that seeding), so its
+   own "replace w/ Flyway pre-prod" note in §3 is **still open**, now the only
+   remaining part of this item. What *did* change, in the same pass that added
+   the `prod` profile (2026-07-30, see `DEPLOYMENT.md`): the **demo** half is
+   no longer unconditional. `IamSeedDataRunner` now splits catalog seeding
+   (always runs — nothing works without those rows, and until Flyway owns them
+   this is the only thing creating them anywhere) from demo seeding (demo admin,
+   demo membership, demo entitlements), and `SchoolSeedDataRunner` is
+   `@Profile("!prod")` outright — otherwise a production deploy boots with a
+   public `SCHOOL_ADMIN` whose password is `password`.
 6. **Broader admin/teacher frontend — management UI.** The login page and a
    read-only dashboard now exist (see Done). What's still missing is every
    *mutating* UI: membership/class/student/finance management pages. Angular was
@@ -2582,6 +2638,47 @@ The full phase-by-phase build history (Phases A through O) has moved to
     the free tier does *not* include the paid modules.
 
 ---
+
+## 12. Database Migrations (Flyway)
+
+Added 2026-07-30, resolving §7 item 5. **Flyway owns the schema; Hibernate only
+validates it.**
+
+- Migrations live in `src/main/resources/db/migration/`, named
+  `V<n>__snake_case_description.sql`. `V1__baseline_schema.sql` is the baseline —
+  all 41 entity tables across the eight module schemas, plus Spring Modulith's
+  `iam.event_publication`. It was **generated from the entity model**
+  (Hibernate schema-generation), not hand-written, so it is exactly what
+  `ddl-auto: update` had been producing.
+- `spring.jpa.hibernate.ddl-auto` is **`validate`**. Adding a field to an entity
+  without a matching migration now fails startup with
+  `SchemaManagementException: missing column ...` instead of silently altering
+  the table. This is the point of the change — do not "fix" such a failure by
+  setting `ddl-auto` back to `update`.
+- **Never edit an already-applied migration**, including `V1`. Flyway checksums
+  them; a changed file makes every existing database refuse to start. Add
+  `V<n+1>__...` instead.
+- **Schema creation is no longer manual.** Flyway creates all eight schemas from
+  `spring.flyway.schemas` in `application.yml`; a new module's schema is added to
+  that list, *not* to a `CREATE SCHEMA` runbook step and no longer to a test init
+  script (`src/test/resources/init-schemas.sql` was deleted — Testcontainers now
+  starts an empty database and the migrations do the rest, so every test run
+  re-verifies the fresh-deployment path).
+- `baseline-on-migrate: true` + `baseline-version: 1` exist for databases built by
+  the old `ddl-auto: update` (current dev databases and the Liara deployment):
+  Flyway finds tables but no history table, writes a baseline row at v1, skips
+  `V1`, and carries on from `V2`. Verified end-to-end against a simulated legacy
+  database — existing rows untouched. On an empty database this setting is inert
+  and `V1` runs normally.
+- **No foreign keys** anywhere in `V1`, deliberately: cross-module references in
+  this codebase are opaque `Long`s validated at the Facade (§4), and the baseline
+  mirrors the existing schema rather than redesigning it. Adding FKs would be its
+  own explicit decision.
+- Both `flyway-core` **and** `flyway-database-postgresql` **and**
+  `org.springframework.boot:spring-boot-flyway` are required. Spring Boot 4 splits
+  autoconfiguration into per-technology artifacts, so without the third one Flyway
+  sits on the classpath and never runs — a silent no-op that surfaces only as a
+  confusing Hibernate "missing table" error.
 
 ## Workflow
 

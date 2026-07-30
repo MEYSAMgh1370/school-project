@@ -64,6 +64,27 @@ document.addEventListener('alpine:init', () => {
             return `${this.studentsBase()}/${studentId}/guardians`;
         },
 
+        // نسخه‌ی محدودترِ membershipsBase - فقط userId/fullName برای شناسه‌های
+        // داده‌شده، بدون ایمیل/نقش/وضعیت فعال‌سازی (MEMBER_NAMES_VIEW،
+        // UX_ROADMAP.md §6.4). خروجی را به شکل آبجکت‌های ساده‌ی pupils تبدیل
+        // می‌کند تا studentName/studentEmail بدون تغییر کار کنند.
+        async resolveMemberNames(userIds) {
+            const unique = [...new Set(userIds)].filter(id => id != null);
+            if (unique.length === 0) {
+                return [];
+            }
+            const params = new URLSearchParams();
+            unique.forEach(id => params.append('userIds', id));
+            const response = await fetch(`${this.membershipsBase()}/names?${params.toString()}`, {
+                headers: { 'X-School-ID': this.schoolId }
+            });
+            if (!response.ok) {
+                return [];
+            }
+            const names = await response.json();
+            return names.map(n => ({ userId: n.userId, fullName: n.fullName, email: '' }));
+        },
+
         className(classId) {
             const classItem = this.classes.find(c => c.id === classId);
             return classItem ? classItem.name : 'نامشخص';
@@ -136,9 +157,20 @@ document.addEventListener('alpine:init', () => {
                 // اگر در دسترس نبود (مثلاً نقش کاربر اجازه‌ی CLASS_MANAGE
                 // ندارد)، صفحه‌ی دانش‌آموزان را نمی‌شکند
                 this.classes = classesResponse.ok ? await classesResponse.json() : [];
-                const memberships = membershipsResponse.ok ? await membershipsResponse.json() : [];
-                this.pupils = memberships.filter(m => m.active && m.roleCode === 'STUDENT');
-                this.parents = memberships.filter(m => m.active && m.roleCode === 'PARENT');
+                if (membershipsResponse.ok) {
+                    const memberships = await membershipsResponse.json();
+                    this.pupils = memberships.filter(m => m.active && m.roleCode === 'STUDENT');
+                    this.parents = memberships.filter(m => m.active && m.roleCode === 'PARENT');
+                } else {
+                    // نقش‌هایی که MEMBERSHIP_MANAGE ندارند (مثلاً TEACHER) به فهرست
+                    // کامل عضویت‌ها دسترسی ندارند - نام دانش‌آموزهای همین صفحه از
+                    // مسیر محدودترِ MEMBER_NAMES_VIEW گرفته می‌شود (UX_ROADMAP.md
+                    // §6.4). والدین بدون نام می‌مانند - لینک کردن ولی هم‌چنان فقط
+                    // SCHOOL_ADMIN است (GUARDIAN_MANAGE)، پس این پنل برای TEACHER
+                    // اصلاً باز نمی‌شود.
+                    this.parents = [];
+                    this.pupils = await this.resolveMemberNames(this.students.map(s => s.userId));
+                }
             } catch (e) {
                 this.error = 'ارتباط با سرور برقرار نشد.';
             } finally {
