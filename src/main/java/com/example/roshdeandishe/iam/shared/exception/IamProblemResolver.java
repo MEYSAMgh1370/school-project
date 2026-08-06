@@ -128,6 +128,11 @@ public class IamProblemResolver {
                     "کد تأیید منقضی شده",
                     "کد تأیید فعالی وجود ندارد یا منقضی شده است. یک کد جدید درخواست کنید."
             );
+            case IamError.OtpDeliveryUnavailable e -> ProblemDetailFactory.problem(
+                    HttpStatus.SERVICE_UNAVAILABLE, "otp-delivery-unavailable",
+                    "ارسال کد تأیید ممکن نیست",
+                    "در حال حاضر سرویس ارسال پیامک در دسترس نیست. بعداً دوباره تلاش کنید."
+            );
         };
     }
 }

@@ -35,7 +35,7 @@ public class StudentController {
         TenantContext.requireMatches(schoolId);
 
         StudentId studentId = academicFacade.enrollStudent(request.email(), request.fullName(), schoolId, request.classId());
-        StudentInfo info = academicFacade.getStudentInfo(studentId.value());
+        StudentInfo info = academicFacade.getStudentInfo(schoolId, studentId.value());
         return toResponse(info);
     }
 
@@ -44,7 +44,7 @@ public class StudentController {
     public StudentResponse getStudent(@PathVariable Long schoolId, @PathVariable Long studentId) {
         TenantContext.requireMatches(schoolId);
 
-        return toResponse(academicFacade.getStudentInfo(studentId));
+        return toResponse(academicFacade.getStudentInfo(schoolId, studentId));
     }
 
     /**
@@ -87,7 +87,7 @@ public class StudentController {
     public List<Long> listGuardians(@PathVariable Long schoolId, @PathVariable Long studentId) {
         TenantContext.requireMatches(schoolId);
 
-        return academicFacade.listGuardians(studentId);
+        return academicFacade.listGuardians(schoolId, studentId);
     }
 
     private static StudentResponse toResponse(StudentInfo info) {

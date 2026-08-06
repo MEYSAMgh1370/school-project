@@ -83,4 +83,7 @@ public sealed interface IamError {
 
     record OtpExpired(String phoneNumber) implements IamError {
     }
+
+    record OtpDeliveryUnavailable(String phoneNumber) implements IamError {
+    }
 }

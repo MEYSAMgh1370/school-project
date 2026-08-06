@@ -1,5 +1,9 @@
 package com.example.roshdeandishe;
 
+import com.example.roshdeandishe.academic.AcademicFacade;
+import com.example.roshdeandishe.academic.GradingScheme;
+import com.example.roshdeandishe.school.SchoolFacade;
+import com.example.roshdeandishe.school.SchoolFacade.SchoolLevel;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -28,6 +32,12 @@ class StudentManagementFlowIntegrationTest {
 
     @Autowired
     private MockMvc mockMvc;
+
+    @Autowired
+    private AcademicFacade academicFacade;
+
+    @Autowired
+    private SchoolFacade schoolFacade;
 
     private final ObjectMapper objectMapper = new ObjectMapper();
 
@@ -283,6 +293,32 @@ class StudentManagementFlowIntegrationTest {
                 .andExpect(jsonPath(
                         "$[?(@.userId == " + pupilUserId + " && @.fullName == 'دانش‌آموز نام‌ها')]"
                 ).exists());
+    }
+
+    @Test
+    void studentDetailAndGuardianListDoNotLeakStudentsFromAnotherSchool() throws Exception {
+        MockHttpSession session = loginAsAdmin();
+
+        Long otherSchoolId = schoolFacade.createSchool(
+                "مدرسه‌ی ایزوله دانش‌آموز " + System.nanoTime(),
+                "Asia/Tehran", "fa-IR", SchoolLevel.ELEMENTARY, null).value();
+        Long otherClassId = academicFacade.createClass(
+                otherSchoolId, "کلاس مدرسه‌ی دیگر", null, null, 5, GradingScheme.NUMERIC).value();
+        Long otherStudentId = academicFacade.enrollStudent(
+                "cross-school-student." + System.nanoTime() + "@roshdeandishe.test",
+                "دانش‌آموز مدرسه دیگر", otherSchoolId, otherClassId).value();
+
+        mockMvc.perform(get("/api/admin/schools/1/students/" + otherStudentId)
+                        .header("X-School-ID", "1")
+                        .session(session))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.type").value(org.hamcrest.Matchers.endsWith("student-not-found")));
+
+        mockMvc.perform(get("/api/admin/schools/1/students/" + otherStudentId + "/guardians")
+                        .header("X-School-ID", "1")
+                        .session(session))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.type").value(org.hamcrest.Matchers.endsWith("student-not-found")));
     }
 
     @Test

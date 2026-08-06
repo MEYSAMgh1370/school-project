@@ -133,6 +133,10 @@ roshdeandishe:
     # نشود (کانفیگ زمان استقرار، نه کد گم‌شده)، SmsDriver فقط لاگ می‌کند و
     # هیچ تماس HTTPای برقرار نمی‌کند - همان الگوی roshdeandishe.bale.bot-token.
     api-key: ""
+    # فقط برای dev/test: وقتی ارائه‌دهنده‌ی پیامک نداریم، کد در لاگ قابل خواندن
+    # است و requestOtp همان کد را معتبر ذخیره می‌کند. application-prod.yml این
+    # را false می‌کند تا production fail-closed باشد.
+    dev-log-codes: true
   jwt:
     # صدور/اعتبارسنجی توکن Bearer برای اپ موبایل (additive به session cookie
     # وب - iam.internal.JwtTokenProvider). این مقدار dev-only است؛ در

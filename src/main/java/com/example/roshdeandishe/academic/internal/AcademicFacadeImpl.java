@@ -61,12 +61,15 @@ class AcademicFacadeImpl implements AcademicFacade {
         IamFacade.UserId userId = iamFacade.findOrCreateUser(email, fullName);
         iamFacade.createMembership(userId, schoolId, "STUDENT");
 
-        StudentEntity student = studentRepository.findByUserIdAndSchoolId(userId.value(), schoolId)
+        Optional<StudentEntity> existingStudent = studentRepository.findByUserIdAndSchoolId(userId.value(), schoolId);
+        StudentEntity student = existingStudent
                 .orElseGet(() -> new StudentEntity(userId.value(), schoolId, classId, Instant.now()));
         student.setClassId(classId); // پشتیبانی از جابه‌جایی کلاس در فراخوانی دوباره
         StudentEntity saved = studentRepository.save(student);
 
-        eventPublisher.publishEvent(new StudentEnrolledEvent(schoolId, saved.getId(), classId));
+        if (existingStudent.isEmpty()) {
+            eventPublisher.publishEvent(new StudentEnrolledEvent(schoolId, saved.getId(), classId));
+        }
 
         return new StudentId(saved.getId());
     }
@@ -75,6 +78,15 @@ class AcademicFacadeImpl implements AcademicFacade {
     public StudentInfo getStudentInfo(Long studentId) {
         return findStudentInfo(studentId)
                 .orElseThrow(() -> new AcademicException(new AcademicError.StudentNotFound(studentId)));
+    }
+
+    @Override
+    public StudentInfo getStudentInfo(Long schoolId, Long studentId) {
+        StudentInfo info = getStudentInfo(studentId);
+        if (!info.schoolId().equals(schoolId)) {
+            throw new AcademicException(new AcademicError.StudentNotFound(studentId));
+        }
+        return info;
     }
 
     @Override
@@ -202,7 +214,8 @@ class AcademicFacadeImpl implements AcademicFacade {
     }
 
     @Override
-    public List<Long> listGuardians(Long studentId) {
+    public List<Long> listGuardians(Long schoolId, Long studentId) {
+        requireStudentInSchool(schoolId, studentId);
         return studentGuardianRepository.findByStudentId(studentId).stream()
                 .map(StudentGuardianEntity::getGuardianUserId)
                 .toList();

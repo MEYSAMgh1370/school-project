@@ -23,14 +23,13 @@ interface StudyIntervalRepository extends JpaRepository<StudyIntervalEntity, Lon
             Long studentId, LocalDateTime start, LocalDateTime end);
 
     /**
-     * پورت مستقیم check_time_overlap موshavere:
-     * (start <= newStart و end > newStart) یا (start < newEnd و end >= newEnd).
+     * هم‌پوشانی بازه‌های نیمه‌باز: existing.start < newEnd و existing.end > newStart.
      */
     @Query("""
             select count(i) > 0 from StudyIntervalEntity i
             where i.studentId = :studentId
-              and ((i.startTime <= :start and i.endTime > :start)
-                or (i.startTime < :end and i.endTime >= :end))
+              and i.startTime < :end
+              and i.endTime > :start
             """)
     boolean overlaps(@Param("studentId") Long studentId,
                      @Param("start") LocalDateTime start,

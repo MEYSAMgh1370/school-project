@@ -144,13 +144,13 @@ class IamFacadeImpl implements IamFacade {
 
         Instant now = Instant.now();
         String code = generateOtp();
+        if (!smsDriver.sendOtp(phoneNumber, code)) {
+            throw new IamException(new IamError.OtpDeliveryUnavailable(phoneNumber));
+        }
+
         verificationCodeRepository.save(
                 new VerificationCodeEntity(user.getId(), code, now, now.plus(OTP_TTL_MINUTES, ChronoUnit.MINUTES))
         );
-
-        // best-effort، مثل ایمیل دعوت: شکست ارسال، ردیف کد را باطل نمی‌کند -
-        // در dev، کد از لاگ SmsDriver خوانده می‌شود
-        smsDriver.sendOtp(phoneNumber, code);
     }
 
     @Override
@@ -270,8 +270,8 @@ class IamFacadeImpl implements IamFacade {
 
     @Override
     @Transactional
-    public void setMembershipActive(Long membershipId, boolean active) {
-        SchoolMembershipEntity membership = schoolMembershipRepository.findById(membershipId)
+    public void setMembershipActive(Long schoolId, Long membershipId, boolean active) {
+        SchoolMembershipEntity membership = schoolMembershipRepository.findByIdAndSchoolId(membershipId, schoolId)
                 .orElseThrow(() -> new IamException(new IamError.MembershipIdNotFound(membershipId)));
 
         membership.setActive(active);
@@ -280,8 +280,8 @@ class IamFacadeImpl implements IamFacade {
 
     @Override
     @Transactional
-    public Optional<InviteIssued> issueInviteToken(Long membershipId) {
-        SchoolMembershipEntity membership = schoolMembershipRepository.findById(membershipId)
+    public Optional<InviteIssued> issueInviteToken(Long schoolId, Long membershipId) {
+        SchoolMembershipEntity membership = schoolMembershipRepository.findByIdAndSchoolId(membershipId, schoolId)
                 .orElseThrow(() -> new IamException(new IamError.MembershipIdNotFound(membershipId)));
 
         UserEntity user = userRepository.findById(membership.getUserId())

@@ -24,6 +24,8 @@ public interface AcademicFacade {
 
     StudentInfo getStudentInfo(Long studentId);
 
+    StudentInfo getStudentInfo(Long schoolId, Long studentId);
+
     /**
      * نسخه‌ی Optional از getStudentInfo برای فراخوان‌هایی که «نبودن
      * دانش‌آموز» برایشان حالت عادی است، نه خطای دامنه - مثل
@@ -95,9 +97,10 @@ public interface AcademicFacade {
     GuardianLinkId linkGuardian(Long schoolId, Long studentId, Long guardianUserId);
 
     /**
-     * همه‌ی ولی‌های لینک‌شده به یک دانش‌آموز خاص.
+     * همه‌ی ولی‌های لینک‌شده به یک دانش‌آموز خاص، بعد از تأیید تعلق دانش‌آموز
+     * به همان مدرسه.
      */
-    List<Long> listGuardians(Long studentId);
+    List<Long> listGuardians(Long schoolId, Long studentId);
 
     /**
      * همه‌ی دانش‌آموزانی که این کاربر در این مدرسه ولیِ آن‌هاست - نقطه‌ی

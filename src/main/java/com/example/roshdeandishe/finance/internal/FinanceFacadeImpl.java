@@ -71,7 +71,12 @@ class FinanceFacadeImpl implements FinanceFacade {
         BigDecimal amount = fee.get().getAmount();
         Instant now = Instant.now();
         Instant dueDate = now.plus(Duration.ofDays(defaultDueDays));
-        invoiceRepository.save(new InvoiceEntity(schoolId, studentId, amount, now, dueDate));
+        int inserted = invoiceRepository.insertTuitionInvoiceIfAbsent(schoolId, studentId, amount, now, dueDate);
+        if (inserted == 0) {
+            log.info("فاکتور شهریه‌ی مدرسه‌ی {} برای دانش‌آموز {} از قبل وجود دارد - تکراری صادر نشد.",
+                    schoolId, studentId);
+            return;
+        }
 
         eventPublisher.publishEvent(new InvoiceIssuedEvent(
                 schoolId, studentId, amount, currentActorOrNull(), now
@@ -133,7 +138,7 @@ class FinanceFacadeImpl implements FinanceFacade {
             ));
         }
 
-        InvoiceEntity invoice = requireInvoice(schoolId, invoiceId);
+        InvoiceEntity invoice = requireInvoiceForPayment(schoolId, invoiceId);
 
         BigDecimal remaining = invoice.getAmount().subtract(invoice.getAmountPaid());
         if (amount.compareTo(remaining) > 0) {
@@ -189,6 +194,11 @@ class FinanceFacadeImpl implements FinanceFacade {
         // فاکتور مدرسه‌ی دیگر هم NotFound است، نه Forbidden - وجودش را لو نمی‌دهیم
         return invoiceRepository.findById(invoiceId)
                 .filter(invoice -> invoice.getSchoolId().equals(schoolId))
+                .orElseThrow(() -> new FinanceException(new FinanceError.InvoiceNotFound(invoiceId)));
+    }
+
+    private InvoiceEntity requireInvoiceForPayment(Long schoolId, Long invoiceId) {
+        return invoiceRepository.findByIdAndSchoolIdForUpdate(schoolId, invoiceId)
                 .orElseThrow(() -> new FinanceException(new FinanceError.InvoiceNotFound(invoiceId)));
     }
 

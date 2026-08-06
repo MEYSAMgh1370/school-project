@@ -71,6 +71,20 @@ class FinanceFlowIntegrationTest {
     }
 
     @Test
+    void issuingInvoiceTwiceForSameStudentIsIdempotent() {
+        Long schoolId = 9_103_000L + System.nanoTime();
+        Long studentId = 4_200_000L + System.nanoTime();
+        financeFacade.setTuitionFee(schoolId, new BigDecimal("1200000.00"));
+
+        financeFacade.issueTuitionInvoice(schoolId, studentId);
+        financeFacade.issueTuitionInvoice(schoolId, studentId);
+
+        List<InvoiceInfo> invoices = financeFacade.listInvoices(schoolId);
+        assertThat(invoices).hasSize(1);
+        assertThat(invoices.get(0).studentId()).isEqualTo(studentId);
+    }
+
+    @Test
     void issuingInvoiceWithoutTuitionFeeIsSkipped() {
         Long schoolId = 9104L;
 
@@ -99,5 +113,32 @@ class FinanceFlowIntegrationTest {
             assertThat(invoices).hasSize(1);
             assertThat(invoices.get(0).amount()).isEqualByComparingTo("2500000.00");
         });
+    }
+
+    @Test
+    void reEnrollingExistingStudentDoesNotIssueDuplicateInvoice() {
+        Long schoolId = schoolFacade.createSchool(
+                "مدرسه‌ی تست فاکتور تکراری", "Asia/Tehran", "fa-IR", SchoolLevel.ELEMENTARY, null).value();
+        financeFacade.setTuitionFee(schoolId, new BigDecimal("2500000.00"));
+        Long firstClassId = academicFacade.createClass(
+                schoolId, "پایه پنجم - تکراری الف", null, "الف", 5, GradingScheme.NUMERIC).value();
+        Long secondClassId = academicFacade.createClass(
+                schoolId, "پایه پنجم - تکراری ب", null, "ب", 5, GradingScheme.NUMERIC).value();
+
+        String email = "finance-reenroll-student." + System.nanoTime() + "@example.com";
+        AcademicFacade.StudentId firstEnrollment = academicFacade.enrollStudent(
+                email, "Finance Reenroll Student", schoolId, firstClassId);
+
+        await().atMost(Duration.ofSeconds(15)).untilAsserted(() ->
+                assertThat(financeFacade.listInvoicesForStudents(schoolId, List.of(firstEnrollment.value()))).hasSize(1));
+
+        AcademicFacade.StudentId secondEnrollment = academicFacade.enrollStudent(
+                email, "Finance Reenroll Student", schoolId, secondClassId);
+
+        assertThat(secondEnrollment).isEqualTo(firstEnrollment);
+        assertThat(academicFacade.getStudentInfo(schoolId, firstEnrollment.value()).classId().value())
+                .isEqualTo(secondClassId);
+        await().during(Duration.ofSeconds(1)).atMost(Duration.ofSeconds(3)).untilAsserted(() ->
+                assertThat(financeFacade.listInvoicesForStudents(schoolId, List.of(firstEnrollment.value()))).hasSize(1));
     }
 }

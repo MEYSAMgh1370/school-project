@@ -97,6 +97,17 @@ public class FinanceController {
                 .toList();
     }
 
+    private void requireInvoiceVisibleToCurrentUser(Long schoolId, Long invoiceId) {
+        if (hasSchoolWideFinanceVisibility(schoolId)) {
+            return;
+        }
+        boolean visible = financeFacade.listInvoicesForStudents(schoolId, guardianWardStudentIds(schoolId)).stream()
+                .anyMatch(invoice -> invoice.id().equals(invoiceId));
+        if (!visible) {
+            throw new FinanceException(new FinanceError.InvoiceNotFound(invoiceId));
+        }
+    }
+
     @PostMapping("/invoices/{invoiceId}/payments")
     @RequiresPermission("FINANCE_MANAGE")
     public PaymentResponse recordPayment(
@@ -115,6 +126,7 @@ public class FinanceController {
     @RequiresPermission("FINANCE_VIEW")
     public List<PaymentResponse> listPayments(@PathVariable Long schoolId, @PathVariable Long invoiceId) {
         TenantContext.requireMatches(schoolId);
+        requireInvoiceVisibleToCurrentUser(schoolId, invoiceId);
 
         return financeFacade.listPayments(schoolId, invoiceId).stream()
                 .map(FinanceController::toResponse)

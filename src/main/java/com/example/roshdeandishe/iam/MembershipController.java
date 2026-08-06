@@ -61,9 +61,9 @@ public class MembershipController {
             @PathVariable Long schoolId,
             @PathVariable Long membershipId,
             @RequestBody SetActiveRequest request
-    ) {
+        ) {
         TenantContext.requireMatches(schoolId);
-        iamFacade.setMembershipActive(membershipId, request.active());
+        iamFacade.setMembershipActive(schoolId, membershipId, request.active());
     }
 
     /**
@@ -95,7 +95,7 @@ public class MembershipController {
     public InviteTokenResponse issueInviteToken(@PathVariable Long schoolId, @PathVariable Long membershipId) {
         TenantContext.requireMatches(schoolId);
 
-        return iamFacade.issueInviteToken(membershipId)
+        return iamFacade.issueInviteToken(schoolId, membershipId)
                 .map(issued -> new InviteTokenResponse(issued.token(), true, issued.emailSent()))
                 .orElseGet(() -> new InviteTokenResponse(null, false, false));
     }

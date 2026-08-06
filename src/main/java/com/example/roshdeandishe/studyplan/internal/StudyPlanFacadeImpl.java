@@ -592,11 +592,8 @@ class StudyPlanFacadeImpl implements StudyPlanFacade {
         return normalized;
     }
 
-    /**
-     * پورت overlap موshavere: s2 < e1 <= e2 یا s2 <= s1 < e2.
-     */
     private static boolean overlap(LocalTime s1, LocalTime e1, LocalTime s2, LocalTime e2) {
-        return (s2.isBefore(e1) && !e2.isBefore(e1)) || (!s1.isBefore(s2) && s1.isBefore(e2));
+        return s1.isBefore(e2) && e1.isAfter(s2);
     }
 
     private static LocalTime parseTime(String hhmm) {

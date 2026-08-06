@@ -44,12 +44,12 @@ class InviteTokenFlowIntegrationTest {
         );
         Long membershipId = iamFacade.createMembership(userId, 1L, "STUDENT");
 
-        Optional<InviteIssued> firstIssue = iamFacade.issueInviteToken(membershipId);
+        Optional<InviteIssued> firstIssue = iamFacade.issueInviteToken(1L, membershipId);
         assertThat(firstIssue).isPresent();
         String token = firstIssue.get().token();
 
         // idempotent reuse: issuing again before redemption returns the same token
-        Optional<InviteIssued> secondIssue = iamFacade.issueInviteToken(membershipId);
+        Optional<InviteIssued> secondIssue = iamFacade.issueInviteToken(1L, membershipId);
         assertThat(secondIssue.orElseThrow().token()).isEqualTo(token);
 
         iamFacade.redeemInviteToken(token, "brandNewPassw0rd");
@@ -59,7 +59,7 @@ class InviteTokenFlowIntegrationTest {
                 .isInstanceOf(IamException.class);
 
         // issuing again after activation is a no-op (already has a password)
-        Optional<InviteIssued> thirdIssue = iamFacade.issueInviteToken(membershipId);
+        Optional<InviteIssued> thirdIssue = iamFacade.issueInviteToken(1L, membershipId);
         assertThat(thirdIssue).isEmpty();
     }
 
@@ -70,7 +70,7 @@ class InviteTokenFlowIntegrationTest {
         );
         Long membershipId = iamFacade.createMembership(userId, 1L, "STUDENT");
 
-        InviteIssued issued = iamFacade.issueInviteToken(membershipId).orElseThrow();
+        InviteIssued issued = iamFacade.issueInviteToken(1L, membershipId).orElseThrow();
         assertThat(issued.emailSent()).isTrue();
 
         MimeMessage[] received = greenMail.getReceivedMessages();
@@ -94,7 +94,7 @@ class InviteTokenFlowIntegrationTest {
         // emailSent=false برمی‌گردد (ادمین لینک را دستی تحویل می‌دهد)
         greenMail.stop();
 
-        InviteIssued issued = iamFacade.issueInviteToken(membershipId).orElseThrow();
+        InviteIssued issued = iamFacade.issueInviteToken(1L, membershipId).orElseThrow();
         assertThat(issued.token()).isNotBlank();
         assertThat(issued.emailSent()).isFalse();
     }
@@ -111,7 +111,7 @@ class InviteTokenFlowIntegrationTest {
                 "invite-flow-short-pw@example.com", "Short PW Test"
         );
         Long membershipId = iamFacade.createMembership(userId, 1L, "STUDENT");
-        String token = iamFacade.issueInviteToken(membershipId).orElseThrow().token();
+        String token = iamFacade.issueInviteToken(1L, membershipId).orElseThrow().token();
 
         assertThatThrownBy(() -> iamFacade.redeemInviteToken(token, "short"))
                 .isInstanceOf(IamException.class);

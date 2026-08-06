@@ -64,6 +64,8 @@ public final class IamException extends RuntimeException {
                     "کد تأیید وارد‌شده برای شماره '" + e.phoneNumber() + "' نادرست است.";
             case IamError.OtpExpired e ->
                     "کد تأیید فعالی برای شماره '" + e.phoneNumber() + "' وجود ندارد یا منقضی شده است.";
+            case IamError.OtpDeliveryUnavailable e ->
+                    "ارسال کد تأیید برای شماره '" + e.phoneNumber() + "' در حال حاضر ممکن نیست.";
         };
     }
 }

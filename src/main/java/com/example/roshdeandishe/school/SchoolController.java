@@ -8,6 +8,7 @@ import com.example.roshdeandishe.school.SchoolFacade.SchoolId;
 import com.example.roshdeandishe.school.SchoolFacade.SchoolInfo;
 import com.example.roshdeandishe.school.shared.SchoolError;
 import com.example.roshdeandishe.school.shared.SchoolException;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.*;
 
 /**
@@ -34,6 +35,7 @@ public class SchoolController {
     }
 
     @PostMapping
+    @Transactional
     public SchoolResponse createSchool(@RequestBody CreateSchoolRequest request) {
         SchoolId schoolId = schoolFacade.createSchool(
                 request.name(), request.timezone(), request.locale(), request.level(), request.slug());

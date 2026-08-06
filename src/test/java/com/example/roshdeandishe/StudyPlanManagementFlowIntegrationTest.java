@@ -14,6 +14,7 @@ import org.springframework.test.web.servlet.MvcResult;
 
 import java.time.DayOfWeek;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.time.temporal.TemporalAdjusters;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -236,6 +237,54 @@ class StudyPlanManagementFlowIntegrationTest {
                         .param("weekStart", notSaturday.toString()))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.type").value(org.hamcrest.Matchers.endsWith("invalid-week-start")));
+    }
+
+    @Test
+    void creatingIntervalRejectsContainingOverlap() throws Exception {
+        MockHttpSession session = loginAsAdmin();
+        long topicId = createTopic(session, "سرفصل هم‌پوشانی بازه");
+        long classId = createClass(session, "پایه پنجم - هم‌پوشانی بازه");
+        long studentId = enrollStudent(session, "overlap.interval.pupil@roshdeandishe.test",
+                "دانش‌آموز هم‌پوشانی بازه", classId);
+        LocalDateTime start = nextSaturdayStrictlyAfter(LocalDate.now()).atTime(10, 0);
+
+        mockMvc.perform(post("/api/admin/schools/1/students/" + studentId + "/study-intervals")
+                        .with(csrf())
+                        .header("X-School-ID", "1")
+                        .session(session)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"topicId\":" + topicId + ",\"subTopicIds\":[],\"start\":\""
+                                + start + "\",\"end\":\"" + start.plusHours(1) + "\"}"))
+                .andExpect(status().isOk());
+
+        mockMvc.perform(post("/api/admin/schools/1/students/" + studentId + "/study-intervals")
+                        .with(csrf())
+                        .header("X-School-ID", "1")
+                        .session(session)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"topicId\":" + topicId + ",\"subTopicIds\":[],\"start\":\""
+                                + start.minusHours(1) + "\",\"end\":\"" + start.plusHours(2) + "\"}"))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.type").value(org.hamcrest.Matchers.endsWith("interval-overlaps")));
+    }
+
+    @Test
+    void scheduleValidationRejectsContainingOverlap() throws Exception {
+        MockHttpSession session = loginAsAdmin();
+        long classId = createClass(session, "پایه پنجم - هم‌پوشانی برنامه");
+        long studentId = enrollStudent(session, "overlap.schedule.pupil@roshdeandishe.test",
+                "دانش‌آموز هم‌پوشانی برنامه", classId);
+
+        mockMvc.perform(put("/api/admin/schools/1/students/" + studentId + "/schedule/default")
+                        .with(csrf())
+                        .header("X-School-ID", "1")
+                        .session(session)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"SAT\":[{\"start\":\"10:00\",\"end\":\"11:00\"},"
+                                + "{\"start\":\"09:00\",\"end\":\"12:00\"}],\"SUN\":[],\"MON\":[],"
+                                + "\"TUE\":[],\"WED\":[],\"THU\":[],\"FRI\":[]}"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.type").value(org.hamcrest.Matchers.endsWith("invalid-schedule")));
     }
 
     @Test

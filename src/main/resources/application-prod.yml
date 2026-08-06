@@ -112,3 +112,4 @@ roshdeandishe:
     webhook-secret: ${BALE_WEBHOOK_SECRET:}
   sms:
     api-key: ${SMS_API_KEY:}
+    dev-log-codes: false

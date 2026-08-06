@@ -93,7 +93,8 @@ public interface IamFacade {
     Long createMembership(UserId userId, Long schoolId, String roleCode);
 
     /**
-     * فعال/غیرفعال کردن یک Membership خاص با شناسه‌ی آن. این دقیقاً همان
+     * فعال/غیرفعال کردن یک Membership خاص با شناسه‌ی آن، در محدوده‌ی همان
+     * مدرسه. این دقیقاً همان
      * عملیاتی است که "مدرسه می‌خواهد دسترسی یک دانش‌آموز خاص را غیرفعال
      * کند" را پیاده می‌کند - فقط همین یک ردیف (User+School+Role) تغییر
      * می‌کند، نه کل حساب کاربری.
@@ -101,10 +102,11 @@ public interface IamFacade {
      * @throws com.example.roshdeandishe.iam.shared.exception.IamException با
      * IamError.MembershipIdNotFound اگر چنین Membershipای وجود نداشته باشد
      */
-    void setMembershipActive(Long membershipId, boolean active);
+    void setMembershipActive(Long schoolId, Long membershipId, boolean active);
 
     /**
-     * صدور یک توکن دعوت (فعال‌سازی حساب) برای کاربر پشت این Membership.
+     * صدور یک توکن دعوت (فعال‌سازی حساب) برای کاربر پشت این Membership، در
+     * محدوده‌ی همان مدرسه.
      * اگر کاربر از قبل passwordHash دارد (یعنی قبلاً فعال شده)، هیچ کاری
      * انجام نمی‌شود و Optional.empty() برگردانده می‌شود - این حالت خطا
      * نیست، بلکه یک no-op idempotent است. اگر یک توکن معتبر و redeem-نشده
@@ -119,7 +121,7 @@ public interface IamFacade {
      * @throws com.example.roshdeandishe.iam.shared.exception.IamException با
      * IamError.MembershipIdNotFound اگر چنین Membershipای وجود نداشته باشد
      */
-    Optional<InviteIssued> issueInviteToken(Long membershipId);
+    Optional<InviteIssued> issueInviteToken(Long schoolId, Long membershipId);
 
     /**
      * تکمیل فرآیند فعال‌سازی حساب: توکن را معتبر می‌سنجد و در صورت موفقیت

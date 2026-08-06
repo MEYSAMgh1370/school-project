@@ -174,4 +174,57 @@ class MembershipManagementFlowIntegrationTest {
                         "$[?(@.membershipId == " + membershipId + " && @.hasPassword == true)]"
                 ).exists());
     }
+
+    @Test
+    void membershipMutationsCannotTargetAnotherSchoolsMembershipId() throws Exception {
+        MockHttpSession session = loginAsAdmin();
+
+        MvcResult schoolResult = mockMvc.perform(post("/api/admin/schools")
+                        .with(csrf())
+                        .session(session)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"name\":\"مدرسه‌ی ایزوله عضویت " + System.nanoTime() + "\","
+                                + "\"timezone\":\"Asia/Tehran\",\"locale\":\"fa-IR\","
+                                + "\"level\":\"ELEMENTARY\",\"slug\":null}"))
+                .andExpect(status().isOk())
+                .andReturn();
+        Long otherSchoolId = objectMapper.readTree(schoolResult.getResponse().getContentAsString())
+                .get("id").asLong();
+
+        MvcResult createResult = mockMvc.perform(post("/api/admin/schools/" + otherSchoolId + "/memberships")
+                        .with(csrf())
+                        .header("X-School-ID", otherSchoolId.toString())
+                        .session(session)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"email\":\"other.school.member." + System.nanoTime()
+                                + "@roshdeandishe.test\",\"fullName\":\"عضو مدرسه دیگر\",\"roleCode\":\"TEACHER\"}"))
+                .andExpect(status().isOk())
+                .andReturn();
+        Long otherMembershipId = objectMapper.readTree(createResult.getResponse().getContentAsString())
+                .get("membershipId").asLong();
+
+        mockMvc.perform(patch("/api/admin/schools/1/memberships/" + otherMembershipId + "/active")
+                        .with(csrf())
+                        .header("X-School-ID", "1")
+                        .session(session)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"active\":false}"))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.type").value(org.hamcrest.Matchers.endsWith("membership-id-not-found")));
+
+        mockMvc.perform(post("/api/admin/schools/1/memberships/" + otherMembershipId + "/invite-token")
+                        .with(csrf())
+                        .header("X-School-ID", "1")
+                        .session(session))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.type").value(org.hamcrest.Matchers.endsWith("membership-id-not-found")));
+
+        mockMvc.perform(get("/api/admin/schools/" + otherSchoolId + "/memberships")
+                        .header("X-School-ID", otherSchoolId.toString())
+                        .session(session))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath(
+                        "$[?(@.membershipId == " + otherMembershipId + " && @.active == true)]"
+                ).exists());
+    }
 }

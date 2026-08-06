@@ -24,7 +24,13 @@ import org.springframework.test.web.servlet.MvcResult;
 
 import java.math.BigDecimal;
 import java.time.Duration;
+import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -134,6 +140,55 @@ class FinancePaymentFlowIntegrationTest {
                 .isInstanceOf(FinanceException.class)
                 .extracting(e -> ((FinanceException) e).error())
                 .isInstanceOf(FinanceError.InvoiceNotFound.class);
+    }
+
+    @Test
+    void concurrentPaymentsLockInvoiceAndRejectSecondOverpayment() throws Exception {
+        Long schoolId = 9_205_000L + System.nanoTime();
+        Long studentId = 4_305_000L + System.nanoTime();
+        financeFacade.setTuitionFee(schoolId, new BigDecimal("100.00"));
+        financeFacade.issueTuitionInvoice(schoolId, studentId);
+        Long invoiceId = financeFacade.listInvoices(schoolId).get(0).id();
+
+        CountDownLatch ready = new CountDownLatch(2);
+        CountDownLatch start = new CountDownLatch(1);
+        ExecutorService executor = Executors.newFixedThreadPool(2);
+        try {
+            List<Future<Boolean>> futures = List.of(
+                    executor.submit(() -> recordConcurrentPayment(schoolId, invoiceId, ready, start)),
+                    executor.submit(() -> recordConcurrentPayment(schoolId, invoiceId, ready, start))
+            );
+
+            assertThat(ready.await(5, TimeUnit.SECONDS)).isTrue();
+            start.countDown();
+
+            List<Boolean> results = new ArrayList<>();
+            for (Future<Boolean> future : futures) {
+                results.add(future.get(10, TimeUnit.SECONDS));
+            }
+
+            assertThat(results).containsExactlyInAnyOrder(true, false);
+            InvoiceInfo invoice = financeFacade.listInvoices(schoolId).get(0);
+            assertThat(invoice.amountPaid()).isEqualByComparingTo("80.00");
+            assertThat(financeFacade.listPayments(schoolId, invoiceId)).hasSize(1);
+        } finally {
+            executor.shutdownNow();
+        }
+    }
+
+    private Boolean recordConcurrentPayment(Long schoolId, Long invoiceId, CountDownLatch ready, CountDownLatch start)
+            throws Exception {
+        ready.countDown();
+        assertThat(start.await(5, TimeUnit.SECONDS)).isTrue();
+        try {
+            financeFacade.recordPayment(schoolId, invoiceId, new BigDecimal("80.00"), PaymentMethod.CASH, null);
+            return true;
+        } catch (FinanceException e) {
+            if (e.error() instanceof FinanceError.PaymentExceedsBalance) {
+                return false;
+            }
+            throw e;
+        }
     }
 
     @Test
@@ -425,6 +480,26 @@ class FinancePaymentFlowIntegrationTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$", org.hamcrest.Matchers.hasSize(1)))
                 .andExpect(jsonPath("$[0].studentId").value(studentId));
+
+        Long wardInvoiceId = financeFacade.listInvoicesForStudents(1L, List.of(studentId)).get(0).id();
+        financeFacade.recordPayment(1L, wardInvoiceId, new BigDecimal("100000.00"), PaymentMethod.CASH, "پرداخت فرزند");
+
+        Long otherStudentId = 7_305_000L + System.nanoTime();
+        financeFacade.issueTuitionInvoice(1L, otherStudentId);
+        Long otherInvoiceId = financeFacade.listInvoicesForStudents(1L, List.of(otherStudentId)).get(0).id();
+        financeFacade.recordPayment(1L, otherInvoiceId, new BigDecimal("100000.00"), PaymentMethod.CASH, "پرداخت دیگران");
+
+        mockMvc.perform(get("/api/admin/schools/1/invoices/" + wardInvoiceId + "/payments")
+                        .header("X-School-ID", "1")
+                        .session(parentSession))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$", org.hamcrest.Matchers.hasSize(1)));
+
+        mockMvc.perform(get("/api/admin/schools/1/invoices/" + otherInvoiceId + "/payments")
+                        .header("X-School-ID", "1")
+                        .session(parentSession))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.type").value(org.hamcrest.Matchers.endsWith("invoice-not-found")));
 
         // دانش‌آموز خودش FINANCE_VIEW ندارد - همچنان 403 روی endpoint ادمینی
         mockMvc.perform(get("/api/admin/schools/1/invoices").header("X-School-ID", "1").session(studentSession))

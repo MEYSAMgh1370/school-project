@@ -56,7 +56,7 @@ class InvoiceIssuedEventListener {
 
             List<Long> recipients = new ArrayList<>();
             recipients.add(student.userId());
-            recipients.addAll(academicFacade.listGuardians(student.id().value()));
+            recipients.addAll(academicFacade.listGuardians(student.schoolId(), student.id().value()));
 
             for (Long recipientUserId : recipients) {
                 baleFacade.sendMessageToUser(recipientUserId, text);
