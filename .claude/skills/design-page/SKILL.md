@@ -21,9 +21,10 @@ accent color, a Toast that doesn't exist, `margin-left` in an RTL app.
 This skill exists so every page is designed task-first and lands looking
 like a sibling of the existing pages.
 
-**Precedence:** `CLAUDE.md` > `UX_ROADMAP.md` §2 > `DESIGN.md` > this
-skill's convenience summaries. If anything below contradicts those files,
-the files win — fix the skill.
+**Precedence:** OpenSpec current-behavior docs + implementation/tests >
+`UX_ROADMAP.md` §2 > `DESIGN.md` > legacy `CLAUDE.md` context > this
+skill's convenience summaries. If anything below contradicts current code or
+OpenSpec, report the conflict and fix the stale documentation.
 
 **If the page belongs to a module that doesn't exist yet, STOP and run the
 `new-module` skill first** (CLAUDE.md standing instruction). Come back here
@@ -53,8 +54,9 @@ for the page after the module pass resolves codes and boundaries.
   `@RequiresModule` / `@RequiresPermission` codes its API calls need (both,
   in order — never one). If no existing permission code fits, that's a
   domain decision to raise, not a code to invent here.
-- **Owning surface:** page controller lives in the `web` module; the data
-  API lives at the owning domain module's root controller. Name both.
+- **Owning surface:** cross-module product page controllers live in the `web`
+  module; pure auth/identity pages may live in `iam.shared`. The data API
+  lives at the owning domain module's root controller. Name both.
 - **Navigation:** where the navbar link goes and for which *selected*
   (display-only) roles it's visible — every management page is reachable
   from `navbar-start`, no orphan URLs (UX_ROADMAP §2). Link visibility may

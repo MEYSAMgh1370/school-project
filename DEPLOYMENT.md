@@ -32,8 +32,9 @@ several are deliberate, documented choices rather than oversights, and one
 2. **Database**: create a PostgreSQL instance. Note the host, port, database
    name, username, and password — the app needs them as environment variables.
 
-   **An empty database is all you need.** Flyway owns the schema (`CLAUDE.md`
-   §12): on first start it creates all eight per-module schemas from
+   **An empty database is all you need.** Flyway owns the schema (see
+   [`openspec/decisions/2026-07-30-flyway-schema-ownership.md`](openspec/decisions/2026-07-30-flyway-schema-ownership.md)):
+   on first start it creates all eight per-module schemas from
    `spring.flyway.schemas`, then applies `src/main/resources/db/migration/`.
    No manual SQL — provided the database user can `CREATE`, which is the
    default for a Liara-provisioned one. If yours can't, create the schemas by
@@ -164,9 +165,10 @@ Onboard yourself through the normal self-service flow:
    `FINANCE`. The paid modules (`CURRICULUM`, `STUDY_PLANNER`, `EXAM`) return
    403 `module-not-entitled` until granted.
 
-Granting a paid module has **no REST endpoint on purpose** (CLAUDE.md §10) — it
-needs platform-admin permission infrastructure that does not exist yet. Until
-billing is built, grant one directly in the database:
+Granting a paid module has **no REST endpoint on purpose** (see
+[`openspec/decisions/2026-07-20-free-tier-entitlements.md`](openspec/decisions/2026-07-20-free-tier-entitlements.md))
+— it needs platform-admin permission infrastructure that does not exist yet.
+Until billing is built, grant one directly in the database:
 
 ```sql
 INSERT INTO iam.school_entitlements (school_id, module_id, active, starts_at)
@@ -242,17 +244,18 @@ is built; decide it deliberately when you actually need to scale.
 an entity and the real schema drift apart, the application **fails to start**
 rather than silently adding a column. That is the intended behaviour — but it
 means a release whose entities changed without a matching
-`src/main/resources/db/migration/V<n>__....sql` will not boot. See `CLAUDE.md`
-§12 for the working rules. Take a backup before deploying a migration that
-drops or rewrites anything.
+`src/main/resources/db/migration/V<n>__....sql` will not boot. See
+[`openspec/decisions/2026-07-30-flyway-schema-ownership.md`](openspec/decisions/2026-07-30-flyway-schema-ownership.md)
+for the working rules. Take a backup before deploying a migration that drops or
+rewrites anything.
 
 **There is no platform-admin path.** Granting paid modules and suspending a
 school are facade-only, with no REST endpoint, because no real permission check
-exists for platform-privileged actions (CLAUDE.md §5, §7 item 1). Both are
-database operations for now.
+exists for platform-privileged actions. Both are database operations for now;
+see [`openspec/changes/proposed-work.md`](openspec/changes/proposed-work.md).
 
 **A school's slug cannot be changed after creation.** There is no
-school-settings surface yet (CLAUDE.md §11 Q9). Branded entry lives at
+school-settings surface yet. Branded entry lives at
 `/s/{slug}`; per-school *subdomains* (Tier 2) need wildcard DNS plus wildcard
 TLS, and are unbuilt — now that a real deployment exists, that's a decision you
 can actually make.

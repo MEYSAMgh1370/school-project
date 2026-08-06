@@ -1,6 +1,7 @@
 # Best Practices
 
-Referenced from `CLAUDE.md`. Applies to every coding task in this repo.
+Referenced from `CLAUDE.md` and [`openspec/conventions.md`](openspec/conventions.md).
+Applies to every coding task in this repo.
 
 ---
 
@@ -142,8 +143,10 @@ introduce a competing style.
 - **Run `ModularityTests.verifyModularStructure()` after any module-boundary
   change** — it's the actual enforcement mechanism, not just a convention to
   remember by hand.
-- **Testing is currently thin** (only `ModularityTests` +
-  `Demo5ApplicationTests` exist). When adding real test coverage, prefer
-  Spring Modulith's `@ApplicationModuleTest` for facade-level tests (it boots
-  only the module under test plus its declared dependencies) over a full
-  `@SpringBootTest` unless the test genuinely needs the whole context.
+- **Use the existing flow-test style deliberately.** This repository now has
+  broad `*FlowIntegrationTest` coverage around auth, school, academic,
+  finance, curriculum, study plans, exams, mobile auth, and page flows. Prefer
+  the narrowest test that proves the behavior, but use `@SpringBootTest` +
+  Testcontainers when the behavior crosses HTTP/security/tenant/module
+  boundaries. Run `ModularityTests.verifyModularStructure()` after any
+  module-boundary change.

@@ -29,7 +29,7 @@ You are the **orchestrator**. You run on the expensive, high-judgment model (Opu
 5. Skill composition:
    - A "new module" task → run the `new-module` skill first (package layout, error-handling stack, facade, entitlement registration), then delegate the implementation via this loop.
    - A new page, or a substantial restructure of an existing one → run the `design-page` skill first. CLAUDE.md makes this mandatory, and it settles goal/hierarchy/primary action/states before any JTE is written.
-   - Any UI task's delegation prompt must reference `DESIGN.md` and the `:root` token block in `src/main/resources/static/css/app.css` as authoritative.
+   - Any UI task's delegation prompt must reference OpenSpec/current templates plus `DESIGN.md` and the `:root` token block in `src/main/resources/static/css/app.css` for visual rules and token values.
 6. Mark which tasks are independent → those get spawned **in parallel**. Dependent tasks run in sequence, each receiving the relevant results of its predecessors inside its prompt.
 7. Present the task plan to the user briefly before executing (skip only if the user said to proceed autonomously).
 
@@ -50,7 +50,7 @@ Include the matching command(s) as the acceptance criteria in every delegation p
 For each task, write a delegation prompt containing:
 
 - **Goal**: one paragraph, concrete.
-- **Context**: everything the agent needs — relevant findings from `code-explorer`, project conventions that apply, interfaces/signatures of neighboring code. Remember: the subagent has read CLAUDE.md but has **zero** knowledge of this conversation.
+- **Context**: everything the agent needs — relevant findings from `code-explorer`, OpenSpec/current-code evidence, project conventions that apply, interfaces/signatures of neighboring code. Remember: the subagent has **zero** knowledge of this conversation.
 - **Scope**: exact files to modify or create. State explicitly: "Do not touch anything outside this list. Do not access other Modulith modules' internals — public API or events only."
 - **Acceptance criteria**: the exact command(s) from "Default verification" above and what output counts as success.
 - **Report format**: "Return: files changed, summary of each change, verification output, and anything you were unsure about."
@@ -65,7 +65,7 @@ Rules:
 This phase compensates for the workflow's structural weakness: you could not correct the subagent mid-flight, so you must review after the fact.
 
 1. Read the diff of each completed task (`git diff` scoped to the task's files — read the diff, not the whole files).
-2. Check against the generic criteria: acceptance criteria met, CLAUDE.md conventions followed, YAGNI (delete speculative additions), surgical-change discipline (flag unrelated edits).
+2. Check against the generic criteria: acceptance criteria met, OpenSpec/current-code conventions followed, YAGNI (delete speculative additions), surgical-change discipline (flag unrelated edits).
 3. Check the **project-specific review checklist**:
    - Display uses Persian digits and Jalali calendar; anything on the wire (APIs, DB, logs) is ISO-8601 only.
    - RTL-first: layout and Bulma classes are correct for RTL; no accidental LTR-only styling.

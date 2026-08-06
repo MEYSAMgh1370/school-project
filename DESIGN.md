@@ -7,12 +7,13 @@ that was never adopted — §11 records what was dropped from it and why, so
 those decisions are explicit, not silent. Items marked **[SIGN-OFF]** are
 proposals in this draft, not resolved decisions, until confirmed.
 
-Subordinate to `CLAUDE.md` (source of truth for architecture, domain, access
-control) and to `UX_ROADMAP.md` §2 (binding shared UX patterns — layout,
-navbar, tenant selection, code placement, error/success display, role
-labels). Both win on any conflict with this file. This file adds the visual
-layer those documents don't cover: tokens, typography, color, spacing,
-motion, and the component inventory.
+Subordinate to OpenSpec current-behavior docs for architecture, domain, and
+access control, and to `UX_ROADMAP.md` §2 for binding shared UX patterns
+(layout, navbar, tenant selection, code placement, error/success display, role
+labels). This file adds the visual layer those documents don't cover: tokens,
+typography, color, spacing, motion, and the component inventory. If this file
+conflicts with implementation, report the conflict before changing code or
+docs.
 
 **Platform scope:** this file governs the **JTE web UI only** — the
 server-rendered management pages (`UX_ROADMAP.md`) and the student web
@@ -123,7 +124,8 @@ The component library is **the set of `.jte` templates that exist**, not an
 aspirational list. Current inventory:
 
 - `layout/main.jte` — the only owner of `<head>`; `title`, `content`,
-  optional `scripts` (rules in CLAUDE.md §2 / UX_ROADMAP §2).
+  optional `scripts`, and optional `styles` (rules in OpenSpec /
+  UX_ROADMAP §2).
 - `layout/navbar.jte` — school/role switcher, fed by `NavbarModelAssembler`.
 - Page templates (`dashboard.jte`, `people.jte`, `classes.jte`,
   `students.jte`, `finance.jte`, …) composed from Bulma primitives:

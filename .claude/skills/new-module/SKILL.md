@@ -6,9 +6,10 @@ description: Scaffold a new Spring Modulith module in Roshdeandishe (package lay
 # Adding a new module
 
 Follow this checklist when creating a new module under `com.example.roshdeandishe`.
-It codifies the conventions already established in `CLAUDE.md` §2, §3, §9, §10 —
-read those sections first if anything here is ambiguous; this skill does not
-override them.
+It codifies conventions from OpenSpec, current code, and legacy `CLAUDE.md`
+sections on module boundaries. Read `openspec/project.md` and neighboring
+modules first if anything here is ambiguous; this skill does not override
+current implementation evidence.
 
 ## 1. Package layout
 
@@ -108,9 +109,11 @@ invent a new shape:
 - Permissions: `RESOURCE_ACTION` upper snake-case.
 - Module codes: `UPPER_SNAKE_CASE`.
 - Events: past-tense PascalCase (`StudentEnrolledEvent`-style).
-- DB tables: snake_case, in a schema matching the module name — remember the
-  schema itself must be created manually (`CREATE SCHEMA IF NOT EXISTS <name>;`)
-  since `ddl-auto` only creates tables, not schemas (§7 item 4).
+- DB tables: snake_case, in a schema matching the module name. Flyway owns
+  schema creation and migrations: add the schema to `spring.flyway.schemas`
+  when needed and create a new `V<n>__...sql` migration under
+  `src/main/resources/db/migration/`. Hibernate runs in validation mode; do
+  not edit applied migrations or rely on `ddl-auto` to create tables.
 
 ## 7. Before calling it done
 

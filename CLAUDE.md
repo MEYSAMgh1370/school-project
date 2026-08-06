@@ -1,8 +1,11 @@
 # Roshdeandishe — CLAUDE.md
 
-This file is the source of truth for all architectural, domain, and product decisions.
-When in doubt, follow what is written here. Do not invent alternatives or reopen resolved
-decisions.
+**Legacy status.** This file is a detailed architecture/product notebook from
+previous AI-assisted work. It preserves important context and rejected
+alternatives, but it is no longer the unchecked source of truth. Start with
+[`openspec/project.md`](openspec/project.md), then verify current behavior in
+source code and tests. When this file conflicts with OpenSpec or
+implementation, report the conflict before changing code or docs.
 
 This file replaces an earlier draft that sketched a different identity model
 (`Person`/`User`/`RoleGrant`, `kernel/school/optional` packages, `ir.roshdeandishe`,
@@ -10,8 +13,9 @@ UUID ids). That draft was never implemented. What follows documents the model th
 was actually built and is now the resolved architecture. **`RoleGrant` and a
 `Person`/`User` split remain explicitly rejected** — see §10.
 
-See [`BEST_PRACTICES.md`](BEST_PRACTICES.md) for working discipline and Java/Spring
-conventions — it applies to every coding task in this repo, same as this file.
+See [`BEST_PRACTICES.md`](BEST_PRACTICES.md), [`AGENTS.md`](AGENTS.md), and
+[`openspec/conventions.md`](openspec/conventions.md) for working discipline and
+Java/Spring conventions.
 
 **Before creating any new module** (new top-level package under
 `com.example.roshdeandishe` with its own Facade), you MUST invoke the
@@ -22,9 +26,10 @@ this covers phrasing like "add Library support" or "build out Attendance."
 page template, a new page controller in `web`, or reshaping an existing
 page's layout/flow), you MUST invoke the `design-page` skill first — even if
 the request doesn't use the word "page" ("add a screen for X", "let admins
-manage Y"). Visual rules live in [`DESIGN.md`](DESIGN.md) (subordinate to
-this file and `UX_ROADMAP.md` §2); token *values* live in the `:root` block
-of `src/main/resources/static/css/app.css`.
+manage Y"). Visual rules live in [`DESIGN.md`](DESIGN.md) and
+[`UX_ROADMAP.md`](UX_ROADMAP.md) §2; current behavior belongs in OpenSpec.
+Token *values* live in the `:root` block of
+`src/main/resources/static/css/app.css`.
 
 **Before starting substantive work on anything listed in §7 "Open /
 explicitly deferred", any §11 Open Question, or a priority item from
@@ -34,9 +39,11 @@ BOTH of the following — they catch two different failure modes, not one:
 
 1. **Already finished (no concurrency involved at all):** run
    `git log HEAD..origin/master --oneline` and, if your branch/worktree is
-   behind, read **master's own copy** of the relevant CLAUDE.md/
-   UX_ROADMAP.md section (`git show origin/master:CLAUDE.md`), not just the
-   copy checked out in your worktree. A worktree/branch created from an
+   behind, read **master's own copy** of the relevant OpenSpec,
+   CLAUDE.md, or UX_ROADMAP.md section (`git show
+   origin/master:openspec/project.md`, `git show origin/master:CLAUDE.md`,
+   etc.), not just the copy checked out in your worktree. A worktree/branch
+   created from an
    older commit can sit stale for a long time; treating your local
    checkout's "Open" marker as ground truth, without ever diffing against
    current master, is how an already-merged, already-documented resolution
@@ -56,9 +63,10 @@ finished. If you find either — overlapping in-flight work, or the item
 already resolved on master — stop and tell the user rather than building a
 second independent resolution or silently redoing finished work. Once you
 do resolve an item, keep following this repo's existing convention of
-updating the relevant CLAUDE.md/UX_ROADMAP.md section in the *same* commit
-as the code, not a follow-up one — see any §7 Done entry for the expected
-shape (what changed, why, what was explicitly deferred, test coverage).
+updating the relevant OpenSpec document and any still-useful legacy
+CLAUDE.md/UX_ROADMAP.md section in the *same* commit as the code, not a
+follow-up one — see any §7 Done entry for the expected shape (what changed,
+why, what was explicitly deferred, test coverage).
 
 ---
 
@@ -153,54 +161,43 @@ too narrow.
   existing bias toward compile-time checks like sealed error types) + Alpine.js for
   light client-side interactivity. Both delivered as WebJars (`org.webjars.npm`),
   not a CDN `<script>` tag and not an npm/webpack/vite build — stays a zero-build
-  addition consistent with "one Maven artifact." Templates live in `src/main/jte/`
-  — ten page templates (`landing.jte`, `activate.jte`, `login.jte`,
-  `register.jte`, `dashboard.jte`, `people.jte`, `school-new.jte`,
-  `classes.jte`, `students.jte`, `finance.jte`), all wrapped
-  in the shared **`layout/main.jte`** (`title`, `gg.jte.Content content`, and
-  an optional `scripts` param — `List<String>` of `/js/...` paths). The layout
-  is the *only* place that owns the `<head>` (WebJar stylesheet/script tags +
-  the global `/css/app.css`); a page needing a page-specific asset adds an
-  entry to `scripts`, never its own duplicated `<head>`. Each `scripts` entry
-  is emitted *before* the Alpine `<script defer>` tag on purpose: deferred
-  scripts run in document order, and `Alpine.data` registrations must exist
-  before `alpine:init` fires. Bulma is used for CSS, also as a WebJar, no
-  custom CSS framework/pipeline.
+  addition consistent with "one Maven artifact." Templates live in
+  `src/main/jte/` and are wrapped by the shared **`layout/main.jte`**
+  (`title`, `gg.jte.Content content`, optional `scripts`, and optional
+  `styles`). The layout is the *only* place that owns the `<head>` (WebJar
+  stylesheet/script tags + shared `/css/app.css`); a page needing a
+  page-specific asset passes `scripts`/`styles`, never its own duplicated
+  `<head>`. Each `scripts` entry is emitted *before* the Alpine `<script
+  defer>` tag on purpose: deferred scripts run in document order, and
+  `Alpine.data` registrations must exist before `alpine:init` fires. Bulma is
+  used for CSS, also as a WebJar, no custom CSS framework/pipeline.
   **Frontend code-placement rule (explicit user decision, 2026-07-05):** Bulma
-  classes and small Alpine expressions stay inline in the template; anything with
-  `fetch`, a regex, or more than ~10 lines of JS moves to a static file (under
-  `src/main/resources/static/js/`) as an `Alpine.data` component; custom CSS is
-  always an external file, never inline `<style>`. `src/main/resources/static/js/`
-  holds `school-new.js` (`createSchoolForm` — self-service school creation, §1,
-  moved off the dashboard onto its own page 2026-07-06 — see §7 Done), `navbar.js`
-  (the shared school/role switcher, see below), `people.js`, `classes.js`,
-  `students.js`, `finance.js`, and `expenses.js` (one `Alpine.data` component per
-  management page, see `web` module below), plus `jalali.js` (a standalone,
-  dependency-free Jalali/Gregorian date conversion helper used only by
-  `expenses.js`'s report-period picker — not an `Alpine.data` component itself);
-  `src/main/resources/static/css/app.css` is the one global
-  stylesheet so far (holds the `[x-cloak]` rule, used to keep closed
-  `x-show`-gated forms from flashing open before Alpine initializes). `/js/**`
-  and `/css/**` are `permitAll` in `SecurityConfig` and excluded in
-  `TenantResolverFilter`. `login`/`register`/`activate` predate this rule and
-  keep their inline components until next touched — apply the rule when writing
-  new pages or meaningfully editing existing ones. View-rendering `@Controller`s
-  (as opposed to the
-  `@RestController`s everywhere else) live in two places, split by concern:
-  pure auth/identity pages stay in `iam.shared`
-  (`AccountActivationPageController`, `LoginPageController`,
-  `RegisterPageController`), while any page
-  that composes data across modules lives in the dedicated **`web` module**
-  (`DashboardPageController`, `PeoplePageController` — memberships from iam +
-  school names from school). This resolved the former UI-composition open point: `web` is a
-  pure view-composition layer — it consumes other modules' Facades, owns no
-  entities/Facade/REST of its own, and nothing depends on it. Do not put
-  cross-module page controllers in `iam` (iam→school would be a dependency
-  cycle), and do not put REST endpoints in `web`. The school/role switcher
-  navbar is a **shared JTE template** (`layout/navbar.jte`, fed by
-  `web.NavbarModelAssembler`) reused by every management page — see `web`
-  module below and [`UX_ROADMAP.md`](UX_ROADMAP.md) for the full page-by-page
-  plan and the shared UX conventions every new management page must follow.
+  classes and small Alpine expressions stay inline in the template; anything
+  with `fetch`, a regex, or more than ~10 lines of JS moves to a static file
+  (under `src/main/resources/static/js/`) as an `Alpine.data` component;
+  custom CSS is always an external file, never inline `<style>`. Current page
+  and asset inventory lives in [`FRONTEND.md`](FRONTEND.md) and
+  [`openspec/specs/current-system.md`](openspec/specs/current-system.md); do
+  not rely on older hard-coded counts in historical notes. `app.css` owns
+  shared tokens and global rules; page-specific stylesheets may exist for
+  dense workflows such as study plans. `/js/**` and `/css/**` are `permitAll`
+  in `SecurityConfig` and excluded in `TenantResolverFilter`. `login` now uses
+  `login.js`; `register` and `activate` still predate the extraction rule and
+  keep inline components until meaningfully touched. View-rendering
+  `@Controller`s (as opposed to the `@RestController`s everywhere else) live
+  in two places, split by concern: pure auth/identity pages stay in
+  `iam.shared` (`AccountActivationPageController`, `LoginPageController`,
+  `RegisterPageController`), while any page that composes data across modules
+  lives in the dedicated **`web` module**. This resolved the former
+  UI-composition open point: `web` is a pure view-composition layer — it
+  consumes other modules' Facades, owns no entities/Facade/REST of its own,
+  and nothing depends on it. Do not put cross-module page controllers in
+  `iam` (iam→school would be a dependency cycle), and do not put REST
+  endpoints in `web`. The school/role switcher navbar is a **shared JTE
+  template** (`layout/navbar.jte`, fed by `web.NavbarModelAssembler`) reused
+  by authenticated management pages — see `web` module below,
+  [`FRONTEND.md`](FRONTEND.md), and [`UX_ROADMAP.md`](UX_ROADMAP.md) for the
+  shared UX conventions every new management page must follow.
 
 ### Module boundary rules (enforced by `ModularityTests.verifyModularStructure()`)
 

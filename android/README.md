@@ -4,8 +4,9 @@ Native Android client (Kotlin + Jetpack Compose), v1 thin read-only shell:
 login, profile, school memberships, and (if the logged-in user is a STUDENT)
 their current class enrollment. Talks to the existing `/api/**` REST layer in
 the main Spring Boot backend via JWT bearer tokens (`POST /api/auth/token`) -
-see the root project's `CLAUDE.md` and `MOBILE_ROADMAP.md` for the full
-architecture context and why this exists.
+see the root project's `openspec/specs/current-system.md`,
+`openspec/architecture.md`, and `MOBILE_ROADMAP.md` for the architecture
+context and proposed next work.
 
 This is a standalone Gradle project, not part of the backend's Maven build -
 there is no build-time coupling between the two.

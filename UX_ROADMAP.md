@@ -1,17 +1,18 @@
 # Roshdeandishe — UX Roadmap
 
-This document governs the management-UI buildout that CLAUDE.md §7 item 6 unblocked
-(CSRF + the school/role switcher are both resolved). It does not redefine backend
-architecture, domain model, or access control — CLAUDE.md remains the source of
-truth for those, and wins on any conflict with this file.
+**Historical roadmap plus UI conventions.** This document records the
+management-UI buildout and still contains useful shared UX rules. It is not the
+current system specification. Use [`openspec/project.md`](openspec/project.md),
+[`openspec/specs/current-system.md`](openspec/specs/current-system.md), and the
+implementation/tests to determine current behavior.
 
 ## 1. Purpose & scope
 
-Four pages exist today (`login`, `register`, `activate`, `dashboard`), all
-read-only or auth-only. Everything *mutating* — membership, class, enrollment,
-finance management — is still missing. This roadmap lists what to build, in what
-order, and the UX conventions every new page must follow so the frontend stays
-coherent as more pages are added by different people/sessions over time.
+This roadmap began when only `login`, `register`, `activate`, and `dashboard`
+existed. Many mutating management pages now exist. Treat build-order text as
+historical unless it is also confirmed by `FRONTEND.md`, OpenSpec, source code,
+or tests. The shared UX conventions below still apply to new or substantially
+edited JTE pages unless a current OpenSpec change supersedes them.
 
 ## 2. Shared UX patterns (binding for every page)
 
@@ -38,10 +39,11 @@ coherent as more pages are added by different people/sessions over time.
   small Alpine expressions stay inline in the template. Anything with `fetch`,
   a regex, or more than ~10 lines of JS moves to a static file under
   `src/main/resources/static/js/` as an `Alpine.data` component, registered on
-  `alpine:init`. Custom CSS is always an external file, never inline `<style>`
-  (no page has needed one yet). `csrfToken()` is a 3-line helper duplicated per
-  component rather than extracted — extract only on the third real duplicate
-  past what already exists, per the project's rule-of-three.
+  `alpine:init`. Custom CSS is always an external file, never inline `<style>`;
+  page-specific CSS is loaded through the shared layout when a dense workflow
+  needs it. `csrfToken()` is a 3-line helper duplicated per component rather
+  than extracted — extract only on the third real duplicate past what already
+  exists, per the project's rule-of-three.
 - **Language/direction.** UI text is Persian, page `dir="rtl"` (set once in the
   layout). Latin data — emails, tokens, IDs — gets `dir="ltr"` on its own
   element so it doesn't visually reverse.
@@ -317,8 +319,9 @@ page shell and the REST flow behind it.
       `LoginDashboardFlowIntegrationTest`'s pattern) covering the page shell and
       the REST flow it drives.
 - [ ] `mvn test -Dtest=ModularityTests` still green (module boundaries intact).
-- [ ] CLAUDE.md updated (module structure §3, "Done" list §7) if the slice adds
-      a new controller, facade method, or resolves an open item.
+- [ ] Relevant OpenSpec current spec/change proposal updated if behavior
+      changes; `HISTORY.md`/legacy notes updated only when they add useful
+      chronological context.
 
 ## 6. Critical user-journey review (2026-07-19)
 

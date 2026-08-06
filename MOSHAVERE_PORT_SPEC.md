@@ -1,16 +1,18 @@
 # Roshdeandishe — Moshavere Port Spec
 
-**Status: DRAFT.** Not resolved architecture the way `CLAUDE.md` is — it governs
-the proposed shape of a port from a separate, older codebase family ("moshavere":
+**Historical port proposal.** This document started as a draft for porting
+features from a separate, older codebase family ("moshavere":
 `agency-panel-master`, `exam-maker-master`, plus two React frontends, all under
-`/home/meysam/Downloads/moshavere/`) into this project, the same way
-`UX_ROADMAP.md`/`MOBILE_ROADMAP.md` govern their respective areas — subordinate
-to `CLAUDE.md`, which remains the source of truth and wins on any conflict.
-**Before building any of this, invoke the `new-module` skill per module** (per
-`CLAUDE.md`'s standing instruction) — this document is input to that process,
-not a substitute for it. Nothing here is committed until each module's own
-new-module pass resolves its final shape; several open questions are called
-out explicitly below and must be resolved (or re-confirmed) at that time.
+`/home/meysam/Downloads/moshavere/`) into this project. The major scoped pieces
+below are now largely implemented and marked `DONE` in their sections. Treat
+pre-build wording and old "Open" bullets as historical context unless OpenSpec,
+source code, or tests confirm they are still current.
+
+Current behavior belongs in [`openspec/specs/current-system.md`](openspec/specs/current-system.md).
+Remaining future work belongs in [`openspec/changes/proposed-work.md`](openspec/changes/proposed-work.md).
+Before adding a new module or substantially changing one of these areas, create
+a focused OpenSpec change proposal and use the `new-module` skill when it
+applies.
 
 ## 1. Why
 

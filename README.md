@@ -1,14 +1,19 @@
 # Roshdeandishe — School Management System
 
 A multi-tenant SaaS school management platform for Iranian schools, built as a
-**Spring Boot Modular Monolith** (Spring Modulith). See
-[`CLAUDE.md`](CLAUDE.md) for the full, authoritative architecture and domain
-model — this file is intentionally just a quick-start pointer, so it doesn't
-drift out of sync with the real source of truth again.
+**Spring Boot Modular Monolith** (Spring Modulith). Start with
+[`openspec/project.md`](openspec/project.md) for the curated documentation map.
+The source code and tests remain the evidence for current behavior; older
+Markdown files are useful context but may contain stale AI-assisted notes.
 
-- [`CLAUDE.md`](CLAUDE.md) — architecture, module structure, domain model,
-  access control, roadmap. Read this first for anything beyond "how do I run
-  it locally."
+- [`openspec/project.md`](openspec/project.md) — current documentation map,
+  evidence order, and OpenSpec workflow.
+- [`openspec/architecture.md`](openspec/architecture.md) — verified
+  architecture, module, persistence, frontend, Android, and deployment shape.
+- [`openspec/specs/current-system.md`](openspec/specs/current-system.md) —
+  current product behavior and known limitations.
+- [`CLAUDE.md`](CLAUDE.md) — legacy detailed architecture and product notebook.
+  Use it as source material, not as unchecked authority.
 - [`BEST_PRACTICES.md`](BEST_PRACTICES.md) — working discipline and Java/Spring
   conventions for this repo.
 - [`UX_ROADMAP.md`](UX_ROADMAP.md) — frontend page inventory, build order, and
@@ -98,7 +103,7 @@ The demo seed data — including the `admin@roshdeandishe.test` / `password`
 login — is **not** created under the `prod` profile, which the Docker image
 sets itself. Only the Module/Role/Permission catalog is seeded there, since
 nothing works without it. Schema management is likewise no longer a gap (see
-`CLAUDE.md` §12).
+[`openspec/decisions/2026-07-30-flyway-schema-ownership.md`](openspec/decisions/2026-07-30-flyway-schema-ownership.md)).
 
 ## Testing
 

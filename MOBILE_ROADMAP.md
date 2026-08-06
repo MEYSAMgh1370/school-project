@@ -1,12 +1,11 @@
 # Roshdeandishe — Mobile & Parent-Communication Roadmap
 
-**Status: DRAFT.** This document is still being refined and is explicitly *not*
-resolved architecture the way `CLAUDE.md` is. It governs the future
-mobile/offline/video/bot strategy the same way `UX_ROADMAP.md` governs the
-management-UI buildout — subordinate to `CLAUDE.md`, which remains the source
-of truth and wins on any conflict. Nothing here should be treated as committed
-until the user says the strategy is settled; do not start backend work off this
-doc without checking in first.
+**Status: proposed-change roadmap.** This document captures mobile,
+offline/video, and parent-communication strategy. It is not the current system
+specification. Use [`openspec/specs/current-system.md`](openspec/specs/current-system.md),
+[`android/README.md`](android/README.md), source code, and tests to determine
+what is actually implemented. Do not start substantial backend or Android work
+from this roadmap without a focused OpenSpec change proposal.
 
 **Reconciliation note (2026-07-08, parent bot):** the parent-bot half of this
 plan was already built, in a separate session, before this doc's first draft
@@ -30,8 +29,10 @@ Multiplatform/Compose Multiplatform, since Android-only removes any need for
 cross-platform tooling at all. **Mobile auth is JWT bearer tokens**, additive
 to session auth, not phone+OTP (no SMS gateway integration exists or is
 planned) — see §4/§5/§7 below, corrected to match. The Android app itself
-(UI, networking, offline cache) is **not built yet** — only the backend
-(`POST /api/auth/token`, `GET /api/me/enrollment`) exists so far.
+(Kotlin/Compose UI, networking, local auth state, and read-only student
+dashboard shell) now exists under `android/`. Richer offline write workflows,
+push notifications, homework, messaging, native exam-taking, and video remain
+future work.
 
 ## 1. Purpose & scope
 
@@ -114,12 +115,11 @@ product** — see §2.
   was seriously considered, but native was chosen for long-term UX ceiling —
   no WebView tax, first-party offline storage (Room, not a JS↔native SQLite
   bridge), and better native performance for later phases (video class,
-  homework). This is a real new stack for this codebase (zero Kotlin exists
-  today) and a deliberate trade of short-term speed for long-term quality.
-  Talks to the existing `/api/**` REST layer over HTTP; the server-rendered
-  JTE pages stay as-is for admin/teacher desktop use. The Android project
-  itself is a separate Gradle project (not part of the one-Maven-artifact
-  backend), tracked outside this doc's scope until it exists.
+  homework). This is a real second stack for this repository and a deliberate
+  trade of short-term speed for long-term quality. Talks to the existing
+  `/api/**` REST layer over HTTP; the server-rendered JTE pages stay as-is for
+  admin/teacher desktop use. The Android project itself is a separate Gradle
+  project under `android/` (not part of the one-Maven-artifact backend).
 - **Offline storage.** Room (Android's first-party SQLite ORM) for durable
   data — homework drafts, an outbox for offline-submitted work — scoped to
   exactly what each phase needs to cache; no general sync engine, since v1 is
@@ -215,36 +215,30 @@ product** — see §2.
 2. ~~**Mobile auth mechanism**~~ — **done, 2026-07-08**: `POST /api/auth/token`,
    additive JWT bearer auth (see §4). Prerequisite for the Android app itself,
    which is next.
-3. **Native Android student app shell** — read-only (profile, memberships,
-   and the new `GET /api/me/enrollment` — "what class am I in"; timetable/
-   announcements don't exist as backend features yet, and grades view stays
-   blocked — not just "doesn't exist yet" but explicitly deferred per
-   `CLAUDE.md` §11 Q8: elementary grading in Iranian schools is **توصیفی**
-   (descriptive/qualitative), higher grades use a numeric scale, and no exam
-   plan exists yet either — a real product decision is needed before any
-   `Grade` shape gets built) with a Room offline cache. Proves the full
-   pipeline (JWT auth from a native client, offline cache) before adding
-   interactive features; push is explicitly deferred to a later phase, not
-   part of this shell. **Not yet built** — only the backend half (item 2 plus
-   the enrollment endpoint) exists so far.
+3. **Native Android student app shell** — **thin v1 built** under `android/`:
+   login, persisted auth state, profile, memberships, and current enrollment.
+   Timetable and announcements do not exist as backend features yet. Backend
+   and web grades/exams now exist, but richer native presentation and native
+   exam-taking are still future work. Push is explicitly deferred to a later
+   phase, not part of this shell.
 4. **`homework`** (or extend `academic`) — class feed + assignment
-   hand-out/hand-in. Needs file upload, which doesn't exist anywhere in the
-   codebase yet — a real backend prerequisite, not just a UI task. Can likely
-   reuse `StudentGuardianEntity`/`listWards` (§4) if a parent-visible homework
-   status is ever wanted.
+   hand-out/hand-in. Homework-specific attachment ownership, retention, and
+   access checks are not designed yet. Finance expense attachment upload
+   exists, but it is not automatically the homework model. Can likely reuse
+   `StudentGuardianEntity`/`listWards` (§4) if a parent-visible homework status
+   is ever wanted.
 5. **Video class integration** (BigBlueButton, tied to class/timetable).
 6. **`messaging` module** — real-time student-teacher chat (WebSocket/STOMP),
    in-app only; parents stay on the bot channel, not this module.
-7. **Exams** — last, and the largest individual scope (question banks, timing,
-   anti-cheat expectations). Also blocked on the same grading-scheme decision
-   as item 3.
+7. **Native exam integration** — the backend/web exam engine exists. Native
+   exam-taking, offline behavior, and anti-cheat expectations remain a large
+   separate scope and need their own change proposal.
 
 ## 6. Explicitly deferred / out of scope for now
 
-- **Grades feature/data model** — deliberately deferred, not just unbuilt: see
-  `CLAUDE.md` §11 Q8 (descriptive-vs-numeric grading split + unresolved exam
-  plan). Several mobile features (grades view) block on it (`UX_ROADMAP.md`
-  §3). Do not build ahead of that decision.
+- **Richer native grades UX** — backend/web grades now exist. Native display,
+  offline behavior, notifications, and any grade-scale refinements should be
+  specified before expanding the Android shell.
 - **Push notification provider for the native app** — FCM reliability inside
   Iran is questionable; local alternatives (e.g. Pushe) need evaluation, not
   decided.

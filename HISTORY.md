@@ -1,15 +1,20 @@
 # Roshdeandishe — Project History
 
+**Historical record, not current specification.** Entries in this file are
+time-stamped build history and may describe plans or gaps that were later
+resolved. Use [`openspec/project.md`](openspec/project.md) and the current
+implementation/tests to determine current behavior.
+
 This file is the archival companion to [`CLAUDE.md`](CLAUDE.md) — the full "what
 shipped and why" build log (formerly CLAUDE.md §7's `### Done` subsection) and the
 phase-by-phase roadmap (formerly §8). It moved here on 2026-07-26 to keep CLAUDE.md
 itself under control (it had grown to 261KB, most of it this changelog); nothing in
 the content changed, only its location.
 
-**New completed-work entries still go here**, in the same commit as the code that
-completes them, following the exact shape of the existing entries (what changed,
-why, what was explicitly deferred, test coverage) — the standing convention CLAUDE.md
-itself describes is unchanged, only the file it points to moved.
+New completed-work entries may still go here when chronological context is useful,
+but current behavior changes must update the relevant OpenSpec spec or decision in
+the same commit as the code. History entries should follow the existing shape
+(what changed, why, what was explicitly deferred, test coverage).
 
 CLAUDE.md's `### Done` (§7) and `## 8. Roadmap` headers stay in place there — they
 now just point back to this file — so every existing `§7 Done`/`§8` cross-reference
@@ -1595,4 +1600,3 @@ per-term cadence (not a running unstructured log). New `GradeController`
 grades). See §4's Grade subsection and §7 Done for the full model and test
 coverage (`GradeManagementFlowIntegrationTest`). **No UI yet** — backend +
 REST + tests only, same posture `curriculum`/`studyplan` shipped with.
-

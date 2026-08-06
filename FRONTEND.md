@@ -12,7 +12,9 @@ Other docs in this repo, for reference:
 
 | File | What it is |
 |---|---|
-| `CLAUDE.md` | The authoritative architecture/domain doc. Long. Read §4 (domain model) and §5 (access control) when you need detail. |
+| `openspec/project.md` | Curated documentation map and evidence order. Start here when deciding what is current. |
+| `openspec/specs/current-system.md` | Current product behavior and known limitations, checked against code. |
+| `CLAUDE.md` | Legacy detailed architecture/domain notebook. Useful context, but verify against code and OpenSpec. |
 | `UX_ROADMAP.md` | §2 is the binding list of shared UI conventions; §3 is the page inventory with build history. |
 | `DESIGN.md` | The design system: tokens, typography, color, RTL, Persian dates/digits. |
 | `README.md` | How to run it locally. |
@@ -151,9 +153,11 @@ src/main/java/com/example/roshdeandishe/web/
 └── <Page>PageController.java      ← ~10-line Java stub per page (see §6)
 ```
 
-Everything else under `src/main/java/` is backend. The `web` package is the only Java
-package that renders pages, and its controllers are deliberately dumb — they render a
-shell, and the page fetches its own data over REST.
+Everything else under `src/main/java/` is backend, except the pure auth/identity
+page controllers in `iam.shared` (`login`, `register`, `activate`). The `web`
+package owns cross-module product page composition, and its controllers are
+deliberately dumb — they render a shell, and the page fetches its own data over
+REST.
 
 ---
 
@@ -647,5 +651,6 @@ To get oriented, in order:
    loading state on a slow action. All three are documented conventions being violated
    somewhere.
 
-Questions about *why* something is the way it is: `CLAUDE.md` almost certainly answers
-it — this project documents its decisions, including the ones it rejected.
+Questions about *why* something is the way it is: start with OpenSpec, then use
+`CLAUDE.md` and `HISTORY.md` for older decision context. Verify any current-state
+claim against code before relying on it.
