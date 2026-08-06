@@ -175,6 +175,34 @@ SELECT <schoolId>, id, true, now() FROM iam.modules WHERE code = 'CURRICULUM';
 
 ---
 
+### Demo data for a presentation
+
+`scripts/seed-demo-data.py` fills a deployment with believable content — a
+school, four classes, ~24 students with Persian names, tuition and a realistic
+mix of paid/partial/unpaid invoices, a term of descriptive grades, plus a topic
+tree, question bank, and a collective exam:
+
+```bash
+python3 scripts/seed-demo-data.py \
+    --url https://your-app.liara.run \
+    --email demo@example.com \
+    --password 'a-strong-password'
+```
+
+Standard library only, no `pip install`. It works entirely through the public
+REST API as a real admin would, so nothing it creates can be in a state the app
+would refuse to produce, and re-running is safe — an existing account, school,
+classes, students, and exam are reused rather than duplicated.
+
+It deliberately does **not** re-enable seed data. The account is an ordinary one
+whose password you supply at run time, so it can be changed or deleted after the
+presentation — unlike a seeded admin baked into the image, which would be a
+public `SCHOOL_ADMIN` with a known password.
+
+The paid modules can't be granted over HTTP (§10), so the script prints the SQL
+for them and carries on. Run that SQL, then re-run the script to add the
+curriculum and exam content.
+
 ## 7. Health and troubleshooting
 
 `/actuator/health` is the deploy's health signal. In production only `health` is
