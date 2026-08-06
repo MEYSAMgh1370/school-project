@@ -5,6 +5,8 @@ These instructions apply to future Codex sessions in this repository.
 ## Documentation Discipline
 
 - Read [`openspec/project.md`](openspec/project.md) first, then the relevant current specification, change proposal, decision record, or legacy source document before modifying code.
+- For implementation, refactoring, bug-fixing, review, security, performance, module-boundary, database, or transaction work, apply [`disciplined-engineering`](.codex/skills/disciplined-engineering/SKILL.md).
+- For new top-level modules or substantial page work, also apply the shared skills under [`.agents/skills`](.agents/skills/).
 - Inspect the implementation and tests to confirm current behavior. Source code and tests are stronger evidence than existing Markdown.
 - Report conflicts between documentation and code instead of silently choosing one.
 - Never assume AI-generated Markdown is correct.

@@ -27,8 +27,8 @@ You are the **orchestrator**. You run on the expensive, high-judgment model (Opu
    - **Module-aligned**: task boundaries follow Spring Modulith module boundaries wherever possible. A task never reaches into another module's internals — public API or application events only.
 4. Route tasks to the right worker: JTE templates, Alpine.js components, or any user-facing page → `ui-implementer`; everything else → `task-implementer`.
 5. Skill composition:
-   - A "new module" task → run the `new-module` skill first (package layout, error-handling stack, facade, entitlement registration), then delegate the implementation via this loop.
-   - A new page, or a substantial restructure of an existing one → run the `design-page` skill first. CLAUDE.md makes this mandatory, and it settles goal/hierarchy/primary action/states before any JTE is written.
+   - A "new module" task → apply the shared `.agents/skills/new-module/SKILL.md` workflow first (package layout, error-handling stack, facade, entitlement registration), then delegate the implementation via this loop.
+   - A new page, or a substantial restructure of an existing one → apply the shared `.agents/skills/design-page/SKILL.md` workflow first. It settles goal/hierarchy/primary action/states before any JTE is written.
    - Any UI task's delegation prompt must reference OpenSpec/current templates plus `DESIGN.md` and the `:root` token block in `src/main/resources/static/css/app.css` for visual rules and token values.
 6. Mark which tasks are independent → those get spawned **in parallel**. Dependent tasks run in sequence, each receiving the relevant results of its predecessors inside its prompt.
 7. Present the task plan to the user briefly before executing (skip only if the user said to proceed autonomously).
@@ -37,10 +37,10 @@ You are the **orchestrator**. You run on the expensive, high-judgment model (Opu
 
 Include the matching command(s) as the acceptance criteria in every delegation prompt:
 
-- Any module change: `./mvnw test -Dtest=<RelevantFlowIntegrationTest>`. This project is **one Maven artifact, not a reactor** (CLAUDE.md §2), so there is no `-pl <module>`. Integration tests live flat in `com.example.roshdeandishe`, named `*FlowIntegrationTest`, and need Docker — they run against a real Postgres via Testcontainers.
+- Any module change: `./mvnw test -Dtest=<RelevantFlowIntegrationTest>`. This project is **one Maven artifact, not a reactor** (`openspec/conventions.md` and `CLAUDE_LEGACY.md` §2), so there is no `-pl <module>`. Integration tests live flat in `com.example.roshdeandishe`, named `*FlowIntegrationTest`, and need Docker — they run against a real Postgres via Testcontainers.
 - Full suite, exactly as CI runs it: `./mvnw clean verify`
 - Structural / cross-module change: `./mvnw test -Dtest=ModularityTests` (`ApplicationModules.verify()`)
-- Any schema change (new table, new/changed column, new module schema): **Flyway owns the schema** (CLAUDE.md §12) and `ddl-auto` is `validate`, so an entity change without a migration fails startup. Add a new `src/main/resources/db/migration/V<n>__....sql` — never edit an applied one, `V1` included. A new module's schema goes in `spring.flyway.schemas` in `application.yml` (there is no `init-schemas.sql` any more; Testcontainers starts empty and Flyway builds everything). Seed *data* is still Java seed runners, not migrations — make every seed addition per-code idempotent rather than guarded by a row-count check (that trap has bitten this repo three times).
+- Any schema change (new table, new/changed column, new module schema): **Flyway owns the schema** (`openspec/conventions.md` and `CLAUDE_LEGACY.md` §12) and `ddl-auto` is `validate`, so an entity change without a migration fails startup. Add a new `src/main/resources/db/migration/V<n>__....sql` — never edit an applied one, `V1` included. A new module's schema goes in `spring.flyway.schemas` in `application.yml` (there is no `init-schemas.sql` any more; Testcontainers starts empty and Flyway builds everything). Seed *data* is still Java seed runners, not migrations — make every seed addition per-code idempotent rather than guarded by a row-count check (that trap has bitten this repo three times).
 - UI change: the JTE template compiles — JTE is precompiled, so `./mvnw clean verify` catches template errors — and the affected page's `*FlowIntegrationTest` passes.
 
 "It compiles" is never sufficient grounds for reporting success.

@@ -5,9 +5,9 @@ time-stamped build history and may describe plans or gaps that were later
 resolved. Use [`openspec/project.md`](openspec/project.md) and the current
 implementation/tests to determine current behavior.
 
-This file is the archival companion to [`CLAUDE.md`](CLAUDE.md) — the full "what
-shipped and why" build log (formerly CLAUDE.md §7's `### Done` subsection) and the
-phase-by-phase roadmap (formerly §8). It moved here on 2026-07-26 to keep CLAUDE.md
+This file is the archival companion to [`CLAUDE_LEGACY.md`](CLAUDE_LEGACY.md) — the full "what
+shipped and why" build log (formerly CLAUDE_LEGACY.md §7's `### Done` subsection) and the
+phase-by-phase roadmap (formerly §8). It moved here on 2026-07-26 to keep CLAUDE_LEGACY.md
 itself under control (it had grown to 261KB, most of it this changelog); nothing in
 the content changed, only its location.
 
@@ -16,9 +16,9 @@ but current behavior changes must update the relevant OpenSpec spec or decision 
 the same commit as the code. History entries should follow the existing shape
 (what changed, why, what was explicitly deferred, test coverage).
 
-CLAUDE.md's `### Done` (§7) and `## 8. Roadmap` headers stay in place there — they
+CLAUDE_LEGACY.md's `### Done` (§7) and `## 8. Roadmap` headers stay in place there — they
 now just point back to this file — so every existing `§7 Done`/`§8` cross-reference
-elsewhere in CLAUDE.md remains accurate.
+elsewhere in CLAUDE_LEGACY.md remains accurate.
 
 ---
 
@@ -124,7 +124,7 @@ elsewhere in CLAUDE.md remains accurate.
   the same way `/people` is (the school doesn't exist yet to carry a
   schoolId) but still requires login via `SecurityConfig`. The dashboard's
   empty-membership state now links to `/schools/new` instead of hosting the
-  form inline. Self-service creation itself is unchanged (CLAUDE.md §1) —
+  form inline. Self-service creation itself is unchanged (CLAUDE_LEGACY.md §1) —
   this is presentation only, not a new gate. **This is a deliberate first
   step toward §11 Q6** (should self-created schools be distinguishable from
   verified customers?) — a real approval flow is still blocked on
@@ -367,7 +367,7 @@ elsewhere in CLAUDE.md remains accurate.
   used only by the report-period picker, the server stays Gregorian-only). Also
   fixed in passing: the `IamSeedDataRunner` permission-seeding gap described in
   §4's `EXPENSE_*` note, found while adding these three codes. Explicitly out
-  of scope per the design doc and CLAUDE.md §10: OCR/AI receipt scanning
+  of scope per the design doc and CLAUDE_LEGACY.md §10: OCR/AI receipt scanning
   (rejected permanently, not just deferred), budgets/spend ceilings,
   multi-step approval chains, installment expense payments, accounting/
   inventory-system integration, BI dashboards. Covered by
@@ -445,7 +445,7 @@ elsewhere in CLAUDE.md remains accurate.
     scoping itself was already covered end-to-end by
     `FinancePaymentFlowIntegrationTest.myInvoicesReturnsOwnAndWardsInvoicesOnly`).
   - **Admin `GET .../invoices` scoped to a guardian's own children** — the
-    decision CLAUDE.md §10 had explicitly withheld pending a real ask
+    decision CLAUDE_LEGACY.md §10 had explicitly withheld pending a real ask
     (`FinanceController.listInvoices` previously returned every invoice in
     the school to any `FINANCE_VIEW` holder, including `PARENT`). Now checks
     the caller's active roles at the school
@@ -863,7 +863,7 @@ elsewhere in CLAUDE.md remains accurate.
   scheme (descriptive vs. numeric) will be auto-derived from `gradeLevel` by a
   fixed platform rule (grades 1–6 → descriptive, 7–12 → numeric) once the grades
   module is actually built — **not built in this pass**, since nothing consumes
-  it yet (YAGNI, CLAUDE.md's own top-level discipline); (4) scope for this pass
+  it yet (YAGNI, CLAUDE_LEGACY.md's own top-level discipline); (4) scope for this pass
   is the classification model only, not the grades (marks) module itself — same
   incremental-slice precedent as curriculum → studyplan → exam each being a
   separate pass. **Update, same day**: a parallel session built the grades
@@ -1036,7 +1036,7 @@ elsewhere in CLAUDE.md remains accurate.
     نیازمند تلاش), a `NUMERIC` class gets a 0–20 number input. Existing
     grades for the selected class/year/term pre-fill their row (matched by
     `studentId` from `GradeController`'s `GET`); submitting a row calls the
-    same idempotent `POST` per CLAUDE.md's `recordGrade` semantics. Inline
+    same idempotent `POST` per CLAUDE_LEGACY.md's `recordGrade` semantics. Inline
     validation (a row can't submit blank/out-of-range) plus a summarized
     notice on failure, per `DESIGN.md` §5/§6. Reuses the `classifyError`
     two-403 pattern verbatim (`finance.js`/`expenses.js`/now `grades.js`) —
@@ -1101,7 +1101,7 @@ elsewhere in CLAUDE.md remains accurate.
     and code inputs normalize Persian/Arabic-Indic digits to ASCII before
     sending, per `DESIGN.md` §8 (same rule `grades.js` implemented first).
     `login.jte` predates the 2026-07-05 code-placement rule and had kept
-    its Alpine inline until now — CLAUDE.md's own grandfather clause says
+    its Alpine inline until now — CLAUDE_LEGACY.md's own grandfather clause says
     to apply the rule "when meaningfully editing" such a page, and adding a
     whole second auth flow qualified, so the component moved to
     `static/js/login.js` in the same change, unchanged in behavior for the
@@ -1265,10 +1265,10 @@ elsewhere in CLAUDE.md remains accurate.
     failures; `ModularityTests` green (3/3) — run directly in this session
     (Testcontainers available).
 
-- **Flyway (2026-07-30)** — resolves CLAUDE.md §7 item 5, open since the
+- **Flyway (2026-07-30)** — resolves CLAUDE_LEGACY.md §7 item 5, open since the
   project's first commit. `ddl-auto` moves from `update` to **`validate`**;
   the schema is now owned by `src/main/resources/db/migration/`. Working
-  rules are documented as CLAUDE.md **§12**.
+  rules are documented as CLAUDE_LEGACY.md **§12**.
   - `V1__baseline_schema.sql` — all 41 entity tables across the eight module
     schemas plus Spring Modulith's `iam.event_publication`. **Generated from
     the entity model**, not hand-written: a throwaway test booted the real
@@ -1280,7 +1280,7 @@ elsewhere in CLAUDE.md remains accurate.
     doubled `not null` — `InvoiceEntity` supplies it via both
     `columnDefinition` and `nullable=false` — was written once.
   - **No foreign keys**, deliberately. Cross-module references here are
-    opaque `Long`s validated at the Facade (CLAUDE.md §4); the baseline
+    opaque `Long`s validated at the Facade (CLAUDE_LEGACY.md §4); the baseline
     mirrors the existing schema instead of redesigning it. Adding FKs stays
     its own decision.
   - **Schema creation stopped being a manual step.** Flyway creates all eight
@@ -1387,7 +1387,7 @@ elsewhere in CLAUDE.md remains accurate.
   required — missing mail config degrades one best-effort feature, it does not
   block startup.
 
-  **Reconciled with two parallel sessions' work** (the pattern CLAUDE.md's
+  **Reconciled with two parallel sessions' work** (the pattern CLAUDE_LEGACY.md's
   pre-work gate exists to catch — hit again here, and worth recording).
   The gate was run at the start of this slice: master was level and the only
   open PR was #61 (unrelated). While this was being built, two overlapping
@@ -1404,7 +1404,7 @@ elsewhere in CLAUDE.md remains accurate.
   - **#64's Flyway adoption superseded this slice's `schema.sql` +
     `spring.sql.init.mode: always`, which was deleted.** Flyway now creates
     the eight per-module schemas from `spring.flyway.schemas` and owns the
-    schema outright (`ddl-auto: validate`, CLAUDE.md §12), which is strictly
+    schema outright (`ddl-auto: validate`, CLAUDE_LEGACY.md §12), which is strictly
     better than the `CREATE SCHEMA IF NOT EXISTS` script this slice had
     added; keeping both would have been two mechanisms for one job.
 

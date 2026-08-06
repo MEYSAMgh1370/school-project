@@ -28,14 +28,14 @@ edited JTE pages unless a current OpenSpec change supersedes them.
   school/role composition logic per page.
 - **Tenant selection is client-side only.** `localStorage.selectedSchoolId` /
   `selectedRole` are the only source of "which school/role is active" (§11 Q2
-  in CLAUDE.md) — the server never knows this. Every management page:
+  in CLAUDE_LEGACY.md) — the server never knows this. Every management page:
   - reads `selectedSchoolId` from `localStorage` on load;
   - sends `X-School-ID` on every `/api/admin/**` call;
   - sends `X-XSRF-TOKEN` (read from the `XSRF-TOKEN` cookie) on every mutating
     call (POST/PUT/PATCH/DELETE);
   - listens for the navbar's `school-changed` window event (dispatched by
     `static/js/navbar.js`) and reloads its data when it fires.
-- **Code placement (2026-07-05 rule, from CLAUDE.md §2).** Bulma classes and
+- **Code placement (2026-07-05 rule, from CLAUDE_LEGACY.md §2).** Bulma classes and
   small Alpine expressions stay inline in the template. Anything with `fetch`,
   a regex, or more than ~10 lines of JS moves to a static file under
   `src/main/resources/static/js/` as an `Alpine.data` component, registered on
@@ -66,14 +66,14 @@ edited JTE pages unless a current OpenSpec change supersedes them.
   the selected (display-only) role; access is still enforced server-side only.
 - **Role dropdown is display-only.** It may drive which UI elements are shown,
   but never what the backend permits — permission checks always evaluate all of
-  the user's active roles server-side (CLAUDE.md §11 Q2). Never build
+  the user's active roles server-side (CLAUDE_LEGACY.md §11 Q2). Never build
   per-request "acting as role" logic off the back of it.
 - **Assignable roles.** Any UI offering a role picker lists the five system
   roles — `STUDENT`, `TEACHER`, `PARENT`, `SCHOOL_ADMIN`, `FINANCE_ADMIN` —
   with Persian labels, **plus** (since 2026-07-13) any custom roles the
-  school itself has created via `/roles` (CLAUDE.md §4's Role subsection).
+  school itself has created via `/roles` (CLAUDE_LEGACY.md §4's Role subsection).
   `PLATFORM_ADMIN` never appears — it has no working permission-check path
-  (CLAUDE.md §7 item 1) and granting it would silently do nothing
+  (CLAUDE_LEGACY.md §7 item 1) and granting it would silently do nothing
   enforceable; it's also filtered out of `GET .../roles` server-side, not
   just hidden client-side.
 
@@ -104,10 +104,10 @@ edited JTE pages unless a current OpenSpec change supersedes them.
 3. **Classes** — `/classes` (`web.ClassesPageController`) — **built.**
    Create/list classes (name, optional section, optional teacher). Backed by
    `academic.ClassController` (create: `CLASS_MANAGE`, SCHOOL_ADMIN only per
-   the admin/day-to-day split in CLAUDE.md §4; list: `CLASS_VIEW`,
+   the admin/day-to-day split in CLAUDE_LEGACY.md §4; list: `CLASS_VIEW`,
    SCHOOL_ADMIN + TEACHER — split out 2026-07-07 after enrollment revealed
    TEACHER couldn't populate the class picker on `/students` without read
-   access to the class list, see CLAUDE.md §4). `academic` has no visibility
+   access to the class list, see CLAUDE_LEGACY.md §4). `academic` has no visibility
    into `iam` names (module boundary — `teacherId` is an opaque `Long`), so
    `classes.js` resolves teacher names client-side from the same
    `iam.MembershipController` list `/people` already uses, filtered to active
@@ -134,7 +134,7 @@ edited JTE pages unless a current OpenSpec change supersedes them.
    visible while the selected role is `SCHOOL_ADMIN` or `TEACHER` (first link
    shown to a non-admin role, since `STUDENT_ENROLL` is granted to both).
    **Deepened 2026-07-17**: a per-row "مدیریت والدین" panel (guardian
-   management, `GUARDIAN_MANAGE`/SCHOOL_ADMIN-only) — see CLAUDE.md §7 Done,
+   management, `GUARDIAN_MANAGE`/SCHOOL_ADMIN-only) — see CLAUDE_LEGACY.md §7 Done,
    "Bale integration gap cleanup". Zero backend change; closes the "curl-only"
    gap `MOBILE_ROADMAP.md` had flagged since the Bale Phase 1 build.
 5. **Finance** — `/finance` (`web.FinancePageController`) — **built, deepened
@@ -154,13 +154,13 @@ edited JTE pages unless a current OpenSpec change supersedes them.
    best-effort — if the current role lacks `STUDENT_ENROLL`, invoices just
    show `#id` instead of breaking. Navbar link visible while the selected
    role is `SCHOOL_ADMIN` or `FINANCE_ADMIN` (§3's FINANCE_ADMIN persona
-   reuses this same page). **Deepened 2026-07-12 (CLAUDE.md §7 Done,
+   reuses this same page). **Deepened 2026-07-12 (CLAUDE_LEGACY.md §7 Done,
    "Finance deepening, phase 1"):** each invoice row now shows a derived
    status tag (PAID/PARTIAL/UNPAID/OVERDUE) with an expandable payment-history
    panel and a record-payment form, plus a backfill button for students
    enrolled before a fee was ever set — no new page, same `/finance`.
 8. **Expenses** — `/expenses` (`web.ExpensesPageController`) — **built
-   2026-07-12**, from a user-supplied Persian design document (CLAUDE.md §7
+   2026-07-12**, from a user-supplied Persian design document (CLAUDE_LEGACY.md §7
    Done, "Finance deepening, phase 2"). Manage expense categories/vendors,
    record/approve/pay/cancel expenses, attach receipts, and view a
    Jalali-period expense report — entirely client-side against the new
@@ -171,17 +171,17 @@ edited JTE pages unless a current OpenSpec change supersedes them.
    (`static/js/jalali.js`, client-side only — the report-period picker
    converts a Persian month/quarter/year to a Gregorian date range before
    calling the server). Navbar link visible for the same roles as `/finance`
-   (`SCHOOL_ADMIN`/`FINANCE_ADMIN`) — see CLAUDE.md §4's `Expense` subsection
+   (`SCHOOL_ADMIN`/`FINANCE_ADMIN`) — see CLAUDE_LEGACY.md §4's `Expense` subsection
    for the full domain model and lifecycle.
 9. **Roles & permissions** — `/roles` (`web.RolesPageController`) — **built
-   2026-07-13**, resolving CLAUDE.md §11 Q3. Lists every role visible to the
+   2026-07-13**, resolving CLAUDE_LEGACY.md §11 Q3. Lists every role visible to the
    school (five system roles, read-only, plus any custom roles already
    created) with its permission set, and a form to create a new custom role
    from a checklist of the existing fixed permission catalog — entirely
    client-side against the new `iam.RoleController` (`ROLE_MANAGE`,
    `SCHOOL_ADMIN`-only). `/people`'s role-assignment dropdown was extended to
    fetch the same role list, so a freshly-created custom role is immediately
-   assignable there too — see CLAUDE.md §4's Role subsection for the full
+   assignable there too — see CLAUDE_LEGACY.md §4's Role subsection for the full
    model and the three explicit scoping decisions. Navbar link visible for
    `SCHOOL_ADMIN` only, same as `/people`.
 6. **School registration** — `/schools/new` — **built.** First shipped (PR #16)
@@ -192,14 +192,14 @@ edited JTE pages unless a current OpenSpec change supersedes them.
    public landing page (`GET /`, item 7) and from the dashboard's
    empty-membership state, not from the navbar (it's a one-time bootstrapping
    action, not ongoing management). `createSchoolForm` now lives in
-   `/js/school-new.js`. Self-service creation itself is unchanged (CLAUDE.md
+   `/js/school-new.js`. Self-service creation itself is unchanged (CLAUDE_LEGACY.md
    §1) — this was a presentation fix, not a new gate.
 7. **Public landing page** — `GET /` — **built** alongside item 6.
    `web.LandingPageController`: login/register CTAs plus the "ثبت مدرسه" link
    to `/schools/new`, for anonymous visitors. An already-authenticated visitor
    is redirected straight to `/dashboard`.
 10. **School entry page** — `GET /s/{slug}` — **built 2026-07-19** (Tier 1 of
-   the per-school-domain decision, CLAUDE.md §11 Q9). Public branded entry
+   the per-school-domain decision, CLAUDE_LEGACY.md §11 Q9). Public branded entry
    page per school: school name + ورود CTA (or "ادامه به داشبورد" for an
    already-authenticated visitor — deliberately no redirect, the CTA click
    writes `localStorage.selectedSchoolId` so post-login the switcher lands on
@@ -209,7 +209,7 @@ edited JTE pages unless a current OpenSpec change supersedes them.
    fetch — an explicit deviation from the management-page contract. Not in
    the navbar: entry-point-flow exception (same as `/` and `/schools/new`) —
    the school distributes its own URL, and the admin picks the slug on
-   `/schools/new` (new optional field with live URL preview). See CLAUDE.md
+   `/schools/new` (new optional field with live URL preview). See CLAUDE_LEGACY.md
    §7 Done ("School entry page") for the slug's DNS-label validation and
    what Tier 2/3 defer.
 
@@ -218,7 +218,7 @@ edited JTE pages unless a current OpenSpec change supersedes them.
 Same `/finance` and `/expenses` pages as SCHOOL_ADMIN — visibility is driven by
 the selected role in the navbar, enforcement stays entirely on the backend
 permission check. One real difference: `FINANCE_ADMIN` does **not** hold
-`EXPENSE_APPROVE` (segregation of duties, CLAUDE.md §4) — the approve button
+`EXPENSE_APPROVE` (segregation of duties, CLAUDE_LEGACY.md §4) — the approve button
 on `/expenses` 403s for this role even though the rest of the page works.
 
 ### TEACHER
@@ -228,19 +228,19 @@ on `/expenses` 403s for this role even though the rest of the page works.
 (plain Persian, not a transliteration of "roster") opens a dismissible
 panel listing that class's enrolled students, reusing the same
 `academic.StudentController` `GET .../students` endpoint `/students` already
-calls (`STUDENT_ENROLL`, no backend change). See CLAUDE.md §7 for the
+calls (`STUDENT_ENROLL`, no backend change). See CLAUDE_LEGACY.md §7 for the
 fallback-name bug found and fixed while building it.
 
 ### PARENT / STUDENT
 
 The existing read-only `/dashboard`, plus `/my-invoices`, `/my-study-plan`,
 and `/my-grades` (all below). **Grades UI now built (2026-07-20, via the
-`design-page` skill — see CLAUDE.md §7 Done, "Grades UI")** — resolving
-CLAUDE.md §11 Q8's backend-only gap and the critical user-journey review's
+`design-page` skill — see CLAUDE_LEGACY.md §7 Done, "Grades UI")** — resolving
+CLAUDE_LEGACY.md §11 Q8's backend-only gap and the critical user-journey review's
 top finding (§6.2 below). `/grades` (`web.GradesPageController`) is an
 admin/teacher gradebook following `/finance`'s pattern (thin shell,
 `GRADES_EDIT`-gated on both read and write — deliberately not `GRADES_VIEW`,
-see CLAUDE.md §4's Grade subsection for why): a class + academic-year + term
+see CLAUDE_LEGACY.md §4's Grade subsection for why): a class + academic-year + term
 selector, then an editable table of that class's roster with a
 scheme-appropriate input per row (select for `DESCRIPTIVE`, 0–20 number
 input for `NUMERIC`, derived from the selected class's own `gradingScheme`).
@@ -252,11 +252,11 @@ the "my" pattern), no new REST behind either page. Navbar links: `نمرات`
 self-service data (which children are theirs, their tuition status) is also
 available through the Bale bot, and via
 `GET /api/me/schools/{schoolId}/invoices` (`finance.MyInvoicesController`,
-CLAUDE.md §4's `Invoice` subsection). **A dedicated page now exists:
+CLAUDE_LEGACY.md §4's `Invoice` subsection). **A dedicated page now exists:
 `/my-invoices`** (`web.MyInvoicesPageController`, built 2026-07-13 on explicit
 request) — read-only, for both STUDENT (own invoices) and PARENT (linked
 wards' invoices), no new REST behind it. Navbar link visible while the
-selected role is `STUDENT` or `PARENT`. See CLAUDE.md §7 Done ("Finance
+selected role is `STUDENT` or `PARENT`. See CLAUDE_LEGACY.md §7 Done ("Finance
 deepening, phase 3").
 
 **A study-plan self-view now also exists: `/my-study-plan`**
@@ -265,7 +265,7 @@ handoff bundle) — read-only weekly calendar of the student's own
 auto-scheduled study sessions (RTL, Jalali dates, week/month navigation) plus
 a client-computed statistics tab; a student can mark a session done and log
 a test count (the only per-session fields the real `StudyIntervalEntity`
-carries — see CLAUDE.md §7 Done, "Student study-plan self-view", for the
+carries — see CLAUDE_LEGACY.md §7 Done, "Student study-plan self-view", for the
 explicit decision not to extend that schema to match the design mockup's
 richer invented fields). Backed by the new
 `studyplan.MyStudyIntervalController`, no new REST behind `/my-exams`'s
@@ -284,10 +284,10 @@ school's tuition data via `/finance` even without `/my-invoices` existing).
 ### Explicitly out of scope
 
 `PLATFORM_ADMIN` UI, entitlement-toggling/school-suspension UI (no REST
-endpoint exists for either — CLAUDE.md §7 item 1, §10), any B2C module UI
-(AI Tutor, Exam Prep, etc. — CLAUDE.md §11 Q7). All gated behind explicit
+endpoint exists for either — CLAUDE_LEGACY.md §7 item 1, §10), any B2C module UI
+(AI Tutor, Exam Prep, etc. — CLAUDE_LEGACY.md §11 Q7). All gated behind explicit
 backend work that hasn't happened. (Custom-role management shipped
-2026-07-13 — see item 9 above and CLAUDE.md §11 Q3 — and is no longer on
+2026-07-13 — see item 9 above and CLAUDE_LEGACY.md §11 Q3 — and is no longer on
 this list; editing an *existing* system role's permissions through the UI
 remains out of scope, a deliberate part of that same decision.)
 
@@ -331,7 +331,7 @@ gap hurts. Re-run this review after each gap below is closed and update this
 section — it is the standing prioritization for the next slices.
 
 ### 6.1 CRITICAL — a real school's onboarding funnel dead-ends at creation
-### → RESOLVED 2026-07-20 (free tier, CLAUDE.md §11 Q10)
+### → RESOLVED 2026-07-20 (free tier, CLAUDE_LEGACY.md §11 Q10)
 
 *(Original finding, kept for context:)* a freshly created school had zero
 entitlements and no path to ever obtain one, so every module-gated page 403'd
@@ -342,7 +342,7 @@ entitlements and no path to ever obtain one, so every module-gated page 403'd
 (`IamFacade.grantFreeTierEntitlements`, called from
 `SchoolController.createSchool`). `CURRICULUM`/`STUDY_PLANNER`/`EXAM` are
 **paid plans** — not granted at creation, facade-only until real billing
-exists (CLAUDE.md §7 item 1, §10 unchanged). A real founder can now run the
+exists (CLAUDE_LEGACY.md §7 item 1, §10 unchanged). A real founder can now run the
 full free-tier loop out of the box: `/people`, `/roles`, `/classes`,
 `/students`, `/finance`, `/expenses`; the paid pages (`/curriculum`,
 `/study-plans`, `/exams`) correctly show the module-not-entitled state, which
@@ -356,12 +356,12 @@ billing, do not build speculatively.
    (teacher/admin gradebook, `GRADES_EDIT`-gated, `/finance`-style selector
    + editable table) and `/my-grades` (`/my-invoices`-shaped: STUDENT own,
    PARENT linked wards) are both built — see §3's PARENT/STUDENT persona
-   section and CLAUDE.md §7 Done ("Grades UI").
+   section and CLAUDE_LEGACY.md §7 Done ("Grades UI").
 2. ~~**Phone number has no UI, stranding Bale + OTP entirely.**~~
    **RESOLVED 2026-07-20.** A phone-number field on `/dashboard` (calling
    the existing `PUT /api/me/phone`) and an OTP tab on `/login` (calling
    the existing `POST /api/auth/otp/request`/`verify`) are both built — see
-   CLAUDE.md §7 Done ("Phone-number UI + OTP login tab"). No backend
+   CLAUDE_LEGACY.md §7 Done ("Phone-number UI + OTP login tab"). No backend
    changes; both features were curl-only before this, now reachable by any
    real user.
 
@@ -378,7 +378,7 @@ there, and `/people` didn't show which members had never activated.
 existing `passwordHash != null` check — no new query), and `/students`'
 enrollment success path offers an inline "ارسال دعوت‌نامه" shortcut right
 after enrolling, reusing the existing invite-token endpoint directly (no
-new REST) — see CLAUDE.md §7 Done ("Invite-status visibility on the
+new REST) — see CLAUDE_LEGACY.md §7 Done ("Invite-status visibility on the
 enrollment funnel"). Note unchanged: SMTP still defaults to localhost:1025,
 so until deployment config exists the *real* journey remains
 `emailSent=false` + manual link handover — the shortcut surfaces that
@@ -389,7 +389,7 @@ manual-link box in `/students` too now, not just `/people`.
 - ~~**TEACHER sees "نامشخص" for student names on `/students`**~~ — **RESOLVED
   2026-07-26.** New `STUDENT_VIEW` (split from `STUDENT_ENROLL`) and
   `MEMBER_NAMES_VIEW` (split from `MEMBERSHIP_MANAGE`) permissions, granted to
-  `TEACHER` and `FINANCE_ADMIN` — see CLAUDE.md §4's Permission section for
+  `TEACHER` and `FINANCE_ADMIN` — see CLAUDE_LEGACY.md §4's Permission section for
   the full rationale. `students.js` now falls back to the new narrow
   `GET .../memberships/names?userIds=…` endpoint when the full membership
   list 403s.
@@ -406,9 +406,9 @@ manual-link box in `/students` too now, not just `/people`.
   `/s/{slug}` URL and a copy button, for every school where the caller
   holds an active `SCHOOL_ADMIN` membership (a slug-less school is listed
   with a caption explaining the address is chosen at registration) — see
-  CLAUDE.md §7 Done ("Dashboard entry-URL display"). Zero backend change.
+  CLAUDE_LEGACY.md §7 Done ("Dashboard entry-URL display"). Zero backend change.
   *Editing* the slug remains unbuilt and still gated on the
-  school-settings permission decision (CLAUDE.md §11 Q9) — unchanged.
+  school-settings permission decision (CLAUDE_LEGACY.md §11 Q9) — unchanged.
 
 ### 6.5 Verified solid end-to-end
 
@@ -453,7 +453,7 @@ hasn't paid for `EXAM`/`STUDY_PLANNER`). Two things surfaced:
 
 With §6.4 now closed, there is **no remaining item on this review** ready to
 build without a new product decision (B2C/individual module UI is still
-explicitly blocked per CLAUDE.md §11 Q7; paid-module upgrade UI is still
+explicitly blocked per CLAUDE_LEGACY.md §11 Q7; paid-module upgrade UI is still
 blocked on billing per §6.1). Re-run this section again, from scratch, before
 picking the next batch of work — do not resume from this prioritization
 without first checking whether the app has moved on since 2026-07-26.

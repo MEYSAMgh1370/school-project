@@ -27,8 +27,9 @@ These OpenSpec documents are the curated entry point for current behavior, propo
 | File | Classification | Use |
 |---|---|---|
 | [`../README.md`](../README.md) | Development guidance | Quick start and deployment summary. |
-| [`../CLAUDE.md`](../CLAUDE.md) | Historical/legacy architecture notebook | Detailed context; verify against code and OpenSpec before relying on it. |
-| [`../BEST_PRACTICES.md`](../BEST_PRACTICES.md) | Development guidance | Codebase conventions and engineering discipline. |
+| [`../CLAUDE.md`](../CLAUDE.md) | Claude-specific entry instructions | Short pointer to OpenSpec, shared skills, and Claude orchestration. |
+| [`../CLAUDE_LEGACY.md`](../CLAUDE_LEGACY.md) | Historical/legacy architecture notebook | Detailed context; verify against code and OpenSpec before relying on it. |
+| [`../BEST_PRACTICES.md`](../BEST_PRACTICES.md) | Compatibility redirect | Points to OpenSpec conventions and agent skills. |
 | [`../DESIGN.md`](../DESIGN.md) | Development guidance | JTE web design system and visual decisions. |
 | [`../DEPLOYMENT.md`](../DEPLOYMENT.md) | Development guidance | Production deployment runbook. |
 | [`../FRONTEND.md`](../FRONTEND.md) | Development guidance | Frontend onboarding, page inventory, and API usage notes. |
@@ -37,7 +38,9 @@ These OpenSpec documents are the curated entry point for current behavior, propo
 | [`../MOSHAVERE_PORT_SPEC.md`](../MOSHAVERE_PORT_SPEC.md) | Historical proposal | Porting proposal for work that is largely complete; remaining gaps are future work. |
 | [`../UX_ROADMAP.md`](../UX_ROADMAP.md) | Historical roadmap + development guidance | UI buildout history and shared UX conventions. |
 | [`../android/README.md`](../android/README.md) | Current specification | Native Android v1 scope and local setup. |
-| [`../.claude/`](../.claude/) | Agent instructions | Claude-specific workflows; not product authority. |
+| [`../.agents/skills/`](../.agents/skills/) | Shared agent workflows | Agent-neutral repository skills used by Codex and Claude. |
+| [`../.codex/skills/`](../.codex/skills/) | Codex-specific workflows | Codex-only repository skills; not product authority. |
+| [`../.claude/`](../.claude/) | Claude-specific workflows | Claude agents, settings, and orchestration; not product authority. |
 
 Ignored or untracked Markdown snapshots under `.claude/worktrees/` are historical worktree artifacts. Do not edit or treat them as authoritative.
 

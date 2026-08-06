@@ -90,7 +90,7 @@ Anything outside this table is a design-system change, not a page decision.
 stack, which renders Persian acceptably. Adopting a dedicated face (e.g.
 Vazirmatn) requires a WebJar or self-hosted files — a new dependency
 decision. Verify a maintained WebJar exists before deciding; do not add a
-CDN `<link>` (violates the zero-build/WebJar rule, CLAUDE.md §2).
+CDN `<link>` (violates the zero-build/WebJar rule, `CLAUDE_LEGACY.md` §2).
 
 ---
 
@@ -207,7 +207,7 @@ UX_ROADMAP §2 remains binding and is not repeated here. Additions:
 - **Jalali for every human-facing date** in the web UI. Numeric form
   `۱۴۰۵/۰۴/۲۲` in tables; long form `۲۲ تیر ۱۴۰۵` in headers and running
   text. The wire and database are **ISO-8601 Gregorian only**
-  (`Instant`/`LocalDate` per BEST_PRACTICES) — Jalali never crosses the
+  (`Instant`/`LocalDate` per [`openspec/conventions.md`](openspec/conventions.md)) — Jalali never crosses the
   wire and is never stored; conversion is client-side via
   `static/js/jalali.js` (the `/expenses` precedent). The server has no
   Jalali library; a server-side Jalali-boundary need (e.g. a scheduled
@@ -233,12 +233,13 @@ UX_ROADMAP §2 remains binding and is not repeated here. Additions:
 
 ## 9. Page-design process
 
-Before building any new page, invoke the `design-page` skill (parallel to
-the `new-module` standing instruction in CLAUDE.md): it forces, in order —
-user goal and role(s), information hierarchy, the single primary action,
-which existing templates/partials are used, mobile behavior, and
-empty/loading/error states — *before* any JTE is written. Output of that
-pass is a short spec in the PR/commit description, not a separate document.
+Before building any new page, apply the shared
+[`design-page`](.agents/skills/design-page/SKILL.md) skill (parallel to the
+[`new-module`](.agents/skills/new-module/SKILL.md) workflow): it forces, in
+order — user goal and role(s), information hierarchy, the single primary
+action, which existing templates/partials are used, mobile behavior, and
+empty/loading/error states — *before* any JTE is written. Output of that pass
+is a short spec in the PR/commit description, not a separate document.
 
 ---
 
@@ -269,7 +270,8 @@ Recorded so nothing was dropped silently:
    entire buildout. The defensible core survives as §9: pages are designed
    task-first via the skill, not scaffolded table-with-edit-buttons.
 5. **"Forms autosave drafts" dropped** (server-side draft persistence for
-   every form — real infrastructure, violates BEST_PRACTICES §3). Build
+   every form — real infrastructure, violates the YAGNI discipline in
+   [`openspec/conventions.md`](openspec/conventions.md)). Build
    draft-saving for a specific long form when one demonstrably needs it.
 6. **"Tables always remember sorting" dropped** (per-table client state
    machinery as a blanket rule). Same reasoning.
@@ -290,7 +292,7 @@ Recorded so nothing was dropped silently:
 - Icon pack (until a concrete need — §11.3).
 - Toast/Drawer/Wizard/DataGrid components.
 - Form draft autosave; table sort persistence.
-- Custom CSS framework, npm/webpack/vite pipeline, CDN assets (CLAUDE.md §2).
+- Custom CSS framework, npm/webpack/vite pipeline, CDN assets (`CLAUDE_LEGACY.md` §2).
 - Dark mode — not requested; a real decision when it is (Bulma 1.x makes it
   cheap, which is not a reason to build it).
 

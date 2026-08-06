@@ -22,13 +22,13 @@ This skill exists so every page is designed task-first and lands looking
 like a sibling of the existing pages.
 
 **Precedence:** OpenSpec current-behavior docs + implementation/tests >
-`UX_ROADMAP.md` §2 > `DESIGN.md` > legacy `CLAUDE.md` context > this
+`UX_ROADMAP.md` §2 > `DESIGN.md` > legacy `CLAUDE_LEGACY.md` context > this
 skill's convenience summaries. If anything below contradicts current code or
 OpenSpec, report the conflict and fix the stale documentation.
 
-**If the page belongs to a module that doesn't exist yet, STOP and run the
-`new-module` skill first** (CLAUDE.md standing instruction). Come back here
-for the page after the module pass resolves codes and boundaries.
+**If the page belongs to a module that doesn't exist yet, STOP and apply
+`.agents/skills/new-module/SKILL.md` first.** Come back here for the page
+after the module pass resolves codes and boundaries.
 
 ---
 
@@ -164,7 +164,8 @@ through the relevant step, it doesn't get improvised.
 **This checklist is design-only and does NOT replace UX_ROADMAP §5's
 per-slice definition of done** — run that too before calling the slice
 finished (navbar link, integration test, `ModularityTests`, mobile-viewport
-check, CLAUDE.md §3/§7 update). Design additions:
+check, and relevant OpenSpec/current-doc update when behavior changes).
+Design additions:
 
 - [ ] Typography classes ⊆ DESIGN.md §3 table; no raw px spacing.
 - [ ] Exactly one accent on screen; danger only on destructive/error.
@@ -184,21 +185,13 @@ check, CLAUDE.md §3/§7 update). Design additions:
 
 ## Boundaries with other skills
 
-- **`new-module`** wins first: no page for a module that hasn't been
-  through it.
-- **`web-artifacts-builder`** (React + Tailwind + shadcn/ui) is for
-  **out-of-repo artifacts only** — throwaway explorations, demos,
-  promotional pages. Its stack and components must never appear in
-  Roshdeandishe: no React, no Tailwind classes, no shadcn component as a
-  spec for a page (shadcn Toasts/Drawers/Dialogs imply components this
-  design system deliberately doesn't have). **For prototyping a
+- **`new-module`** wins first: no page for a module that has not been
+  through `.agents/skills/new-module/SKILL.md`.
+- Out-of-repo artifact builders may use different stacks for throwaway
+  explorations, demos, or promotional pages. Their React/Tailwind/shadcn
+  components must not appear in Roshdeandishe. For prototyping a
   Roshdeandishe page, prefer a plain single-file HTML artifact using Bulma
-  classes with the `app.css` token block pasted in** — an honest prototype
-  that ports to JTE almost mechanically. If a React prototype exists
-  anyway, treat it as a wireframe of *intent* only; the port still goes
-  through Steps 1–9 and DESIGN.md decides every visual question.
-- **`theme-factory`** must never restyle Roshdeandishe pages or prototypes
-  of them — the design system's tokens are the only theme, and the
-  one-accent rule excludes multi-color palettes. theme-factory remains
-  fine for unrelated artifacts (school promotional material, slide decks,
-  reports) that live outside the product UI.
+  classes with the `app.css` token block pasted in.
+- Theme-generation tooling must not restyle Roshdeandishe pages or
+  prototypes. The design system's tokens are the only product theme, and
+  the one-accent rule excludes multi-color palettes.

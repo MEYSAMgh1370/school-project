@@ -14,11 +14,11 @@ Other docs in this repo, for reference:
 |---|---|
 | `openspec/project.md` | Curated documentation map and evidence order. Start here when deciding what is current. |
 | `openspec/specs/current-system.md` | Current product behavior and known limitations, checked against code. |
-| `CLAUDE.md` | Legacy detailed architecture/domain notebook. Useful context, but verify against code and OpenSpec. |
+| `CLAUDE_LEGACY.md` | Legacy detailed architecture/domain notebook. Useful context, but verify against code and OpenSpec. |
 | `UX_ROADMAP.md` | §2 is the binding list of shared UI conventions; §3 is the page inventory with build history. |
 | `DESIGN.md` | The design system: tokens, typography, color, RTL, Persian dates/digits. |
 | `README.md` | How to run it locally. |
-| `BEST_PRACTICES.md` | Code discipline (mostly backend-facing). |
+| `openspec/conventions.md` | Shared engineering discipline, backend conventions, and test commands. |
 
 ---
 
@@ -79,7 +79,7 @@ JTE templates  +  Alpine.js  +  Bulma  +  WebJars
   `/webjars/...`. Not a CDN, not npm.
 
 > **There is no npm, no webpack, no vite, no `package.json`, no build step for the
-> frontend.** This is a deliberate, load-bearing decision (`CLAUDE.md` §2). Don't
+> frontend.** This is a deliberate, load-bearing decision (`CLAUDE_LEGACY.md` §2). Don't
 > introduce one, and don't add a CDN `<script>` tag — a new dependency has to come in
 > as a WebJar, which is an explicit decision to raise with the team.
 
@@ -603,10 +603,11 @@ partial on the **third** real duplicate, and record it in `DESIGN.md` when you d
 Explicit non-goals: toast, drawer, wizard, data-grid, form draft autosave, table sort
 persistence, dark mode, icon packs.
 
-**Before building a *new* page**, the team runs a short design pass (the `design-page`
-skill): user goal and role, information hierarchy, the single primary action, which
-existing templates get reused, mobile behavior, and empty/loading/error states —
-*before* any JTE is written. Ask about this when you pick up your first new page.
+**Before building a *new* page**, the team runs the shared
+[`design-page`](.agents/skills/design-page/SKILL.md) pass: user goal and role,
+information hierarchy, the single primary action, which existing templates get
+reused, mobile behavior, and empty/loading/error states — *before* any JTE is
+written. Ask about this when you pick up your first new page.
 
 ---
 
@@ -652,5 +653,5 @@ To get oriented, in order:
    somewhere.
 
 Questions about *why* something is the way it is: start with OpenSpec, then use
-`CLAUDE.md` and `HISTORY.md` for older decision context. Verify any current-state
+`CLAUDE_LEGACY.md` and `HISTORY.md` for older decision context. Verify any current-state
 claim against code before relying on it.

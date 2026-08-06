@@ -6,7 +6,7 @@ description: Scaffold a new Spring Modulith module in Roshdeandishe (package lay
 # Adding a new module
 
 Follow this checklist when creating a new module under `com.example.roshdeandishe`.
-It codifies conventions from OpenSpec, current code, and legacy `CLAUDE.md`
+It codifies conventions from OpenSpec, current code, and legacy `CLAUDE_LEGACY.md`
 sections on module boundaries. Read `openspec/project.md` and neighboring
 modules first if anything here is ambiguous; this skill does not override
 current implementation evidence.
@@ -39,8 +39,9 @@ current implementation evidence.
 
 1. `shared/<Module>Error.java` — **sealed** interface, one case per failure mode.
 2. `shared/<Module>Exception.java` — wraps a `<Module>Error`.
-3. `shared/<Module>ExceptionHandler.java` — `@RestControllerAdvice("<module>...Handler")`
-   with an **explicit, unique bean name**. Never rely on the default
+3. `shared/<Module>ExceptionHandler.java` — `@RestControllerAdvice` plus
+   `@Component("<module>...Handler")` with an **explicit, unique bean name**.
+   Never rely on the default
    class-name-derived bean name — two modules both defaulting to
    `GlobalExceptionHandler` caused a `ConflictingBeanDefinitionException` before.
    Existing names already taken: `iamGlobalExceptionHandler`,
@@ -68,12 +69,12 @@ current implementation evidence.
   this is a data change, not new code, per the Role/Permission split in §4.
 - If the controller has a `{schoolId}` path variable, explicitly verify it
   matches `TenantContext` (populated from `X-School-ID`) before doing anything
-  — do not assume the path variable is trustworthy. See the three existing
-  examples (`MembershipController`, `ClassController`, `StudentController`).
+  — do not assume the path variable is trustworthy. Use the established
+  `TenantContext.requireMatches` pattern.
 
 ## 4. Register the module for entitlements (if it's subscribable)
 
-Add a row via `Module`/`ModuleScope` (§4 in `CLAUDE.md`):
+Add a row via `Module`/`ModuleScope` (§4 in `CLAUDE_LEGACY.md`):
 
 - `SCHOOL` scope → checked against `SchoolEntitlementEntity` (B2B).
 - `USER` scope → checked against `UserEntitlementEntity` (B2C).
@@ -125,7 +126,7 @@ invent a new shape:
 
 ## Explicitly out of scope — do not build speculatively
 
-Per `CLAUDE.md` §10/§7, do not use "adding a module" as an excuse to also:
+Per `CLAUDE_LEGACY.md` §10/§7, do not use "adding a module" as an excuse to also:
 - Build `PlatformContext` permission checking.
 - Add a self-service password/invite flow.
 - Introduce a `Person`/`User` split, a `RoleGrant` entity, or a
@@ -134,4 +135,4 @@ Per `CLAUDE.md` §10/§7, do not use "adding a module" as an excuse to also:
 
 If the new module seems to need one of these, stop and flag it for discussion
 rather than resolving it inline — these are explicitly deferred/rejected
-decisions in `CLAUDE.md`.
+decisions in `CLAUDE_LEGACY.md`.

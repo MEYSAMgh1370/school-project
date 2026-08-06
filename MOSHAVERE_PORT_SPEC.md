@@ -11,8 +11,8 @@ source code, or tests confirm they are still current.
 Current behavior belongs in [`openspec/specs/current-system.md`](openspec/specs/current-system.md).
 Remaining future work belongs in [`openspec/changes/proposed-work.md`](openspec/changes/proposed-work.md).
 Before adding a new module or substantially changing one of these areas, create
-a focused OpenSpec change proposal and use the `new-module` skill when it
-applies.
+a focused OpenSpec change proposal and use the shared
+[`new-module`](.agents/skills/new-module/SKILL.md) skill when it applies.
 
 ## 1. Why
 
@@ -34,7 +34,7 @@ integration. Four pieces are being ported:
 ## 2. Already-decided scope (confirmed 2026-07-11)
 
 - **OTP does not weaken the existing phone-number security model.**
-  `CLAUDE.md` §4 (`UserEntity.phoneNumber`) deliberately restricts *setting* a
+  `CLAUDE_LEGACY.md` §4 (`UserEntity.phoneNumber`) deliberately restricts *setting* a
   phone number to an authenticated session (`PUT /api/me/phone`), to prevent
   account takeover by phone-guessing. That restriction is **unchanged**. OTP
   is purely a second *login* factor for a user who already has a phone number
@@ -54,11 +54,11 @@ integration. Four pieces are being ported:
 the interface sketched below — this codebase's actual convention for a
 best-effort external side-channel is one concrete class that logs-only when
 unconfigured (`BaleClient`, `InviteEmailSender`), not a speculative interface
-for a single implementation (CLAUDE.md §10). Everything else — the entity
+for a single implementation (CLAUDE_LEGACY.md §10). Everything else — the entity
 shape, the always-insert-a-new-row semantics, the unauthenticated
 `/api/auth/otp/*` endpoints, the `IamError` cases, and the "OTP never opens a
 registration path" boundary from §2 below — shipped as written. See
-`CLAUDE.md` §4's `VerificationCode` subsection and §7 Done for the final
+`CLAUDE_LEGACY.md` §4's `VerificationCode` subsection and §7 Done for the final
 shape and test coverage. OTP rate-limiting remains the flagged, conscious
 skip noted below — still not built.
 
@@ -95,7 +95,7 @@ views.py (SMSViewSet)}`.
 ## 4. `curriculum` (new module) — Topics + question bank
 
 **Status: DONE (2026-07-16)**, built as scoped below via its own `new-module`
-pass — see `CLAUDE.md` §3/§4 (Topic + Question subsection) and §7 Done for
+pass — see `CLAUDE_LEGACY.md` §3/§4 (Topic + Question subsection) and §7 Done for
 the final shape and test coverage (`CurriculumFlowIntegrationTest`). The two
 open items below were resolved at new-module time: a **new `SCHOOL`-scoped
 `CURRICULUM` module code** (none of the seeded codes fit; `EXAM_PREP` is
@@ -116,7 +116,7 @@ was unreachable through its own required topic filter — a wart, not ported).
 The subtree semantics of the topic filter (`descendants()`) shipped as
 written, as an in-memory traversal. (Two parallel implementations of this
 module were built the same day; the one without subtree semantics and without
-`answer` was superseded at merge time — `CLAUDE.md` §7 Done, merge note.)
+`answer` was superseded at merge time — `CLAUDE_LEGACY.md` §7 Done, merge note.)
 
 Source: `exam-maker-master/exam_generator/{models.py, tree.py, filters.py,
 views.py}`.
@@ -148,7 +148,7 @@ views.py}`.
 **Status: DONE (2026-07-17)**, built via its own `new-module` pass as scoped
 below — the fourth and last step of this port, the deepest dependency chain
 (`curriculum` + `academic` + `studyplan` + `iam`), and the only place this
-port introduces a new-module-depends-on-new-module edge. See `CLAUDE.md` §3/§4
+port introduces a new-module-depends-on-new-module edge. See `CLAUDE_LEGACY.md` §3/§4
 (Exam/Section/SectionQuestion/ExamAssignment/Attempt/Submit subsection) and
 §7 Done for the final shape and test coverage (`ExamFlowIntegrationTest`).
 Both open items below were resolved at new-module time: a **new
@@ -278,7 +278,7 @@ simplify. Everything else — the opaque `StudentPlanAssignmentEntity`
 `SliceScheduleInterval`/`FillSlices`/`Suggestor` algorithm port, and the
 new `STUDY_PLANNER` module code + `STUDYPLAN_VIEW`/`STUDYPLAN_MANAGE`
 permissions (both granted to `SCHOOL_ADMIN` + `TEACHER`, resolving this
-section's open question below) — shipped as written. See `CLAUDE.md` §4's
+section's open question below) — shipped as written. See `CLAUDE_LEGACY.md` §4's
 Plan/WeekCourse/StudentPlanAssignment/StudyInterval/IntervalSchedule
 subsection and §7 Done for the final shape and test coverage
 (`StudyPlanManagementFlowIntegrationTest`). Two implementation-hygiene
@@ -338,7 +338,7 @@ Depends on: `curriculum` (topics), `academic` (students/classes).
 - **Resolved at new-module time:** a new `SCHOOL`-scoped `STUDY_PLANNER`
   module code, plus `STUDYPLAN_VIEW`/`STUDYPLAN_MANAGE` permissions
   granted to `SCHOOL_ADMIN` + `TEACHER` (same reasoning as
-  `CURRICULUM_VIEW`/`CURRICULUM_MANAGE` — see `CLAUDE.md` §4's Permission
+  `CURRICULUM_VIEW`/`CURRICULUM_MANAGE` — see `CLAUDE_LEGACY.md` §4's Permission
   section).
 
 ## 7. Non-goals (explicitly not being ported)

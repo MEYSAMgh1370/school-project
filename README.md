@@ -12,10 +12,10 @@ Markdown files are useful context but may contain stale AI-assisted notes.
   architecture, module, persistence, frontend, Android, and deployment shape.
 - [`openspec/specs/current-system.md`](openspec/specs/current-system.md) —
   current product behavior and known limitations.
-- [`CLAUDE.md`](CLAUDE.md) — legacy detailed architecture and product notebook.
+- [`CLAUDE_LEGACY.md`](CLAUDE_LEGACY.md) — legacy detailed architecture and product notebook.
   Use it as source material, not as unchecked authority.
-- [`BEST_PRACTICES.md`](BEST_PRACTICES.md) — working discipline and Java/Spring
-  conventions for this repo.
+- [`openspec/conventions.md`](openspec/conventions.md) — working discipline,
+  Java/Spring conventions, frontend constraints, schema rules, and test commands.
 - [`UX_ROADMAP.md`](UX_ROADMAP.md) — frontend page inventory, build order, and
   shared UI conventions for the management UI.
 - [`FRONTEND.md`](FRONTEND.md) — onboarding guide for a frontend developer: the

@@ -9,10 +9,10 @@ from this roadmap without a focused OpenSpec change proposal.
 
 **Reconciliation note (2026-07-08, parent bot):** the parent-bot half of this
 plan was already built, in a separate session, before this doc's first draft
-landed — see CLAUDE.md's "Bale bot integration, Phase 1" (§7 Done) and §11 Q8.
+landed — see CLAUDE_LEGACY.md's "Bale bot integration, Phase 1" (§7 Done) and §11 Q8.
 The actual implementation differs from what §4/§5 originally proposed here in
 two important ways: it's **Bale-only, deliberately not a generic multi-channel
-abstraction** (CLAUDE.md §10 now has an explicit rule against building one),
+abstraction** (CLAUDE_LEGACY.md §10 now has an explicit rule against building one),
 and identity linking is **phone-number-based**, not `InviteToken`-based. §4/§5
 below have been corrected to match reality; treat the corrected text as current,
 not the original proposal.
@@ -20,7 +20,7 @@ not the original proposal.
 **Reconciliation note (2026-07-08, student app technical choices):** the
 STUDENT channel's stack and mobile-auth mechanism, both discussed as open in
 the original draft below, have now been explicitly decided in a planning
-conversation and the backend half is built — see CLAUDE.md's "Mobile auth
+conversation and the backend half is built — see CLAUDE_LEGACY.md's "Mobile auth
 backend + read-only enrollment endpoint" (§7 Done). **Native Android (Kotlin +
 Jetpack Compose), not Capacitor** — Android-only for v1 (iOS deferred), chosen
 over Capacitor for long-term UX ceiling despite Capacitor being faster to ship
@@ -60,12 +60,12 @@ product** — see §2.
   reply — exactly what ClassDojo, Remind, and SchoolFox already optimize for
   worldwide (§3). Building and shipping a whole parent app for that is
   disproportionate. Instead:
-  - **Bale bot — built.** Shipped 2026-07-07 as the `bale` module (CLAUDE.md
+  - **Bale bot — built.** Shipped 2026-07-07 as the `bale` module (CLAUDE_LEGACY.md
     §7 Done): outbound invoice notifications plus inbound self-service Persian
     text commands ("مدرسه‌های من" / "فرزندان من"). Bale is sanctions-safe and
     reliably available inside Iran without a VPN, which is why it went first.
   - **Telegram bot — not built, and not a drop-in second endpoint.**
-    `CLAUDE.md` §10 now has an explicit rule against a generic
+    `CLAUDE_LEGACY.md` §10 now has an explicit rule against a generic
     `Notification`/multi-channel abstraction — the `bale` module is
     intentionally Bale-specific. A Telegram channel, if ever wanted, means a
     **second, independent module** (its own webhook, its own linking flow),
@@ -129,14 +129,14 @@ product** — see §2.
   `JwtAuthenticationFilter`, one `SecurityFilterChain`, not two — the filter
   no-ops without an `Authorization: Bearer` header, so session-cookie web
   login is completely unaffected). This is exactly the "revisit if a mobile
-  client makes session cookies impractical" condition `CLAUDE.md` §11 Q1
+  client makes session cookies impractical" condition `CLAUDE_LEGACY.md` §11 Q1
   flagged — a native app has no cookie jar to share with the backend at all,
   which made the call concrete. Not phone+OTP: `iam.UserEntity.phoneNumber`
   (added for Bale linking) was considered, but would need a new SMS gateway
   integration that doesn't exist and isn't planned; JWT needed no new
   external dependency. Token lifetime is 12h, no refresh-token flow (logout
   is client-side token deletion only) — deferred until a concrete need for
-  silent long-lived sessions shows up. See CLAUDE.md §7 Done for the full
+  silent long-lived sessions shows up. See CLAUDE_LEGACY.md §7 Done for the full
   backend description, including the new `GET /api/me/enrollment` endpoint
   this required (STUDENT otherwise has nothing of its own to show — see §6).
 - **Student web channel — RESOLVED 2026-07-11: JTE+Alpine, additive to the
@@ -158,7 +158,7 @@ product** — see §2.
   else built REST-first later) get a web page for free this way. Student
   web pages live in the `web` module (or, if a feature's controller needs
   student-only data no other page composes, alongside that module's own
-  admin controller) — same placement rule `CLAUDE.md` §3 already uses for
+  admin controller) — same placement rule `CLAUDE_LEGACY.md` §3 already uses for
   `web`.
 - **Video class.** Integrate self-hosted **BigBlueButton**; do not build a
   custom WebRTC stack. It matches the classroom-shaped feature set (whiteboard,
@@ -170,7 +170,7 @@ product** — see §2.
   module reusing the `InviteToken` pattern; the actual build, done in a
   separate session, took a different and now-authoritative shape:*
   - The module is named `bale` and is deliberately Bale-specific, not a
-    generic gateway — `CLAUDE.md` §10 explicitly forbids building a
+    generic gateway — `CLAUDE_LEGACY.md` §10 explicitly forbids building a
     `Notification`/multi-channel abstraction (same YAGNI reasoning as keeping
     `InviteEmailSender` inside `iam/internal`). A second channel gets its own
     module when actually requested, not a shared abstraction built ahead of need.
@@ -188,7 +188,7 @@ product** — see §2.
     bot — worth keeping in mind for §5 item 4 (`homework`) and beyond.
   - Outbound flow: `finance.InvoiceIssuedEvent` → `bale.internal.
     InvoiceIssuedEventListener` notifies the student and every linked guardian
-    — same audit-listener shape as `FinanceAuditEventListener` (`CLAUDE.md`
+    — same audit-listener shape as `FinanceAuditEventListener` (`CLAUDE_LEGACY.md`
     §3), just pushing via the bot instead of writing an audit row.
   - The webhook (`POST /api/bale/webhook/{secret}`) is secured by a random
     secret path segment, not `@RequiresModule`/`@RequiresPermission` — the
@@ -196,7 +196,7 @@ product** — see §2.
     comes from every query being scoped to the linked user's own data.
   - **Known gaps at the time this was written — all since closed:**
     `/finance`'s `GET invoices` scoping to a guardian's own children shipped
-    2026-07-13 (`CLAUDE.md` §7 Done, "Finance deepening, phase 3"); a
+    2026-07-13 (`CLAUDE_LEGACY.md` §7 Done, "Finance deepening, phase 3"); a
     `BaleFlowIntegrationTest` (webhook link flow + outbound
     `InvoiceIssuedEvent` notification, using a local JDK `HttpServer` in
     place of a real Bale API — Docker/Testcontainers is available again)
@@ -244,7 +244,7 @@ product** — see §2.
   decided.
 - **Rich parent messaging** — deferred to a possible future extension of the
   `messaging` module; the bot channel is notification + minimal-reply only in v1.
-- **Any AI features** — forbidden outright per `CLAUDE.md` §10. Restated here
+- **Any AI features** — forbidden outright per `CLAUDE_LEGACY.md` §10. Restated here
   because "AI-adaptive homework" showed up in the East Asia research (§3) and
   must not be read as license to build it.
 
@@ -258,7 +258,7 @@ product** — see §2.
    deferred past the read-only shell (§5 item 3).
 3. Is a **second, fully-independent Telegram module** worth building at all,
    given Telegram's own unreliability in Iran and the now-explicit rule
-   (`CLAUDE.md` §10) against sharing code with `bale`? Leaning Bale-only
+   (`CLAUDE_LEGACY.md` §10) against sharing code with `bale`? Leaning Bale-only
    unless a concrete need surfaces.
 4. BigBlueButton hosting/ops — self-hosted infra for it doesn't exist yet; who
    runs it and where is unresolved.

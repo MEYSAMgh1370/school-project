@@ -22,7 +22,7 @@ Source documents:
 
 - [`../specs/current-system.md`](../specs/current-system.md)
 - [`../decisions/2026-07-20-free-tier-entitlements.md`](../decisions/2026-07-20-free-tier-entitlements.md)
-- [`../../CLAUDE.md`](../../CLAUDE.md)
+- [`../../CLAUDE_LEGACY.md`](../../CLAUDE_LEGACY.md)
 
 ## School Public Identity
 
