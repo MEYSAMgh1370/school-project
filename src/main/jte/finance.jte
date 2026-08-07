@@ -9,7 +9,7 @@
     <div class="container">
         <h1 class="title is-4">امور مالی مدرسه</h1>
 
-        <div class="notification is-warning" x-show="!schoolId">
+        <div class="notification is-warning" x-cloak x-show="!schoolId">
             برای مدیریت امور مالی، یک مدرسه از سوییچر بالا انتخاب کنید.
         </div>
 

@@ -10,7 +10,7 @@
         <h1 class="title is-4">آزمون‌های من</h1>
         <p class="subtitle is-6">آزمون‌های هفتگیِ خودتان و آزمون‌های تألیفی‌ای که به شما تخصیص داده شده.</p>
 
-        <div class="notification is-warning" x-show="!schoolId">
+        <div class="notification is-warning" x-cloak x-show="!schoolId">
             برای مشاهده‌ی آزمون‌ها، یک مدرسه از سوییچر بالا انتخاب کنید.
         </div>
 

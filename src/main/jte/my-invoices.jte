@@ -10,7 +10,7 @@
         <h1 class="title is-4">فاکتورهای من</h1>
         <p class="subtitle is-6">فاکتورهای شهریه‌ی خودتان و فرزندانِ لینک‌شده‌ به شما در این مدرسه.</p>
 
-        <div class="notification is-warning" x-show="!schoolId">
+        <div class="notification is-warning" x-cloak x-show="!schoolId">
             برای مشاهده‌ی فاکتورها، یک مدرسه از سوییچر بالا انتخاب کنید.
         </div>
 

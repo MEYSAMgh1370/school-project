@@ -10,7 +10,7 @@
         <h1 class="title is-4">نقش‌ها و دسترسی‌ها</h1>
         <p class="subtitle is-6">نقش‌های سیستمی ثابت‌اند؛ می‌توانید نقش سفارشیِ تازه با ترکیبی از Permissionهای موجود بسازید.</p>
 
-        <div class="notification is-warning" x-show="!schoolId">
+        <div class="notification is-warning" x-cloak x-show="!schoolId">
             برای مدیریت نقش‌ها، یک مدرسه از سوییچر بالا انتخاب کنید.
         </div>
 
