@@ -167,6 +167,8 @@ public interface IamFacade {
      * پیدا کردن کاربر بر اساس شماره تلفن - مسیر اصلی «اتصال دوباره»ی ربات
      * بله: کاربری که قبلاً شماره‌اش را (وقتی با سشن معتبر وارد بود) ثبت
      * کرده، دفعه‌ی بعد فقط با اشتراک‌گذاری مخاطب در بله شناسایی می‌شود.
+     * ارقام فارسی/عربی و فاصله‌ی ابتدا/انتها در مرز IAM به فرم canonical
+     * ASCII تبدیل می‌شوند؛ همان قاعده‌ی {@link #setPhoneNumber}.
      */
     Optional<UserProfile> findUserByPhoneNumber(String phoneNumber);
 
@@ -175,7 +177,9 @@ public interface IamFacade {
      * نمی‌کند - این متد فقط برای کاربری صدا زده می‌شود که از قبل با سشن
      * معتبر وارد شده (مثلاً از طریق {@code PUT /api/me/phone})؛ شماره تلفن
      * صرفاً یک کانال ارتباطی اضافه به همان حساب است، نه یک راه جدید برای
-     * اثبات هویت. Idempotent برای همان کاربر است.
+     * اثبات هویت. Idempotent برای همان کاربر است. قبل از اعتبارسنجی، بررسی
+     * یکتایی و ذخیره، ارقام فارسی/عربی به ASCII تبدیل و فاصله‌ی دو سر حذف
+     * می‌شود؛ داده‌ی قدیمی نیز با Flyway V3 به همین فرم منتقل می‌شود.
      *
      * @throws com.example.roshdeandishe.iam.shared.exception.IamException با
      * IamError.InvalidPhoneNumber اگر فرمت شماره نامعتبر باشد، یا
@@ -224,6 +228,7 @@ public interface IamFacade {
      * ورود، نه یک مسیر ثبت‌نام جدید. عمداً هیچ کاربری با این متد ساخته
      * نمی‌شود؛ شماره تلفن فقط از طریق {@link #setPhoneNumber} (با سشن معتبر)
      * قابل ثبت است - همان مرز امنیتی‌ای که آن متد از قبل دارد.
+     * شماره پیش از lookup با همان canonicalization نرمال می‌شود.
      *
      * @throws com.example.roshdeandishe.iam.shared.exception.IamException با
      * IamError.PhoneNotRegistered اگر هیچ کاربری با این شماره ثبت نشده باشد

@@ -18,6 +18,7 @@ document.addEventListener('alpine:init', () => {
         pickerMonth: { jy: 1404, jm: 1 },
 
         dialog: null,
+        dialogOpener: null,
         dialogDone: false,
         dialogTestCount: 0,
         saving: false,
@@ -322,15 +323,29 @@ document.addEventListener('alpine:init', () => {
         // -------------------------------------------------------- گفتگو
 
         openLog(block) {
+            this.dialogOpener = document.activeElement;
             this.dialog = block;
             this.dialogDone = block.done;
             this.dialogTestCount = block.testCount;
             this.notice = '';
             this.error = '';
+            this.$nextTick(() => window.ModalFocus.focusFirst(
+                this.$refs.studyDialog,
+                this.$refs.dialogFirstControl
+            ));
         },
 
         closeDialog() {
+            if (!this.dialog) {
+                return;
+            }
+            const opener = this.dialogOpener;
             this.dialog = null;
+            this.dialogOpener = null;
+            this.$nextTick(() => window.ModalFocus.restore(
+                opener,
+                document.getElementById('main-content')
+            ));
         },
 
         async saveDialog() {
@@ -353,7 +368,7 @@ document.addEventListener('alpine:init', () => {
                     return;
                 }
                 this.notice = 'مطالعه ثبت شد.';
-                this.dialog = null;
+                this.closeDialog();
                 await this.load();
             } catch (e) {
                 this.error = 'ارتباط با سرور برقرار نشد.';

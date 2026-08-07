@@ -5,7 +5,7 @@
 @template.layout.main(title = "هزینه‌های مدرسه", scripts = java.util.List.of("/js/navbar.js", "/js/jalali.js", "/js/expenses.js"), content = @`
 @template.layout.navbar(navbar = navbar)
 
-<section class="section" x-data="expensesPage()">
+<section class="section" id="main-content" role="main" tabindex="-1" x-data="expensesPage()">
     <div class="container">
         <h1 class="title is-4">هزینه‌های مدرسه</h1>
 
@@ -46,9 +46,10 @@
                                     </table>
                                     </div>
                                     <form @submit.prevent="createCategory">
+                                        <label class="label" for="expenseCategoryName">نام دسته‌ی تازه</label>
                                         <div class="field has-addons">
                                             <div class="control is-expanded">
-                                                <input class="input" type="text" placeholder="نام دسته‌ی تازه"
+                                                <input class="input" id="expenseCategoryName" type="text" placeholder="نام دسته‌ی تازه"
                                                        x-model="categoryForm.name" required>
                                             </div>
                                             <div class="control">
@@ -82,9 +83,10 @@
                                     </table>
                                     </div>
                                     <form @submit.prevent="createVendor">
+                                        <label class="label" for="expenseVendorName">نام طرف حساب تازه</label>
                                         <div class="field has-addons">
                                             <div class="control is-expanded">
-                                                <input class="input" type="text" placeholder="نام طرف حساب تازه"
+                                                <input class="input" id="expenseVendorName" type="text" placeholder="نام طرف حساب تازه"
                                                        x-model="vendorForm.name" required>
                                             </div>
                                             <div class="control">
@@ -102,17 +104,17 @@
                             <form @submit.prevent="createExpense">
                                 <div class="field is-grouped is-grouped-multiline">
                                     <div class="control">
-                                        <label class="label">تاریخ</label>
-                                        <input class="input" dir="ltr" type="date" x-model="expenseForm.expenseDate" required>
+                                        <label class="label" for="expenseDate">تاریخ</label>
+                                        <input class="input" id="expenseDate" dir="ltr" type="date" x-model="expenseForm.expenseDate" required>
                                     </div>
                                     <div class="control">
-                                        <label class="label">مبلغ (تومان)</label>
-                                        <input class="input" dir="ltr" type="number" min="1" x-model="expenseForm.amount" required>
+                                        <label class="label" for="expenseAmount">مبلغ (تومان)</label>
+                                        <input class="input" id="expenseAmount" dir="ltr" type="number" min="1" x-model="expenseForm.amount" required>
                                     </div>
                                     <div class="control">
-                                        <label class="label">دسته</label>
+                                        <label class="label" for="expenseCategory">دسته</label>
                                         <div class="select">
-                                            <select x-model="expenseForm.categoryId" required>
+                                            <select id="expenseCategory" x-model="expenseForm.categoryId" required>
                                                 <option value="">— انتخاب کنید —</option>
                                                 <template x-for="category in categories.filter(c => c.active)" :key="category.id">
                                                     <option :value="category.id" x-text="category.name"></option>
@@ -121,9 +123,9 @@
                                         </div>
                                     </div>
                                     <div class="control">
-                                        <label class="label">طرف حساب (اختیاری)</label>
+                                        <label class="label" for="expenseVendor">طرف حساب (اختیاری)</label>
                                         <div class="select">
-                                            <select x-model="expenseForm.vendorId">
+                                            <select id="expenseVendor" x-model="expenseForm.vendorId">
                                                 <option value="">—</option>
                                                 <template x-for="vendor in vendors.filter(v => v.active)" :key="vendor.id">
                                                     <option :value="vendor.id" x-text="vendor.name"></option>
@@ -132,9 +134,9 @@
                                         </div>
                                     </div>
                                     <div class="control">
-                                        <label class="label">روش پرداخت</label>
+                                        <label class="label" for="expensePaymentMethod">روش پرداخت</label>
                                         <div class="select">
-                                            <select x-model="expenseForm.paymentMethod">
+                                            <select id="expensePaymentMethod" x-model="expenseForm.paymentMethod">
                                                 <option value="CASH">نقدی</option>
                                                 <option value="CARD">کارت</option>
                                                 <option value="BANK_TRANSFER">انتقال بانکی</option>
@@ -144,10 +146,10 @@
                                         </div>
                                     </div>
                                     <div class="control is-expanded">
-                                        <label class="label">شرح</label>
-                                        <input class="input" type="text" x-model="expenseForm.description">
+                                        <label class="label" for="expenseDescription">شرح</label>
+                                        <input class="input" id="expenseDescription" type="text" x-model="expenseForm.description">
                                     </div>
-                                    <div class="control" style="align-self: flex-end">
+                                    <div class="control app-control-align-end">
                                         <button class="button is-link" type="submit" :class="{ 'is-loading': submitting }">
                                             ثبت هزینه
                                         </button>
@@ -160,8 +162,9 @@
                             <h2 class="title is-6">فیلتر</h2>
                             <div class="field is-grouped is-grouped-multiline">
                                 <div class="control">
+                                    <label class="label" for="expenseFilterCategory">دسته</label>
                                     <div class="select">
-                                        <select x-model="filters.categoryId" @change="load">
+                                        <select id="expenseFilterCategory" x-model="filters.categoryId" @change="load">
                                             <option value="">همه‌ی دسته‌ها</option>
                                             <template x-for="category in categories" :key="category.id">
                                                 <option :value="category.id" x-text="category.name"></option>
@@ -170,8 +173,9 @@
                                     </div>
                                 </div>
                                 <div class="control">
+                                    <label class="label" for="expenseFilterStatus">وضعیت</label>
                                     <div class="select">
-                                        <select x-model="filters.status" @change="load">
+                                        <select id="expenseFilterStatus" x-model="filters.status" @change="load">
                                             <option value="">همه‌ی وضعیت‌ها</option>
                                             <option value="DRAFT">پیش‌نویس</option>
                                             <option value="APPROVED">تأییدشده</option>
@@ -188,12 +192,12 @@
                         <table class="table is-fullwidth is-striped">
                             <thead>
                             <tr>
-                                <th>تاریخ</th>
-                                <th>دسته</th>
-                                <th>طرف حساب</th>
-                                <th>مبلغ</th>
-                                <th>وضعیت</th>
-                                <th></th>
+                                <th scope="col">تاریخ</th>
+                                <th scope="col">دسته</th>
+                                <th scope="col">طرف حساب</th>
+                                <th scope="col">مبلغ</th>
+                                <th scope="col">وضعیت</th>
+                                <th scope="col"><span class="is-sr-only">عملیات</span></th>
                             </tr>
                             </thead>
                             <tbody>
@@ -253,8 +257,8 @@
                                 </div>
                                 <p x-show="!attachmentsLoading && attachments.length === 0">هنوز پیوستی ثبت نشده است.</p>
                                 <div class="field" x-show="expense.status !== 'CANCELLED'">
-                                    <label class="label">افزودن پیوست (رسید/فاکتور - حداکثر ۵ مگابایت)</label>
-                                    <input class="input" type="file" @change="uploadAttachment(expense, $event)">
+                                    <label class="label" :for="'expenseAttachment-' + expense.id">افزودن پیوست (رسید/فاکتور - حداکثر ۵ مگابایت)</label>
+                                    <input class="input" :id="'expenseAttachment-' + expense.id" type="file" @change="uploadAttachment(expense, $event)">
                                 </div>
                             </div>
                         </template>
@@ -263,13 +267,13 @@
                             <h2 class="title is-6">گزارش هزینه‌ها (بازه‌ی جلالی)</h2>
                             <div class="field is-grouped is-grouped-multiline">
                                 <div class="control">
-                                    <label class="label">سال</label>
-                                    <input class="input" dir="ltr" type="number" x-model="summaryYear" style="width: 6rem">
+                                    <label class="label" for="expenseSummaryYear">سال</label>
+                                    <input class="input app-input-w-6" id="expenseSummaryYear" dir="ltr" type="number" x-model="summaryYear">
                                 </div>
                                 <div class="control">
-                                    <label class="label">بازه</label>
+                                    <label class="label" for="expenseSummaryPeriodKind">بازه</label>
                                     <div class="select">
-                                        <select x-model="summaryPeriodKind">
+                                        <select id="expenseSummaryPeriodKind" x-model="summaryPeriodKind">
                                             <option value="month">ماه</option>
                                             <option value="quarter">فصل</option>
                                             <option value="year">کل سال</option>
@@ -277,22 +281,22 @@
                                     </div>
                                 </div>
                                 <div class="control" x-show="summaryPeriodKind !== 'year'">
-                                    <label class="label" x-text="summaryPeriodKind === 'month' ? 'شماره‌ی ماه (۱ تا ۱۲)' : 'شماره‌ی فصل (۱ تا ۴)'"></label>
-                                    <input class="input" dir="ltr" type="number" min="1"
+                                    <label class="label" for="expenseSummaryPeriodIndex" x-text="summaryPeriodKind === 'month' ? 'شماره‌ی ماه (۱ تا ۱۲)' : 'شماره‌ی فصل (۱ تا ۴)'"></label>
+                                    <input class="input app-input-w-6" id="expenseSummaryPeriodIndex" dir="ltr" type="number" min="1"
                                            :max="summaryPeriodKind === 'month' ? 12 : 4"
-                                           x-model="summaryPeriodIndex" style="width: 6rem">
+                                           x-model="summaryPeriodIndex">
                                 </div>
                                 <div class="control">
-                                    <label class="label">گروه‌بندی</label>
+                                    <label class="label" for="expenseSummaryGroupBy">گروه‌بندی</label>
                                     <div class="select">
-                                        <select x-model="summaryGroupBy">
+                                        <select id="expenseSummaryGroupBy" x-model="summaryGroupBy">
                                             <option value="category">دسته</option>
                                             <option value="vendor">طرف حساب</option>
                                             <option value="paymentMethod">روش پرداخت</option>
                                         </select>
                                     </div>
                                 </div>
-                                <div class="control" style="align-self: flex-end">
+                                <div class="control app-control-align-end">
                                     <button class="button is-link" @click="loadSummary" :class="{ 'is-loading': summaryLoading }">
                                         نمایش گزارش
                                     </button>
@@ -302,7 +306,7 @@
                             <div class="table-container" x-show="summaryRows.length > 0">
                             <table class="table is-fullwidth">
                                 <thead>
-                                <tr><th>مورد</th><th>مبلغ</th><th>تعداد</th></tr>
+                                <tr><th scope="col">مورد</th><th scope="col">مبلغ</th><th scope="col">تعداد</th></tr>
                                 </thead>
                                 <tbody>
                                 <template x-for="(row, index) in summaryRows" :key="index">

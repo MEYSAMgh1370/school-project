@@ -5,7 +5,7 @@
 @template.layout.main(title = "اعضای مدرسه", scripts = java.util.List.of("/js/navbar.js", "/js/people.js"), content = @`
 @template.layout.navbar(navbar = navbar)
 
-<section class="section" x-data="peoplePage()">
+<section class="section" id="main-content" role="main" tabindex="-1" x-data="peoplePage()">
     <div class="container">
         <h1 class="title is-4">اعضای مدرسه</h1>
 
@@ -55,7 +55,7 @@
                                     </select>
                                 </div>
                             </div>
-                            <div class="control" style="align-self: flex-end">
+                            <div class="control app-control-align-end">
                                 <button class="button is-link" type="submit" :class="{ 'is-loading': submitting }">
                                     افزودن
                                 </button>
@@ -68,11 +68,11 @@
                 <table class="table is-fullwidth is-striped">
                     <thead>
                     <tr>
-                        <th>نام</th>
-                        <th>ایمیل</th>
-                        <th>نقش</th>
-                        <th>وضعیت</th>
-                        <th>عملیات</th>
+                        <th scope="col">نام</th>
+                        <th scope="col">ایمیل</th>
+                        <th scope="col">نقش</th>
+                        <th scope="col">وضعیت</th>
+                        <th scope="col">عملیات</th>
                     </tr>
                     </thead>
                     <tbody>

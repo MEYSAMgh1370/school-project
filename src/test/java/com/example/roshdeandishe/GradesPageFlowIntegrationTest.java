@@ -64,6 +64,7 @@ class GradesPageFlowIntegrationTest {
         mockMvc.perform(get("/grades").session(session))
                 .andExpect(status().isOk())
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("نمرات")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("/js/member-names.js")))
                 // لینک‌های ناوبری روی همه‌ی صفحه‌های مدیریتی هستند
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("href=\"/dashboard\"")));
     }

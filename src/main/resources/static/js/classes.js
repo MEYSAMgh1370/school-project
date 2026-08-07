@@ -76,7 +76,7 @@ document.addEventListener('alpine:init', () => {
                 return 'تخصیص‌نشده';
             }
             const teacher = this.teachers.find(t => t.userId === teacherId);
-            return teacher ? teacher.fullName : 'تخصیص‌نشده';
+            return teacher ? teacher.fullName : 'نام معلم در دسترس نیست';
         },
 
         rosterFor(classId) {
@@ -149,13 +149,26 @@ document.addEventListener('alpine:init', () => {
                 // اجازه‌ی MEMBERSHIP_MANAGE ندارد)، صفحه‌ی کلاس‌ها را نمی‌شکند -
                 // فقط نام معلم‌ها «تخصیص‌نشده» و فهرست دانش‌آموزان کلاس خالی
                 // نمایش داده می‌شود.
-                const memberships = membershipsResponse.ok ? await membershipsResponse.json() : [];
-                this.teachers = memberships.filter(m => m.active && m.roleCode === 'TEACHER');
-                this.pupils = memberships.filter(m => m.active && m.roleCode === 'STUDENT');
                 // فهرست دانش‌آموزان کلاس هم به همین شکل best-effort است؛ اگر
                 // نقش کاربر STUDENT_ENROLL نداشت، فهرست خالی می‌ماند و دکمه‌ی
                 // «مشاهده دانش‌آموزان» فقط چیزی نشان نمی‌دهد - صفحه نمی‌شکند.
                 this.students = studentsResponse.ok ? await studentsResponse.json() : [];
+                if (membershipsResponse.ok) {
+                    const memberships = await membershipsResponse.json();
+                    this.teachers = memberships.filter(m => m.active && m.roleCode === 'TEACHER');
+                    this.pupils = memberships.filter(m => m.active && m.roleCode === 'STUDENT');
+                } else {
+                    const teacherIds = this.classes.map(classItem => classItem.teacherId).filter(Boolean);
+                    const studentUserIds = this.students.map(student => student.userId);
+                    const names = await window.MemberNames.resolve(
+                        this.schoolId,
+                        [...teacherIds, ...studentUserIds]
+                    );
+                    const teacherIdSet = new Set(teacherIds.map(String));
+                    const studentIdSet = new Set(studentUserIds.map(String));
+                    this.teachers = names.filter(name => teacherIdSet.has(String(name.userId)));
+                    this.pupils = names.filter(name => studentIdSet.has(String(name.userId)));
+                }
             } catch (e) {
                 this.error = 'ارتباط با سرور برقرار نشد.';
             } finally {

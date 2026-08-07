@@ -8,7 +8,7 @@
 @template.layout.main(title = "داشبورد", scripts = java.util.List.of("/js/navbar.js", "/js/dashboard.js"), content = @`
 @template.layout.navbar(navbar = navbar)
 
-<section class="section">
+<section class="section" id="main-content" role="main" tabindex="-1">
     <div class="container">
         <h1 class="title is-4">عضویت‌های من</h1>
         <p class="subtitle is-6" dir="ltr">${model.email()}</p>
@@ -25,10 +25,11 @@
                 با کدِ پیامکی (به‌جای رمز عبور) وارد شوید.
             </p>
             <form @submit.prevent="save">
+                <label class="label" for="dashboardPhone">شماره تلفن همراه</label>
                 <div class="field has-addons">
                     <div class="control is-expanded">
-                        <input class="input" type="tel" dir="ltr" x-model="phoneNumber"
-                               placeholder="۰۹۱۲۳۴۵۶۷۸۹" required>
+                        <input class="input" id="dashboardPhone" type="tel" dir="ltr" x-model="phoneNumber"
+                               autocomplete="tel" inputmode="tel" placeholder="۰۹۱۲۳۴۵۶۷۸۹" required>
                     </div>
                     <div class="control">
                         <button class="button is-link" type="submit" :class="{ 'is-loading': submitting }">
@@ -37,8 +38,10 @@
                     </div>
                 </div>
             </form>
-            <div class="notification is-danger mt-3" x-show="errorMessage" x-text="errorMessage"></div>
-            <div class="notification is-success mt-3" x-show="successMessage" x-text="successMessage"></div>
+            <div class="notification is-danger mt-3" role="alert"
+                 x-cloak x-show="errorMessage" x-text="errorMessage"></div>
+            <div class="notification is-success mt-3" role="status" aria-live="polite"
+                 x-cloak x-show="successMessage" x-text="successMessage"></div>
         </div>
 
         <%-- نشانی ورود مدرسه: فقط برای مدرسه‌هایی که کاربر در آن‌ها مدیرِ
@@ -75,8 +78,10 @@
                         @endif
                     </div>
                 @endfor
-                <div class="notification is-danger mt-3" x-show="errorMessage" x-text="errorMessage"></div>
-                <div class="notification is-success mt-3" x-show="successMessage" x-text="successMessage"></div>
+                <div class="notification is-danger mt-3" role="alert"
+                     x-cloak x-show="errorMessage" x-text="errorMessage"></div>
+                <div class="notification is-success mt-3" role="status" aria-live="polite"
+                     x-cloak x-show="successMessage" x-text="successMessage"></div>
             </div>
         @endif
 
@@ -94,9 +99,9 @@
             <table class="table is-fullwidth is-striped">
                 <thead>
                 <tr>
-                    <th>مدرسه</th>
-                    <th>نقش</th>
-                    <th>وضعیت</th>
+                    <th scope="col">مدرسه</th>
+                    <th scope="col">نقش</th>
+                    <th scope="col">وضعیت</th>
                 </tr>
                 </thead>
                 <tbody>

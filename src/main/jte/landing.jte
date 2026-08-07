@@ -2,7 +2,7 @@
      این صفحه فقط به ناشناس‌ها نشان داده می‌شود، کاربر لاگین‌شده به
      /dashboard ری‌دایرکت می‌شود - LandingPageController). --%>
 @template.layout.main(title = "خانه", content = @`
-<section class="hero is-link is-fullheight">
+<section class="hero is-link is-fullheight" id="main-content" role="main" tabindex="-1">
     <div class="hero-body">
         <div class="container has-text-centered">
             <h1 class="title is-1">رشدِاندیشه</h1>
@@ -13,7 +13,7 @@
                 <a class="button is-white is-outlined is-medium" href="/register">ثبت‌نام</a>
             </div>
 
-            <div class="box mt-6" style="max-width: 480px; margin-inline: auto;">
+            <div class="box mt-6 app-landing-card">
                 <%-- has-text-dark لازم است: .title درون hero is-link سفید
                      ارث می‌برد و روی box سفید ناپیدا می‌شود --%>
                 <h2 class="title is-5 has-text-dark">مدیر مدرسه هستید؟</h2>

@@ -2,10 +2,10 @@
 
 @param NavbarModel navbar
 
-@template.layout.main(title = "آزمون‌ها", scripts = java.util.List.of("/js/navbar.js", "/js/exams.js"), content = @`
+@template.layout.main(title = "آزمون‌ها", scripts = java.util.List.of("/js/navbar.js", "/js/member-names.js", "/js/exams.js"), content = @`
 @template.layout.navbar(navbar = navbar)
 
-<section class="section" x-data="examsPage()">
+<section class="section" id="main-content" role="main" tabindex="-1" x-data="examsPage()">
     <div class="container">
         <h1 class="title is-4">آزمون‌ها</h1>
 
@@ -31,11 +31,11 @@
                             <table class="table is-fullwidth is-striped">
                                 <thead>
                                 <tr>
-                                    <th>عنوان</th>
-                                    <th>شروع</th>
-                                    <th>پایان</th>
-                                    <th>مدت (دقیقه)</th>
-                                    <th></th>
+                                    <th scope="col">عنوان</th>
+                                    <th scope="col">شروع</th>
+                                    <th scope="col">پایان</th>
+                                    <th scope="col">مدت (دقیقه)</th>
+                                    <th scope="col"><span class="is-sr-only">جزئیات</span></th>
                                 </tr>
                                 </thead>
                                 <tbody>
@@ -62,16 +62,16 @@
                                 <div class="box" x-show="expandedExamId === exam.id" x-cloak>
                                     <h3 class="title is-6" x-text="'مدیریت آزمون: ' + exam.title"></h3>
 
-                                    <div class="tabs">
+                                        <div class="tabs">
                                         <ul>
                                             <li :class="{ 'is-active': examTab === 'sections' }">
-                                                <a @click="examTab = 'sections'">بخش‌ها</a>
+                                                <a href="#" @click.prevent="examTab = 'sections'">بخش‌ها</a>
                                             </li>
                                             <li :class="{ 'is-active': examTab === 'assign' }">
-                                                <a @click="examTab = 'assign'">تخصیص دانش‌آموز</a>
+                                                <a href="#" @click.prevent="examTab = 'assign'">تخصیص دانش‌آموز</a>
                                             </li>
                                             <li :class="{ 'is-active': examTab === 'results' }">
-                                                <a @click="examTab = 'results'">نتایج</a>
+                                                <a href="#" @click.prevent="examTab = 'results'">نتایج</a>
                                             </li>
                                         </ul>
                                     </div>
@@ -80,7 +80,7 @@
                                         <div class="table-container" x-show="sections.length > 0">
                                         <table class="table is-fullwidth is-narrow">
                                             <thead>
-                                            <tr><th>سرفصل</th><th>نام بخش</th><th>تعداد سؤال</th></tr>
+                                            <tr><th scope="col">سرفصل</th><th scope="col">نام بخش</th><th scope="col">تعداد سؤال</th></tr>
                                             </thead>
                                             <tbody>
                                             <template x-for="section in sections" :key="section.id">
@@ -102,7 +102,8 @@
                                             <div class="field is-grouped is-grouped-multiline">
                                                 <div class="control is-expanded">
                                                     <div class="select is-fullwidth">
-                                                        <select x-model="manualSectionForm.topicId" @change="onManualTopicChange" required>
+                                                        <select x-model="manualSectionForm.topicId" @change="onManualTopicChange"
+                                                                aria-label="سرفصل بخش دستی" required>
                                                             <option value="">— سرفصل —</option>
                                                             <template x-for="node in flatTopics" :key="'ms-' + node.id">
                                                                 <option :value="node.id" x-text="'—'.repeat(node.depth) + ' ' + node.name"></option>
@@ -112,10 +113,11 @@
                                                 </div>
                                                 <div class="control is-expanded">
                                                     <input class="input" type="text" placeholder="نام بخش (اختیاری)"
+                                                           aria-label="نام بخش دستی"
                                                            x-model="manualSectionForm.name">
                                                 </div>
                                             </div>
-                                            <div class="box" style="max-height: 12rem; overflow-y: auto"
+                                            <div class="box app-scrollbox-12"
                                                  x-show="manualSectionForm.topicId">
                                                 <p class="has-text-grey" x-show="questionsForTopic.length === 0">
                                                     این سرفصل سؤالی ندارد.
@@ -145,7 +147,7 @@
                                             <div class="field is-grouped is-grouped-multiline">
                                                 <div class="control is-expanded">
                                                     <div class="select is-fullwidth">
-                                                        <select x-model="autoSectionForm.topicId" required>
+                                                        <select x-model="autoSectionForm.topicId" aria-label="سرفصل بخش خودکار" required>
                                                             <option value="">— سرفصل (شامل زیرسرفصل‌ها) —</option>
                                                             <template x-for="node in flatTopics" :key="'as-' + node.id">
                                                                 <option :value="node.id" x-text="'—'.repeat(node.depth) + ' ' + node.name"></option>
@@ -154,14 +156,16 @@
                                                     </div>
                                                 </div>
                                                 <div class="control">
-                                                    <input class="input" type="text" placeholder="نام بخش (اختیاری)"
-                                                           x-model="autoSectionForm.name" style="width: 12rem">
+                                                        <input class="input app-input-w-12" type="text" placeholder="نام بخش (اختیاری)"
+                                                               aria-label="نام بخش خودکار"
+                                                               x-model="autoSectionForm.name">
                                                 </div>
                                                 <div class="control">
-                                                    <input class="input" dir="ltr" type="number" min="1" placeholder="تعداد سؤال"
-                                                           x-model="autoSectionForm.count" style="width: 8rem">
+                                                        <input class="input app-input-w-8" dir="ltr" type="number" min="1" placeholder="تعداد سؤال"
+                                                               aria-label="تعداد سؤال بخش خودکار"
+                                                               x-model="autoSectionForm.count">
                                                 </div>
-                                                <div class="control" style="align-self: center">
+                                                <div class="control app-control-align-center">
                                                     <label class="checkbox">
                                                         <input type="checkbox" x-model="autoSectionForm.lazy">
                                                         در صورت کمبود سؤال، همان تعداد موجود انتخاب شود
@@ -193,7 +197,7 @@
                                         <div class="field has-addons">
                                             <div class="control is-expanded">
                                                 <div class="select is-fullwidth">
-                                                    <select x-model="assignStudentIdInput">
+                                                    <select x-model="assignStudentIdInput" aria-label="دانش‌آموز برای تخصیص آزمون">
                                                         <option value="">— انتخاب دانش‌آموز —</option>
                                                         <template x-for="student in students" :key="'as-opt-' + student.studentId">
                                                             <option :value="student.studentId" x-text="studentLabel(student.studentId)"></option>
@@ -215,7 +219,7 @@
                                     <div x-show="examTab === 'results'">
                                         <div class="table-container" x-show="attemptedStudents.length > 0">
                                         <table class="table is-fullwidth is-narrow">
-                                            <thead><tr><th>دانش‌آموز</th><th>زمان شروع</th><th></th></tr></thead>
+                                            <thead><tr><th scope="col">دانش‌آموز</th><th scope="col">زمان شروع</th><th scope="col"><span class="is-sr-only">عملیات</span></th></tr></thead>
                                             <tbody>
                                             <template x-for="attempt in attemptedStudents" :key="attempt.studentId">
                                                 <tr>
@@ -247,7 +251,7 @@
                                                 <table class="table is-fullwidth is-narrow">
                                                     <thead>
                                                     <tr>
-                                                        <th>بخش</th><th>درست</th><th>غلط</th><th>بی‌پاسخ</th><th>نمره</th>
+                                                        <th scope="col">بخش</th><th scope="col">درست</th><th scope="col">غلط</th><th scope="col">بی‌پاسخ</th><th scope="col">نمره</th>
                                                     </tr>
                                                     </thead>
                                                     <tbody>
@@ -287,10 +291,10 @@
                                     </div>
                                     <div class="control">
                                         <label class="label" for="examDuration">مدت (دقیقه)</label>
-                                        <input class="input" dir="ltr" id="examDuration" type="number" min="1"
-                                               x-model="examForm.durationMinutes" style="width: 8rem" required>
+                                            <input class="input app-input-w-8" dir="ltr" id="examDuration" type="number" min="1"
+                                                   x-model="examForm.durationMinutes" required>
                                     </div>
-                                    <div class="control" style="align-self: flex-end">
+                                    <div class="control app-control-align-end">
                                         <button class="button is-link" type="submit" :class="{ 'is-loading': submittingExam }">
                                             ساخت آزمون
                                         </button>
@@ -320,7 +324,7 @@
                                     <label class="label" for="weeklyDate">یک روز از هفته‌ی مورد نظر</label>
                                     <input class="input" dir="ltr" id="weeklyDate" type="date" x-model="weeklyForm.date">
                                 </div>
-                                <div class="control" style="align-self: flex-end">
+                                <div class="control app-control-align-end">
                                     <button class="button is-link" type="button"
                                             :disabled="!weeklyForm.studentId"
                                             :class="{ 'is-loading': generatingWeekly }" @click="generateWeekly">
@@ -334,7 +338,7 @@
                                     <p class="mb-2">آزمون هفتگی برای هفته‌ی <span dir="ltr" x-text="weeklyResult.weekStart"></span> ساخته شد:</p>
                                     <div class="table-container">
                                     <table class="table is-fullwidth is-narrow">
-                                        <thead><tr><th>سرفصل</th><th>تعداد سؤال</th></tr></thead>
+                                        <thead><tr><th scope="col">سرفصل</th><th scope="col">تعداد سؤال</th></tr></thead>
                                         <tbody>
                                         <template x-for="section in weeklyResult.sections" :key="section.id">
                                             <tr>

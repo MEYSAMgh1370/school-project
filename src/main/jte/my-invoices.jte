@@ -5,7 +5,7 @@
 @template.layout.main(title = "فاکتورهای من", scripts = java.util.List.of("/js/navbar.js", "/js/my-invoices.js"), content = @`
 @template.layout.navbar(navbar = navbar)
 
-<section class="section" x-data="myInvoicesPage()">
+<section class="section" id="main-content" role="main" tabindex="-1" x-data="myInvoicesPage()">
     <div class="container">
         <h1 class="title is-4">فاکتورهای من</h1>
         <p class="subtitle is-6">فاکتورهای شهریه‌ی خودتان و فرزندانِ لینک‌شده‌ به شما در این مدرسه.</p>
@@ -24,13 +24,13 @@
                 <table class="table is-fullwidth is-striped">
                     <thead>
                     <tr>
-                        <th>دانش‌آموز</th>
-                        <th>مبلغ</th>
-                        <th>پرداخت‌شده</th>
-                        <th>مانده</th>
-                        <th>وضعیت</th>
-                        <th>تاریخ صدور</th>
-                        <th>سررسید</th>
+                        <th scope="col">دانش‌آموز</th>
+                        <th scope="col">مبلغ</th>
+                        <th scope="col">پرداخت‌شده</th>
+                        <th scope="col">مانده</th>
+                        <th scope="col">وضعیت</th>
+                        <th scope="col">تاریخ صدور</th>
+                        <th scope="col">سررسید</th>
                     </tr>
                     </thead>
                     <tbody>

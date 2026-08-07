@@ -59,6 +59,7 @@ document.addEventListener('alpine:init', () => {
         hourPx: 60,
         gridBlock: null,
         gridBlockStep: 'detail',
+        gridBlockOpener: null,
 
         init() {
             const saved = parseInt(localStorage.getItem('selectedSchoolId') || '', 10);
@@ -222,8 +223,15 @@ document.addEventListener('alpine:init', () => {
                 this.plans = await plansResponse.json();
                 this.flatTopics = treeResponse.ok ? this.flattenTree(await treeResponse.json(), 0) : [];
                 this.students = studentsResponse.ok ? await studentsResponse.json() : [];
-                const memberships = membershipsResponse.ok ? await membershipsResponse.json() : [];
-                this.pupils = memberships.filter(m => m.active && m.roleCode === 'STUDENT');
+                if (membershipsResponse.ok) {
+                    const memberships = await membershipsResponse.json();
+                    this.pupils = memberships.filter(m => m.active && m.roleCode === 'STUDENT');
+                } else {
+                    this.pupils = await window.MemberNames.resolve(
+                        this.schoolId,
+                        this.students.map(student => student.userId)
+                    );
+                }
             } catch (e) {
                 this.error = 'ارتباط با سرور برقرار نشد.';
             } finally {
@@ -590,12 +598,39 @@ document.addEventListener('alpine:init', () => {
         },
 
         openGridBlock(block) {
+            this.gridBlockOpener = document.activeElement;
             this.gridBlock = block;
             this.gridBlockStep = 'detail';
+            this.$nextTick(() => window.ModalFocus.focusFirst(this.$refs.gridBlockModal));
         },
 
         closeGridBlock() {
+            if (!this.gridBlock) {
+                return;
+            }
+            const opener = this.gridBlockOpener;
             this.gridBlock = null;
+            this.gridBlockOpener = null;
+            this.$nextTick(() => window.ModalFocus.restore(
+                opener,
+                document.getElementById('weekDate') || document.getElementById('main-content')
+            ));
+        },
+
+        showGridBlockDeleteConfirmation() {
+            this.gridBlockStep = 'confirm-delete';
+            this.$nextTick(() => window.ModalFocus.focusFirst(
+                this.$refs.gridBlockModal,
+                this.$refs.gridBlockModal.querySelector('[data-confirm-delete]')
+            ));
+        },
+
+        cancelGridBlockDelete() {
+            this.gridBlockStep = 'detail';
+            this.$nextTick(() => window.ModalFocus.focusFirst(
+                this.$refs.gridBlockModal,
+                this.$refs.gridBlockModal.querySelector('[data-detail-action]')
+            ));
         },
 
         async toggleGridBlockDone() {

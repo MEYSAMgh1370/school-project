@@ -59,6 +59,50 @@ class OtpLoginFlowIntegrationTest {
     }
 
     @Test
+    void persianDigitPhoneIsStoredCanonicallyAndCanCompleteOtpLogin() throws Exception {
+        String email = "otp-persian-" + System.nanoTime() + "@roshdeandishe.test";
+        String asciiPhoneNumber = uniquePhoneNumber();
+        String persianPhoneNumber = toPersianDigits(asciiPhoneNumber);
+        MockHttpSession session = registerAndLogin(email, "کاربر ارقام فارسی");
+
+        setPhoneNumber(session, persianPhoneNumber);
+        requestOtp(persianPhoneNumber).andExpect(status().isOk());
+
+        String code = latestOtpCodeFor(asciiPhoneNumber);
+        verifyOtp(asciiPhoneNumber, code)
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.email").value(email));
+
+        String storedPhoneNumber = jdbcTemplate.queryForObject(
+                "SELECT phone_number FROM iam.users WHERE email = ?",
+                String.class,
+                email
+        );
+        assertThat(storedPhoneNumber).isEqualTo(asciiPhoneNumber);
+    }
+
+    @Test
+    void unicodeDigitVariantsCannotBypassPhoneNumberUniqueness() throws Exception {
+        String asciiPhoneNumber = uniquePhoneNumber();
+        MockHttpSession firstSession = registerAndLogin(
+                "otp-owner-" + System.nanoTime() + "@roshdeandishe.test",
+                "مالک شماره");
+        MockHttpSession secondSession = registerAndLogin(
+                "otp-duplicate-" + System.nanoTime() + "@roshdeandishe.test",
+                "کاربر دوم");
+
+        setPhoneNumber(firstSession, toPersianDigits(asciiPhoneNumber));
+
+        mockMvc.perform(put("/api/me/phone")
+                        .session(secondSession)
+                        .with(csrf())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"phoneNumber\":\"" + asciiPhoneNumber + "\"}"))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.type").value(endsWith("phone-number-already-claimed")));
+    }
+
+    @Test
     void requestOtpForUnregisteredPhoneReturns404() throws Exception {
         requestOtp("09000000000")
                 .andExpect(status().isNotFound())
@@ -183,5 +227,13 @@ class OtpLoginFlowIntegrationTest {
     private static String uniquePhoneNumber() {
         String digits = String.valueOf(System.nanoTime());
         return "0912" + digits.substring(digits.length() - 7);
+    }
+
+    private static String toPersianDigits(String value) {
+        return value.chars()
+                .mapToObj(character -> character >= '0' && character <= '9'
+                        ? String.valueOf((char) ('۰' + character - '0'))
+                        : String.valueOf((char) character))
+                .collect(java.util.stream.Collectors.joining());
     }
 }

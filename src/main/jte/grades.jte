@@ -2,10 +2,10 @@
 
 @param NavbarModel navbar
 
-@template.layout.main(title = "نمرات", scripts = java.util.List.of("/js/navbar.js", "/js/jalali.js", "/js/grades.js"), content = @`
+@template.layout.main(title = "نمرات", scripts = java.util.List.of("/js/navbar.js", "/js/jalali.js", "/js/member-names.js", "/js/grades.js"), content = @`
 @template.layout.navbar(navbar = navbar)
 
-<section class="section" x-data="gradesPage()">
+<section class="section" id="main-content" role="main" tabindex="-1" x-data="gradesPage()">
     <div class="container">
         <h1 class="title is-4">نمرات</h1>
 
@@ -49,7 +49,7 @@
                                             </select>
                                         </div>
                                     </div>
-                                    <div class="control" style="align-self: flex-end">
+                                    <div class="control app-control-align-end">
                                         <button class="button is-link" type="submit" :class="{ 'is-loading': loading }">
                                             بارگذاری
                                         </button>
@@ -68,8 +68,9 @@
                                 <template x-if="rosterStudents().length > 0">
                                     <div>
                                         <div class="field">
+                                            <label class="label is-sr-only" for="gradeStudentSearch">جست‌وجوی نام دانش‌آموز</label>
                                             <div class="control has-icons-start">
-                                                <input class="input" type="text" x-model="filterText"
+                                                <input class="input" id="gradeStudentSearch" type="search" x-model="filterText"
                                                        placeholder="جست‌وجوی نام دانش‌آموز">
                                             </div>
                                         </div>
@@ -78,12 +79,12 @@
                                         <table class="table is-fullwidth is-striped">
                                             <thead>
                                             <tr>
-                                                <th>دانش‌آموز</th>
-                                                <th x-show="selectedScheme() === 'DESCRIPTIVE'">سطح ارزشیابی</th>
-                                                <th x-show="selectedScheme() === 'NUMERIC'">نمره (از ۲۰)</th>
-                                                <th>نظر (اختیاری)</th>
-                                                <th>آخرین ثبت</th>
-                                                <th></th>
+                                                <th scope="col">دانش‌آموز</th>
+                                                <th scope="col" x-show="selectedScheme() === 'DESCRIPTIVE'">سطح ارزشیابی</th>
+                                                <th scope="col" x-show="selectedScheme() === 'NUMERIC'">نمره (از ۲۰)</th>
+                                                <th scope="col">نظر (اختیاری)</th>
+                                                <th scope="col">آخرین ثبت</th>
+                                                <th scope="col"><span class="is-sr-only">عملیات</span></th>
                                             </tr>
                                             </thead>
                                             <tbody>
@@ -92,7 +93,8 @@
                                                     <td x-text="row.name"></td>
                                                     <td x-show="selectedScheme() === 'DESCRIPTIVE'">
                                                         <div class="select is-small" :class="{ 'is-danger': row.validationError }">
-                                                            <select x-model="row.descriptiveLevel">
+                                                            <select x-model="row.descriptiveLevel"
+                                                                    :aria-label="'سطح ارزشیابی ' + row.name">
                                                                 <option value="" disabled>انتخاب کنید</option>
                                                                 <option value="EXCELLENT">خیلی خوب</option>
                                                                 <option value="GOOD">خوب</option>
@@ -105,16 +107,18 @@
                                                     <td x-show="selectedScheme() === 'NUMERIC'">
                                                         <input class="input is-small" dir="ltr" type="number"
                                                                min="0" max="20" step="0.25"
+                                                               :aria-label="'نمره‌ی ' + row.name"
                                                                :class="{ 'is-danger': row.validationError }"
                                                                x-model="row.numericScore">
                                                         <p class="help is-danger" x-show="row.validationError" x-text="row.validationError"></p>
                                                     </td>
                                                     <td>
-                                                        <input class="input is-small" type="text" x-model="row.comment">
+                                                        <input class="input is-small" type="text" x-model="row.comment"
+                                                               :aria-label="'نظر برای ' + row.name">
                                                     </td>
                                                     <td dir="ltr" x-text="row.recordedAt ? new Date(row.recordedAt).toLocaleDateString('fa-IR') : '—'"></td>
                                                     <td>
-                                                        <button class="button is-small is-link" @click="saveGrade(row)"
+                                                        <button class="button is-small is-link" type="button" @click="saveGrade(row)"
                                                                 :class="{ 'is-loading': row.saving }">
                                                             ثبت نمره
                                                         </button>

@@ -2,10 +2,11 @@
 
 @param NavbarModel navbar
 
-@template.layout.main(title = "دانش‌آموزان مدرسه", scripts = java.util.List.of("/js/navbar.js", "/js/students.js"), content = @`
+@template.layout.main(title = "دانش‌آموزان مدرسه", scripts = java.util.List.of("/js/navbar.js", "/js/member-names.js", "/js/students.js"), content = @`
 @template.layout.navbar(navbar = navbar)
 
-<section class="section" x-data="studentsPage()" @keydown.escape.window="selectedStudentId = null">
+<section class="section" id="main-content" role="main" tabindex="-1"
+         x-data="studentsPage()" @keydown.escape.window="selectedStudentId = null">
     <div class="container">
         <h1 class="title is-4">دانش‌آموزان مدرسه</h1>
 
@@ -76,7 +77,7 @@
                                     </select>
                                 </div>
                             </div>
-                            <div class="control" style="align-self: flex-end">
+                            <div class="control app-control-align-end">
                                 <button class="button is-link" type="submit" :class="{ 'is-loading': submitting }">
                                     ثبت‌نام
                                 </button>
@@ -89,10 +90,10 @@
                 <table class="table is-fullwidth is-striped">
                     <thead>
                     <tr>
-                        <th>نام دانش‌آموز</th>
-                        <th>ایمیل</th>
-                        <th>کلاس</th>
-                        <th>والدین</th>
+                        <th scope="col">نام دانش‌آموز</th>
+                        <th scope="col">ایمیل</th>
+                        <th scope="col">کلاس</th>
+                        <th scope="col">والدین</th>
                     </tr>
                     </thead>
                     <tbody>
@@ -106,7 +107,7 @@
                                         @click="toggleGuardianPanel(student.studentId)"
                                         :aria-expanded="selectedStudentId === student.studentId ? 'true' : 'false'">
                                     <span x-text="selectedStudentId === student.studentId ? 'بستن' : 'مدیریت والدین'"></span>
-                                    <span class="tag is-light ml-2" x-show="guardiansByStudent[student.studentId]"
+                                    <span class="tag is-light app-inline-gap" x-show="guardiansByStudent[student.studentId]"
                                           x-text="(guardiansByStudent[student.studentId] || []).length"></span>
                                 </button>
                             </td>
@@ -135,8 +136,8 @@
                     <table class="table is-fullwidth is-narrow">
                         <thead>
                         <tr>
-                            <th>نام والد</th>
-                            <th>ایمیل</th>
+                            <th scope="col">نام والد</th>
+                            <th scope="col">ایمیل</th>
                         </tr>
                         </thead>
                         <tbody>
@@ -172,7 +173,7 @@
                                     </select>
                                 </div>
                             </div>
-                            <div class="control" style="align-self: flex-end">
+                            <div class="control app-control-align-end">
                                 <button class="button is-link" type="submit" :class="{ 'is-loading': guardianSubmitting }">
                                     لینک کردن
                                 </button>

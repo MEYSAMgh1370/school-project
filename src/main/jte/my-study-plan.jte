@@ -5,11 +5,12 @@
 @template.layout.main(
     title = "برنامه‌ی مطالعه‌ی من",
     styles = java.util.List.of("/css/my-study-plan.css"),
-    scripts = java.util.List.of("/js/navbar.js", "/js/jalali.js", "/js/my-study-plan.js"),
+    scripts = java.util.List.of("/js/navbar.js", "/js/jalali.js", "/js/modal-focus.js", "/js/my-study-plan.js"),
     content = @`
 @template.layout.navbar(navbar = navbar)
 
-<section class="section" x-data="myStudyPlanPage()" @keydown.escape.window="pickerOpen = false; closeDialog()">
+<section class="section" id="main-content" role="main" tabindex="-1"
+         x-data="myStudyPlanPage()" @keydown.escape.window="pickerOpen = false; closeDialog()">
     <div class="container">
         <h1 class="title is-4">برنامه‌ی مطالعه‌ی من</h1>
 
@@ -22,12 +23,12 @@
                 <div class="notification is-danger" x-show="error" x-text="error"></div>
                 <div class="notification is-success" x-show="notice" x-text="notice"></div>
 
-                <div class="tabs">
-                    <ul>
-                        <li :class="{ 'is-active': tab === 'grid' }"><a @click="tab = 'grid'">برنامه هفتگی</a></li>
-                        <li :class="{ 'is-active': tab === 'stats' }"><a @click="tab = 'stats'">آمار و گزارش</a></li>
-                    </ul>
-                </div>
+                    <div class="tabs">
+                        <ul>
+                            <li :class="{ 'is-active': tab === 'grid' }"><a href="#" @click.prevent="tab = 'grid'">برنامه هفتگی</a></li>
+                            <li :class="{ 'is-active': tab === 'stats' }"><a href="#" @click.prevent="tab = 'stats'">آمار و گزارش</a></li>
+                        </ul>
+                    </div>
 
                 <p x-show="loading">در حال بارگذاری...</p>
 
@@ -167,17 +168,19 @@
     </div>
 
     <%-- ---------------------------------------------------------- گفتگوی ثبت --%>
-    <div class="modal" :class="{ 'is-active': dialog }" x-cloak>
+    <div class="modal" role="dialog" aria-modal="true" aria-labelledby="studyDialogTitle"
+         tabindex="-1" x-ref="studyDialog" :class="{ 'is-active': dialog }" x-cloak
+         @keydown.tab="window.ModalFocus.trap($event, $el)" @keydown.escape.stop="closeDialog">
         <div class="modal-background" @click="closeDialog"></div>
         <div class="modal-card">
             <header class="modal-card-head">
-                <p class="modal-card-title" x-text="dialog ? dialog.topicName : ''"></p>
-                <button class="delete" type="button" aria-label="close" @click="closeDialog"></button>
+                <p class="modal-card-title" id="studyDialogTitle" x-text="dialog ? dialog.topicName : ''"></p>
+                <button class="delete" type="button" aria-label="بستن" @click="closeDialog"></button>
             </header>
             <section class="modal-card-body">
                 <p class="has-text-grey mb-4" x-text="dialog ? dialog.timeLabel : ''"></p>
-                <label class="checkbox mb-4" style="display: block">
-                    <input type="checkbox" x-model="dialogDone">
+                    <label class="checkbox mb-4 app-block">
+                    <input type="checkbox" x-ref="dialogFirstControl" x-model="dialogDone">
                     این جلسه را کامل مطالعه کردم
                 </label>
                 <div class="field">

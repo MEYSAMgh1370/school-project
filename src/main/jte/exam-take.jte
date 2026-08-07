@@ -1,6 +1,6 @@
 @template.layout.main(title = "آزمون‌دهی", scripts = java.util.List.of("/js/exam-take.js"), content = @`
 
-<section class="section" x-data="examTakePage()">
+<section class="section" id="main-content" role="main" tabindex="-1" x-data="examTakePage()">
     <div class="container">
         <template x-if="fatalError">
             <div class="notification is-danger" x-text="fatalError"></div>
@@ -21,23 +21,24 @@
                     </div>
                     <div class="level-right">
                         <div class="tag is-medium" :class="expired ? 'is-danger' : 'is-info'" x-show="remainingLabel">
-                            زمان باقی‌مانده: <span dir="ltr" class="ml-1" x-text="remainingLabel"></span>
+                                زمان باقی‌مانده: <span dir="ltr" class="app-inline-gap-xs" x-text="remainingLabel"></span>
                         </div>
                     </div>
                 </div>
 
-                <div class="notification is-warning" x-show="expired">
+                <div class="notification is-warning" role="alert" x-cloak x-show="expired">
                     زمان این آزمون به پایان رسیده یا جلسه‌ی شما منقضی شده است. برای ادامه به «آزمون‌های من» بازگردید.
                 </div>
 
-                <div class="tabs" x-show="exam.sections.length > 0">
+                    <div class="tabs" x-show="exam.sections.length > 0">
                     <ul>
                         <template x-for="section in exam.sections" :key="section.id">
                             <li :class="{ 'is-active': selectedSectionId === section.id }">
-                                <a @click="selectSection(section.id)">
-                                    <span x-text="section.name || ('سرفصل #' + section.topicId)"></span>
-                                    <span class="tag is-light ml-2" x-text="answeredCount(section.id) + '/' + section.questionCount"></span>
-                                </a>
+                                    <a href="#"
+                                       @click.prevent="selectSection(section.id)">
+                                        <span x-text="section.name || ('سرفصل #' + section.topicId)"></span>
+                                        <span class="tag is-light app-inline-gap" x-text="answeredCount(section.id) + '/' + section.questionCount"></span>
+                                    </a>
                             </li>
                         </template>
                     </ul>
@@ -47,9 +48,12 @@
                     این آزمون هنوز بخشی ندارد.
                 </div>
 
-                <p x-show="loadingQuestions">در حال بارگذاری سؤال‌ها...</p>
+                <p role="status" x-cloak x-show="loadingQuestions">در حال بارگذاری سؤال‌ها...</p>
 
-                <div class="notification is-danger" x-show="saveErrorBySection[selectedSectionId]"
+                <p class="has-text-info mb-4" role="status" aria-live="polite"
+                   x-cloak x-show="saveStatusMessage()" x-text="saveStatusMessage()"></p>
+
+                <div class="notification is-danger" role="alert" x-cloak x-show="saveErrorBySection[selectedSectionId]"
                      x-text="saveErrorBySection[selectedSectionId]"></div>
 
                 <template x-for="(question, index) in currentQuestions()" :key="question.questionId">
@@ -62,7 +66,7 @@
                             <label class="radio is-block mb-2">
                                 <input type="radio" :name="'question-' + question.questionId"
                                        :checked="question.selectedChoice === n"
-                                       :disabled="expired || savingQuestionId === question.questionId"
+                                       :disabled="expired || isQuestionSaving(question.questionId)"
                                        @change="selectChoice(question, n)">
                                 <span x-text="' ' + question['choice' + n]"></span>
                             </label>
@@ -70,7 +74,9 @@
                     </div>
                 </template>
 
-                <a class="button" href="/my-exams">پایان و بازگشت به آزمون‌های من</a>
+                <a class="button" href="/my-exams">
+                    پایان و بازگشت به آزمون‌های من
+                </a>
             </div>
         </template>
     </div>

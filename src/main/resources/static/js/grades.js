@@ -104,8 +104,18 @@ document.addEventListener('alpine:init', () => {
                 }
                 this.classes = await classesResponse.json();
                 this.students = studentsResponse.ok ? await studentsResponse.json() : [];
-                const memberships = membershipsResponse.ok ? await membershipsResponse.json() : [];
-                this.pupils = memberships.filter(m => m.active && m.roleCode === 'STUDENT');
+                if (membershipsResponse.ok) {
+                    const memberships = await membershipsResponse.json();
+                    this.pupils = memberships.filter(m => m.active && m.roleCode === 'STUDENT');
+                } else {
+                    // TEACHER can manage grades but intentionally cannot read the
+                    // complete membership directory. Resolve only the roster names
+                    // through MEMBER_NAMES_VIEW so every grade row remains identifiable.
+                    this.pupils = await window.MemberNames.resolve(
+                        this.schoolId,
+                        this.students.map(student => student.userId)
+                    );
+                }
             } catch (e) {
                 this.error = 'ارتباط با سرور برقرار نشد.';
             }

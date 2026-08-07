@@ -2,10 +2,11 @@
 
 @param NavbarModel navbar
 
-@template.layout.main(title = "برنامه‌های مطالعه", styles = java.util.List.of("/css/my-study-plan.css"), scripts = java.util.List.of("/js/navbar.js", "/js/study-plans.js"), content = @`
+@template.layout.main(title = "برنامه‌های مطالعه", styles = java.util.List.of("/css/my-study-plan.css"), scripts = java.util.List.of("/js/navbar.js", "/js/member-names.js", "/js/modal-focus.js", "/js/study-plans.js"), content = @`
 @template.layout.navbar(navbar = navbar)
 
-<section class="section" x-data="studyPlansPage()" @keydown.escape.window="closeGridBlock()">
+<section class="section" id="main-content" role="main" tabindex="-1"
+         x-data="studyPlansPage()" @keydown.escape.window="closeGridBlock()">
     <div class="container">
         <h1 class="title is-4">برنامه‌های مطالعه</h1>
 
@@ -31,9 +32,9 @@
                             <table class="table is-fullwidth is-striped">
                                 <thead>
                                 <tr>
-                                    <th>عنوان</th>
-                                    <th>تعداد درس وزن‌دهی‌شده</th>
-                                    <th></th>
+                                    <th scope="col">عنوان</th>
+                                    <th scope="col">تعداد درس وزن‌دهی‌شده</th>
+                                    <th scope="col"><span class="is-sr-only">جزئیات</span></th>
                                 </tr>
                                 </thead>
                                 <tbody>
@@ -56,13 +57,13 @@
 
                             <template x-for="plan in plans" :key="'detail-' + plan.id">
                                 <div class="box" x-show="expandedPlanId === plan.id" x-cloak>
-                                    <div class="tabs is-toggle is-toggle-rounded is-small">
+                                        <div class="tabs is-toggle is-toggle-rounded is-small">
                                         <ul>
                                             <li :class="{ 'is-active': planDetailTab === 'assignments' }">
-                                                <a @click.prevent="planDetailTab = 'assignments'">تخصیص به دانش‌آموز</a>
+                                                <a href="#" @click.prevent="planDetailTab = 'assignments'">تخصیص به دانش‌آموز</a>
                                             </li>
                                             <li :class="{ 'is-active': planDetailTab === 'weekCourses' }">
-                                                <a @click.prevent="selectWeekCoursesTab(plan.id)">سرفصل‌های هفتگی</a>
+                                                <a href="#" @click.prevent="selectWeekCoursesTab(plan.id)">سرفصل‌های هفتگی</a>
                                             </li>
                                         </ul>
                                     </div>
@@ -114,9 +115,9 @@
                                             <table class="table is-fullwidth is-narrow">
                                                 <thead>
                                                 <tr>
-                                                    <th>شروع هفته</th>
-                                                    <th>سرفصل</th>
-                                                    <th>زیرسرفصل‌ها</th>
+                                                    <th scope="col">شروع هفته</th>
+                                                    <th scope="col">سرفصل</th>
+                                                    <th scope="col">زیرسرفصل‌ها</th>
                                                 </tr>
                                                 </thead>
                                                 <tbody>
@@ -156,7 +157,7 @@
                                             <label class="label">زیرسرفصل‌ها (حداکثر ۱۰ مورد)</label>
                                             <div class="field is-grouped is-grouped-multiline mb-3">
                                                 <template x-for="node in flatTopics" :key="'wc-sub-' + node.id">
-                                                    <label class="checkbox mr-4" x-show="String(node.id) !== String(weekCourseForm.courseTopicId)">
+                                                    <label class="checkbox app-checkbox-inline" x-show="String(node.id) !== String(weekCourseForm.courseTopicId)">
                                                         <input type="checkbox"
                                                                :checked="weekCourseForm.subTopicIds.includes(node.id)"
                                                                :disabled="!weekCourseForm.subTopicIds.includes(node.id) && weekCourseForm.subTopicIds.length >= 10"
@@ -191,7 +192,8 @@
                                     <div class="field is-grouped is-grouped-multiline">
                                         <div class="control is-expanded">
                                             <div class="select is-fullwidth">
-                                                <select x-model="row.topicId">
+                                                <select x-model="row.topicId"
+                                                        :aria-label="'سرفصل ردیف ' + (index + 1)">
                                                     <option value="">— سرفصل —</option>
                                                     <template x-for="node in flatTopics" :key="'w-' + index + '-' + node.id">
                                                         <option :value="node.id" x-text="'—'.repeat(node.depth) + ' ' + node.name"></option>
@@ -200,12 +202,14 @@
                                             </div>
                                         </div>
                                         <div class="control">
-                                            <input class="input" type="number" min="0" step="0.1" placeholder="وزن"
-                                                   x-model="row.weight" style="width: 6rem">
+                                                <input class="input app-input-w-6" type="number" min="0" step="0.1" placeholder="وزن"
+                                                       :aria-label="'وزن ردیف ' + (index + 1)"
+                                                       x-model="row.weight">
                                         </div>
                                         <div class="control">
-                                            <input class="input" type="number" min="1" placeholder="اولویت"
-                                                   x-model="row.priority" style="width: 6rem">
+                                                <input class="input app-input-w-6" type="number" min="1" placeholder="اولویت"
+                                                       :aria-label="'اولویت ردیف ' + (index + 1)"
+                                                       x-model="row.priority">
                                         </div>
                                         <div class="control">
                                             <button class="button is-danger is-light" type="button"
@@ -252,13 +256,16 @@
                                                 <div class="control">
                                                     <div class="field has-addons">
                                                         <div class="control">
-                                                            <input class="input" dir="ltr" type="time" x-model="range.start">
+                                                            <input class="input" dir="ltr" type="time" x-model="range.start"
+                                                                   :aria-label="'شروع بازه‌ی ' + day.label + ' شماره ' + (index + 1)">
                                                         </div>
                                                         <div class="control">
-                                                            <input class="input" dir="ltr" type="time" x-model="range.end">
+                                                            <input class="input" dir="ltr" type="time" x-model="range.end"
+                                                                   :aria-label="'پایان بازه‌ی ' + day.label + ' شماره ' + (index + 1)">
                                                         </div>
                                                         <div class="control">
                                                             <button class="button is-danger is-light" type="button"
+                                                                    :aria-label="'حذف بازه‌ی ' + day.label + ' شماره ' + (index + 1)"
                                                                     @click="removeTimeRange(day.code, index)">حذف</button>
                                                         </div>
                                                     </div>
@@ -286,18 +293,18 @@
                                             <label class="label" for="weekDate">یک روز از هفته‌ی مورد نظر</label>
                                             <input class="input" dir="ltr" id="weekDate" type="date" x-model="weekDate" @change="loadWeek">
                                         </div>
-                                        <div class="control" style="align-self: flex-end">
+                                        <div class="control app-control-align-end">
                                             <button class="button" type="button" :class="{ 'is-loading': suggesting }" @click="suggestWeek">
                                                 پیشنهاد خودکار این هفته
                                             </button>
                                         </div>
-                                        <div class="control" style="align-self: flex-end">
+                                        <div class="control app-control-align-end">
                                             <button class="button is-danger is-light" type="button"
                                                     :class="{ 'is-loading': clearing }" @click="clearWeek">
                                                 خالی‌کردن این هفته
                                             </button>
                                         </div>
-                                        <div class="control" style="align-self: flex-end">
+                                        <div class="control app-control-align-end">
                                             <button class="button" type="button" @click="copyPanelOpen = !copyPanelOpen">
                                                 کپی این هفته برای دانش‌آموزان دیگر
                                             </button>
@@ -311,7 +318,7 @@
                                         </p>
                                         <div class="field is-grouped is-grouped-multiline mb-3">
                                             <template x-for="student in otherStudents()" :key="'copy-target-' + student.studentId">
-                                                <label class="checkbox mr-4">
+                                                <label class="checkbox app-checkbox-inline">
                                                     <input type="checkbox"
                                                            :checked="copyTargetIds.includes(student.studentId)"
                                                            @change="toggleCopyTarget(student.studentId)">
@@ -330,8 +337,8 @@
                                         <table class="table is-fullwidth is-narrow">
                                             <thead>
                                             <tr>
-                                                <th>دانش‌آموز</th>
-                                                <th>نتیجه</th>
+                                                <th scope="col">دانش‌آموز</th>
+                                                <th scope="col">نتیجه</th>
                                             </tr>
                                             </thead>
                                             <tbody>
@@ -412,7 +419,7 @@
                                                 <input class="input" dir="ltr" id="intervalEnd" type="datetime-local"
                                                        x-model="intervalForm.end" required>
                                             </div>
-                                            <div class="control" style="align-self: flex-end">
+                                            <div class="control app-control-align-end">
                                                 <button class="button is-link" type="submit" :class="{ 'is-loading': submittingInterval }">
                                                     افزودن بازه
                                                 </button>
@@ -429,12 +436,14 @@
     </div>
 
     <%-- ------------------------------------------------------- بازه‌ی انتخاب‌شده --%>
-    <div class="modal" :class="{ 'is-active': gridBlock }" x-cloak>
+    <div class="modal" role="dialog" aria-modal="true" aria-labelledby="gridBlockTitle"
+         tabindex="-1" x-ref="gridBlockModal" :class="{ 'is-active': gridBlock }" x-cloak
+         @keydown.tab="window.ModalFocus.trap($event, $el)" @keydown.escape.stop="closeGridBlock">
         <div class="modal-background" @click="closeGridBlock"></div>
         <div class="modal-card">
             <header class="modal-card-head">
-                <p class="modal-card-title" x-text="gridBlock ? gridBlock.topicName : ''"></p>
-                <button class="delete" type="button" aria-label="close" @click="closeGridBlock"></button>
+                <p class="modal-card-title" id="gridBlockTitle" x-text="gridBlock ? gridBlock.topicName : ''"></p>
+                <button class="delete" type="button" aria-label="بستن" @click="closeGridBlock"></button>
             </header>
             <template x-if="gridBlock && gridBlockStep === 'detail'">
                 <section class="modal-card-body">
@@ -454,18 +463,18 @@
             </template>
             <footer class="modal-card-foot">
                 <template x-if="gridBlockStep === 'detail'">
-                    <div style="display: contents">
-                        <button class="button is-link" type="button" @click="toggleGridBlockDone">
+                    <div class="app-display-contents">
+                        <button class="button is-link" type="button" data-detail-action @click="toggleGridBlockDone">
                             <span x-text="gridBlock && gridBlock.done ? 'علامت‌گذاری به‌عنوان انجام‌نشده' : 'علامت‌گذاری به‌عنوان انجام‌شده'"></span>
                         </button>
-                        <button class="button is-danger is-light" type="button" @click="gridBlockStep = 'confirm-delete'">حذف</button>
+                        <button class="button is-danger is-light" type="button" @click="showGridBlockDeleteConfirmation">حذف</button>
                         <button class="button" type="button" @click="closeGridBlock">بستن</button>
                     </div>
                 </template>
                 <template x-if="gridBlockStep === 'confirm-delete'">
-                    <div style="display: contents">
-                        <button class="button is-danger" type="button" @click="deleteGridBlock">حذف قطعی</button>
-                        <button class="button" type="button" @click="gridBlockStep = 'detail'">انصراف</button>
+                    <div class="app-display-contents">
+                        <button class="button is-danger" type="button" data-confirm-delete @click="deleteGridBlock">حذف قطعی</button>
+                        <button class="button" type="button" @click="cancelGridBlockDelete">انصراف</button>
                     </div>
                 </template>
             </footer>

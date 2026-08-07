@@ -5,7 +5,7 @@
 @template.layout.main(title = "نقش‌ها و دسترسی‌ها", scripts = java.util.List.of("/js/navbar.js", "/js/roles.js"), content = @`
 @template.layout.navbar(navbar = navbar)
 
-<section class="section" x-data="rolesPage()">
+<section class="section" id="main-content" role="main" tabindex="-1" x-data="rolesPage()">
     <div class="container">
         <h1 class="title is-4">نقش‌ها و دسترسی‌ها</h1>
         <p class="subtitle is-6">نقش‌های سیستمی ثابت‌اند؛ می‌توانید نقش سفارشیِ تازه با ترکیبی از Permissionهای موجود بسازید.</p>
@@ -38,7 +38,7 @@
                                     <label class="label">Permissionها</label>
                                     <div class="control">
                                         <template x-for="permission in permissions" :key="permission.code">
-                                            <label class="checkbox mr-4">
+                                            <label class="checkbox app-checkbox-inline">
                                                 <input type="checkbox" :value="permission.code" x-model="form.permissionCodes">
                                                 <span x-text="permission.displayName"></span>
                                             </label>
@@ -56,10 +56,10 @@
                         <table class="table is-fullwidth is-striped">
                             <thead>
                             <tr>
-                                <th>کد</th>
-                                <th>عنوان</th>
-                                <th>نوع</th>
-                                <th>Permissionها</th>
+                                <th scope="col">کد</th>
+                                <th scope="col">عنوان</th>
+                                <th scope="col">نوع</th>
+                                <th scope="col">Permissionها</th>
                             </tr>
                             </thead>
                             <tbody>
@@ -73,7 +73,7 @@
                                     </td>
                                     <td>
                                         <template x-for="code in role.permissionCodes" :key="code">
-                                            <span class="tag mr-1 mb-1" x-text="permissionLabel(code)"></span>
+                                            <span class="tag app-tag-list-item" x-text="permissionLabel(code)"></span>
                                         </template>
                                     </td>
                                 </tr>

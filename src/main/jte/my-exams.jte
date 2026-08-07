@@ -5,7 +5,7 @@
 @template.layout.main(title = "آزمون‌های من", scripts = java.util.List.of("/js/navbar.js", "/js/my-exams.js"), content = @`
 @template.layout.navbar(navbar = navbar)
 
-<section class="section" x-data="myExamsPage()">
+<section class="section" id="main-content" role="main" tabindex="-1" x-data="myExamsPage()">
     <div class="container">
         <h1 class="title is-4">آزمون‌های من</h1>
         <p class="subtitle is-6">آزمون‌های هفتگیِ خودتان و آزمون‌های تألیفی‌ای که به شما تخصیص داده شده.</p>
@@ -58,7 +58,7 @@
                                     <div class="table-container">
                                     <table class="table is-fullwidth is-narrow">
                                         <thead>
-                                        <tr><th>بخش</th><th>درست</th><th>غلط</th><th>بی‌پاسخ</th><th>نمره</th></tr>
+                                        <tr><th scope="col">بخش</th><th scope="col">درست</th><th scope="col">غلط</th><th scope="col">بی‌پاسخ</th><th scope="col">نمره</th></tr>
                                         </thead>
                                         <tbody>
                                         <template x-for="section in results[exam.id].sections" :key="section.sectionId">

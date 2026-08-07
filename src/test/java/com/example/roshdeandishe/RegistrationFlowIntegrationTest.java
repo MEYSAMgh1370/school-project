@@ -37,7 +37,24 @@ class RegistrationFlowIntegrationTest {
     void registerPageIsPubliclyReachable() throws Exception {
         mockMvc.perform(get("/register"))
                 .andExpect(status().isOk())
-                .andExpect(content().string(org.hamcrest.Matchers.containsString("ثبت‌نام")));
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("ثبت‌نام")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("/js/register.js")))
+                .andExpect(content().string(org.hamcrest.Matchers.not(
+                        org.hamcrest.Matchers.containsString("Alpine.data('registerPage'"))));
+    }
+
+    @Test
+    void activationTokenIsRenderedAsInertDataInsteadOfAlpineCode() throws Exception {
+        String probe = "'+(document.documentElement.dataset.probe='executed')+'";
+
+        mockMvc.perform(get("/activate").param("token", probe))
+                .andExpect(status().isOk())
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("/js/activate.js")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("x-data=\"activatePage()\"")))
+                .andExpect(content().string(org.hamcrest.Matchers.not(
+                        org.hamcrest.Matchers.containsString("token: '"))))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString(
+                        "data-token=\"&#39;+(document.documentElement.dataset.probe=&#39;executed&#39;)+&#39;\"")));
     }
 
     @Test

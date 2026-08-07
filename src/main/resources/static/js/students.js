@@ -64,27 +64,6 @@ document.addEventListener('alpine:init', () => {
             return `${this.studentsBase()}/${studentId}/guardians`;
         },
 
-        // نسخه‌ی محدودترِ membershipsBase - فقط userId/fullName برای شناسه‌های
-        // داده‌شده، بدون ایمیل/نقش/وضعیت فعال‌سازی (MEMBER_NAMES_VIEW،
-        // UX_ROADMAP.md §6.4). خروجی را به شکل آبجکت‌های ساده‌ی pupils تبدیل
-        // می‌کند تا studentName/studentEmail بدون تغییر کار کنند.
-        async resolveMemberNames(userIds) {
-            const unique = [...new Set(userIds)].filter(id => id != null);
-            if (unique.length === 0) {
-                return [];
-            }
-            const params = new URLSearchParams();
-            unique.forEach(id => params.append('userIds', id));
-            const response = await fetch(`${this.membershipsBase()}/names?${params.toString()}`, {
-                headers: { 'X-School-ID': this.schoolId }
-            });
-            if (!response.ok) {
-                return [];
-            }
-            const names = await response.json();
-            return names.map(n => ({ userId: n.userId, fullName: n.fullName, email: '' }));
-        },
-
         className(classId) {
             const classItem = this.classes.find(c => c.id === classId);
             return classItem ? classItem.name : 'نامشخص';
@@ -169,7 +148,10 @@ document.addEventListener('alpine:init', () => {
                     // SCHOOL_ADMIN است (GUARDIAN_MANAGE)، پس این پنل برای TEACHER
                     // اصلاً باز نمی‌شود.
                     this.parents = [];
-                    this.pupils = await this.resolveMemberNames(this.students.map(s => s.userId));
+                    this.pupils = await window.MemberNames.resolve(
+                        this.schoolId,
+                        this.students.map(s => s.userId)
+                    );
                 }
             } catch (e) {
                 this.error = 'ارتباط با سرور برقرار نشد.';

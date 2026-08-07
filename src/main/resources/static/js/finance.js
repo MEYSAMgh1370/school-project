@@ -53,22 +53,6 @@ document.addEventListener('alpine:init', () => {
             return `/api/admin/schools/${this.schoolId}/memberships`;
         },
 
-        // نسخه‌ی محدودترِ membershipsBase - فقط userId/fullName برای شناسه‌های
-        // داده‌شده (MEMBER_NAMES_VIEW، UX_ROADMAP.md §6.4) - همان کمکی که
-        // students.js دارد.
-        async resolveMemberNames(userIds) {
-            const unique = [...new Set(userIds)].filter(id => id != null);
-            if (unique.length === 0) {
-                return [];
-            }
-            const params = new URLSearchParams();
-            unique.forEach(id => params.append('userIds', id));
-            const response = await fetch(`${this.membershipsBase()}/names?${params.toString()}`, {
-                headers: { 'X-School-ID': this.schoolId }
-            });
-            return response.ok ? await response.json() : [];
-        },
-
         // فاکتور فقط studentId (شناسه‌ی academic) دارد، نه نام - همان دلیل
         // teacherName در classes.js: باید از academic.StudentController (id
         // به userId) و iam.MembershipController/memberships/names (userId به
@@ -175,7 +159,10 @@ document.addEventListener('alpine:init', () => {
                 if (membershipsResponse.ok) {
                     this.pupils = (await membershipsResponse.json()).filter(m => m.active && m.roleCode === 'STUDENT');
                 } else {
-                    this.pupils = await this.resolveMemberNames(this.students.map(s => s.userId));
+                    this.pupils = await window.MemberNames.resolve(
+                        this.schoolId,
+                        this.students.map(s => s.userId)
+                    );
                 }
             } catch (e) {
                 this.error = 'ارتباط با سرور برقرار نشد.';

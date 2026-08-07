@@ -2,10 +2,10 @@
 
 @param NavbarModel navbar
 
-@template.layout.main(title = "امور مالی مدرسه", scripts = java.util.List.of("/js/navbar.js", "/js/finance.js"), content = @`
+@template.layout.main(title = "امور مالی مدرسه", scripts = java.util.List.of("/js/navbar.js", "/js/member-names.js", "/js/finance.js"), content = @`
 @template.layout.navbar(navbar = navbar)
 
-<section class="section" x-data="financePage()">
+<section class="section" id="main-content" role="main" tabindex="-1" x-data="financePage()">
     <div class="container">
         <h1 class="title is-4">امور مالی مدرسه</h1>
 
@@ -34,7 +34,7 @@
                                         <label class="label" for="tuitionAmount">مبلغ شهریه‌ی جدید (تومان)</label>
                                         <input class="input" dir="ltr" id="tuitionAmount" type="number" min="1" step="1" x-model="form.amount" required>
                                     </div>
-                                    <div class="control" style="align-self: flex-end">
+                                    <div class="control app-control-align-end">
                                         <button class="button is-link" type="submit" :class="{ 'is-loading': submitting }">
                                             ثبت شهریه
                                         </button>
@@ -57,13 +57,13 @@
                         <table class="table is-fullwidth is-striped">
                             <thead>
                             <tr>
-                                <th>دانش‌آموز</th>
-                                <th>مبلغ</th>
-                                <th>پرداخت‌شده</th>
-                                <th>وضعیت</th>
-                                <th>تاریخ صدور</th>
-                                <th>سررسید</th>
-                                <th></th>
+                                <th scope="col">دانش‌آموز</th>
+                                <th scope="col">مبلغ</th>
+                                <th scope="col">پرداخت‌شده</th>
+                                <th scope="col">وضعیت</th>
+                                <th scope="col">تاریخ صدور</th>
+                                <th scope="col">سررسید</th>
+                                <th scope="col"><span class="is-sr-only">عملیات</span></th>
                             </tr>
                             </thead>
                             <tbody>
@@ -103,10 +103,10 @@
                                 <table class="table is-fullwidth">
                                     <thead>
                                     <tr>
-                                        <th>مبلغ</th>
-                                        <th>روش</th>
-                                        <th>توضیح</th>
-                                        <th>تاریخ</th>
+                                        <th scope="col">مبلغ</th>
+                                        <th scope="col">روش</th>
+                                        <th scope="col">توضیح</th>
+                                        <th scope="col">تاریخ</th>
                                     </tr>
                                     </thead>
                                     <tbody>
@@ -128,14 +128,14 @@
                                 <form @submit.prevent="recordPayment(invoice)" x-show="invoice.status !== 'PAID'">
                                     <div class="field is-grouped is-grouped-multiline">
                                         <div class="control">
-                                            <label class="label" for="paymentAmount">مبلغ (تومان)</label>
-                                            <input class="input" dir="ltr" id="paymentAmount" type="number" min="1"
+                                            <label class="label" :for="'paymentAmount-' + invoice.id">مبلغ (تومان)</label>
+                                            <input class="input" dir="ltr" :id="'paymentAmount-' + invoice.id" type="number" min="1"
                                                    step="1" x-model="paymentForm.amount" required>
                                         </div>
                                         <div class="control">
-                                            <label class="label" for="paymentMethod">روش پرداخت</label>
+                                            <label class="label" :for="'paymentMethod-' + invoice.id">روش پرداخت</label>
                                             <div class="select">
-                                                <select id="paymentMethod" x-model="paymentForm.method">
+                                                <select :id="'paymentMethod-' + invoice.id" x-model="paymentForm.method">
                                                     <option value="CASH">نقدی</option>
                                                     <option value="CARD">کارت</option>
                                                     <option value="BANK_TRANSFER">انتقال بانکی</option>
@@ -145,10 +145,10 @@
                                             </div>
                                         </div>
                                         <div class="control is-expanded">
-                                            <label class="label" for="paymentNote">توضیح (اختیاری)</label>
-                                            <input class="input" id="paymentNote" type="text" x-model="paymentForm.note">
+                                            <label class="label" :for="'paymentNote-' + invoice.id">توضیح (اختیاری)</label>
+                                            <input class="input" :id="'paymentNote-' + invoice.id" type="text" x-model="paymentForm.note">
                                         </div>
-                                        <div class="control" style="align-self: flex-end">
+                                        <div class="control app-control-align-end">
                                             <button class="button is-link" type="submit"
                                                     :class="{ 'is-loading': submitting }">
                                                 ثبت پرداخت

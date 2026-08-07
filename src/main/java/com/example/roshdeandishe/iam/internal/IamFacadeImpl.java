@@ -114,38 +114,48 @@ class IamFacadeImpl implements IamFacade {
 
     @Override
     public Optional<UserProfile> findUserByPhoneNumber(String phoneNumber) {
-        return userRepository.findByPhoneNumber(phoneNumber)
+        String canonicalPhoneNumber = PhoneNumberCanonicalizer.canonicalize(phoneNumber);
+        if (canonicalPhoneNumber == null || canonicalPhoneNumber.isBlank()) {
+            return Optional.empty();
+        }
+        return userRepository.findByPhoneNumber(canonicalPhoneNumber)
                 .map(u -> new UserProfile(new UserId(u.getId()), u.getEmail(), u.getFullName(), u.getPhoneNumber()));
     }
 
     @Override
     @Transactional
     public void setPhoneNumber(UserId userId, String phoneNumber) {
-        if (phoneNumber == null || phoneNumber.isBlank() || phoneNumber.length() < 7 || phoneNumber.length() > 32) {
+        String canonicalPhoneNumber = PhoneNumberCanonicalizer.canonicalize(phoneNumber);
+        if (canonicalPhoneNumber == null || canonicalPhoneNumber.isBlank()
+                || canonicalPhoneNumber.length() < 7 || canonicalPhoneNumber.length() > 32) {
             throw new IamException(new IamError.InvalidPhoneNumber("شماره تلفن باید بین ۷ تا ۳۲ کاراکتر باشد."));
         }
 
-        Optional<UserEntity> existingClaim = userRepository.findByPhoneNumber(phoneNumber);
+        Optional<UserEntity> existingClaim = userRepository.findByPhoneNumber(canonicalPhoneNumber);
         if (existingClaim.isPresent() && !existingClaim.get().getId().equals(userId.value())) {
-            throw new IamException(new IamError.PhoneNumberAlreadyClaimed(phoneNumber));
+            throw new IamException(new IamError.PhoneNumberAlreadyClaimed(canonicalPhoneNumber));
         }
 
         UserEntity user = userRepository.findById(userId.value())
                 .orElseThrow(() -> new IamException(new IamError.UserNotFound(userId.value())));
-        user.setPhoneNumber(phoneNumber);
+        user.setPhoneNumber(canonicalPhoneNumber);
         userRepository.save(user);
     }
 
     @Override
     @Transactional
     public void requestOtp(String phoneNumber) {
-        UserEntity user = userRepository.findByPhoneNumber(phoneNumber)
-                .orElseThrow(() -> new IamException(new IamError.PhoneNotRegistered(phoneNumber)));
+        String canonicalPhoneNumber = PhoneNumberCanonicalizer.canonicalize(phoneNumber);
+        if (canonicalPhoneNumber == null || canonicalPhoneNumber.isBlank()) {
+            throw new IamException(new IamError.PhoneNotRegistered(canonicalPhoneNumber));
+        }
+        UserEntity user = userRepository.findByPhoneNumber(canonicalPhoneNumber)
+                .orElseThrow(() -> new IamException(new IamError.PhoneNotRegistered(canonicalPhoneNumber)));
 
         Instant now = Instant.now();
         String code = generateOtp();
-        if (!smsDriver.sendOtp(phoneNumber, code)) {
-            throw new IamException(new IamError.OtpDeliveryUnavailable(phoneNumber));
+        if (!smsDriver.sendOtp(canonicalPhoneNumber, code)) {
+            throw new IamException(new IamError.OtpDeliveryUnavailable(canonicalPhoneNumber));
         }
 
         verificationCodeRepository.save(
@@ -156,21 +166,25 @@ class IamFacadeImpl implements IamFacade {
     @Override
     @Transactional
     public UserProfile verifyOtp(String phoneNumber, String code) {
-        UserEntity user = userRepository.findByPhoneNumber(phoneNumber)
-                .orElseThrow(() -> new IamException(new IamError.PhoneNotRegistered(phoneNumber)));
+        String canonicalPhoneNumber = PhoneNumberCanonicalizer.canonicalize(phoneNumber);
+        if (canonicalPhoneNumber == null || canonicalPhoneNumber.isBlank()) {
+            throw new IamException(new IamError.PhoneNotRegistered(canonicalPhoneNumber));
+        }
+        UserEntity user = userRepository.findByPhoneNumber(canonicalPhoneNumber)
+                .orElseThrow(() -> new IamException(new IamError.PhoneNotRegistered(canonicalPhoneNumber)));
 
         // فقط آخرین کدِ مصرف‌نشده معتبر است - رجوع به VerificationCodeRepository
         VerificationCodeEntity verificationCode = verificationCodeRepository
                 .findFirstByUserIdAndConsumedAtIsNullOrderByCreatedAtDesc(user.getId())
-                .orElseThrow(() -> new IamException(new IamError.OtpExpired(phoneNumber)));
+                .orElseThrow(() -> new IamException(new IamError.OtpExpired(canonicalPhoneNumber)));
 
         if (verificationCode.isExpired(Instant.now())) {
-            throw new IamException(new IamError.OtpExpired(phoneNumber));
+            throw new IamException(new IamError.OtpExpired(canonicalPhoneNumber));
         }
         if (!verificationCode.getCode().equals(code)) {
             // عمداً مصرف‌شده علامت زده نمی‌شود - کاربر می‌تواند تا قبل از
             // انقضا دوباره تلاش کند
-            throw new IamException(new IamError.OtpIncorrect(phoneNumber));
+            throw new IamException(new IamError.OtpIncorrect(canonicalPhoneNumber));
         }
 
         verificationCode.setConsumedAt(Instant.now());

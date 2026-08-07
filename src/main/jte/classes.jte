@@ -2,10 +2,11 @@
 
 @param NavbarModel navbar
 
-@template.layout.main(title = "کلاس‌های مدرسه", scripts = java.util.List.of("/js/navbar.js", "/js/classes.js"), content = @`
+@template.layout.main(title = "کلاس‌های مدرسه", scripts = java.util.List.of("/js/navbar.js", "/js/member-names.js", "/js/classes.js"), content = @`
 @template.layout.navbar(navbar = navbar)
 
-<section class="section" x-data="classesPage()" @keydown.escape.window="selectedClassId = null">
+<section class="section" id="main-content" role="main" tabindex="-1"
+         x-data="classesPage()" @keydown.escape.window="selectedClassId = null">
     <div class="container">
         <h1 class="title is-4">کلاس‌های مدرسه</h1>
 
@@ -47,7 +48,7 @@
                                     </select>
                                 </div>
                             </div>
-                            <div class="control" style="align-self: flex-end">
+                            <div class="control app-control-align-end">
                                 <button class="button is-link" type="submit" :class="{ 'is-loading': submitting }">
                                     افزودن
                                 </button>
@@ -60,11 +61,11 @@
                 <table class="table is-fullwidth is-striped">
                     <thead>
                     <tr>
-                        <th>نام کلاس</th>
-                        <th>پایه</th>
-                        <th>بخش</th>
-                        <th>معلم</th>
-                        <th>دانش‌آموزان کلاس</th>
+                        <th scope="col">نام کلاس</th>
+                        <th scope="col">پایه</th>
+                        <th scope="col">بخش</th>
+                        <th scope="col">معلم</th>
+                        <th scope="col">دانش‌آموزان کلاس</th>
                     </tr>
                     </thead>
                     <tbody>
@@ -79,7 +80,7 @@
                                         @click="toggleRoster(classItem.id)"
                                         :aria-expanded="selectedClassId === classItem.id ? 'true' : 'false'">
                                     <span x-text="selectedClassId === classItem.id ? 'بستن فهرست' : 'مشاهده دانش‌آموزان'"></span>
-                                    <span class="tag is-light ml-2" x-text="rosterFor(classItem.id).length"></span>
+                                    <span class="tag is-light app-inline-gap" x-text="rosterFor(classItem.id).length"></span>
                                 </button>
                             </td>
                         </tr>
@@ -106,8 +107,8 @@
                     <table class="table is-fullwidth is-narrow">
                         <thead>
                         <tr>
-                            <th>نام دانش‌آموز</th>
-                            <th>ایمیل</th>
+                            <th scope="col">نام دانش‌آموز</th>
+                            <th scope="col">ایمیل</th>
                         </tr>
                         </thead>
                         <tbody>

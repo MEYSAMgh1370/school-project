@@ -7,7 +7,10 @@ document.addEventListener('alpine:init', () => {
         selectedSectionId: null,
         questionsBySection: {},
         loadingQuestions: false,
-        savingQuestionId: null,
+        savingByQuestion: {},
+        pendingSaveCount: 0,
+        saveStatus: '',
+        saveStatusTimer: null,
         saveErrorBySection: {},
         remainingLabel: '',
         expired: false,
@@ -28,6 +31,11 @@ document.addEventListener('alpine:init', () => {
             this.load();
         },
 
+        destroy() {
+            clearInterval(this.timerHandle);
+            clearTimeout(this.saveStatusTimer);
+        },
+
         startCountdown(expireAt) {
             const tick = () => {
                 const remainingMs = expireAt.getTime() - Date.now();
@@ -40,10 +48,14 @@ document.addEventListener('alpine:init', () => {
                 const totalSeconds = Math.floor(remainingMs / 1000);
                 const minutes = String(Math.floor(totalSeconds / 60)).padStart(2, '0');
                 const seconds = String(totalSeconds % 60).padStart(2, '0');
-                this.remainingLabel = `${minutes}:${seconds}`;
+                this.remainingLabel = this.toPersianDigits(`${minutes}:${seconds}`);
             };
             tick();
             this.timerHandle = setInterval(tick, 1000);
+        },
+
+        toPersianDigits(value) {
+            return String(value).replace(/\d/g, digit => '۰۱۲۳۴۵۶۷۸۹'[Number(digit)]);
         },
 
         async parseError(response) {
@@ -109,27 +121,62 @@ document.addEventListener('alpine:init', () => {
             return questions.filter(q => q.selectedChoice).length;
         },
 
+        isQuestionSaving(questionId) {
+            return this.savingByQuestion[String(questionId)] === true;
+        },
+
+        saveStatusMessage() {
+            if (this.pendingSaveCount === 1) {
+                return 'در حال ذخیره‌ی یک پاسخ…';
+            }
+            if (this.pendingSaveCount > 1) {
+                return `در حال ذخیره‌ی ${this.toPersianDigits(this.pendingSaveCount)} پاسخ…`;
+            }
+            return this.saveStatus;
+        },
+
         async selectChoice(question, choice) {
-            this.savingQuestionId = question.questionId;
-            delete this.saveErrorBySection[this.selectedSectionId];
+            if (this.expired || this.isQuestionSaving(question.questionId)) {
+                return;
+            }
+            const sectionId = this.selectedSectionId;
+            const previousChoice = question.selectedChoice;
+            this.savingByQuestion[String(question.questionId)] = true;
+            this.pendingSaveCount += 1;
+            this.saveStatus = '';
+            clearTimeout(this.saveStatusTimer);
+            delete this.saveErrorBySection[sectionId];
+            // Optimistic selection gives immediate feedback; any failed request rolls
+            // back to the last server-confirmed answer below.
+            question.selectedChoice = choice;
             try {
                 const response = await fetch(`/api/exam-take/submit?token=${encodeURIComponent(this.token)}`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ sectionId: this.selectedSectionId, questionId: question.questionId, choice })
+                    body: JSON.stringify({ sectionId, questionId: question.questionId, choice }),
+                    keepalive: true
                 });
                 if (!response.ok) {
-                    this.saveErrorBySection[this.selectedSectionId] = await this.parseError(response);
+                    question.selectedChoice = previousChoice;
+                    this.saveStatus = '';
+                    this.saveErrorBySection[sectionId] = await this.parseError(response);
                     if (response.status === 400 || response.status === 401 || response.status === 403) {
                         this.expired = true;
                     }
                     return;
                 }
-                question.selectedChoice = choice;
+                clearTimeout(this.saveStatusTimer);
+                this.saveStatus = 'پاسخ ذخیره شد.';
+                this.saveStatusTimer = setTimeout(() => {
+                    this.saveStatus = '';
+                }, 2500);
             } catch (e) {
-                this.saveErrorBySection[this.selectedSectionId] = 'ارتباط با سرور برقرار نشد.';
+                question.selectedChoice = previousChoice;
+                this.saveStatus = '';
+                this.saveErrorBySection[sectionId] = 'پاسخ ذخیره نشد. اتصال خود را بررسی و دوباره تلاش کنید.';
             } finally {
-                this.savingQuestionId = null;
+                delete this.savingByQuestion[String(question.questionId)];
+                this.pendingSaveCount = Math.max(0, this.pendingSaveCount - 1);
             }
         }
     }));

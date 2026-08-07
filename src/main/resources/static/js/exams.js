@@ -151,8 +151,15 @@ document.addEventListener('alpine:init', () => {
                 this.exams = await examsResponse.json();
                 this.flatTopics = treeResponse.ok ? this.flattenTree(await treeResponse.json(), 0) : [];
                 this.students = studentsResponse.ok ? await studentsResponse.json() : [];
-                const memberships = membershipsResponse.ok ? await membershipsResponse.json() : [];
-                this.pupils = memberships.filter(m => m.active && m.roleCode === 'STUDENT');
+                if (membershipsResponse.ok) {
+                    const memberships = await membershipsResponse.json();
+                    this.pupils = memberships.filter(m => m.active && m.roleCode === 'STUDENT');
+                } else {
+                    this.pupils = await window.MemberNames.resolve(
+                        this.schoolId,
+                        this.students.map(student => student.userId)
+                    );
+                }
             } catch (e) {
                 this.error = 'ارتباط با سرور برقرار نشد.';
             } finally {

@@ -9,11 +9,11 @@
 @template.layout.main(title = "ثبت مدرسه", scripts = java.util.List.of("/js/navbar.js", "/js/school-new.js"), content = @`
 @template.layout.navbar(navbar = navbar)
 
-<section class="section">
-    <div class="container" style="max-width: 560px;">
+<section class="section" id="main-content" role="main" tabindex="-1">
+    <div class="container app-narrow-container">
         <div class="box" x-data="createSchoolForm">
             <h1 class="title is-4">ثبت مدرسه‌ی جدید</h1>
-            <p class="subtitle is-6">شما بلافاصله مدیر (SCHOOL_ADMIN) این مدرسه می‌شوید.</p>
+            <p class="subtitle is-6">شما بلافاصله مدیر این مدرسه می‌شوید.</p>
 
             <form @submit.prevent="submit">
                 <div class="field">

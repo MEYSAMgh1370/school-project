@@ -15,18 +15,26 @@ document.addEventListener('alpine:init', () => {
             return match ? decodeURIComponent(match[1]) : '';
         },
 
+        normalizeDigits(value) {
+            return value
+                .replace(/[۰-۹]/g, digit => String(digit.charCodeAt(0) - 0x06F0))
+                .replace(/[٠-٩]/g, digit => String(digit.charCodeAt(0) - 0x0660))
+                .trim();
+        },
+
         async save() {
             this.submitting = true;
             this.errorMessage = '';
             this.successMessage = '';
             try {
+                const canonicalPhoneNumber = this.normalizeDigits(this.phoneNumber);
                 const response = await fetch('/api/me/phone', {
                     method: 'PUT',
                     headers: {
                         'Content-Type': 'application/json',
                         'X-XSRF-TOKEN': this.csrfToken()
                     },
-                    body: JSON.stringify({ phoneNumber: this.phoneNumber })
+                    body: JSON.stringify({ phoneNumber: canonicalPhoneNumber })
                 });
                 if (!response.ok) {
                     try {
@@ -37,6 +45,7 @@ document.addEventListener('alpine:init', () => {
                     }
                     return;
                 }
+                this.phoneNumber = canonicalPhoneNumber;
                 this.successMessage = 'شماره تلفن ذخیره شد.';
             } catch (e) {
                 this.errorMessage = 'ارتباط با سرور برقرار نشد.';

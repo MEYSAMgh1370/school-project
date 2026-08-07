@@ -10,7 +10,7 @@
 @param SchoolEntryModel model
 
 @template.layout.main(title = model.found() ? model.schoolName() : "مدرسه یافت نشد", content = @`
-<section class="hero is-link is-fullheight">
+<section class="hero is-link is-fullheight" id="main-content" role="main" tabindex="-1">
     <div class="hero-body">
         <div class="container has-text-centered">
             @if(model.found())

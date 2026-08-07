@@ -91,6 +91,24 @@
     display: none !important;
 }
 
+/* اولین کنترل صفحه برای کاربران کیبورد؛ تا زمان فوکوس بیرون از نما می‌ماند. */
+.app-skip-link {
+    position: fixed;
+    inset-block-start: var(--space-2);
+    inset-inline-start: var(--space-2);
+    z-index: 1000;
+    padding: var(--space-2) var(--space-3);
+    border-radius: var(--radius-md);
+    background: var(--bulma-scheme-main);
+    color: var(--bulma-text);
+    box-shadow: var(--shadow-md);
+    transform: translateY(-200%);
+}
+
+.app-skip-link:focus {
+    transform: translateY(0);
+}
+
 /* --- سوییچر مدرسه/نقش روی موبایل ----------------------------------------
    بولما قاعده‌ی `.navbar-dropdown { display: none }` را فقط داخل بلوکِ
    `min-width: 1024px` می‌گذارد؛ زیر آن breakpoint دراپ‌داون *همیشه* باز
@@ -113,4 +131,91 @@
   .navbar-item.has-dropdown.is-active .navbar-dropdown {
     display: block;
   }
+}
+
+/* --- Shared layout/accessibility utilities -------------------------------- */
+
+button.navbar-burger,
+.navbar button.navbar-link,
+.navbar button.navbar-item {
+  appearance: none;
+  background: transparent;
+  border: 0;
+  color: inherit;
+  cursor: pointer;
+  font: inherit;
+  text-align: start;
+}
+
+.navbar button.navbar-link,
+.navbar button.navbar-item {
+  inline-size: 100%;
+}
+
+.table th[scope="col"] {
+  white-space: nowrap;
+}
+
+.table td,
+.table th {
+  vertical-align: middle;
+}
+
+.app-narrow-container {
+  max-inline-size: 560px;
+}
+
+.app-landing-card {
+  max-inline-size: 480px;
+  margin-inline: auto;
+}
+
+.app-control-align-end {
+  align-self: flex-end;
+}
+
+.app-control-align-center {
+  align-self: center;
+}
+
+.app-inline-gap-xs {
+  margin-inline-end: var(--space-1);
+}
+
+.app-inline-gap {
+  margin-inline-end: var(--space-2);
+}
+
+.app-checkbox-inline {
+  margin-inline-end: var(--space-4);
+}
+
+.app-tag-list-item {
+  margin-inline-end: var(--space-1);
+  margin-block-end: var(--space-1);
+}
+
+.app-input-w-6 {
+  max-inline-size: 6rem;
+}
+
+.app-input-w-8 {
+  max-inline-size: 8rem;
+}
+
+.app-input-w-12 {
+  max-inline-size: 12rem;
+}
+
+.app-scrollbox-12 {
+  max-block-size: 12rem;
+  overflow-y: auto;
+}
+
+.app-display-contents {
+  display: contents;
+}
+
+.app-block {
+  display: block;
 }

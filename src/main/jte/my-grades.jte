@@ -5,7 +5,7 @@
 @template.layout.main(title = "نمره‌های من", scripts = java.util.List.of("/js/navbar.js", "/js/jalali.js", "/js/my-grades.js"), content = @`
 @template.layout.navbar(navbar = navbar)
 
-<section class="section" x-data="myGradesPage()">
+<section class="section" id="main-content" role="main" tabindex="-1" x-data="myGradesPage()">
     <div class="container">
         <h1 class="title is-4">نمره‌های من</h1>
         <p class="subtitle is-6">نمره‌های خودتان و فرزندانِ لینک‌شده‌ به شما در این مدرسه.</p>
@@ -24,12 +24,12 @@
                 <table class="table is-fullwidth is-striped">
                     <thead>
                     <tr>
-                        <th>دانش‌آموز</th>
-                        <th>سال تحصیلی</th>
-                        <th>نوبت</th>
-                        <th>نمره</th>
-                        <th>نظر</th>
-                        <th>تاریخ ثبت</th>
+                        <th scope="col">دانش‌آموز</th>
+                        <th scope="col">سال تحصیلی</th>
+                        <th scope="col">نوبت</th>
+                        <th scope="col">نمره</th>
+                        <th scope="col">نظر</th>
+                        <th scope="col">تاریخ ثبت</th>
                     </tr>
                     </thead>
                     <tbody>

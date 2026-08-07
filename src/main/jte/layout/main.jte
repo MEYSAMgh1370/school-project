@@ -29,6 +29,7 @@
     <script defer src="/webjars/alpinejs/3.15.12/dist/cdn.min.js"></script>
 </head>
 <body>
+<a class="app-skip-link" href="#main-content">پرش به محتوای اصلی</a>
 ${content}
 </body>
 </html>

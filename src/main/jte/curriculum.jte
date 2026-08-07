@@ -5,7 +5,7 @@
 @template.layout.main(title = "سرفصل‌ها و بانک سؤال", scripts = java.util.List.of("/js/navbar.js", "/js/curriculum.js"), content = @`
 @template.layout.navbar(navbar = navbar)
 
-<section class="section" x-data="curriculumPage()">
+<section class="section" id="main-content" role="main" tabindex="-1" x-data="curriculumPage()">
     <div class="container">
         <h1 class="title is-4">سرفصل‌ها و بانک سؤال</h1>
 
@@ -92,9 +92,9 @@
                                 <table class="table is-fullwidth is-striped">
                                     <thead>
                                     <tr>
-                                        <th>متن سؤال</th>
-                                        <th>گزینه‌ی درست</th>
-                                        <th>سطح دشواری</th>
+                                        <th scope="col">متن سؤال</th>
+                                        <th scope="col">گزینه‌ی درست</th>
+                                        <th scope="col">سطح دشواری</th>
                                     </tr>
                                     </thead>
                                     <tbody>
