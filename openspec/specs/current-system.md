@@ -16,6 +16,30 @@ Current user-facing roles include:
 
 `PLATFORM_ADMIN` exists in the domain discussion as future infrastructure, but there is no complete current platform-admin permission path.
 
+## Identity And Login
+
+Users can register and log in with email/password. OTP login is available for an
+existing registered phone number.
+
+IAM canonicalizes phone numbers at the application boundary before storing or
+looking them up:
+
+- boundary whitespace matching Java `Character.isWhitespace` or `Character.isSpaceChar` is stripped;
+- Persian and Arabic-Indic digits are translated to ASCII digits;
+- punctuation, separators, and country-code formatting are otherwise preserved.
+
+Flyway migrations canonicalize existing `iam.users.phone_number` rows and refuse
+to guess ownership when multiple rows would collapse to the same canonical phone
+number.
+
+Evidence:
+
+- [`PhoneNumberCanonicalizer.java`](../../src/main/java/com/example/roshdeandishe/iam/internal/PhoneNumberCanonicalizer.java)
+- [`V3__canonicalize_iam_phone_numbers.sql`](../../src/main/resources/db/migration/V3__canonicalize_iam_phone_numbers.sql)
+- [`V4__canonicalize_iam_phone_boundary_whitespace.sql`](../../src/main/resources/db/migration/V4__canonicalize_iam_phone_boundary_whitespace.sql)
+- [`OtpLoginFlowIntegrationTest.java`](../../src/test/java/com/example/roshdeandishe/OtpLoginFlowIntegrationTest.java)
+- [`PhoneNumberCanonicalizationMigrationTest.java`](../../src/test/java/com/example/roshdeandishe/PhoneNumberCanonicalizationMigrationTest.java)
+
 ## School Creation And Entitlements
 
 Any authenticated user can create a school through the self-service school creation flow. The creator becomes a `SCHOOL_ADMIN` for that school.

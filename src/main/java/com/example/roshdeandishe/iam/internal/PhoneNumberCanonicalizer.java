@@ -15,7 +15,7 @@ final class PhoneNumberCanonicalizer {
         if (value == null) {
             return null;
         }
-        String stripped = value.strip();
+        String stripped = stripBoundaryWhitespace(value);
         StringBuilder canonical = new StringBuilder(stripped.length());
         for (int index = 0; index < stripped.length(); index++) {
             char character = stripped.charAt(index);
@@ -28,5 +28,30 @@ final class PhoneNumberCanonicalizer {
             }
         }
         return canonical.toString();
+    }
+
+    private static String stripBoundaryWhitespace(String value) {
+        int start = 0;
+        int end = value.length();
+
+        while (start < end) {
+            int codePoint = value.codePointAt(start);
+            if (!isBoundaryWhitespace(codePoint)) {
+                break;
+            }
+            start += Character.charCount(codePoint);
+        }
+        while (start < end) {
+            int codePoint = value.codePointBefore(end);
+            if (!isBoundaryWhitespace(codePoint)) {
+                break;
+            }
+            end -= Character.charCount(codePoint);
+        }
+        return value.substring(start, end);
+    }
+
+    private static boolean isBoundaryWhitespace(int codePoint) {
+        return Character.isWhitespace(codePoint) || Character.isSpaceChar(codePoint);
     }
 }

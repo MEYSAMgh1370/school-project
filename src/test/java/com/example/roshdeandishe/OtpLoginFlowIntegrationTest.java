@@ -63,9 +63,10 @@ class OtpLoginFlowIntegrationTest {
         String email = "otp-persian-" + System.nanoTime() + "@roshdeandishe.test";
         String asciiPhoneNumber = uniquePhoneNumber();
         String persianPhoneNumber = toPersianDigits(asciiPhoneNumber);
+        String wrappedPersianPhoneNumber = "\u00a0" + persianPhoneNumber + "\u202f";
         MockHttpSession session = registerAndLogin(email, "کاربر ارقام فارسی");
 
-        setPhoneNumber(session, persianPhoneNumber);
+        setPhoneNumber(session, wrappedPersianPhoneNumber);
         requestOtp(persianPhoneNumber).andExpect(status().isOk());
 
         String code = latestOtpCodeFor(asciiPhoneNumber);

@@ -38,21 +38,30 @@ class PhoneNumberCanonicalizationMigrationTest {
     }
 
     @Test
-    void migrationCanonicalizesExistingPersianAndArabicDigitRows() throws Exception {
+    void migrationCanonicalizesExistingDigitsAndBoundaryWhitespace() throws Exception {
         flyway("2").migrate();
         execute("""
                 insert into iam.users (email, full_name, status, phone_number)
                 values
                     ('persian@example.test', 'Persian', 'ACTIVE', ' ۰۹۱۲۳۴۵۶۷۸۹ '),
-                    ('arabic@example.test', 'Arabic', 'ACTIVE', '٠٩٣٥١٢٣٤٥٦٧')
+                    ('arabic@example.test', 'Arabic', 'ACTIVE', '٠٩٣٥١٢٣٤٥٦٧'),
+                    ('tabbed@example.test', 'Tabbed', 'ACTIVE', E'\\t۰۹۱۱۲۳۴۵۶۷۸\\t'),
+                    ('nbsp@example.test', 'NBSP', 'ACTIVE', U&'\\00A0٠٩٤٤١٢٣٤٥٦٧\\202F')
                 """);
 
         flyway(null).migrate();
 
-        assertThat(phoneNumbers()).containsExactlyInAnyOrder("09123456789", "09351234567");
+        assertThat(phoneNumbers()).containsExactlyInAnyOrder(
+                "09123456789", "09351234567", "09112345678", "09441234567");
         assertThatThrownBy(() -> execute("""
                 insert into iam.users (email, full_name, status, phone_number)
                 values ('late-legacy@example.test', 'Legacy', 'ACTIVE', '۰۹۹۹۱۲۳۴۵۶۷')
+                """))
+                .isInstanceOf(SQLException.class)
+                .hasMessageContaining("ck_users_phone_number_canonical");
+        assertThatThrownBy(() -> execute("""
+                insert into iam.users (email, full_name, status, phone_number)
+                values ('late-whitespace@example.test', 'Whitespace', 'ACTIVE', U&'\\00A009991234567\\00A0')
                 """))
                 .isInstanceOf(SQLException.class)
                 .hasMessageContaining("ck_users_phone_number_canonical");
@@ -73,6 +82,23 @@ class PhoneNumberCanonicalizationMigrationTest {
                 .hasMessageContaining("visually equivalent phone numbers belong to multiple users");
 
         assertThat(phoneNumbers()).containsExactlyInAnyOrder("09125550123", "۰۹۱۲۵۵۵۰۱۲۳");
+    }
+
+    @Test
+    void boundaryWhitespaceMigrationRefusesToGuessOwnershipForPostV3Collisions() throws Exception {
+        flyway("3").migrate();
+        execute("""
+                insert into iam.users (email, full_name, status, phone_number)
+                values
+                    ('ascii-owner@example.test', 'ASCII owner', 'ACTIVE', '09129991234'),
+                    ('nbsp-owner@example.test', 'NBSP owner', 'ACTIVE', U&'\\00A009129991234\\202F')
+                """);
+
+        assertThatThrownBy(() -> flyway(null).migrate())
+                .isInstanceOf(FlywayException.class)
+                .hasMessageContaining("visually equivalent phone numbers belong to multiple users");
+
+        assertThat(phoneNumbers()).containsExactlyInAnyOrder("09129991234", "\u00a009129991234\u202f");
     }
 
     private Flyway flyway(String target) {

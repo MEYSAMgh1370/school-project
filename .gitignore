@@ -32,5 +32,8 @@ build/
 ### VS Code ###
 .vscode/
 
+# Air workspace metadata
+.air/
+
 # dev-loop workflow backup
 dev-loop-backup.zip
