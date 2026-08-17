@@ -116,10 +116,10 @@ Resolved parts as of 2026-08-16:
 
 Remaining proposed work:
 
-- decide the canonical persisted, entry, and display unit for financial
-  values, including Rial/Toman conversion and rounding;
-- reconcile the demo seeder, finance DTO contract, input labels, and displays
-  after that decision.
+- [Approve the focused finance monetary-unit contract](finance-monetary-unit.md)
+  before changing any financial-value persistence, REST semantics, conversion,
+  labels, demo data, or migration. It remains proposed work until a separate
+  implementation change is completed.
 
 A custom font, skeleton component, or Android design change still requires a
 new concrete need.
