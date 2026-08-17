@@ -81,8 +81,18 @@ class FinanceManagementFlowIntegrationTest {
                 .andExpect(status().isOk())
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("امور مالی مدرسه")))
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("مدرسه‌ی نمونه")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("src=\"/js/money.js\"")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("Money.formatAmount(invoice.amount)")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("Money.normalizeAmountInput($event)")))
                 // لینک‌های ناوبری navbar روی همه‌ی صفحه‌های مدیریتی هستند
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("href=\"/students\"")));
+
+        mockMvc.perform(get("/js/finance.js"))
+                .andExpect(status().isOk())
+                .andExpect(content().string(org.hamcrest.Matchers.containsString(
+                        "amount: Money.normalizeAmount(this.paymentForm.amount)")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString(
+                        "amount: Money.normalizeAmount(this.form.amount)")));
     }
 
     @Test

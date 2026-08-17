@@ -210,7 +210,7 @@ document.addEventListener('alpine:init', () => {
                         'X-XSRF-TOKEN': this.csrfToken()
                     },
                     body: JSON.stringify({
-                        amount: this.paymentForm.amount,
+                        amount: Money.normalizeAmount(this.paymentForm.amount),
                         method: this.paymentForm.method,
                         note: this.paymentForm.note || null
                     })
@@ -278,7 +278,7 @@ document.addEventListener('alpine:init', () => {
                         'X-School-ID': this.schoolId,
                         'X-XSRF-TOKEN': this.csrfToken()
                     },
-                    body: JSON.stringify({ amount: this.form.amount })
+                    body: JSON.stringify({ amount: Money.normalizeAmount(this.form.amount) })
                 });
                 if (!response.ok) {
                     const classified = await this.classifyError(response);

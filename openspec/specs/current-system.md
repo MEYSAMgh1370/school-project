@@ -1,6 +1,8 @@
 # Current System Specification
 
-Status: current behavior checked against implementation, tests, migrations, and configuration on 2026-08-06.
+Status: current behavior checked against implementation, tests, migrations, and
+configuration on 2026-08-06. The web design and finance-display invariants were
+updated and verified on 2026-08-16.
 
 ## Product Scope
 
@@ -120,6 +122,13 @@ Current invariants:
 - `layout/main.jte` owns shared head assets.
 - `layout/navbar.jte` is reused by authenticated management pages.
 - Static JS and CSS are served from Spring Boot static resources.
+- The web UI retains the system font stack and uses the adopted ink-blue
+  primary color from `app.css`.
+- Read-only finance amounts use neutral Persian digits and thousands grouping,
+  without a Rial/Toman suffix or numeric conversion because the canonical
+  financial unit is unresolved.
+- Finance amount inputs normalize Persian and Arabic-Indic digits to ASCII
+  during editing and again before request serialization.
 - Page links are navigation affordances only; API authorization is authoritative.
 
 Evidence:
@@ -127,6 +136,7 @@ Evidence:
 - [`src/main/jte/`](../../src/main/jte/)
 - [`src/main/resources/static/js/`](../../src/main/resources/static/js/)
 - [`src/main/resources/static/css/app.css`](../../src/main/resources/static/css/app.css)
+- [`src/main/resources/static/js/money.js`](../../src/main/resources/static/js/money.js)
 - [`FRONTEND.md`](../../FRONTEND.md)
 
 ## Android V1
@@ -173,6 +183,8 @@ These are not bugs unless a change proposal says otherwise:
 - no horizontal web-session scaling support;
 - no production SMS provider configured by default;
 - OTP rate limiting is not implemented;
+- the canonical persisted, entry, and display unit for finance values, plus
+  any Rial/Toman conversion and rounding rules, is not defined;
 - slug editing, custom domains, and subdomain routing are not implemented;
 - school status changes are facade-only;
 - native Android app is read-only and local-development oriented.

@@ -65,6 +65,8 @@ class MyInvoicesPageFlowIntegrationTest {
         mockMvc.perform(get("/my-invoices").session(session))
                 .andExpect(status().isOk())
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("فاکتورهای من")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("src=\"/js/money.js\"")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("Money.formatAmount(invoice.amount)")))
                 // لینک‌های ناوبری روی همه‌ی صفحه‌های مدیریتی هستند
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("href=\"/dashboard\"")));
     }

@@ -198,6 +198,7 @@ document.addEventListener('alpine:init', () => {
 
         async createExpense() {
             const body = { ...this.expenseForm };
+            body.amount = Money.normalizeAmount(this.expenseForm.amount);
             body.categoryId = this.expenseForm.categoryId ? Number(this.expenseForm.categoryId) : null;
             body.vendorId = this.expenseForm.vendorId ? Number(this.expenseForm.vendorId) : null;
             await this.submitJson(this.expensesBase(), body, () => {

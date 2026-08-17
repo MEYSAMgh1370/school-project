@@ -40,7 +40,7 @@
   --bulma-radius:       var(--radius-md);
   --bulma-radius-large: var(--radius-lg);
 
-  /* Primary accent — proposed value, pending sign-off (DESIGN.md §4):
+  /* Primary accent — adopted 2026-08-16 (DESIGN.md §4):
      desaturated ink-blue hsl(210 40% 38%) ≈ #3A5F84.
      Bulma 1.x derives every shade/state from these three components. */
   --bulma-primary-h: 210deg;

@@ -100,20 +100,32 @@ Source documents:
 
 ## Design Follow-Ups
 
-Current behavior:
+Resolved parts as of 2026-08-16:
 
 - shared CSS tokens exist in `app.css`;
-- the JTE web design system is documented in `DESIGN.md`;
-- several design items remain pending sign-off.
+- the existing ink-blue primary color is adopted;
+- the web UI retains the system font stack with no new font dependency;
+- finance amount inputs normalize Persian and Arabic-Indic digits on edit and
+  before serialization;
+- finance amounts temporarily display as neutral Persian digits with `٬`
+  grouping and no unit or conversion;
+- a skeleton component remains need-driven rather than standardized
+  speculatively;
+- Android Material design decisions remain separate from Bulma/JTE web
+  decisions.
 
-Proposed work:
+Remaining proposed work:
 
-- confirm primary color and currency display rules;
-- decide Persian font loading strategy;
-- decide whether the skeleton/loading component should be standardized;
-- keep Android Material design decisions separate from Bulma/JTE web decisions.
+- decide the canonical persisted, entry, and display unit for financial
+  values, including Rial/Toman conversion and rounding;
+- reconcile the demo seeder, finance DTO contract, input labels, and displays
+  after that decision.
+
+A custom font, skeleton component, or Android design change still requires a
+new concrete need.
 
 Source documents:
 
 - [`../../DESIGN.md`](../../DESIGN.md)
 - [`../../FRONTEND.md`](../../FRONTEND.md)
+- [`web-design-followups.md`](web-design-followups.md)

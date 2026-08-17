@@ -2,7 +2,7 @@
 
 @param NavbarModel navbar
 
-@template.layout.main(title = "هزینه‌های مدرسه", scripts = java.util.List.of("/js/navbar.js", "/js/jalali.js", "/js/expenses.js"), content = @`
+@template.layout.main(title = "هزینه‌های مدرسه", scripts = java.util.List.of("/js/navbar.js", "/js/jalali.js", "/js/money.js", "/js/expenses.js"), content = @`
 @template.layout.navbar(navbar = navbar)
 
 <section class="section" id="main-content" role="main" tabindex="-1" x-data="expensesPage()">
@@ -108,8 +108,10 @@
                                         <input class="input" id="expenseDate" dir="ltr" type="date" x-model="expenseForm.expenseDate" required>
                                     </div>
                                     <div class="control">
-                                        <label class="label" for="expenseAmount">مبلغ (تومان)</label>
-                                        <input class="input" id="expenseAmount" dir="ltr" type="number" min="1" x-model="expenseForm.amount" required>
+                                        <label class="label" for="expenseAmount">مبلغ</label>
+                                        <input class="input" id="expenseAmount" dir="ltr" type="text" inputmode="numeric"
+                                               pattern="[0-9]+" x-model="expenseForm.amount"
+                                               @input="expenseForm.amount = Money.normalizeAmountInput($event)" required>
                                     </div>
                                     <div class="control">
                                         <label class="label" for="expenseCategory">دسته</label>
@@ -206,7 +208,7 @@
                                     <td dir="ltr" x-text="expense.expenseDate"></td>
                                     <td x-text="categoryName(expense.categoryId)"></td>
                                     <td x-text="vendorName(expense.vendorId)"></td>
-                                    <td dir="ltr" x-text="expense.amount"></td>
+                                    <td x-text="Money.formatAmount(expense.amount)"></td>
                                     <td>
                                         <span class="tag" :class="statusClass(expense.status)" x-text="statusLabel(expense.status)"></span>
                                     </td>
@@ -312,7 +314,7 @@
                                 <template x-for="(row, index) in summaryRows" :key="index">
                                     <tr>
                                         <td x-text="summaryRowLabel(row)"></td>
-                                        <td dir="ltr" x-text="row.total"></td>
+                                        <td x-text="Money.formatAmount(row.total)"></td>
                                         <td dir="ltr" x-text="row.count"></td>
                                     </tr>
                                 </template>
@@ -321,8 +323,8 @@
                             </div>
 
                             <div class="notification is-info" x-show="financeSummaryResult" x-cloak>
-                                درآمد بازه: <strong dir="ltr" x-text="financeSummaryResult ? financeSummaryResult.income : ''"></strong> تومان -
-                                هزینه‌ی بازه: <strong dir="ltr" x-text="financeSummaryResult ? financeSummaryResult.expense : ''"></strong> تومان
+                                درآمد بازه: <strong x-text="Money.formatAmount(financeSummaryResult ? financeSummaryResult.income : null)"></strong> -
+                                هزینه‌ی بازه: <strong x-text="Money.formatAmount(financeSummaryResult ? financeSummaryResult.expense : null)"></strong>
                             </div>
                         </div>
                     </div>

@@ -96,7 +96,15 @@ class ExpenseManagementFlowIntegrationTest {
                 .andExpect(status().isOk())
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("هزینه‌های مدرسه")))
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("مدرسه‌ی نمونه")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("src=\"/js/money.js\"")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("Money.formatAmount(expense.amount)")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("Money.normalizeAmountInput($event)")))
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("href=\"/finance\"")));
+
+        mockMvc.perform(get("/js/expenses.js"))
+                .andExpect(status().isOk())
+                .andExpect(content().string(org.hamcrest.Matchers.containsString(
+                        "body.amount = Money.normalizeAmount(this.expenseForm.amount)")));
     }
 
     @Test

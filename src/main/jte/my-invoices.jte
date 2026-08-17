@@ -2,7 +2,7 @@
 
 @param NavbarModel navbar
 
-@template.layout.main(title = "فاکتورهای من", scripts = java.util.List.of("/js/navbar.js", "/js/my-invoices.js"), content = @`
+@template.layout.main(title = "فاکتورهای من", scripts = java.util.List.of("/js/navbar.js", "/js/money.js", "/js/my-invoices.js"), content = @`
 @template.layout.navbar(navbar = navbar)
 
 <section class="section" id="main-content" role="main" tabindex="-1" x-data="myInvoicesPage()">
@@ -37,9 +37,9 @@
                     <template x-for="invoice in invoices" :key="invoice.id">
                         <tr>
                             <td>دانش‌آموز #<span x-text="invoice.studentId"></span></td>
-                            <td dir="ltr" x-text="invoice.amount"></td>
-                            <td dir="ltr" x-text="invoice.amountPaid"></td>
-                            <td dir="ltr" x-text="invoice.amount - invoice.amountPaid"></td>
+                            <td x-text="Money.formatAmount(invoice.amount)"></td>
+                            <td x-text="Money.formatAmount(invoice.amountPaid)"></td>
+                            <td x-text="Money.formatAmount(invoice.amount - invoice.amountPaid)"></td>
                             <td>
                                 <span class="tag" :class="statusClass(invoice.status)"
                                       x-text="statusLabel(invoice.status)"></span>

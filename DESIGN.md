@@ -1,11 +1,12 @@
 # Roshdeandishe — Design System
 
-**Status: DRAFT (2026-07-13), pending sign-off.** This document replaces an
+**Status: current web design guidance, adopted 2026-08-16.** This document replaces an
 earlier six-file draft (`DESIGN_SYSTEM.md`, `COMPONENT_LIBRARY.md`,
 `SCREEN_LIBRARY.md`, `UX_RULES.md`, `CONTENT_GUIDE.md`, `CLAUDE_DESIGN.md`)
 that was never adopted — §11 records what was dropped from it and why, so
-those decisions are explicit, not silent. Items marked **[SIGN-OFF]** are
-proposals in this draft, not resolved decisions, until confirmed.
+those decisions are explicit, not silent. Primary color, font loading, neutral
+number presentation, and the need-driven loading-component policy were
+confirmed on 2026-08-16. The canonical financial unit remains unresolved.
 
 Subordinate to OpenSpec current-behavior docs for architecture, domain, and
 access control, and to `UX_ROADMAP.md` §2 for binding shared UX patterns
@@ -86,11 +87,11 @@ existing classes, which makes "never invent typography" checkable in review:
 
 Anything outside this table is a design-system change, not a page decision.
 
-**Persian font [SIGN-OFF / open]:** currently the Bulma default (system)
-stack, which renders Persian acceptably. Adopting a dedicated face (e.g.
-Vazirmatn) requires a WebJar or self-hosted files — a new dependency
-decision. Verify a maintained WebJar exists before deciding; do not add a
-CDN `<link>` (violates the zero-build/WebJar rule, `CLAUDE_LEGACY.md` §2).
+**Persian font (decided 2026-08-16):** retain the Bulma/system font stack.
+It renders Persian acceptably without adding a download, WebJar, or hosted
+asset. Adopting a dedicated face such as Vazirmatn is a future explicit
+dependency decision; never add it through a CDN `<link>` (which violates the
+zero-build/WebJar rule in `CLAUDE_LEGACY.md` §2).
 
 ---
 
@@ -110,11 +111,12 @@ Rules:
   restates the UX_ROADMAP/§5 confirmation rule for completeness; that file
   owns it).
 
-**Proposed primary [SIGN-OFF]:** desaturated ink-blue,
+**Primary (adopted 2026-08-16):** desaturated ink-blue,
 `hsl(210, 40%, 38%)` (≈ `#3A5F84`), applied via Bulma 1.x's
 `--bulma-primary-{h,s,l}` and matching `--bulma-link-{h,s,l}` so buttons and
 links agree. Chosen for the calm/trustworthy intent; deliberately not a
-saturated SaaS blue. Swap by editing three lines in `app.css`.
+saturated SaaS blue. Changing it is a design-system decision, implemented by
+editing the corresponding values in `app.css`.
 
 ---
 
@@ -202,7 +204,7 @@ UX_ROADMAP §2 remains binding and is not repeated here. Additions:
   apologize and are never vague.
 - Empty states are invitations to act, not apologies.
 
-**Dates, numbers, digits (decided 2026-07-13) [SIGN-OFF]:**
+**Dates, numbers, digits (decided 2026-07-13; adopted 2026-08-16):**
 
 - **Jalali for every human-facing date** in the web UI. Numeric form
   `۱۴۰۵/۰۴/۲۲` in tables; long form `۲۲ تیر ۱۴۰۵` in headers and running
@@ -216,16 +218,24 @@ UX_ROADMAP §2 remains binding and is not repeated here. Additions:
   side "week" concept (e.g. `studyplan`'s week-start, MOSHAVERE_PORT_SPEC
   §6) anchors to `DayOfWeek.SATURDAY` — plain date arithmetic, no calendar
   library.
-- **Persian digits (۰–۹) for all displayed numbers** — dates, counts,
-  amounts — applied at render time by a single client utility
-  (`toPersianDigits()`); underlying data, DOM state, and anything
-  sorted/compared stays ASCII. The Latin-data rule (UX_ROADMAP §2) is
-  unchanged and includes **phone numbers**: emails, tokens, IDs, and
-  phones stay Latin digits with their `dir="ltr"` island.
-- **Every input normalizes Persian and Arabic-Indic digits (۰–۹, ٠–٩) to
-  ASCII before validation and send** — a parent typing ۰۹۱۲… into a phone
-  field must not fail validation. Shared helper; rule-of-three governs
-  extraction.
+- **Persian digits (۰–۹) for displayed numbers** — dates, counts, and
+  amounts — applied at render time by the relevant shared client utility
+  (`Jalali.toPersianDigits()` or `Money.formatAmount()`); underlying data, DOM
+  state, and anything sorted/compared stays ASCII. The Latin-data rule
+  (UX_ROADMAP §2) is unchanged and includes **phone numbers**: emails,
+  tokens, IDs, and phones stay Latin digits with their `dir="ltr"` island.
+- **The financial unit is unresolved.** `scripts/seed-demo-data.py` calls a raw
+  value Rial while the earlier finance templates called the same API values
+  Toman; the UI/UX audit explicitly records the missing contract. Until a
+  product decision defines persisted, entry, and display units plus conversion
+  and rounding, read-only amounts use neutral Persian digits and `٬` grouping
+  through `static/js/money.js`, with no unit suffix and no conversion.
+- **Finance amount inputs normalize Persian and Arabic-Indic digits (۰–۹,
+  ٠–٩) to ASCII before browser validation and again before serialization.**
+  These controls use text fields with a numeric input mode because browser
+  number controls may reject localized digits before JavaScript can normalize
+  them. Other numeric-input areas require their own verified adoption before
+  global input-normalization compliance can be claimed.
 - Persian-digit dates need no `dir` island (they render correctly in RTL
   flow); only Latin-digit technical strings do, per the existing rule.
 
@@ -300,12 +310,13 @@ Recorded so nothing was dropped silently:
 
 1. ~~Bulma WebJar version — 1.x confirmed?~~ **Resolved 2026-07-15:**
    `pom.xml` pins Bulma 1.0.4; the token bridge (§2) is live.
-2. Persian font adoption (Vazirmatn or stay on system stack) — §3.
-3. Primary color value sign-off — §4.
-4. Skeleton loading component — deferred until a page needs it (§5).
-5. **Currency display.** ~~Dates and digits~~ — resolved 2026-07-13 into §8.
-   What remains: Rial vs. Toman for tuition/invoice/expense amounts (users
-   think in Toman; confirm what unit the stored amounts actually are before
-   choosing a display convention), thousands-separator style (٬), and
-   whether the unit is written out (تومان) or implied. Resolve before the
-   next finance-facing page; record in §8.
+2. ~~Persian font adoption~~ — **resolved 2026-08-16:** retain the system
+   stack; a custom face requires a separate future dependency decision (§3).
+3. ~~Primary color value sign-off~~ — **resolved 2026-08-16:** adopt the
+   existing ink-blue values (§4).
+4. ~~Skeleton loading component~~ — **resolved 2026-08-16:** do not
+   standardize one speculatively; add it only with a concrete page need (§5).
+5. **Currency contract — unresolved:** define the persisted, entry, and
+   display unit (Rial/Toman), conversion direction, and rounding; then
+   reconcile the demo seeder, DTOs, forms, and displays. Neutral grouped
+   output is the safety fallback, not the final currency decision (§8).
