@@ -165,11 +165,6 @@ button.navbar-burger,
   max-inline-size: 560px;
 }
 
-.app-landing-card {
-  max-inline-size: 480px;
-  margin-inline: auto;
-}
-
 .app-control-align-end {
   align-self: flex-end;
 }

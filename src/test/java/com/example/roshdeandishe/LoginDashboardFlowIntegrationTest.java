@@ -33,14 +33,16 @@ class LoginDashboardFlowIntegrationTest {
     }
 
     @Test
-    void landingPageIsPubliclyReachableWithSchoolRegistrationPath() throws Exception {
+    void landingPageIsPubliclyReachableWithAllFounderEntryPaths() throws Exception {
         // صفحه‌ی اول عمومی (تصمیم ۲۰۲۶-۰۷-۰۶): درِ ورودی محصول با مسیر
         // ورود/ثبت‌نام/ثبت مدرسه - بدون نیاز به لاگین
         mockMvc.perform(get("/"))
                 .andExpect(status().isOk())
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("کارهای مهم مدرسه، ساده‌تر و هماهنگ‌تر")))
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("ثبت مدرسه")))
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("href=\"/schools/new\"")))
-                .andExpect(content().string(org.hamcrest.Matchers.containsString("href=\"/login\"")));
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("href=\"/login\"")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("href=\"/register\"")));
     }
 
     @Test
