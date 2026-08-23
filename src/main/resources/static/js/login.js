@@ -4,6 +4,8 @@ document.addEventListener('alpine:init', () => {
     // inline بماند، اما افزودن تبِ ورود با کد پیامکی یک ویرایشِ معنادار است،
     // پس طبق همان قاعده به فایل استاتیک منتقل شد.
     Alpine.data('loginPage', () => ({
+        postAuthenticationDestination: document.querySelector('[data-post-authentication-destination]')
+            ?.dataset.postAuthenticationDestination || '/dashboard',
         activeTab: 'password',
 
         // تب رمز عبور (رفتار قبلی، بدون تغییر)
@@ -55,7 +57,7 @@ document.addEventListener('alpine:init', () => {
                     body: JSON.stringify({ email: this.email, password: this.password })
                 });
                 if (response.ok) {
-                    window.location.href = '/dashboard';
+                    window.location.href = this.postAuthenticationDestination;
                     return;
                 }
                 this.passwordErrorMessage = response.status === 401 || response.status === 403
@@ -106,7 +108,7 @@ document.addEventListener('alpine:init', () => {
                     body: JSON.stringify({ phoneNumber: phone, code: code })
                 });
                 if (response.ok) {
-                    window.location.href = '/dashboard';
+                    window.location.href = this.postAuthenticationDestination;
                     return;
                 }
                 if (response.status === 410) {

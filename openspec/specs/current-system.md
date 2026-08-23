@@ -110,7 +110,7 @@ The current web UI is server-rendered JTE with page-level Alpine.js components a
 
 Built page areas include:
 
-- public landing (with login, account-registration, and school-registration entry paths), login, registration, account activation, school entry, and exam-take;
+- public landing (with login, account-registration, and school-registration entry paths that preserve the approved post-authentication destination), login, registration, account activation, school entry, and exam-take;
 - dashboard and shared navbar;
 - people, roles, classes, students, and grades;
 - curriculum, study plans, and exams;

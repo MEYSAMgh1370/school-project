@@ -1,5 +1,7 @@
 document.addEventListener('alpine:init', () => {
     Alpine.data('registerPage', () => ({
+        postAuthenticationDestination: document.querySelector('[data-post-authentication-destination]')
+            ?.dataset.postAuthenticationDestination || '/dashboard',
         fullName: '',
         email: '',
         password: '',
@@ -47,7 +49,9 @@ document.addEventListener('alpine:init', () => {
                         },
                         body: JSON.stringify({ email: this.email, password: this.password })
                     });
-                    window.location.href = loginResponse.ok ? '/dashboard' : '/login';
+                    window.location.href = loginResponse.ok
+                        ? this.postAuthenticationDestination
+                        : '/login';
                     return;
                 }
                 let detail = '';

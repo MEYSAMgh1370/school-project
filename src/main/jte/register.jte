@@ -1,10 +1,13 @@
+@param String postAuthenticationDestination
+
 @template.layout.main(title = "ثبت‌نام", scripts = java.util.List.of("/js/register.js"), content = @`
 <section class="hero is-fullheight" id="main-content" role="main" tabindex="-1">
     <div class="hero-body">
         <div class="container">
             <div class="columns is-centered">
                 <div class="column is-4-desktop is-6-tablet">
-                    <div class="box" x-data="registerPage()">
+                    <div class="box" x-data="registerPage()"
+                         data-post-authentication-destination="${postAuthenticationDestination}">
                         <h1 class="title is-4">ثبت‌نام در رشدِاندیشه</h1>
 
                         <form @submit.prevent="submit">
@@ -55,7 +58,11 @@
                              x-cloak x-show="errorMessage" x-text="errorMessage"></div>
 
                         <p class="has-text-centered mt-4">
-                            <a href="/login">حساب دارید؟ وارد شوید</a>
+                            @if(postAuthenticationDestination.equals("/schools/new"))
+                                <a href="/login?next=/schools/new">حساب دارید؟ وارد شوید</a>
+                            @else
+                                <a href="/login">حساب دارید؟ وارد شوید</a>
+                            @endif
                         </p>
                     </div>
                 </div>

@@ -40,9 +40,64 @@ class LoginDashboardFlowIntegrationTest {
                 .andExpect(status().isOk())
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("کارهای مهم مدرسه، ساده‌تر و هماهنگ‌تر")))
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("ثبت مدرسه")))
-                .andExpect(content().string(org.hamcrest.Matchers.containsString("href=\"/schools/new\"")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("href=\"/login?next=/schools/new\"")))
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("href=\"/login\"")))
-                .andExpect(content().string(org.hamcrest.Matchers.containsString("href=\"/register\"")));
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("href=\"/register?next=/schools/new\"")));
+    }
+
+    @Test
+    void anonymousSchoolRegistrationCtaSurvivesLoginAndRegistration() throws Exception {
+        mockMvc.perform(get("/"))
+                .andExpect(status().isOk())
+                .andExpect(content().string(org.hamcrest.Matchers.containsString(
+                        "href=\"/login?next=/schools/new\"")));
+
+        mockMvc.perform(get("/login").param("next", "/schools/new"))
+                .andExpect(status().isOk())
+                .andExpect(content().string(org.hamcrest.Matchers.containsString(
+                        "data-post-authentication-destination=\"/schools/new\"")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString(
+                        "href=\"/register?next=/schools/new\"")));
+
+        mockMvc.perform(get("/register").param("next", "/schools/new"))
+                .andExpect(status().isOk())
+                .andExpect(content().string(org.hamcrest.Matchers.containsString(
+                        "data-post-authentication-destination=\"/schools/new\"")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString(
+                        "href=\"/login?next=/schools/new\"")));
+
+        mockMvc.perform(get("/js/login.js"))
+                .andExpect(status().isOk())
+                .andExpect(content().string(org.hamcrest.Matchers.containsString(
+                        "window.location.href = this.postAuthenticationDestination")));
+        mockMvc.perform(get("/js/register.js"))
+                .andExpect(status().isOk())
+                .andExpect(content().string(org.hamcrest.Matchers.containsString(
+                        "? this.postAuthenticationDestination")));
+
+        MvcResult loginResult = mockMvc.perform(post("/api/auth/login")
+                        .with(csrf())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"email\":\"admin@roshdeandishe.test\",\"password\":\"password\"}"))
+                .andExpect(status().isOk())
+                .andReturn();
+        MockHttpSession session = (MockHttpSession) loginResult.getRequest().getSession(false);
+
+        mockMvc.perform(get("/schools/new").session(session))
+                .andExpect(status().isOk());
+    }
+
+    @Test
+    void loginAndRegistrationPagesRejectExternalPostAuthenticationDestinations() throws Exception {
+        mockMvc.perform(get("/login").param("next", "https://example.test"))
+                .andExpect(status().isOk())
+                .andExpect(content().string(org.hamcrest.Matchers.containsString(
+                        "data-post-authentication-destination=\"/dashboard\"")));
+
+        mockMvc.perform(get("/register").param("next", "//example.test"))
+                .andExpect(status().isOk())
+                .andExpect(content().string(org.hamcrest.Matchers.containsString(
+                        "data-post-authentication-destination=\"/dashboard\"")));
     }
 
     @Test

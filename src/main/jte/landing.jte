@@ -7,7 +7,7 @@
             <a class="app-landing-brand" href="/">رشدِاندیشه</a>
             <nav class="buttons mb-0" aria-label="ناوبری عمومی">
                 <a class="button is-light" href="/login">ورود</a>
-                <a class="button is-text" href="/register">ایجاد حساب کاربری</a>
+                <a class="button is-light" href="/register">ایجاد حساب کاربری</a>
             </nav>
         </div>
     </header>
@@ -24,8 +24,8 @@
                             در یک فضای منظم کنار هم می‌آورد.
                         </p>
                         <div class="buttons mt-5">
-                            <a class="button is-primary" href="/schools/new">ثبت مدرسه</a>
-                            <a class="button is-light" href="/register">ابتدا حساب کاربری بسازید</a>
+                            <a class="button is-primary" href="/login?next=/schools/new">ثبت مدرسه</a>
+                            <a class="button is-light" href="/register?next=/schools/new">ابتدا حساب کاربری بسازید</a>
                         </div>
                         <p class="is-size-7 has-text-grey mt-4">
                             از همین‌جا شروع کنید؛ پس از ورود، می‌توانید مدرسه‌تان را ثبت و کار را ادامه دهید.
@@ -137,7 +137,7 @@
                         <h2 class="title is-5">برای یک شروع منظم آماده‌اید؟</h2>
                         <p>مدرسه‌تان را ثبت کنید و فضای کاری‌تان را گام‌به‌گام بسازید.</p>
                     </div>
-                    <a class="button is-primary" href="/schools/new">ثبت مدرسه</a>
+                    <a class="button is-primary" href="/login?next=/schools/new">ثبت مدرسه</a>
                 </div>
             </div>
         </section>
@@ -146,7 +146,7 @@
     <footer class="app-landing-footer">
         <div class="container app-landing-footer-inner">
             <span class="is-size-7 has-text-grey">رشدِاندیشه؛ همراه مدیریت روزمره‌ی مدرسه</span>
-            <a class="is-size-7" href="/login">ورود به حساب کاربری</a>
+            <a class="is-size-7 has-text-grey-dark" href="/login">ورود به حساب کاربری</a>
         </div>
     </footer>
 </div>

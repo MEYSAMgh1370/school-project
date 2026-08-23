@@ -19,6 +19,7 @@ These OpenSpec documents are the curated entry point for current behavior, propo
 - [`conventions.md`](conventions.md) - development, testing, documentation, and frontend conventions.
 - [`changes/proposed-work.md`](changes/proposed-work.md) - planned or unresolved work that is not current behavior.
 - [`changes/finance-monetary-unit.md`](changes/finance-monetary-unit.md) - proposed finance monetary-unit contract; no implementation has occurred.
+- [`changes/post-authentication-school-registration.md`](changes/post-authentication-school-registration.md) - proposed post-authentication school-registration handoff contract.
 - [`decisions/2026-07-20-free-tier-entitlements.md`](decisions/2026-07-20-free-tier-entitlements.md) - school creation grants free Academic and Finance entitlements.
 - [`decisions/2026-07-30-flyway-schema-ownership.md`](decisions/2026-07-30-flyway-schema-ownership.md) - Flyway owns schema creation and migrations.
 - [`archive/documentation-audit-2026-08-06.md`](archive/documentation-audit-2026-08-06.md) - inventory, conflicts, and classification from the audit that introduced OpenSpec.

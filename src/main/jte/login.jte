@@ -1,10 +1,13 @@
+@param String postAuthenticationDestination
+
 @template.layout.main(title = "ورود", scripts = java.util.List.of("/js/login.js"), content = @`
 <section class="hero is-fullheight" id="main-content" role="main" tabindex="-1">
     <div class="hero-body">
         <div class="container">
             <div class="columns is-centered">
                 <div class="column is-4-desktop is-6-tablet">
-                    <div class="box" x-data="loginPage()">
+                    <div class="box" x-data="loginPage()"
+                         data-post-authentication-destination="${postAuthenticationDestination}">
                         <h1 class="title is-4">ورود به رشدِاندیشه</h1>
 
                         <div class="tabs is-toggle is-fullwidth">
@@ -105,7 +108,11 @@
                         </div>
 
                         <p class="has-text-centered mt-4">
-                            <a href="/register">حساب ندارید؟ ثبت‌نام کنید</a>
+                            @if(postAuthenticationDestination.equals("/schools/new"))
+                                <a href="/register?next=/schools/new">حساب ندارید؟ ثبت‌نام کنید</a>
+                            @else
+                                <a href="/register">حساب ندارید؟ ثبت‌نام کنید</a>
+                            @endif
                         </p>
                         <p class="has-text-centered mt-2">
                             <a href="/activate">کد دعوت دارید؟ حساب خود را فعال کنید</a>
