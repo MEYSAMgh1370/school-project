@@ -73,7 +73,11 @@ class LoginDashboardFlowIntegrationTest {
         mockMvc.perform(get("/js/register.js"))
                 .andExpect(status().isOk())
                 .andExpect(content().string(org.hamcrest.Matchers.containsString(
-                        "? this.postAuthenticationDestination")));
+                        "? this.postAuthenticationDestination")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString(
+                        "? '/login?next=/schools/new'")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString(
+                        ": this.loginPagePath")));
 
         MvcResult loginResult = mockMvc.perform(post("/api/auth/login")
                         .with(csrf())
@@ -119,7 +123,32 @@ class LoginDashboardFlowIntegrationTest {
     void unauthenticatedSchoolRegistrationPageRedirectsToLogin() throws Exception {
         mockMvc.perform(get("/schools/new"))
                 .andExpect(status().is3xxRedirection())
-                .andExpect(result -> assertThat(result.getResponse().getRedirectedUrl()).endsWith("/login"));
+                .andExpect(result -> assertThat(result.getResponse().getRedirectedUrl())
+                        .isEqualTo("/login?next=/schools/new"));
+    }
+
+    @Test
+    void directSchoolRegistrationEntryPreservesDestinationThroughLogin() throws Exception {
+        mockMvc.perform(get("/schools/new"))
+                .andExpect(status().is3xxRedirection())
+                .andExpect(result -> assertThat(result.getResponse().getRedirectedUrl())
+                        .isEqualTo("/login?next=/schools/new"));
+
+        mockMvc.perform(get("/login").param("next", "/schools/new"))
+                .andExpect(status().isOk())
+                .andExpect(content().string(org.hamcrest.Matchers.containsString(
+                        "data-post-authentication-destination=\"/schools/new\"")));
+
+        MvcResult loginResult = mockMvc.perform(post("/api/auth/login")
+                        .with(csrf())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"email\":\"admin@roshdeandishe.test\",\"password\":\"password\"}"))
+                .andExpect(status().isOk())
+                .andReturn();
+        MockHttpSession session = (MockHttpSession) loginResult.getRequest().getSession(false);
+
+        mockMvc.perform(get("/schools/new").session(session))
+                .andExpect(status().isOk());
     }
 
     @Test
