@@ -83,7 +83,7 @@ file in the image:
 | `APP_BASE_URL` | public URL, so invite emails link somewhere real |
 | `MAIL_HOST` / `MAIL_PORT` / `MAIL_USERNAME` / `MAIL_PASSWORD` | real SMTP; without it invite email just fails soft (`emailSent=false`) |
 | `BALE_BOT_TOKEN`, `BALE_WEBHOOK_SECRET` | only if the Bale integration is actually in use |
-| `SMS_API_KEY` | no effect — the SMS provider integration is unwritten, so OTP login cannot be enabled by configuration ([DEPLOYMENT.md](DEPLOYMENT.md)) |
+| `SMS_API_KEY` | nothing yet — no SMS provider is integrated in code, so setting it does not enable OTP delivery (see [`DEPLOYMENT.md`](DEPLOYMENT.md)) |
 
 The first six are **required** under the `prod` profile — the app refuses to
 start without them rather than quietly running on the dev signing keys

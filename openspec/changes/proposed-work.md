@@ -85,16 +85,18 @@ Source documents:
 Current behavior:
 
 - OTP login is implemented for users with an existing phone number;
-- SMS delivery is not implemented and cannot be configured on. `SmsDriver`
-  has no provider call: setting `roshdeandishe.sms.api-key` logs an error and
-  returns failure, and only `roshdeandishe.sms.dev-log-codes` (a dev/test aid,
-  pinned `false` under `prod`) yields a usable code, by logging it;
+- SMS provider integration is not written: `SmsDriver` reports failure for any
+  nonblank `roshdeandishe.sms.api-key`, so configuration cannot enable delivery;
+- codes are logged instead of sent only when `roshdeandishe.sms.dev-log-codes`
+  is `true` (the default outside the `prod` profile);
+- `requestOtp` fails closed on delivery failure — it rejects the request with
+  `OtpDeliveryUnavailable` and stores no code;
 - OTP rate limiting is explicitly not implemented.
 
 Proposed work:
 
-- write the SMS provider integration itself — this blocks any production OTP
-  launch and is not a deployment-configuration task;
+- integrate a real SMS provider in `SmsDriver` (a prerequisite for OTP login in
+  production, not just hardening);
 - add rate limiting for repeated OTP requests;
 - define lockout, retry, audit, and user-facing error behavior;
 - add integration tests for abuse cases.

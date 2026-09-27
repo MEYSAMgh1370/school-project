@@ -303,10 +303,11 @@ sequenceDiagram
   public facade/API workflow to grant user entitlements yet.
 - Real SMS provider integration is not implemented, and setting
   `roshdeandishe.sms.api-key` does not enable it — `SmsDriver.sendOtp` has no
-  provider call at all and returns failure on that path. Only
-  `roshdeandishe.sms.dev-log-codes` produces a usable code, by logging it. The
-  SMS provider is drawn dashed in the context and container diagrams for this
-  reason.
+  provider call at all and returns failure on that path. `requestOtp` then
+  fails closed: it throws `OtpDeliveryUnavailable` and stores no verification
+  code. Only `roshdeandishe.sms.dev-log-codes` produces a usable code, by
+  logging it, and `application-prod.yml` pins that to `false`. The SMS provider
+  is drawn dashed in the context and container diagrams for this reason.
 
 ## Evidence
 

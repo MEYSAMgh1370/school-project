@@ -113,7 +113,7 @@ This is intentional. An application that boots with a public signing key or a
 | `MAIL_SMTP_STARTTLS` | `true` | STARTTLS on/off |
 | `BALE_BOT_TOKEN` | *(empty)* | Bale bot token. Empty = the bot logs what it would send and makes no HTTP call |
 | `BALE_WEBHOOK_SECRET` | *(empty)* | Secret path segment for the Bale webhook. Empty = the webhook always 404s (fails closed) |
-| `SMS_API_KEY` | *(empty)* | **Has no effect — do not rely on it.** `SmsDriver.sendOtp` contains no provider call, so OTP login does not work in production whether this is set or not. Setting it makes delivery fail with an error log rather than succeed. See "Known limitations" |
+| `SMS_API_KEY` | *(empty)* | Placeholder for a future SMS provider key. **Setting it does not enable OTP delivery** — no provider integration is written yet, so a nonblank key makes `SmsDriver` log an error and report failure. OTP login does not work in production at any value (see below) |
 | `SWAGGER_ENABLED` | `false` | API docs are **off** in production. `/swagger-ui.html` and `/v3/api-docs` are `permitAll` in `SecurityConfig`, so enabling this publishes your whole API surface publicly |
 | `SESSION_COOKIE_SECURE` | `true` | Session cookie `Secure` flag. Leave on; only turn off if you deliberately serve plain HTTP |
 | `HEALTH_CHECK_MAIL` | `false` | Whether SMTP reachability counts toward `/actuator/health` (see §7) |
@@ -260,12 +260,13 @@ school-settings surface yet. Branded entry lives at
 TLS, and are unbuilt — now that a real deployment exists, that's a decision you
 can actually make.
 
-**OTP login does not work in production, and no configuration fixes that.**
-The SMS provider integration is unwritten: `SmsDriver.sendOtp` contains no
-provider call on any path. Setting `SMS_API_KEY` does *not* enable delivery —
-the method logs an error and returns failure, so no valid code is stored either.
-Leaving it empty fails the same way, and under the `prod` profile the code is
-not written to the log at all, because `application-prod.yml` pins
-`roshdeandishe.sms.dev-log-codes` to `false`; code logging is a dev/test aid
-only. Shipping phone login therefore needs code, not a key. Email/password
-login is unaffected.
+**OTP login does not work in production, and no configuration changes that.**
+`SmsDriver` has no SMS provider integration — the HTTP call was never written.
+With `SMS_API_KEY` empty it logs "not configured"; with a nonblank key it logs
+"provider integration not implemented". Either way it reports failure, and
+`IamFacadeImpl.requestOtp` fails closed: the request is rejected with
+`OtpDeliveryUnavailable` and no verification code is stored. Codes are printed
+to the log only in dev, where `roshdeandishe.sms.dev-log-codes` defaults to
+`true`; `application-prod.yml` sets it to `false`. Do not plan a launch around
+phone login until a provider is integrated in code. Email/password login is
+unaffected.
