@@ -124,9 +124,17 @@ Current invariants:
 
 - `layout/main.jte` owns shared head assets.
 - `layout/navbar.jte` is reused by authenticated management pages.
-- Static JS and CSS are served from Spring Boot static resources.
-- The web UI retains the system font stack and uses the adopted ink-blue
-  primary color from `app.css`.
+- `layout/page-header.jte`, `layout/school-scope.jte`, and
+  `layout/empty-state.jte` are shared partials extracted on 2026-09-27;
+  `school-scope.jte` owns the "no school selected" warning plus the error and
+  success notice areas for every school-scoped page.
+- Static JS and CSS are served from Spring Boot static resources, and the
+  Vazirmatn web font is a vendored static asset under `static/fonts/`
+  (no WebJar exists for it).
+- The web UI uses the Vazirmatn font and the Persian-turquoise primary color
+  from `app.css`, and owns its own dark colour scheme. This replaced the
+  system font stack and the ink-blue primary on 2026-09-27; `DESIGN.md` is
+  authoritative for the visual layer.
 - Read-only finance amounts use neutral Persian digits and thousands grouping,
   without a Rial/Toman suffix or numeric conversion because the canonical
   financial unit is unresolved.

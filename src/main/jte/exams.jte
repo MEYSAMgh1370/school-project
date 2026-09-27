@@ -7,25 +7,23 @@
 
 <section class="section" id="main-content" role="main" tabindex="-1" x-data="examsPage()">
     <div class="container">
-        <h1 class="title is-4">آزمون‌ها</h1>
+        @template.layout.page-header(
+            title = "آزمون‌ها")
 
-        <div class="notification is-warning" x-cloak x-show="!schoolId">
-            برای مدیریت آزمون‌ها، یک مدرسه از سوییچر بالا انتخاب کنید.
-        </div>
-
-        <template x-if="schoolId">
-            <div>
-                <div class="notification is-danger" x-show="error" x-text="error"></div>
-                <div class="notification is-success" x-show="notice" x-text="notice"></div>
+        @template.layout.school-scope(
+            noSchoolMessage = "برای مدیریت آزمون‌ها، یک مدرسه از سوییچر بالا انتخاب کنید.",
+            content = @`
 
                 <template x-if="!blocked">
                     <div>
                         <div class="box">
                             <h2 class="title is-6">آزمون‌های تألیفی</h2>
 
-                            <div class="notification is-light" x-show="!loading && exams.length === 0">
-                                این مدرسه هنوز آزمون تألیفی‌ای ندارد. اولین آزمون را از فرم زیر بسازید.
-                            </div>
+                            @template.layout.empty-state(
+                                show = "!loading && exams.length === 0",
+                                art = "exam",
+                                tone = "is-light",
+                                message = @`این مدرسه هنوز آزمون تألیفی‌ای ندارد. اولین آزمون را از فرم زیر بسازید.`)
 
                             <div class="table-container" x-show="exams.length > 0">
                             <table class="table is-fullwidth is-striped">
@@ -354,8 +352,7 @@
                         </div>
                     </div>
                 </template>
-            </div>
-        </template>
+            `)
     </div>
 </section>
 `)

@@ -7,16 +7,12 @@
 
 <section class="section" id="main-content" role="main" tabindex="-1" x-data="peoplePage()">
     <div class="container">
-        <h1 class="title is-4">اعضای مدرسه</h1>
+        @template.layout.page-header(
+            title = "اعضای مدرسه")
 
-        <div class="notification is-warning" x-cloak x-show="!schoolId">
-            برای مدیریت اعضا، یک مدرسه از سوییچر بالا انتخاب کنید.
-        </div>
-
-        <template x-if="schoolId">
-            <div>
-                <div class="notification is-danger" x-show="error" x-text="error"></div>
-                <div class="notification is-success" x-show="notice" x-text="notice"></div>
+        @template.layout.school-scope(
+            noSchoolMessage = "برای مدیریت اعضا، یک مدرسه از سوییچر بالا انتخاب کنید.",
+            content = @`
 
                 <div class="box" x-show="invite && !invite.emailSent">
                     <p class="mb-2">
@@ -102,11 +98,11 @@
                 </table>
                 </div>
 
-                <div class="notification" x-show="!loading && members.length === 0">
-                    هنوز عضوی در این مدرسه ثبت نشده است.
-                </div>
-            </div>
-        </template>
+                @template.layout.empty-state(
+                    show = "!loading && members.length === 0",
+                    art = "people",
+                    message = @`هنوز عضوی در این مدرسه ثبت نشده است.`)
+            `)
     </div>
 </section>
 `)

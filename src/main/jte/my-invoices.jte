@@ -7,16 +7,14 @@
 
 <section class="section" id="main-content" role="main" tabindex="-1" x-data="myInvoicesPage()">
     <div class="container">
-        <h1 class="title is-4">فاکتورهای من</h1>
-        <p class="subtitle is-6">فاکتورهای شهریه‌ی خودتان و فرزندانِ لینک‌شده‌ به شما در این مدرسه.</p>
+        @template.layout.page-header(
+            title = "فاکتورهای من",
+            subtitle = "فاکتورهای شهریه‌ی خودتان و فرزندانِ لینک‌شده‌ به شما در این مدرسه.")
 
-        <div class="notification is-warning" x-cloak x-show="!schoolId">
-            برای مشاهده‌ی فاکتورها، یک مدرسه از سوییچر بالا انتخاب کنید.
-        </div>
-
-        <template x-if="schoolId">
-            <div>
-                <div class="notification is-danger" x-show="error" x-text="error"></div>
+        @template.layout.school-scope(
+            noSchoolMessage = "برای مشاهده‌ی فاکتورها، یک مدرسه از سوییچر بالا انتخاب کنید.",
+            successNotice = false,
+            content = @`
 
                 <p x-show="loading">در حال بارگذاری...</p>
 
@@ -52,11 +50,11 @@
                 </table>
                 </div>
 
-                <div class="notification" x-show="!loading && !error && invoices.length === 0">
-                    فاکتوری برای شما یا فرزندانتان در این مدرسه ثبت نشده است.
-                </div>
-            </div>
-        </template>
+                @template.layout.empty-state(
+                    show = "!loading && !error && invoices.length === 0",
+                    art = "money",
+                    message = @`فاکتوری برای شما یا فرزندانتان در این مدرسه ثبت نشده است.`)
+            `)
     </div>
 </section>
 `)

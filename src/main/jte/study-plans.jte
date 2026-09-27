@@ -8,25 +8,22 @@
 <section class="section" id="main-content" role="main" tabindex="-1"
          x-data="studyPlansPage()" @keydown.escape.window="closeGridBlock()">
     <div class="container">
-        <h1 class="title is-4">برنامه‌های مطالعه</h1>
+        @template.layout.page-header(title = "برنامه‌های مطالعه")
 
-        <div class="notification is-warning" x-cloak x-show="!schoolId">
-            برای مدیریت برنامه‌های مطالعه، یک مدرسه از سوییچر بالا انتخاب کنید.
-        </div>
-
-        <template x-if="schoolId">
-            <div>
-                <div class="notification is-danger" x-show="error" x-text="error"></div>
-                <div class="notification is-success" x-show="notice" x-text="notice"></div>
+        @template.layout.school-scope(
+            noSchoolMessage = "برای مدیریت برنامه‌های مطالعه، یک مدرسه از سوییچر بالا انتخاب کنید.",
+            content = @`
 
                 <template x-if="!blocked">
                     <div>
                         <div class="box">
                             <h2 class="title is-6">برنامه‌ها</h2>
 
-                            <div class="notification is-light" x-show="!loading && plans.length === 0">
-                                این مدرسه هنوز برنامه‌ی مطالعه‌ای ندارد. اولین برنامه را از فرم زیر بسازید.
-                            </div>
+                            @template.layout.empty-state(
+                                show = "!loading && plans.length === 0",
+                                art = "calendar",
+                                tone = "is-light",
+                                message = @`این مدرسه هنوز برنامه‌ی مطالعه‌ای ندارد. اولین برنامه را از فرم زیر بسازید.`)
 
                             <div class="table-container" x-show="plans.length > 0">
                             <table class="table is-fullwidth is-striped">
@@ -391,9 +388,10 @@
                                         </div>
                                     </div>
 
-                                    <div class="notification" x-show="!loadingWeek && intervals.length === 0">
-                                        برای این هفته هنوز بازه‌ی مطالعه‌ای ثبت نشده است. از «پیشنهاد خودکار» یا فرم زیر استفاده کنید.
-                                    </div>
+                                    @template.layout.empty-state(
+                                        show = "!loadingWeek && intervals.length === 0",
+                                        art = "calendar",
+                                        message = @`برای این هفته هنوز بازه‌ی مطالعه‌ای ثبت نشده است. از «پیشنهاد خودکار» یا فرم زیر استفاده کنید.`)
 
                                     <h4 class="title is-6">افزودن بازه‌ی مطالعه‌ی دستی</h4>
                                     <form @submit.prevent="createInterval">
@@ -431,8 +429,7 @@
                         </div>
                     </div>
                 </template>
-            </div>
-        </template>
+            `)
     </div>
 
     <%-- ------------------------------------------------------- بازه‌ی انتخاب‌شده --%>

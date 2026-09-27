@@ -4,9 +4,56 @@
 
    The "Bulma bridge" section requires the Bulma WebJar to be 1.x
    (runtime CSS variables) — verified: pom.xml pins 1.0.4 (DESIGN.md §2).
+
+   Visual direction: "Paper & Turquoise", adopted 2026-09-27 (DESIGN.md §4).
+   Two moves: warm the neutral scheme (hue 221 → 28), and move the single
+   accent from ink-blue to Persian turquoise. Replaces the ink-blue adopted
+   2026-08-16.
+
+   CASCADE NOTE — read before editing. Bulma declares its scheme values in
+   three places at identical specificity (0,1,0): `:root`, `@media
+   (prefers-color-scheme: light)`, and `.theme-light`. This file loads after
+   bulma.min.css (layout/main.jte), so a plain `:root` block here beats all
+   three. That is why HUE and SATURATION live in `:root` below — they are
+   meant to apply to both schemes — while the LIGHTNESS stops live in a
+   `@media (prefers-color-scheme: light)` block further down. Moving a
+   lightness stop up into `:root` would also override Bulma's dark block
+   (bulma.css line 1810, `--bulma-scheme-main-l: 9%`) and render light
+   surfaces under dark-mode text. See DESIGN.md §12 on the dark scheme.
    ========================================================================== */
 
+/* --- Vazirmatn (DESIGN.md §3) ---------------------------------------------
+   Self-hosted from `static/fonts/`, NOT a WebJar: no `vazirmatn` artifact
+   exists on Maven Central under org.webjars, org.webjars.npm, or any other
+   group (checked 2026-09-27). Static files are the other half of the
+   no-CDN rule in CLAUDE_LEGACY.md §2, so this stays compliant — but it does
+   mean the font is vendored and we own updating it.
+
+   One VARIABLE font covers the whole 100-900 range in 111 KB. The three
+   static weights the direction needs (400/500/700) would be 153 KB, so this
+   is both smaller and more flexible. Upstream ships it as `Vazirmatn[wght]
+   .woff2`; renamed here because the brackets need URL-escaping.
+
+   Source: github.com/rastikerdar/vazirmatn v33.003, SIL OFL 1.1.
+   Licence text is kept beside the font at static/fonts/OFL.txt as the
+   licence requires. */
+@font-face {
+  font-family: "Vazirmatn";
+  src: url("/fonts/Vazirmatn-Variable.woff2") format("woff2-variations"),
+       url("/fonts/Vazirmatn-Variable.woff2") format("woff2");
+  font-weight: 100 900;
+  font-style: normal;
+  font-display: swap;
+}
+
 :root {
+  /* Vazirmatn first, then the previous system stack unchanged as fallback —
+     if the font fails to load, the UI degrades to exactly what shipped
+     before rather than to a browser default. */
+  --bulma-family-primary: "Vazirmatn", system-ui, -apple-system, "Segoe UI",
+                          Roboto, "Helvetica Neue", Helvetica, Arial, sans-serif;
+  --bulma-family-secondary: var(--bulma-family-primary);
+
   /* --- Spacing scale (px) — the only values custom CSS may use ---------- */
   --space-1: 4px;
   --space-2: 8px;
@@ -17,14 +64,16 @@
   --space-7: 48px;
   --space-8: 64px;
 
-  /* --- Radius ------------------------------------------------------------ */
-  --radius-sm: 8px;
-  --radius-md: 12px;
-  --radius-lg: 16px;
+  /* --- Radius — one step softer than the 8/12/16 of the ink-blue era ----- */
+  --radius-sm: 10px;
+  --radius-md: 14px;
+  --radius-lg: 20px;
 
-  /* --- Shadows (two levels only; no heavy elevation) --------------------- */
-  --shadow-sm: 0 1px 2px hsl(210 30% 20% / 0.08);
-  --shadow-md: 0 2px 8px hsl(210 30% 20% / 0.12);
+  /* --- Shadows (two levels only; no heavy elevation) ---------------------
+     Tinted warm to match the paper scheme: a cool-grey shadow under a warm
+     surface is what makes a warm palette look accidental. */
+  --shadow-sm: 0 1px 2px hsl(28 25% 20% / 0.06);
+  --shadow-md: 0 4px 16px hsl(28 25% 20% / 0.10);
 
   /* --- Motion ------------------------------------------------------------ */
   --motion-fast: 120ms;
@@ -40,20 +89,247 @@
   --bulma-radius:       var(--radius-md);
   --bulma-radius-large: var(--radius-lg);
 
-  /* Primary accent — adopted 2026-08-16 (DESIGN.md §4):
-     desaturated ink-blue hsl(210 40% 38%) ≈ #3A5F84.
-     Bulma 1.x derives every shade/state from these three components. */
-  --bulma-primary-h: 210deg;
-  --bulma-primary-s: 40%;
-  --bulma-primary-l: 38%;
+  /* --- Warm neutral scheme (DESIGN.md §4) -------------------------------
+     Bulma derives every surface and border from scheme-h/-s, but derives
+     text from a SEPARATE text-h/-s pair (bulma.css lines 124-125). Both
+     must be set or the surfaces warm up while every caption stays cool
+     grey. Text runs at a lower saturation on purpose — warm greys go olive
+     past ~20% at these lightnesses.
+     Hue and saturation are deliberately outside the light-only media block
+     so the warmth carries into the dark scheme too. */
+  --bulma-scheme-h: 28;
+  --bulma-scheme-s: 34%;
+  --bulma-text-h: 28deg;
+  --bulma-text-s: 18%;
+
+  /* --- Primary accent: Persian turquoise (فیروزه) ------------------------
+     hsl(177 58% 29%) ≈ #1F7571. 5.1:1 on paper, 5.5:1 carrying white text.
+     Deliberately NOT a warm terracotta/amber: this UI has real destructive
+     actions, and a warm red-adjacent primary sitting next to an is-danger
+     button makes the most consequential distinction in the app the hardest
+     one to see (DESIGN.md §4). */
+  --bulma-primary-h: 177deg;
+  --bulma-primary-s: 58%;
+  --bulma-primary-l: 29%;
 
   /* Links match primary so buttons and anchors agree on one accent. */
-  --bulma-link-h: 210deg;
-  --bulma-link-s: 40%;
-  --bulma-link-l: 38%;
+  --bulma-link-h: 177deg;
+  --bulma-link-s: 58%;
+  --bulma-link-l: 29%;
 
-  /* success / warning / danger / info: Bulma defaults, deliberately
-     untouched (DESIGN.md §4). */
+  /* The `is-light` family (button/tag/notification `.is-light`) is its own
+     color, independent of the scheme — left alone it keeps shipping a cool
+     #F3F4F6 fill with #2E333D text on warm paper. */
+  --bulma-light-h: 28deg;
+  --bulma-light-s: 30%;
+
+  /* --- Semantics, re-tinted into the warm family (DESIGN.md §4) ----------
+     Bulma's stock semantics are LIGHT (l 53-70%) and cool; they read as
+     foreign against warm paper. These are darker and warmer, and all clear
+     WCAG AA on paper: success 5.4:1, danger 5.5:1, info 5.4:1. */
+  --bulma-success-h: 144deg;
+  --bulma-success-s: 46%;
+  --bulma-success-l: 31%;
+
+  /* Saffron. The one semantic that cannot carry white text at any usable
+     lightness — it keeps Bulma's dark invert (5.2:1 with ink), exactly as
+     the stock yellow already behaves, so no template changes. */
+  --bulma-warning-h: 37deg;
+  --bulma-warning-s: 75%;
+  --bulma-warning-l: 45%;
+
+  --bulma-danger-h: 5deg;
+  --bulma-danger-s: 61%;
+  --bulma-danger-l: 44%;
+
+  --bulma-info-h: 200deg;
+  --bulma-info-s: 50%;
+  --bulma-info-l: 36%;
+
+  /* Bulma sizes `is-*` button/tag text off <color>-invert-l, whose stock
+     values assume a LIGHT fill (primary-invert-l resolves to 6%). Every
+     accent above is dark, so each needs white text or `.button.is-primary`
+     ships near-black on dark teal at ~2:1. Warning is excluded on purpose
+     — see above. */
+  --bulma-primary-invert-l: 100%;
+  --bulma-link-invert-l:    100%;
+  --bulma-success-invert-l: 100%;
+  --bulma-danger-invert-l:  100%;
+  --bulma-info-invert-l:    100%;
+
+  /* --- Type metrics (DESIGN.md §3) --------------------------------------
+     The §3 mechanism is unchanged — hierarchy stays a fixed subset of Bulma
+     classes so "never invent typography" stays reviewable. Only the metrics
+     behind those classes move, and only where Persian needs it.
+     `title is-4` / `is-5` already resolve to 1.5rem / 1.25rem, which is what
+     the direction wants, so size-4 and size-5 are deliberately untouched. */
+
+  /* Persian needs more leading than Bulma's 1.5 to read calmly. This one IS
+     reachable from :root. The other two §3 metrics are not — see the
+     "not tokenized by Bulma" block below. */
+  --bulma-body-line-height: 1.75;
+}
+
+/* --- Light-scheme lightness stops (DESIGN.md §4) --------------------------
+   Scoped to the light scheme so Bulma's dark block keeps its own stops —
+   see the CASCADE NOTE at the top of this file. Bulma's own light block
+   (bulma.css line 917) loses to this one on document order.
+
+   Paper ramp: surface #FEFDFC, page #F8F5F1, fill #F6F2EC, hairline #E8DACF.
+   Ink: body #4E4236 (8.7:1), weak #7E6A58 (4.7:1), strong #332B24 (13:1).
+   text-weak is pulled from Bulma's 48% to 42% because 48% lands at 4.4:1 on
+   paper — under AA. Every `is-size-7 has-text-grey` caption depends on it. */
+@media (prefers-color-scheme: light) {
+  :root {
+    --bulma-scheme-main-l:     99.5%;
+    --bulma-scheme-main-bis-l: 98%;
+    --bulma-scheme-main-ter-l: 96%;
+    --bulma-background-l:      95%;
+    --bulma-border-weak-l:     92%;
+    --bulma-border-l:          85%;
+    --bulma-text-weak-l:       42%;
+    --bulma-text-l:            26%;
+    --bulma-text-strong-l:     17%;
+    --bulma-text-title-l:      12%;
+
+    /* Inline `<a>` does NOT read --bulma-link. Bulma builds --bulma-link-text
+       from link-on-scheme-l, which ships at 58% for light — against the
+       turquoise hue that renders a pale #56D2CC at 1.8:1 on paper.
+       This MUST stay light-scoped: Bulma's dark block sets it to 73%, and
+       hoisting 29% into `:root` drops dark-mode links to 3.3:1. Both
+       measured 2026-09-27 by reading computed styles. */
+    --bulma-link-on-scheme-l: 29%;
+
+    /* Cards stay near-white; the PAGE becomes paper. Bulma points body
+       background at scheme-main (white) by default. */
+    --bulma-body-background-color: var(--bulma-scheme-main-ter);
+  }
+}
+
+/* --- Dark-scheme stops (DESIGN.md §12) ------------------------------------
+   The app has rendered dark for OS-dark visitors since the Bulma 1.x upgrade,
+   on Bulma's stock stops, undesigned. This block owns it.
+
+   Two things were wrong with the inherited defaults, beyond hue:
+   1. Page and card both resolved to the same colour, so nothing separated.
+      Bulma points `body-background-color` at `scheme-main`; here the page is
+      pushed BELOW the card instead, which is the usual dark-UI arrangement.
+   2. Saturation. 34% is right for paper at 95%+ lightness and muddy at 13%,
+      so the dark scheme runs its own lower value. Hue stays 28. */
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bulma-scheme-s: 18%;
+
+    --bulma-scheme-main-l:     13%;  /* cards / surfaces */
+    --bulma-scheme-main-bis-l: 16%;
+    --bulma-scheme-main-ter-l: 19%;
+    --bulma-background-l:      17%;  /* fills, table stripes */
+    --bulma-border-weak-l:     24%;
+    --bulma-border-l:          32%;
+
+    --bulma-text-l:        84%;
+    --bulma-text-strong-l: 94%;
+    --bulma-text-weak-l:   64%;
+    --bulma-text-title-l:  97%;
+
+    /* Page sits BELOW the card so surfaces read as raised. */
+    --bulma-body-background-color: hsl(28, 18%, 8%);
+
+    /* `is-light` is a named light colour, and Bulma does not flip it for the
+       dark scheme — left alone it fires a near-white #F8F5F2 button onto a
+       #181411 page, which is a straightforward visual defect. Here it becomes
+       the raised-surface tone it is meant to be. 40% is chosen because it is
+       where the fill separates clearly from both page and card (24% and 32%
+       both sat too close to the card); the invert then has to rise to 96% to
+       keep the label at AA over that lighter fill, which it does at 4.9:1. */
+    --bulma-light-l: 40%;
+    --bulma-light-invert-l: 96%;
+
+    /* `.tag.is-light` does NOT read `--bulma-light-invert-l`. Bulma emits
+       `.tag.is-light.is-light` (specificity 0,3,0, and `.is-light.is-light`
+       matches a single `is-light` class), which always wins and reads
+       `--bulma-light-light-invert-l` instead — a variable Bulma never defines
+       in `:root`. `--bulma-tag-color-l` is therefore invalid and the tag
+       silently inherits body text colour. That was harmless while `is-light`
+       was near-white; against the 40% fill above it measured 3.74:1. Defining
+       it is the fix. */
+    --bulma-light-light-invert-l: 96%;
+
+    /* Primary stays at l 29%: white-on-turquoise measures 5.5:1, and the
+       button still clears 3:1 against the page for non-text contrast.
+       Lightening it for presence would drop the white label below AA. */
+
+    /* Danger is the one accent that does move. At the light-scheme 44% the
+       `.input.is-danger` BORDER measures 2.88:1 against a dark field — under
+       the 3:1 that non-text state indicators need (WCAG 1.4.11). The invalid
+       state is still dual-coded with `help is-danger` text, so this was never
+       a 1.4.1 colour-only failure, but 50% fixes the border (3.3:1) while
+       white-on-danger stays AA at 4.8:1. */
+    --bulma-danger-l: 50%;
+  }
+}
+
+/* ==========================================================================
+   Not tokenized by Bulma 1.0.4 — the three escapes from the token bridge.
+
+   Everything else in this direction is a `:root` token. These three cannot
+   be, and each was found by reading computed styles rather than by reading
+   Bulma's docs. Re-check them on any Bulma upgrade; delete any that a later
+   version tokenizes.
+   ========================================================================== */
+
+/* 1. `.has-text-grey` — the Caption role in DESIGN.md §3 — is hardcoded at
+      bulma.css:19551 as `color: hsl(221, 14%, 48%) !important`. It survives
+      any token re-skin as a cool blue-grey, and on warm paper it measures
+      4.31:1 — below AA, where it cleared 4.69:1 on Bulma's old white ground.
+      Bulma 1.0.4 ships no `.has-text-weak` to switch to. `!important` here
+      only matches Bulma's own. */
+.has-text-grey {
+  color: var(--bulma-text-weak) !important;
+}
+
+/* 1b. Same defect, the other variant. `.has-text-grey-dark` is hardcoded
+      `hsl(221, 14%, 29%)` — a DARK cool grey, so in the dark scheme it is
+      dark-on-dark: measured 1.68:1 on the landing-page footer link, which is
+      a real sign-in link nobody could read. In the light scheme it passes at
+      9.4:1 but is visibly cool against warm paper. Mapped onto body ink,
+      which flips per scheme.
+      Only `grey` and `grey-dark` are used in this codebase (33 and 1 sites);
+      `-darker`, `-light`, and `-lighter` are hardcoded too and will need the
+      same treatment on first use. */
+.has-text-grey-dark {
+  color: var(--bulma-text) !important;
+}
+
+/* 2. `.is-size-7` carries BOTH the Small and Caption roles in §3 and is
+      hardcoded at bulma.css:20667 as `font-size: 0.75rem !important`
+      (`--bulma-size-7` exists but has zero consumers — verified). 12px is
+      too small for comfortable Persian; 13px is the legibility floor. */
+.is-size-7 {
+  font-size: 0.8125rem !important;
+}
+
+/* 3b. `.button.is-light` ships `border-width: 0` and a fill that now sits at
+      1:1 against the warm page — the secondary/cancel action reads as bare
+      text rather than a control. (Stock Bulma had the same problem at 1.03:1
+      on white; the warm page neither caused nor worsened it.)
+
+      This is NOT a WCAG 1.4.11 failure and the border below is not an
+      attempt to reach 3:1 — a control identifiable by its text label is
+      exempt, and these labels measure 10.9:1. No light fill can reach 3:1
+      against a light page and still be light. It is a plain affordance fix:
+      a hairline is what makes the button look like a button. */
+.button.is-light {
+  border: 1px solid var(--bulma-border);
+}
+
+/* 3. `--bulma-title-line-height` is declared ON `.title, .subtitle`
+      (bulma.css:5325), not on `:root`, so an element-scoped declaration
+      beats any `:root` override. Bulma's 1.125 collides Persian ascenders
+      with the dot-heavy descenders (ج چ ژ). */
+.title,
+.subtitle {
+  --bulma-title-line-height: 1.3;
 }
 
 /* --- Accessibility floor (DESIGN.md §7) ----------------------------------- */
@@ -130,6 +406,49 @@
 
   .navbar-item.has-dropdown.is-active .navbar-dropdown {
     display: block;
+  }
+}
+
+/* --- Empty state (DESIGN.md §5a) ------------------------------------------
+   Used only by layout/empty-state.jte. The art is decorative (aria-hidden)
+   and carries the accent in a circular primary-soft well; the text keeps
+   normal body colour so the illustration never competes with it. Stacks on
+   narrow screens, sits inline-start on wide ones. */
+
+.app-empty {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+  text-align: start;
+}
+
+.app-empty__art {
+  flex: none;
+  display: grid;
+  place-items: center;
+  inline-size: 72px;
+  block-size: 72px;
+  border-radius: 50%;
+  background: var(--bulma-primary-soft);
+  /* `--bulma-primary-soft` flips dark for the dark scheme but `--bulma-primary`
+     does NOT — using it here put a 29%-lightness stroke on a 25%-lightness
+     well, measured 1.66:1, i.e. an invisible illustration. `-on-scheme` is the
+     variant Bulma lightens per scheme, which is exactly what a foreground mark
+     on a soft well needs. */
+  color: var(--bulma-primary-on-scheme);
+}
+
+.app-empty__art svg {
+  inline-size: 40px;
+  block-size: 40px;
+}
+
+.app-empty__text { min-inline-size: 0; }
+
+@media screen and (max-width: 480px) {
+  .app-empty {
+    flex-direction: column;
+    align-items: flex-start;
   }
 }
 

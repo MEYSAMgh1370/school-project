@@ -7,16 +7,12 @@
 
 <section class="section" id="main-content" role="main" tabindex="-1" x-data="financePage()">
     <div class="container">
-        <h1 class="title is-4">امور مالی مدرسه</h1>
+        @template.layout.page-header(
+            title = "امور مالی مدرسه")
 
-        <div class="notification is-warning" x-cloak x-show="!schoolId">
-            برای مدیریت امور مالی، یک مدرسه از سوییچر بالا انتخاب کنید.
-        </div>
-
-        <template x-if="schoolId">
-            <div>
-                <div class="notification is-danger" x-show="error" x-text="error"></div>
-                <div class="notification is-success" x-show="notice" x-text="notice"></div>
+        @template.layout.school-scope(
+            noSchoolMessage = "برای مدیریت امور مالی، یک مدرسه از سوییچر بالا انتخاب کنید.",
+            content = @`
 
                 <template x-if="!blocked">
                     <div>
@@ -163,13 +159,13 @@
                             </div>
                         </template>
 
-                        <div class="notification" x-show="!loading && invoices.length === 0">
-                            هنوز فاکتوری برای این مدرسه صادر نشده است.
-                        </div>
+                        @template.layout.empty-state(
+                            show = "!loading && invoices.length === 0",
+                            art = "money",
+                            message = @`هنوز فاکتوری برای این مدرسه صادر نشده است.`)
                     </div>
                 </template>
-            </div>
-        </template>
+            `)
     </div>
 </section>
 `)

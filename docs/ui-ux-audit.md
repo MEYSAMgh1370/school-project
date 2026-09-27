@@ -554,7 +554,10 @@ Keep the existing stack: JTE + Alpine/fetch + Bulma + custom CSS. Do not migrate
 
 ### Colors
 
-- Keep primary ink-blue token bridge in `app.css`.
+- Keep primary ink-blue token bridge in `app.css`. *(Point-in-time
+  recommendation; superseded 2026-09-27 — the primary is Persian turquoise and
+  the semantics are re-tinted. `DESIGN.md` §4 is authoritative. The rest of this
+  file is left as the dated audit it is.)*
 - Use Bulma semantic classes only for semantic state: success, warning, danger, info.
 - Destructive actions: `is-danger`; final confirmation button not `is-light`.
 

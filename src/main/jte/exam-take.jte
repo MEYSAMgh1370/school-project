@@ -44,9 +44,10 @@
                     </ul>
                 </div>
 
-                <div class="notification" x-show="exam.sections.length === 0">
-                    این آزمون هنوز بخشی ندارد.
-                </div>
+                @template.layout.empty-state(
+                    show = "exam.sections.length === 0",
+                    art = "exam",
+                    message = @`این آزمون هنوز بخشی ندارد.`)
 
                 <p role="status" x-cloak x-show="loadingQuestions">در حال بارگذاری سؤال‌ها...</p>
 
