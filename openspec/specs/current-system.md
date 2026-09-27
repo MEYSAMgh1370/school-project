@@ -181,7 +181,8 @@ These are not bugs unless a change proposal says otherwise:
 - no platform-admin actor model or platform permission path;
 - no billing/upgrade UI or REST endpoint for paid entitlements;
 - no horizontal web-session scaling support;
-- no production SMS provider configured by default;
+- no SMS provider integration at all — `SmsDriver.sendOtp` has no provider
+  call, so production OTP delivery cannot be turned on by configuration;
 - OTP rate limiting is not implemented;
 - the canonical persisted, entry, and display unit for finance values, plus
   any Rial/Toman conversion and rounding rules, is not defined;

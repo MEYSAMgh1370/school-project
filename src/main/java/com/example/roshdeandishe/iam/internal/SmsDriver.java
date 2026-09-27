@@ -13,9 +13,11 @@ import org.springframework.stereotype.Component;
  * می‌تواند کد را در لاگ چاپ کند، ولی production باید fail-closed باشد: اگر
  * پیامک واقعاً ارسال نشود، کد معتبری هم ذخیره نمی‌شود.
  * <p>
- * roshdeandishe.sms.api-key پیش‌فرض خالی دارد - یک ارائه‌دهنده‌ی واقعی
- * پیامک، کانفیگ زمان استقرار است، نه کد گم‌شده (همان دلیل
- * roshdeandishe.bale.bot-token خالی).
+ * roshdeandishe.sms.api-key پیش‌فرض خالی دارد، ولی برخلاف
+ * roshdeandishe.bale.bot-token، تنظیم‌کردن آن هیچ چیزی را فعال نمی‌کند:
+ * هنوز هیچ تماس HTTPای با ارائه‌دهنده در این کلاس نوشته نشده. پس ارسال
+ * واقعی پیامک «کد گم‌شده» است، نه کانفیگ زمان استقرار - و مستندات استقرار
+ * باید همین را بگویند.
  */
 @Component
 class SmsDriver {
