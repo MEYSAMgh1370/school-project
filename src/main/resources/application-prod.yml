@@ -111,5 +111,9 @@ roshdeandishe:
     bot-token: ${BALE_BOT_TOKEN:}
     webhook-secret: ${BALE_WEBHOOK_SECRET:}
   sms:
+    # ست کردن SMS_API_KEY ورود با پیامک را فعال نمی‌کند: اتصال به ارائه‌دهنده
+    # در SmsDriver نوشته نشده و هر مقدار غیرخالی شکست برمی‌گرداند. با
+    # dev-log-codes=false هم requestOtp در production همیشه fail-closed است
+    # (رجوع به application.yml و DEPLOYMENT.md).
     api-key: ${SMS_API_KEY:}
     dev-log-codes: false
