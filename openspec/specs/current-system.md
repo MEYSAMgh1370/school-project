@@ -181,7 +181,9 @@ These are not bugs unless a change proposal says otherwise:
 - no platform-admin actor model or platform permission path;
 - no billing/upgrade UI or REST endpoint for paid entitlements;
 - no horizontal web-session scaling support;
-- no production SMS provider configured by default;
+- no SMS provider integration exists in `SmsDriver`, so OTP delivery cannot be
+  enabled by configuration — a nonblank `roshdeandishe.sms.api-key` still
+  reports failure, and `requestOtp` then fails closed;
 - OTP rate limiting is not implemented;
 - the canonical persisted, entry, and display unit for finance values, plus
   any Rial/Toman conversion and rounding rules, is not defined;
