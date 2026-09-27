@@ -1,9 +1,17 @@
 # Web Design Follow-Ups
 
 Status: partially implemented on 2026-08-16; the canonical financial unit
-remains unresolved.
+remains unresolved. **Two of the accepted decisions below were superseded on
+2026-09-27** by the "Paper & Turquoise" visual direction — see the annotations
+under "Accepted Behavior" and [`DESIGN.md`](../../DESIGN.md), which is
+authoritative for the visual layer. The finance/digit items are unaffected and
+still current.
 
 ## Current Behavior
+
+*Snapshot as of this proposal's writing (pre-2026-08-16), kept as the record of
+what motivated it. For the visual layer this is no longer current — see the
+Status note above.*
 
 - `app.css` already applies the proposed desaturated ink-blue primary color, but
   `DESIGN.md` still describes it as pending sign-off;
@@ -28,9 +36,15 @@ Evidence:
 
 ## Accepted Behavior
 
-- adopt the existing ink-blue `hsl(210, 40%, 38%)` (`#3A5F84`) as the web
-  primary color;
-- retain the system font stack and add no font dependency or hosted font asset;
+- ~~adopt the existing ink-blue `hsl(210, 40%, 38%)` (`#3A5F84`) as the web
+  primary color~~ — **superseded 2026-09-27:** the primary is Persian
+  turquoise `hsl(177, 58%, 29%)` (`#1F7571`) and the neutral scheme is warm
+  (hue 28). See `DESIGN.md` §4;
+- ~~retain the system font stack and add no font dependency or hosted font
+  asset~~ — **superseded 2026-09-27:** Vazirmatn v33.003 is self-hosted as a
+  vendored static variable font at `static/fonts/`. Still no CDN and no build
+  step, so the underlying `CLAUDE_LEGACY.md` §2 constraint is intact; what
+  changed is that a font asset is now accepted. See `DESIGN.md` §3;
 - display existing finance amounts neutrally with Persian digits and the
   Arabic thousands separator (`٬`), without appending Rial or Toman;
 - accept Persian and Arabic-Indic digits in finance amount fields, normalize

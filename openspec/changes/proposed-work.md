@@ -103,8 +103,12 @@ Source documents:
 Resolved parts as of 2026-08-16:
 
 - shared CSS tokens exist in `app.css`;
-- the existing ink-blue primary color is adopted;
-- the web UI retains the system font stack with no new font dependency;
+- ~~the existing ink-blue primary color is adopted~~ — **superseded
+  2026-09-27:** Persian turquoise `hsl(177, 58%, 29%)` with a warm neutral
+  scheme (`DESIGN.md` §4);
+- ~~the web UI retains the system font stack with no new font dependency~~ —
+  **superseded 2026-09-27:** Vazirmatn is vendored as a static variable font
+  (`DESIGN.md` §3);
 - finance amount inputs normalize Persian and Arabic-Indic digits on edit and
   before serialization;
 - finance amounts temporarily display as neutral Persian digits with `٬`

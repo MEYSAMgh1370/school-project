@@ -559,20 +559,42 @@ action per page. Reduce cognitive load.
 **Tokens** live in the `:root` block of `static/css/app.css` — that file is the source
 of truth for values; `DESIGN.md` is the source of truth for rules.
 - Spacing: `--space-1`…`--space-8` = 4/8/12/16/24/32/48/64px
-- Radius: `--radius-sm/md/lg` = 8/12/16px, bridged onto Bulma's own variables
-- Shadows: two levels only. Elevation is not the hierarchy mechanism — spacing is.
+- Radius: `--radius-sm/md/lg` = 10/14/20px, bridged onto Bulma's own variables
+- Shadows: two levels only, tinted warm. Elevation is not the hierarchy mechanism — spacing is.
 - Motion: 120ms / 180ms, ease-out, no bounce. `prefers-reduced-motion` honored globally.
-- Primary color: desaturated ink-blue `hsl(210 40% 38%)`, set via Bulma 1.x's
-  `--bulma-primary-{h,s,l}`. Changing the accent is a three-line edit.
+- Primary color: Persian turquoise `hsl(177 58% 29%)` (`#1F7571`), set via Bulma 1.x's
+  `--bulma-primary-{h,s,l}`. Replaced the ink-blue `hsl(210 40% 38%)` on 2026-09-27.
+- Neutral scheme: warm paper. **Both** `--bulma-scheme-h/-s` (surfaces) and
+  `--bulma-text-h/-s` (text) must be set — they are separate, and setting only
+  the scheme leaves every caption cool grey.
+
+**Changing the accent is no longer a three-line edit.** Four traps, all measured
+in a browser rather than read out of Bulma's source (`DESIGN.md` §4):
+- dark accents need `--bulma-<color>-invert-l: 100%`, or `is-primary` ships
+  near-black label text on a dark fill at ~2:1;
+- `<a>` reads `--bulma-link-text` (from `--bulma-link-on-scheme-l`), not
+  `--bulma-link`, and that override **must be scoped to the light scheme** — in
+  `:root` it clobbers Bulma's dark value;
+- `.has-text-grey` and `.is-size-7` are hardcoded `!important`;
+  `--bulma-title-line-height` is declared on `.title`, which beats `:root`;
+- `--bulma-primary-soft` flips per scheme but `--bulma-primary` does not.
+
+**Font** — Vazirmatn v33.003, self-hosted at `static/fonts/` as a vendored
+variable woff2 (no WebJar exists for it). The old system stack is retained as
+the fallback list.
 
 **Typography** — no custom scale. The allowed set is exactly:
 `title is-4` (page title, one per page) · `title is-5` (section) · `title is-6`
 (card) · default (body) · `is-size-7` (small) · `is-size-7 has-text-grey` (caption).
-Anything else is a design-system change, not a page decision.
+Anything else is a design-system change, not a page decision. Prefer
+`@template.layout.page-header(...)` over hand-writing the title/subtitle pair.
+Metrics behind those classes were revised for Persian on 2026-09-27: body
+leading 1.75, title leading 1.3, `is-size-7` 13px.
 
 **Color** — one accent per screen, on the primary action and active nav only.
-Bulma's stock success/warning/danger/info keep their semantics; danger means
-destructive or error, never decoration.
+success/warning/danger/info keep their semantics — danger means destructive or
+error, never decoration — but they are **re-tinted warm**, no longer Bulma
+stock. Warning is the one that can never carry white text; it pairs with ink.
 
 **RTL** — `dir="rtl"` is set once in the layout. Latin data (emails, IDs, tokens,
 phone numbers) gets its own `dir="ltr"` element so it doesn't visually reverse. Custom
@@ -600,8 +622,25 @@ decision, not a page-level one.
 **Components** — the component library is *the set of `.jte` templates that exist*,
 not an aspirational list. Compose from Bulma primitives inline; extract a shared
 partial on the **third** real duplicate, and record it in `DESIGN.md` when you do.
+Existing shared partials: `layout/main.jte`, `layout/navbar.jte`,
+`layout/page-header.jte`, `layout/school-scope.jte`, `layout/empty-state.jte`.
 Explicit non-goals: toast, drawer, wizard, data-grid, form draft autosave, table sort
-persistence, dark mode, icon packs.
+persistence, icon packs. **Dark mode is no longer a non-goal** — the app renders
+dark for OS-dark visitors and `app.css` now owns that scheme deliberately
+(`DESIGN.md` §4a).
+
+**Never hand-write a school-scoped page shell.** Use
+`@template.layout.school-scope(noSchoolMessage = "…", content = @\`…\`)`; it owns
+the "no school selected" warning and the error/success notice areas that 14
+pages used to repeat. Pass `successNotice = false` on read-only pages whose
+Alpine component defines no `notice`, or Alpine throws on the undefined
+reference.
+
+**Empty states** go through `@template.layout.empty-state(...)`, which carries
+the five inline-SVG drawings. Its `show` param is the Alpine condition verbatim —
+and note those conditions contain `&&`, which lands inside an HTML attribute;
+`EmptyStatePartialRenderTest` exists to catch escaping regressions there, because
+JTE compilation will not.
 
 **Before building a *new* page**, the team runs the shared
 [`design-page`](.agents/skills/design-page/SKILL.md) pass: user goal and role,

@@ -10,13 +10,36 @@ number presentation, and the need-driven loading-component policy were
 confirmed on 2026-08-16. The canonical financial unit remains unresolved.
 
 **Visual direction "Paper & Turquoise", adopted 2026-09-27.** Supersedes the
-ink-blue primary and the cool Bulma neutral scheme signed off on 2026-08-16.
-Two moves: warm the neutral scheme (hue 221 → 28) and move the single accent
-to Persian turquoise. Affects §2 (radius, shadows), §3 (type metrics), §4
-(color, semantics), §7 (one AA fix), §12 (dark scheme), §13. Implemented in
-`app.css` only — no template, Java, or build change. The tier-2..5 work
-proposed alongside it (Vazirmatn, shared partials, illustration, a designed
-dark scheme) was **not** adopted and remains open; see §13.
+ink-blue primary, the cool Bulma neutral scheme, and the system-font decision
+signed off on 2026-08-16. Two moves define it: warm the neutral scheme
+(hue 221 → 28) and move the single accent to Persian turquoise.
+
+Adopted in full, not in part:
+
+- **Tokens** — warm scheme, turquoise primary, semantics re-tinted, radius
+  10/14/20, warm shadows, type metrics (§2, §3, §4).
+- **Vazirmatn v33.003**, self-hosted as a vendored static variable font — no
+  WebJar for it exists (§3, §13.2).
+- **Three shared partials** — `layout/page-header.jte`,
+  `layout/school-scope.jte`, `layout/empty-state.jte`, adopted across 14
+  pages (§5, §5a).
+- **Empty-state illustration** — five inline SVGs behind one partial, 15
+  sites (§5a). An icon pack was re-examined and rejected (§11.3).
+- **The dark scheme is owned**, no longer inherited undesigned from Bulma
+  (§4a, §12).
+
+Touches `app.css`, 15 `.jte` templates, three new partials, the vendored font,
+and one test. No Java, no controllers, no `pom.xml`, no build change; the
+zero-build and no-CDN rules in `CLAUDE_LEGACY.md` §2 both hold. What remains
+open is listed in §13 — notably the currency contract (§13.5), per-page dark
+verification, and empty-state copy (§13.9).
+
+This supersedes two OpenSpec records that predate it:
+[`openspec/specs/current-system.md`](openspec/specs/current-system.md)'s web-UI
+invariant and the ink-blue/system-font entries under "Accepted Behavior" in
+[`openspec/changes/web-design-followups.md`](openspec/changes/web-design-followups.md).
+Both are annotated there; this file is the current authority for the visual
+layer.
 
 Subordinate to OpenSpec current-behavior docs for architecture, domain, and
 access control, and to `UX_ROADMAP.md` §2 for binding shared UX patterns
