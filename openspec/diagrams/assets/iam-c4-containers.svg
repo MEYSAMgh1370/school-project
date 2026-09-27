@@ -1,0 +1,77 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="680" viewBox="0 0 1200 680" role="img" aria-labelledby="title desc">
+  <title id="title">IAM C4 Level 2 Containers</title>
+  <desc id="desc">Web browser and Android clients call the Spring Boot backend, which persists IAM data and uses email and SMS integrations.</desc>
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#475569"/>
+    </marker>
+    <style>
+      .bg { fill: #f8fafc; }
+      .title { font: 700 26px Arial, sans-serif; fill: #0f172a; }
+      .subtitle { font: 400 14px Arial, sans-serif; fill: #475569; }
+      .client { fill: #dbeafe; stroke: #2563eb; stroke-width: 2; }
+      .backend { fill: #dcfce7; stroke: #16a34a; stroke-width: 2.5; }
+      .db { fill: #ede9fe; stroke: #7c3aed; stroke-width: 2; }
+      .external { fill: #fef3c7; stroke: #d97706; stroke-width: 2; }
+      .label { font: 700 17px Arial, sans-serif; fill: #0f172a; }
+      .small { font: 400 13px Arial, sans-serif; fill: #334155; }
+      .edge { stroke: #475569; stroke-width: 2; fill: none; marker-end: url(#arrow); }
+      .edge-label { font: 400 12px Arial, sans-serif; fill: #334155; }
+    </style>
+  </defs>
+
+  <rect class="bg" x="0" y="0" width="1200" height="680"/>
+  <text class="title" x="48" y="54">IAM C4 - Level 2: Containers</text>
+  <text class="subtitle" x="48" y="80">Runtime containers involved in IAM authentication and authorization.</text>
+
+  <rect class="client" x="82" y="156" width="250" height="110" rx="10"/>
+  <text class="label" x="130" y="195">Web browser</text>
+  <text class="small" x="118" y="222">JTE pages + Alpine fetch</text>
+  <text class="small" x="112" y="242">Cookie session + CSRF token</text>
+
+  <rect class="client" x="82" y="386" width="250" height="110" rx="10"/>
+  <text class="label" x="137" y="425">Android app</text>
+  <text class="small" x="132" y="452">Mobile client shell</text>
+  <text class="small" x="126" y="472">Bearer token auth</text>
+
+  <rect class="backend" x="464" y="222" width="310" height="190" rx="12"/>
+  <text class="label" x="509" y="267">Spring Boot backend</text>
+  <text class="small" x="518" y="294">Java 21 modular monolith</text>
+  <text class="small" x="505" y="320">IAM, school, academic, finance, ...</text>
+  <text class="small" x="518" y="346">Session and JWT authentication</text>
+  <text class="small" x="526" y="372">Aspect-based authorization</text>
+
+  <path class="edge" d="M 332 211 H 464"/>
+  <text class="edge-label" x="354" y="197">HTML + JSON APIs</text>
+  <text class="edge-label" x="354" y="232">X-School-ID on protected APIs</text>
+
+  <path class="edge" d="M 332 441 C 392 441, 410 381, 464 354"/>
+  <text class="edge-label" x="350" y="427">POST /api/auth/token</text>
+  <text class="edge-label" x="350" y="448">Authorization: Bearer</text>
+
+  <path class="db" d="M 928 122 h140 a22 22 0 0 1 0 44 h-140 a22 22 0 0 1 0 -44 z"/>
+  <path class="db" d="M 906 144 v62 a92 26 0 0 0 184 0 v-62" fill="none"/>
+  <ellipse class="db" cx="998" cy="144" rx="92" ry="26"/>
+  <text class="label" x="952" y="151">PostgreSQL</text>
+  <text class="small" x="921" y="196">Flyway-managed schemas</text>
+
+  <rect class="external" x="890" y="286" width="220" height="70" rx="8"/>
+  <text class="label" x="950" y="316">SMTP</text>
+  <text class="small" x="928" y="338">Activation emails</text>
+
+  <rect class="external" x="890" y="456" width="220" height="70" rx="8"/>
+  <text class="label" x="952" y="486">SMS gateway</text>
+  <text class="small" x="943" y="508">OTP delivery</text>
+
+  <path class="edge" d="M 774 270 C 830 215, 864 160, 906 149"/>
+  <text class="edge-label" x="803" y="222">JPA repositories</text>
+
+  <path class="edge" d="M 774 320 H 890"/>
+  <text class="edge-label" x="801" y="308">JavaMailSender</text>
+
+  <path class="edge" d="M 774 372 C 833 410, 855 485, 890 491"/>
+  <text class="edge-label" x="804" y="438">SmsDriver</text>
+
+  <rect x="72" y="575" width="1056" height="54" rx="8" fill="#fff" stroke="#cbd5e1"/>
+  <text class="small" x="96" y="607">Authorization is not based on Spring Security authorities. Protected school APIs use @RequiresModule and @RequiresPermission backed by IAM tables.</text>
+</svg>
