@@ -8,8 +8,12 @@ import org.springframework.security.authentication.dao.DaoAuthenticationProvider
 import org.springframework.security.config.annotation.authentication.configuration.AuthenticationConfiguration;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
+import org.springframework.security.core.AuthenticationException;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.security.web.AuthenticationEntryPoint;
+import org.springframework.security.web.DefaultRedirectStrategy;
+import org.springframework.security.web.RedirectStrategy;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 import org.springframework.security.web.csrf.CookieCsrfTokenRepository;
@@ -22,6 +26,7 @@ import org.springframework.util.StringUtils;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 
+import java.io.IOException;
 import java.util.function.Supplier;
 
 /**
@@ -123,7 +128,7 @@ public class SecurityConfig {
                                 request -> request.getRequestURI().startsWith("/api/")
                         )
                         .defaultAuthenticationEntryPointFor(
-                                new org.springframework.security.web.authentication.LoginUrlAuthenticationEntryPoint("/login"),
+                                new PostAuthenticationAwareLoginEntryPoint(),
                                 request -> !request.getRequestURI().startsWith("/api/")
                         )
                 )
@@ -140,6 +145,31 @@ public class SecurityConfig {
                 .addFilterBefore(new JwtAuthenticationFilter(jwtTokenProvider), UsernamePasswordAuthenticationFilter.class);
 
         return http.build();
+    }
+
+    /**
+     * جای {@code LoginUrlAuthenticationEntryPoint} ساده. تفاوتش فقط این است که
+     * برای مسیرهای allow-listشده‌ی {@link PostAuthenticationDestination}، مقصدِ
+     * اصلی را به‌صورت پارامتر {@code next} روی صفحه‌ی ورود نگه می‌دارد؛ یعنی
+     * کاربری که مستقیم (بوکمارک یا انقضای سشن) به /schools/new می‌رسد، بعد از
+     * ورود به همان فرم برمی‌گردد نه /dashboard. بقیه‌ی صفحه‌ها دقیقاً مثل قبل
+     * به /login خالی می‌روند.
+     * <p>
+     * ساخت خودِ URL عمداً از allow-list می‌آید و نه از درخواست، تا این پارامترِ
+     * عمومی به open redirect تبدیل نشود.
+     */
+    private static final class PostAuthenticationAwareLoginEntryPoint implements AuthenticationEntryPoint {
+
+        private final RedirectStrategy redirectStrategy = new DefaultRedirectStrategy();
+
+        @Override
+        public void commence(HttpServletRequest request, HttpServletResponse response,
+                             AuthenticationException authenticationException) throws IOException {
+            // getRequestURI شامل contextPath است؛ برای تطبیق با allow-list باید
+            // مسیرِ نسبت‌به‌اپ مقایسه شود (در استقرار فعلی contextPath خالی است).
+            String path = request.getRequestURI().substring(request.getContextPath().length());
+            this.redirectStrategy.sendRedirect(request, response, PostAuthenticationDestination.loginUrlFor(path));
+        }
     }
 
     /**

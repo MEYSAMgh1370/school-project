@@ -9,6 +9,15 @@ document.addEventListener('alpine:init', () => {
         submitting: false,
         errorMessage: '',
 
+        // اگر لاگین خودکارِ پس از ثبت‌نام شکست بخورد، کاربر به صفحه‌ی ورود
+        // می‌رود - اما با همان مقصدِ مجاز، تا قصدِ «ثبت مدرسه» در تلاش دوم
+        // از دست نرود.
+        get loginPagePath() {
+            return this.postAuthenticationDestination === '/schools/new'
+                ? '/login?next=/schools/new'
+                : '/login';
+        },
+
         get passwordsMismatch() {
             return this.passwordConfirm.length > 0 && this.password !== this.passwordConfirm;
         },
@@ -51,7 +60,7 @@ document.addEventListener('alpine:init', () => {
                     });
                     window.location.href = loginResponse.ok
                         ? this.postAuthenticationDestination
-                        : '/login';
+                        : this.loginPagePath;
                     return;
                 }
                 let detail = '';
