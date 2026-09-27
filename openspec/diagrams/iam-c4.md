@@ -93,6 +93,16 @@ The SVG and the Mermaid below are one-for-one: same 31 nodes, same six
 groups, same 38 edges. If you change one, change the other — the SVG is
 hand-laid-out, so it does not regenerate from the Mermaid.
 
+CI enforces this. [`scripts/check-diagram-parity.py`](../../scripts/check-diagram-parity.py)
+recovers the graph from the SVG geometry — each node rect carries a
+`data-node` attribute holding its Mermaid id, and every edge path's
+endpoints are resolved to the boxes they touch — then diffs it against the
+Mermaid both ways. Run it locally with:
+
+```bash
+python3 scripts/check-diagram-parity.py --verbose
+```
+
 ```mermaid
 flowchart TB
     subgraph publicApi[IAM public API]

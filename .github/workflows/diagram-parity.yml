@@ -1,0 +1,28 @@
+name: Diagram parity
+
+# The C4 SVGs under openspec/diagrams/assets/ are laid out by hand and do not
+# regenerate from the Mermaid beside them, so the two drift silently. This
+# recovers the graph from the SVG geometry and diffs it against the Mermaid.
+# Runs on every PR: it takes about a second and needs no build.
+
+on:
+  push:
+    branches:
+      - master
+      - main
+      - develop
+  pull_request:
+
+jobs:
+  parity:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Check C4 SVGs against their Mermaid source
+        run: python3 scripts/check-diagram-parity.py --verbose
