@@ -89,6 +89,10 @@ monolith.
 
 ![IAM C4 level 3 components](assets/iam-c4-components.svg)
 
+The SVG and the Mermaid below are one-for-one: same 31 nodes, same six
+groups, same 38 edges. If you change one, change the other — the SVG is
+hand-laid-out, so it does not regenerate from the Mermaid.
+
 ```mermaid
 flowchart TB
     subgraph publicApi[IAM public API]
