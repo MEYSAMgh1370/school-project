@@ -20,8 +20,10 @@ Current user-facing roles include:
 
 ## Identity And Login
 
-Users can register and log in with email/password. OTP login is available for an
-existing registered phone number.
+Users can register and log in with email/password. The OTP login flow is
+implemented for an existing registered phone number, but it cannot complete
+outside development: `SmsDriver` has no SMS provider integration, and no
+configuration supplies one. See Current Limitations below.
 
 IAM canonicalizes phone numbers at the application boundary before storing or
 looking them up:
@@ -37,6 +39,7 @@ number.
 Evidence:
 
 - [`PhoneNumberCanonicalizer.java`](../../src/main/java/com/example/roshdeandishe/iam/internal/PhoneNumberCanonicalizer.java)
+- [`SmsDriver.java`](../../src/main/java/com/example/roshdeandishe/iam/internal/SmsDriver.java)
 - [`V3__canonicalize_iam_phone_numbers.sql`](../../src/main/resources/db/migration/V3__canonicalize_iam_phone_numbers.sql)
 - [`V4__canonicalize_iam_phone_boundary_whitespace.sql`](../../src/main/resources/db/migration/V4__canonicalize_iam_phone_boundary_whitespace.sql)
 - [`OtpLoginFlowIntegrationTest.java`](../../src/test/java/com/example/roshdeandishe/OtpLoginFlowIntegrationTest.java)
@@ -181,7 +184,9 @@ These are not bugs unless a change proposal says otherwise:
 - no platform-admin actor model or platform permission path;
 - no billing/upgrade UI or REST endpoint for paid entitlements;
 - no horizontal web-session scaling support;
-- no production SMS provider configured by default;
+- no SMS provider integration exists in `SmsDriver`, so OTP delivery cannot be
+  enabled by configuration — a nonblank `roshdeandishe.sms.api-key` still
+  reports failure, and `requestOtp` then fails closed;
 - OTP rate limiting is not implemented;
 - the canonical persisted, entry, and display unit for finance values, plus
   any Rial/Toman conversion and rounding rules, is not defined;
