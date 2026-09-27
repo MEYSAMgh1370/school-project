@@ -18,13 +18,13 @@
      @keydown.escape.window="schoolOpen = false; personOpen = false; menuOpen = false">
     <div class="navbar-brand">
         <span class="navbar-item has-text-weight-bold">رشدِاندیشه</span>
-        <a role="button" class="navbar-burger" :class="{ 'is-active': menuOpen }"
-           aria-label="منو" :aria-expanded="menuOpen" @click="menuOpen = !menuOpen">
+        <button type="button" class="navbar-burger" :class="{ 'is-active': menuOpen }"
+                aria-label="منو" :aria-expanded="menuOpen" @click="menuOpen = !menuOpen">
             <span aria-hidden="true"></span>
             <span aria-hidden="true"></span>
             <span aria-hidden="true"></span>
             <span aria-hidden="true"></span>
-        </a>
+        </button>
     </div>
     <div class="navbar-menu" :class="{ 'is-active': menuOpen }">
         <div class="navbar-start">
@@ -49,36 +49,36 @@
         <div class="navbar-end">
             @if(!navbar.schools().isEmpty())
                 <div class="navbar-item has-dropdown" :class="{ 'is-active': schoolOpen }" @click.outside="schoolOpen = false">
-                    <a class="navbar-link" aria-haspopup="true" :aria-expanded="schoolOpen" @click="schoolOpen = !schoolOpen; personOpen = false">
+                    <button type="button" class="navbar-link" aria-haspopup="true" :aria-expanded="schoolOpen" @click="schoolOpen = !schoolOpen; personOpen = false">
                         @for(var school : navbar.schools())
                             <span x-show="selectedSchoolId === ${school.id()}">${school.name()}</span>
                         @endfor
-                    </a>
+                    </button>
                     <div class="navbar-dropdown">
                         @for(var school : navbar.schools())
-                            <a class="navbar-item" @click="selectSchool(${school.id()})">
-                                <span class="ml-2" x-show="selectedSchoolId === ${school.id()}">✓</span>
+                            <button type="button" class="navbar-item" @click="selectSchool(${school.id()})">
+                                <span class="app-inline-gap" x-show="selectedSchoolId === ${school.id()}">✓</span>
                                 ${school.name()}
-                            </a>
+                            </button>
                         @endfor
                     </div>
                 </div>
             @endif
             <div class="navbar-item has-dropdown" :class="{ 'is-active': personOpen }" @click.outside="personOpen = false">
-                <a class="navbar-link" aria-haspopup="true" :aria-expanded="personOpen" @click="personOpen = !personOpen; schoolOpen = false">${navbar.fullName()}</a>
+                <button type="button" class="navbar-link" aria-haspopup="true" :aria-expanded="personOpen" @click="personOpen = !personOpen; schoolOpen = false">${navbar.fullName()}</button>
                 <div class="navbar-dropdown is-right">
                     @for(var school : navbar.schools())
                         @for(var role : school.roles())
-                            <a class="navbar-item" x-show="selectedSchoolId === ${school.id()}" @click="selectRole('${role}')">
-                                <span class="ml-2" x-show="selectedRole === '${role}'">✓</span>
+                            <button type="button" class="navbar-item" x-show="selectedSchoolId === ${school.id()}" @click="selectRole('${role}')">
+                                <span class="app-inline-gap" x-show="selectedRole === '${role}'">✓</span>
                                 ${RoleLabels.persian(role)}
-                            </a>
+                            </button>
                         @endfor
                     @endfor
                     @if(!navbar.schools().isEmpty())
                         <hr class="navbar-divider">
                     @endif
-                    <a class="navbar-item" @click="logout">خروج</a>
+                    <button type="button" class="navbar-item" @click="logout">خروج</button>
                 </div>
             </div>
         </div>
