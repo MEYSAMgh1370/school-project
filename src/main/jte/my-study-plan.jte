@@ -12,16 +12,11 @@
 <section class="section" id="main-content" role="main" tabindex="-1"
          x-data="myStudyPlanPage()" @keydown.escape.window="pickerOpen = false; closeDialog()">
     <div class="container">
-        <h1 class="title is-4">برنامه‌ی مطالعه‌ی من</h1>
+        @template.layout.page-header(title = "برنامه‌ی مطالعه‌ی من")
 
-        <div class="notification is-warning" x-cloak x-show="!schoolId">
-            برای مشاهده‌ی برنامه‌ی مطالعه، یک مدرسه از سوییچر بالا انتخاب کنید.
-        </div>
-
-        <template x-if="schoolId">
-            <div>
-                <div class="notification is-danger" x-show="error" x-text="error"></div>
-                <div class="notification is-success" x-show="notice" x-text="notice"></div>
+        @template.layout.school-scope(
+            noSchoolMessage = "برای مشاهده‌ی برنامه‌ی مطالعه، یک مدرسه از سوییچر بالا انتخاب کنید.",
+            content = @`
 
                     <div class="tabs">
                         <ul>
@@ -163,8 +158,7 @@
                         </div>
                     </div>
                 </template>
-            </div>
-        </template>
+            `)
     </div>
 
     <%-- ---------------------------------------------------------- گفتگوی ثبت --%>

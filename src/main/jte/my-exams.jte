@@ -7,16 +7,14 @@
 
 <section class="section" id="main-content" role="main" tabindex="-1" x-data="myExamsPage()">
     <div class="container">
-        <h1 class="title is-4">آزمون‌های من</h1>
-        <p class="subtitle is-6">آزمون‌های هفتگیِ خودتان و آزمون‌های تألیفی‌ای که به شما تخصیص داده شده.</p>
+        @template.layout.page-header(
+            title = "آزمون‌های من",
+            subtitle = "آزمون‌های هفتگیِ خودتان و آزمون‌های تألیفی‌ای که به شما تخصیص داده شده.")
 
-        <div class="notification is-warning" x-cloak x-show="!schoolId">
-            برای مشاهده‌ی آزمون‌ها، یک مدرسه از سوییچر بالا انتخاب کنید.
-        </div>
-
-        <template x-if="schoolId">
-            <div>
-                <div class="notification is-danger" x-show="error" x-text="error"></div>
+        @template.layout.school-scope(
+            noSchoolMessage = "برای مشاهده‌ی آزمون‌ها، یک مدرسه از سوییچر بالا انتخاب کنید.",
+            successNotice = false,
+            content = @`
 
                 <p x-show="loading">در حال بارگذاری...</p>
 
@@ -79,11 +77,11 @@
                     </template>
                 </div>
 
-                <div class="notification" x-show="!loading && !error && exams.length === 0">
-                    آزمونی برای شما ثبت نشده است.
-                </div>
-            </div>
-        </template>
+                @template.layout.empty-state(
+                    show = "!loading && !error && exams.length === 0",
+                    art = "exam",
+                    message = @`آزمونی برای شما ثبت نشده است.`)
+            `)
     </div>
 </section>
 `)

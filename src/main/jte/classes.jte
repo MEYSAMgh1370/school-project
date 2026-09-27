@@ -8,16 +8,12 @@
 <section class="section" id="main-content" role="main" tabindex="-1"
          x-data="classesPage()" @keydown.escape.window="selectedClassId = null">
     <div class="container">
-        <h1 class="title is-4">کلاس‌های مدرسه</h1>
+        @template.layout.page-header(
+            title = "کلاس‌های مدرسه")
 
-        <div class="notification is-warning" x-cloak x-show="!schoolId">
-            برای مدیریت کلاس‌ها، یک مدرسه از سوییچر بالا انتخاب کنید.
-        </div>
-
-        <template x-if="schoolId">
-            <div>
-                <div class="notification is-danger" x-show="error" x-text="error"></div>
-                <div class="notification is-success" x-show="notice" x-text="notice"></div>
+        @template.layout.school-scope(
+            noSchoolMessage = "برای مدیریت کلاس‌ها، یک مدرسه از سوییچر بالا انتخاب کنید.",
+            content = @`
 
                 <div class="box">
                     <h2 class="title is-6">افزودن کلاس جدید</h2>
@@ -89,9 +85,10 @@
                 </table>
                 </div>
 
-                <div class="notification" x-show="!loading && classes.length === 0">
-                    هنوز کلاسی در این مدرسه ثبت نشده است.
-                </div>
+                @template.layout.empty-state(
+                    show = "!loading && classes.length === 0",
+                    art = "list",
+                    message = @`هنوز کلاسی در این مدرسه ثبت نشده است.`)
 
                 <div class="box" x-show="selectedClassId" x-cloak>
                     <div class="level">
@@ -125,8 +122,7 @@
                         دانش‌آموزی در این کلاس ثبت‌نام نشده است.
                     </p>
                 </div>
-            </div>
-        </template>
+            `)
     </div>
 </section>
 `)

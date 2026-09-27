@@ -7,16 +7,12 @@
 
 <section class="section" id="main-content" role="main" tabindex="-1" x-data="gradesPage()">
     <div class="container">
-        <h1 class="title is-4">نمرات</h1>
+        @template.layout.page-header(
+            title = "نمرات")
 
-        <div class="notification is-warning" x-cloak x-show="!schoolId">
-            برای مدیریت نمرات، یک مدرسه از سوییچر بالا انتخاب کنید.
-        </div>
-
-        <template x-if="schoolId">
-            <div>
-                <div class="notification is-danger" x-show="error" x-text="error"></div>
-                <div class="notification is-success" x-show="notice" x-text="notice"></div>
+        @template.layout.school-scope(
+            noSchoolMessage = "برای مدیریت نمرات، یک مدرسه از سوییچر بالا انتخاب کنید.",
+            content = @`
 
                 <template x-if="!blocked">
                     <div>
@@ -60,10 +56,11 @@
 
                         <template x-if="loaded">
                             <div>
-                                <div class="notification" x-show="rosterStudents().length === 0">
-                                    این کلاس هنوز دانش‌آموزی ندارد. از صفحه‌ی
-                                    <a href="/students">دانش‌آموزان</a> دانش‌آموز اضافه کنید.
-                                </div>
+                                @template.layout.empty-state(
+                                    show = "rosterStudents().length === 0",
+                                    art = "people",
+                                    message = @`این کلاس هنوز دانش‌آموزی ندارد. از صفحه‌ی
+<a href="/students">دانش‌آموزان</a> دانش‌آموز اضافه کنید.`)
 
                                 <template x-if="rosterStudents().length > 0">
                                     <div>
@@ -138,8 +135,7 @@
                         </div>
                     </div>
                 </template>
-            </div>
-        </template>
+            `)
     </div>
 </section>
 `)

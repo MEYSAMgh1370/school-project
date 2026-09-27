@@ -7,16 +7,12 @@
 
 <section class="section" id="main-content" role="main" tabindex="-1" x-data="expensesPage()">
     <div class="container">
-        <h1 class="title is-4">هزینه‌های مدرسه</h1>
+        @template.layout.page-header(
+            title = "هزینه‌های مدرسه")
 
-        <div class="notification is-warning" x-cloak x-show="!schoolId">
-            برای مدیریت هزینه‌ها، یک مدرسه از سوییچر بالا انتخاب کنید.
-        </div>
-
-        <template x-if="schoolId">
-            <div>
-                <div class="notification is-danger" x-show="error" x-text="error"></div>
-                <div class="notification is-success" x-show="notice" x-text="notice"></div>
+        @template.layout.school-scope(
+            noSchoolMessage = "برای مدیریت هزینه‌ها، یک مدرسه از سوییچر بالا انتخاب کنید.",
+            content = @`
 
                 <template x-if="!blocked">
                     <div>
@@ -230,9 +226,10 @@
                             </tbody>
                         </table>
                         </div>
-                        <div class="notification" x-show="!loading && expenses.length === 0">
-                            هیچ هزینه‌ای با این فیلترها ثبت نشده است.
-                        </div>
+                        @template.layout.empty-state(
+                            show = "!loading && expenses.length === 0",
+                            art = "money",
+                            message = @`هیچ هزینه‌ای با این فیلترها ثبت نشده است.`)
 
                         <template x-for="expense in expenses" :key="'attachments-' + expense.id">
                             <div class="box" x-show="expandedExpenseId === expense.id" x-cloak>
@@ -329,8 +326,7 @@
                         </div>
                     </div>
                 </template>
-            </div>
-        </template>
+            `)
     </div>
 </section>
 `)

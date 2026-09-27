@@ -7,18 +7,13 @@
 
 <section class="section" id="main-content" role="main" tabindex="-1" x-data="rolesPage()">
     <div class="container">
-        <h1 class="title is-4">نقش‌ها و دسترسی‌ها</h1>
-        <p class="subtitle is-6">نقش‌های سیستمی ثابت‌اند؛ می‌توانید نقش سفارشیِ تازه با ترکیبی از Permissionهای موجود بسازید.</p>
+        @template.layout.page-header(
+            title = "نقش‌ها و دسترسی‌ها",
+            subtitle = "نقش‌های سیستمی ثابت‌اند؛ می‌توانید نقش سفارشیِ تازه با ترکیبی از Permissionهای موجود بسازید.")
 
-        <div class="notification is-warning" x-cloak x-show="!schoolId">
-            برای مدیریت نقش‌ها، یک مدرسه از سوییچر بالا انتخاب کنید.
-        </div>
-
-        <template x-if="schoolId">
-            <div>
-                <div class="notification is-danger" x-show="error" x-text="error"></div>
-                <div class="notification is-success" x-show="notice" x-text="notice"></div>
-
+        @template.layout.school-scope(
+            noSchoolMessage = "برای مدیریت نقش‌ها، یک مدرسه از سوییچر بالا انتخاب کنید.",
+            content = @`
                 <template x-if="!blocked">
                     <div>
                         <div class="box">
@@ -83,8 +78,7 @@
                         </div>
                     </div>
                 </template>
-            </div>
-        </template>
+            `)
     </div>
 </section>
 `)

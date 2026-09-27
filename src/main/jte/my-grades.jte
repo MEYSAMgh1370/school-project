@@ -7,16 +7,14 @@
 
 <section class="section" id="main-content" role="main" tabindex="-1" x-data="myGradesPage()">
     <div class="container">
-        <h1 class="title is-4">نمره‌های من</h1>
-        <p class="subtitle is-6">نمره‌های خودتان و فرزندانِ لینک‌شده‌ به شما در این مدرسه.</p>
+        @template.layout.page-header(
+            title = "نمره‌های من",
+            subtitle = "نمره‌های خودتان و فرزندانِ لینک‌شده‌ به شما در این مدرسه.")
 
-        <div class="notification is-warning" x-cloak x-show="!schoolId">
-            برای مشاهده‌ی نمرات، یک مدرسه از سوییچر بالا انتخاب کنید.
-        </div>
-
-        <template x-if="schoolId">
-            <div>
-                <div class="notification is-danger" x-show="error" x-text="error"></div>
+        @template.layout.school-scope(
+            noSchoolMessage = "برای مشاهده‌ی نمرات، یک مدرسه از سوییچر بالا انتخاب کنید.",
+            successNotice = false,
+            content = @`
 
                 <p x-show="loading">در حال بارگذاری...</p>
 
@@ -47,11 +45,11 @@
                 </table>
                 </div>
 
-                <div class="notification" x-show="!loading && !error && grades.length === 0">
-                    نمره‌ای برای شما یا فرزندانتان در این مدرسه ثبت نشده است.
-                </div>
-            </div>
-        </template>
+                @template.layout.empty-state(
+                    show = "!loading && !error && grades.length === 0",
+                    art = "exam",
+                    message = @`نمره‌ای برای شما یا فرزندانتان در این مدرسه ثبت نشده است.`)
+            `)
     </div>
 </section>
 `)

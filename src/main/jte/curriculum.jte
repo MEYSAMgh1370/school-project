@@ -7,16 +7,12 @@
 
 <section class="section" id="main-content" role="main" tabindex="-1" x-data="curriculumPage()">
     <div class="container">
-        <h1 class="title is-4">سرفصل‌ها و بانک سؤال</h1>
+        @template.layout.page-header(
+            title = "سرفصل‌ها و بانک سؤال")
 
-        <div class="notification is-warning" x-cloak x-show="!schoolId">
-            برای مدیریت سرفصل‌ها و سؤال‌ها، یک مدرسه از سوییچر بالا انتخاب کنید.
-        </div>
-
-        <template x-if="schoolId">
-            <div>
-                <div class="notification is-danger" x-show="error" x-text="error"></div>
-                <div class="notification is-success" x-show="notice" x-text="notice"></div>
+        @template.layout.school-scope(
+            noSchoolMessage = "برای مدیریت سرفصل‌ها و سؤال‌ها، یک مدرسه از سوییچر بالا انتخاب کنید.",
+            content = @`
 
                 <template x-if="!blocked">
                     <div class="columns">
@@ -24,9 +20,11 @@
                             <div class="box">
                                 <h2 class="title is-6">سرفصل‌ها</h2>
 
-                                <div class="notification is-light" x-show="!loading && topics.length === 0">
-                                    این مدرسه هنوز سرفصلی ندارد. اولین سرفصل را از فرم زیر اضافه کنید.
-                                </div>
+                                @template.layout.empty-state(
+                                    show = "!loading && topics.length === 0",
+                                    art = "list",
+                                    tone = "is-light",
+                                    message = @`این مدرسه هنوز سرفصلی ندارد. اولین سرفصل را از فرم زیر اضافه کنید.`)
 
                                 <ul class="mb-4" x-show="topics.length > 0">
                                     <li>
@@ -111,10 +109,11 @@
                                 </table>
                                 </div>
 
-                                <div class="notification" x-show="!loading && questions.length === 0">
-                                    <span x-show="selectedTopicId">برای این سرفصل هنوز سؤالی ثبت نشده است. از فرم زیر اولین سؤال را اضافه کنید.</span>
-                                    <span x-show="!selectedTopicId">هنوز سؤالی در این مدرسه ثبت نشده است.</span>
-                                </div>
+                                @template.layout.empty-state(
+                                    show = "!loading && questions.length === 0",
+                                    art = "exam",
+                                    message = @`<span x-show="selectedTopicId">برای این سرفصل هنوز سؤالی ثبت نشده است. از فرم زیر اولین سؤال را اضافه کنید.</span>
+<span x-show="!selectedTopicId">هنوز سؤالی در این مدرسه ثبت نشده است.</span>`)
 
                                 <hr>
 
@@ -185,8 +184,7 @@
                         </div>
                     </div>
                 </template>
-            </div>
-        </template>
+            `)
     </div>
 </section>
 `)
