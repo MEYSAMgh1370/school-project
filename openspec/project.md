@@ -8,7 +8,7 @@ These OpenSpec documents are the curated entry point for current behavior, propo
 
 1. Source code, migrations, configuration, and tests describe current behavior.
 2. OpenSpec `specs/` documents describe current behavior that has been checked against the repository.
-3. OpenSpec `changes/` documents describe future or unimplemented work.
+3. OpenSpec `changes/` documents describe proposed work and the rationale behind it. Check each document's `Status:` line: most are unimplemented, but an implemented proposal is retained for its rationale, and its current behavior belongs to `specs/`.
 4. OpenSpec `decisions/` records capture important architectural decisions and consequences.
 5. Legacy Markdown files preserve useful history and domain thinking, but may contain outdated AI-assisted statements.
 
@@ -16,10 +16,11 @@ These OpenSpec documents are the curated entry point for current behavior, propo
 
 - [`architecture.md`](architecture.md) - verified architecture and deployment shape.
 - [`specs/current-system.md`](specs/current-system.md) - current product/module behavior and known limitations.
+- [`diagrams/iam-c4.md`](diagrams/iam-c4.md) - C4-style IAM context, container, component, and flow diagrams, with PlantUML sources.
 - [`conventions.md`](conventions.md) - development, testing, documentation, and frontend conventions.
 - [`changes/proposed-work.md`](changes/proposed-work.md) - planned or unresolved work that is not current behavior.
 - [`changes/finance-monetary-unit.md`](changes/finance-monetary-unit.md) - proposed finance monetary-unit contract; no implementation has occurred.
-- [`changes/post-authentication-school-registration.md`](changes/post-authentication-school-registration.md) - proposed post-authentication school-registration handoff contract.
+- [`changes/post-authentication-school-registration.md`](changes/post-authentication-school-registration.md) - post-authentication school-registration handoff contract; implemented 2026-09-27, current behavior is in `specs/current-system.md`.
 - [`decisions/2026-07-20-free-tier-entitlements.md`](decisions/2026-07-20-free-tier-entitlements.md) - school creation grants free Academic and Finance entitlements.
 - [`decisions/2026-07-30-flyway-schema-ownership.md`](decisions/2026-07-30-flyway-schema-ownership.md) - Flyway owns schema creation and migrations.
 - [`archive/documentation-audit-2026-08-06.md`](archive/documentation-audit-2026-08-06.md) - inventory, conflicts, and classification from the audit that introduced OpenSpec.

@@ -1,0 +1,163 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1400" height="920" viewBox="0 0 1400 920" role="img" aria-labelledby="title desc">
+  <title id="title">IAM C4 Level 3 Components</title>
+  <desc id="desc">IAM controllers, security aspects, facade, services, and persistence tables.</desc>
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#475569"/>
+    </marker>
+    <style>
+      .bg { fill: #f8fafc; }
+      .title { font: 700 26px Arial, sans-serif; fill: #0f172a; }
+      .subtitle { font: 400 14px Arial, sans-serif; fill: #475569; }
+      .group { fill: #ffffff; stroke: #cbd5e1; stroke-width: 1.5; }
+      .group-title { font: 700 16px Arial, sans-serif; fill: #334155; }
+      .api { fill: #dbeafe; stroke: #2563eb; stroke-width: 2; }
+      .security { fill: #e0f2fe; stroke: #0284c7; stroke-width: 2; }
+      .platform { fill: #fef3c7; stroke: #d97706; stroke-width: 2; }
+      .service { fill: #dcfce7; stroke: #16a34a; stroke-width: 2; }
+      .store { fill: #ede9fe; stroke: #7c3aed; stroke-width: 2; }
+      .label { font: 700 14px Arial, sans-serif; fill: #0f172a; }
+      .small { font: 400 12px Arial, sans-serif; fill: #334155; }
+      .edge { stroke: #475569; stroke-width: 2; fill: none; marker-end: url(#arrow); }
+      .edge2 { stroke: #64748b; stroke-width: 1.6; fill: none; marker-end: url(#arrow); }
+      .edge-label { font: 400 11px Arial, sans-serif; fill: #334155; }
+    </style>
+  </defs>
+
+  <rect class="bg" x="0" y="0" width="1400" height="920"/>
+  <text class="title" x="48" y="54">IAM C4 - Level 3: Components</text>
+  <text class="subtitle" x="48" y="80">Implemented IAM components and their main dependencies.</text>
+
+  <rect class="group" x="52" y="118" width="304" height="286" rx="10"/>
+  <text class="group-title" x="76" y="148">HTTP entry points</text>
+
+  <rect class="api" x="82" y="174" width="244" height="44" rx="7"/>
+  <text class="label" x="146" y="202">AuthController</text>
+  <rect class="api" x="82" y="236" width="244" height="44" rx="7"/>
+  <text class="label" x="151" y="264">MeController</text>
+  <rect class="api" x="82" y="298" width="244" height="44" rx="7"/>
+  <text class="label" x="119" y="326">MembershipController</text>
+  <rect class="api" x="82" y="360" width="244" height="44" rx="7"/>
+  <text class="label" x="149" y="388">RoleController</text>
+
+  <rect class="group" x="52" y="438" width="304" height="232" rx="10"/>
+  <text class="group-title" x="76" y="468">Security and tenancy</text>
+
+  <rect class="security" x="82" y="494" width="244" height="40" rx="7"/>
+  <text class="label" x="145" y="519">SecurityConfig</text>
+  <rect class="security" x="82" y="548" width="244" height="40" rx="7"/>
+  <text class="label" x="110" y="573">JwtAuthenticationFilter</text>
+  <rect class="platform" x="82" y="602" width="244" height="50" rx="7"/>
+  <text class="label" x="122" y="622">TenantResolverFilter</text>
+  <text class="small" x="139" y="641">platform module, not IAM</text>
+
+  <rect class="group" x="410" y="118" width="308" height="170" rx="10"/>
+  <text class="group-title" x="434" y="148">Public IAM contract</text>
+
+  <rect class="api" x="442" y="178" width="244" height="50" rx="7"/>
+  <text class="label" x="508" y="207">IamFacade</text>
+  <rect class="api" x="442" y="242" width="244" height="36" rx="7"/>
+  <text class="small" x="475" y="264">AccessContext / AccessDecision</text>
+
+  <rect class="group" x="410" y="324" width="308" height="226" rx="10"/>
+  <text class="group-title" x="434" y="354">Authorization aspects</text>
+
+  <rect class="security" x="442" y="384" width="244" height="46" rx="7"/>
+  <text class="label" x="492" y="412">ModuleAccessAspect</text>
+  <rect class="security" x="442" y="454" width="244" height="46" rx="7"/>
+  <text class="label" x="480" y="482">PermissionAccessAspect</text>
+
+  <rect class="group" x="780" y="118" width="314" height="432" rx="10"/>
+  <text class="group-title" x="804" y="148">Application services</text>
+
+  <rect class="service" x="812" y="178" width="250" height="52" rx="7"/>
+  <text class="label" x="891" y="207">IamFacadeImpl</text>
+  <rect class="service" x="812" y="260" width="250" height="46" rx="7"/>
+  <text class="label" x="861" y="288">AccessDecisionService</text>
+  <rect class="service" x="812" y="330" width="250" height="46" rx="7"/>
+  <text class="label" x="844" y="358">PermissionDecisionService</text>
+  <rect class="service" x="812" y="400" width="250" height="46" rx="7"/>
+  <text class="label" x="866" y="428">InviteEmailSender</text>
+  <rect class="service" x="812" y="470" width="250" height="46" rx="7"/>
+  <text class="label" x="893" y="498">SmsDriver</text>
+
+  <rect class="group" x="780" y="596" width="314" height="194" rx="10"/>
+  <text class="group-title" x="804" y="626">Reference data seeding</text>
+  <rect class="service" x="812" y="656" width="250" height="52" rx="7"/>
+  <text class="label" x="877" y="685">IamSeedDataRunner</text>
+  <text class="small" x="827" y="734">Seeds modules, system roles, permissions,</text>
+  <text class="small" x="827" y="754">role-permission grants, and dev demo data.</text>
+
+  <rect class="group" x="1144" y="118" width="204" height="672" rx="10"/>
+  <text class="group-title" x="1168" y="148">IAM persistence</text>
+
+  <rect class="store" x="1174" y="174" width="144" height="38" rx="7"/>
+  <text class="small" x="1200" y="198">iam.users</text>
+  <rect class="store" x="1174" y="228" width="144" height="38" rx="7"/>
+  <text class="small" x="1190" y="252">school_memberships</text>
+  <rect class="store" x="1174" y="282" width="144" height="38" rx="7"/>
+  <text class="small" x="1201" y="306">iam.roles</text>
+  <rect class="store" x="1174" y="336" width="144" height="38" rx="7"/>
+  <text class="small" x="1190" y="360">iam.permissions</text>
+  <rect class="store" x="1174" y="390" width="144" height="38" rx="7"/>
+  <text class="small" x="1190" y="414">role_permissions</text>
+  <rect class="store" x="1174" y="444" width="144" height="38" rx="7"/>
+  <text class="small" x="1197" y="468">iam.modules</text>
+  <rect class="store" x="1174" y="498" width="144" height="38" rx="7"/>
+  <text class="small" x="1188" y="522">school_entitlements</text>
+  <rect class="store" x="1174" y="552" width="144" height="38" rx="7"/>
+  <text class="small" x="1192" y="576">user_entitlements</text>
+  <rect class="store" x="1174" y="606" width="144" height="38" rx="7"/>
+  <text class="small" x="1194" y="630">invite_tokens</text>
+  <rect class="store" x="1174" y="660" width="144" height="38" rx="7"/>
+  <text class="small" x="1186" y="684">verification_codes</text>
+
+  <path class="edge" d="M 326 196 H 442"/>
+  <path class="edge" d="M 326 258 H 442"/>
+  <path class="edge" d="M 326 320 H 442"/>
+  <path class="edge" d="M 326 382 H 442"/>
+  <text class="edge-label" x="354" y="184">calls facade</text>
+
+  <rect class="group" x="410" y="572" width="308" height="88" rx="10"/>
+  <text class="group-title" x="434" y="600">Request tenancy</text>
+  <rect class="platform" x="442" y="612" width="244" height="34" rx="7"/>
+  <text class="small" x="474" y="634">TenantContext (ThreadLocal)</text>
+
+  <path class="edge" d="M 326 627 H 442"/>
+  <text class="edge-label" x="334" y="619">sets per request</text>
+
+  <path class="edge" d="M 670 500 V 612"/>
+  <text class="edge-label" x="678" y="545">both aspects read</text>
+
+  <path class="edge" d="M 686 203 H 812"/>
+  <path class="edge" d="M 686 407 C 736 407, 760 223, 812 204"/>
+  <path class="edge" d="M 686 477 C 746 477, 761 234, 812 215"/>
+  <text class="edge-label" x="719" y="191">implemented by</text>
+
+  <path class="edge" d="M 937 230 V 260"/>
+  <path class="edge" d="M 937 230 C 937 282, 937 302, 937 330"/>
+  <path class="edge" d="M 937 230 C 937 324, 937 370, 937 400"/>
+  <path class="edge" d="M 937 230 C 937 372, 937 438, 937 470"/>
+
+  <path class="edge2" d="M 1062 204 H 1174"/>
+  <path class="edge2" d="M 1062 283 H 1174"/>
+  <path class="edge2" d="M 1062 353 H 1174"/>
+  <path class="edge2" d="M 1062 682 C 1108 682, 1126 463, 1174 463"/>
+  <path class="edge2" d="M 1062 682 C 1112 682, 1126 355, 1174 355"/>
+  <path class="edge2" d="M 1062 682 C 1112 682, 1126 409, 1174 409"/>
+
+  <path class="edge2" d="M 1062 283 C 1118 283, 1118 463, 1174 463"/>
+  <path class="edge2" d="M 1062 283 C 1118 283, 1118 517, 1174 517"/>
+  <path class="edge2" d="M 1062 353 C 1118 353, 1118 247, 1174 247"/>
+  <path class="edge2" d="M 1062 353 C 1118 353, 1118 355, 1174 355"/>
+  <path class="edge2" d="M 1062 353 C 1118 353, 1118 409, 1174 409"/>
+
+  <path class="edge2" d="M 1062 283 C 1126 283, 1126 571, 1174 571"/>
+  <path class="edge2" d="M 1062 204 C 1132 204, 1132 625, 1174 625"/>
+  <path class="edge2" d="M 1062 204 C 1138 204, 1138 679, 1174 679"/>
+
+  <text class="edge-label" x="1090" y="192">reads/writes</text>
+
+  <rect x="52" y="835" width="1296" height="48" rx="8" fill="#fff" stroke="#cbd5e1"/>
+  <text class="small" x="76" y="864">Spring Security establishes identity only. IAM aspects enforce module entitlement and permission using active memberships and role-permission rows.</text>
+</svg>

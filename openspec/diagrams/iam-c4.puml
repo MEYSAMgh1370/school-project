@@ -1,0 +1,290 @@
+@startuml iam_c4_context
+title IAM C4 - Level 1: System Context
+caption Current behavior checked against source, migrations, and tests on 2026-08-14.
+
+skinparam shadowing false
+skinparam backgroundColor #F8FAFC
+skinparam defaultFontName Arial
+skinparam rectangle {
+  BorderColor #334155
+  RoundCorner 12
+}
+skinparam database {
+  BorderColor #7C3AED
+  BackgroundColor #EDE9FE
+}
+
+rectangle "School admin\nManages school users" as schoolAdmin <<Person>> #E0F2FE
+rectangle "Teacher\nUses protected APIs" as teacher <<Person>> #E0F2FE
+rectangle "Student or parent\nUses my endpoints" as studentParent <<Person>> #E0F2FE
+rectangle "Mobile app user\nAuthenticates by JWT" as mobileUser <<Person>> #E0F2FE
+rectangle "Bale bot / webhook\nLinked user lookup" as bale <<External>> #FEF3C7
+
+rectangle "Roshdeandishe school management system\nSpring Boot modular monolith\nIAM owns identity and access" as system <<System>> #DCFCE7
+
+database "PostgreSQL\nIAM schema tables" as postgres
+rectangle "SMTP server\nActivation emails" as smtp <<External>> #FEF3C7
+rectangle "SMS provider\nOTP delivery" as sms <<External>> #FEF3C7
+
+schoolAdmin --> system : Browser session login\nschool admin APIs
+teacher --> system : Browser session login\nprotected APIs
+studentParent --> system : Browser session login\nmy endpoints
+mobileUser --> system : JWT bearer token
+bale --> system : Webhook
+
+system --> postgres : IAM users, roles,\nmemberships, permissions,\nentitlements
+system --> smtp : Activation email\nbest effort
+system --> sms : OTP delivery
+
+legend right
+  This is C4-style without external C4-PlantUML includes.
+  It should render with the standard IntelliJ PlantUML plugin.
+endlegend
+@enduml
+
+@startuml iam_c4_containers
+title IAM C4 - Level 2: Containers
+caption Runtime containers involved in IAM authentication and authorization.
+
+skinparam shadowing false
+skinparam backgroundColor #F8FAFC
+skinparam defaultFontName Arial
+skinparam rectangle {
+  BorderColor #334155
+  RoundCorner 12
+}
+skinparam database {
+  BorderColor #7C3AED
+  BackgroundColor #EDE9FE
+}
+
+rectangle "Web browser\nJTE pages + Alpine fetch\nCookie session + CSRF token" as browser <<Client>> #DBEAFE
+rectangle "Android app\nMobile client shell\nBearer token auth" as android <<Client>> #DBEAFE
+
+rectangle "Spring Boot backend\nJava 21 modular monolith\nIAM, school, academic, finance, ...\nSession and JWT authentication\nAspect-based authorization" as backend <<Container>> #DCFCE7
+
+database "PostgreSQL\nFlyway-managed schemas" as db
+rectangle "SMTP\nActivation emails" as mail <<External>> #FEF3C7
+rectangle "SMS gateway\nOTP delivery" as sms <<External>> #FEF3C7
+
+browser --> backend : HTML + JSON APIs\nX-School-ID on protected APIs
+android --> backend : POST /api/auth/token\nAuthorization: Bearer
+
+backend --> db : JPA repositories
+backend --> mail : JavaMailSender
+backend --> sms : SmsDriver
+
+note bottom of backend
+Authorization is not based on Spring Security authorities.
+Protected school APIs use @RequiresModule and @RequiresPermission
+backed by IAM tables.
+end note
+@enduml
+
+@startuml iam_c4_components
+title IAM C4 - Level 3: IAM Components
+caption Controllers, security aspects, facade, services, and persistence tables.
+
+skinparam shadowing false
+skinparam backgroundColor #F8FAFC
+skinparam defaultFontName Arial
+skinparam packageStyle rectangle
+skinparam rectangle {
+  BorderColor #334155
+  RoundCorner 10
+}
+skinparam database {
+  BorderColor #7C3AED
+  BackgroundColor #EDE9FE
+}
+
+package "IAM HTTP entry points" as http {
+  rectangle "AuthController" as auth #DBEAFE
+  rectangle "MeController" as me #DBEAFE
+  rectangle "MembershipController" as membershipController #DBEAFE
+  rectangle "RoleController" as roleController #DBEAFE
+  rectangle "Login/Register/Activate\npage controllers" as pageControllers #DBEAFE
+}
+
+package "Authentication and request security" as security {
+  rectangle "SecurityConfig" as securityConfig #E0F2FE
+  rectangle "IamUserDetailsService" as userDetails #E0F2FE
+  rectangle "JwtTokenProvider" as jwtProvider #E0F2FE
+  rectangle "JwtAuthenticationFilter" as jwtFilter #E0F2FE
+  rectangle "ModuleAccessAspect" as moduleAspect #E0F2FE
+  rectangle "PermissionAccessAspect" as permissionAspect #E0F2FE
+}
+
+package "Platform module (outside IAM)" as platformPkg {
+  rectangle "TenantResolverFilter" as tenantFilter #FEF3C7
+  rectangle "TenantContext\nThreadLocal" as tenantContext #FEF3C7
+}
+
+package "IAM public API" as publicApi {
+  interface "IamFacade" as facade
+  rectangle "AccessContext\nAccessDecision" as accessTypes #DBEAFE
+}
+
+package "IAM application services" as app {
+  rectangle "IamFacadeImpl" as facadeImpl #DCFCE7
+  rectangle "AccessDecisionService" as accessDecision #DCFCE7
+  rectangle "PermissionDecisionService" as permissionDecision #DCFCE7
+  rectangle "InviteEmailSender" as inviteSender #DCFCE7
+  rectangle "SmsDriver" as smsDriver #DCFCE7
+  rectangle "IamSeedDataRunner" as seedRunner #DCFCE7
+}
+
+package "IAM persistence" as persistence {
+  database "iam.users" as users
+  database "iam.school_memberships" as memberships
+  database "iam.roles" as roles
+  database "iam.permissions" as permissions
+  database "iam.role_permissions" as rolePermissions
+  database "iam.modules" as modules
+  database "iam.school_entitlements" as schoolEntitlements
+  database "iam.user_entitlements" as userEntitlements
+  database "iam.invite_tokens" as inviteTokens
+  database "iam.verification_codes" as verificationCodes
+}
+
+auth --> facade : calls
+me --> facade : calls
+membershipController --> facade : calls
+roleController --> facade : calls
+pageControllers ..> auth : renders pages for
+
+securityConfig --> userDetails : configures
+securityConfig --> jwtFilter : installs
+jwtFilter --> jwtProvider : validates JWT
+moduleAspect --> facade : checkAccess
+permissionAspect --> facade : checkPermission
+tenantFilter --> tenantContext : sets per request
+moduleAspect --> tenantContext : reads
+permissionAspect --> tenantContext : reads
+
+facade <|.. facadeImpl
+facadeImpl --> accessDecision
+facadeImpl --> permissionDecision
+facadeImpl --> inviteSender
+facadeImpl --> smsDriver
+
+userDetails --> users : reads
+facadeImpl --> users : reads/writes
+facadeImpl --> memberships : reads/writes
+facadeImpl --> roles : reads/writes
+facadeImpl --> permissions : reads
+facadeImpl --> rolePermissions : reads/writes
+facadeImpl --> modules : reads
+facadeImpl --> schoolEntitlements : reads/writes
+facadeImpl --> inviteTokens : reads/writes
+facadeImpl --> verificationCodes : reads/writes
+
+accessDecision --> modules : reads
+accessDecision --> schoolEntitlements : SCHOOL scope
+accessDecision --> userEntitlements : USER scope
+permissionDecision --> memberships : active memberships
+permissionDecision --> permissions : required permission
+permissionDecision --> rolePermissions : role grants
+
+seedRunner --> modules : seed catalog
+seedRunner --> roles : seed system roles
+seedRunner --> permissions : seed catalog
+seedRunner --> rolePermissions : seed grants
+
+note bottom
+Spring Security establishes identity only.
+IAM aspects enforce module entitlement and permission using active
+memberships and role-permission rows.
+end note
+@enduml
+
+@startuml iam_c4_password_login
+title IAM Flow - Password Login
+
+skinparam shadowing false
+skinparam backgroundColor #F8FAFC
+skinparam defaultFontName Arial
+
+actor User
+participant AuthController
+participant AuthenticationManager
+participant IamUserDetailsService
+database "iam.users" as Users
+participant HttpSession
+
+User -> AuthController : POST /api/auth/login
+AuthController -> AuthenticationManager : authenticate(email, password)
+AuthenticationManager -> IamUserDetailsService : loadUserByUsername(email)
+IamUserDetailsService -> Users : findByEmail(email)
+Users --> IamUserDetailsService : user with password_hash
+AuthenticationManager --> AuthController : Authentication
+AuthController -> HttpSession : save SecurityContext
+AuthController --> User : LoginResponse(email)
+@enduml
+
+@startuml iam_c4_school_scoped_authorization
+title IAM Flow - School-Scoped Authorization
+
+skinparam shadowing false
+skinparam backgroundColor #F8FAFC
+skinparam defaultFontName Arial
+
+actor Client
+participant TenantResolverFilter
+participant ModuleAccessAspect
+participant PermissionAccessAspect
+participant IamFacade
+participant AccessDecisionService
+participant PermissionDecisionService
+participant Controller
+
+Client -> TenantResolverFilter : API request with X-School-ID
+TenantResolverFilter -> TenantResolverFilter : set TenantContext
+note over ModuleAccessAspect, PermissionAccessAspect
+@RequiresModule and @RequiresPermission are independent.
+A method may carry either, both, or neither; each aspect
+reads TenantContext itself. Both shown here for completeness.
+end note
+ModuleAccessAspect -> IamFacade : checkAccess(user, module, school)
+IamFacade -> AccessDecisionService : decide(...)
+AccessDecisionService --> ModuleAccessAspect : granted or denied
+PermissionAccessAspect -> IamFacade : checkPermission(user, permission, school)
+IamFacade -> PermissionDecisionService : decide(...)
+PermissionDecisionService --> PermissionAccessAspect : granted or denied
+PermissionAccessAspect -> Controller : proceed if granted
+Controller -> Controller : TenantContext.requireMatches(path schoolId)
+@enduml
+
+@startuml iam_c4_member_invite_activation
+title IAM Flow - Add Member And Activate Account
+
+skinparam shadowing false
+skinparam backgroundColor #F8FAFC
+skinparam defaultFontName Arial
+
+actor Admin
+participant MembershipController
+participant IamFacadeImpl
+database "iam.users" as Users
+database "iam.school_memberships" as Memberships
+database "iam.invite_tokens" as Invites
+participant SMTP
+actor Invitee
+participant AuthController
+
+Admin -> MembershipController : POST /memberships
+MembershipController -> IamFacadeImpl : findOrCreateUser(email, fullName)
+IamFacadeImpl -> Users : create or reuse user
+MembershipController -> IamFacadeImpl : createMembership(userId, schoolId, roleCode)
+IamFacadeImpl -> Memberships : create or reactivate row
+
+Admin -> MembershipController : POST /{membershipId}/invite-token
+MembershipController -> IamFacadeImpl : issueInviteToken(schoolId, membershipId)
+IamFacadeImpl -> Invites : reuse valid token or create new one
+IamFacadeImpl -> SMTP : send activation link best effort
+
+Invitee -> AuthController : POST /api/auth/activate
+AuthController -> IamFacadeImpl : redeemInviteToken(token, newPassword)
+IamFacadeImpl -> Users : set password_hash
+IamFacadeImpl -> Invites : set redeemed_at
+@enduml
