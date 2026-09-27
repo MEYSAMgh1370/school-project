@@ -245,6 +245,16 @@
     --bulma-light-l: 40%;
     --bulma-light-invert-l: 96%;
 
+    /* `.tag.is-light` does NOT read `--bulma-light-invert-l`. Bulma emits
+       `.tag.is-light.is-light` (specificity 0,3,0, and `.is-light.is-light`
+       matches a single `is-light` class), which always wins and reads
+       `--bulma-light-light-invert-l` instead — a variable Bulma never defines
+       in `:root`. `--bulma-tag-color-l` is therefore invalid and the tag
+       silently inherits body text colour. That was harmless while `is-light`
+       was near-white; against the 40% fill above it measured 3.74:1. Defining
+       it is the fix. */
+    --bulma-light-light-invert-l: 96%;
+
     /* Primary stays at l 29%: white-on-turquoise measures 5.5:1, and the
        button still clears 3:1 against the page for non-text contrast.
        Lightening it for presence would drop the white label below AA. */
@@ -276,6 +286,19 @@
       only matches Bulma's own. */
 .has-text-grey {
   color: var(--bulma-text-weak) !important;
+}
+
+/* 1b. Same defect, the other variant. `.has-text-grey-dark` is hardcoded
+      `hsl(221, 14%, 29%)` — a DARK cool grey, so in the dark scheme it is
+      dark-on-dark: measured 1.68:1 on the landing-page footer link, which is
+      a real sign-in link nobody could read. In the light scheme it passes at
+      9.4:1 but is visibly cool against warm paper. Mapped onto body ink,
+      which flips per scheme.
+      Only `grey` and `grey-dark` are used in this codebase (33 and 1 sites);
+      `-darker`, `-light`, and `-lighter` are hardcoded too and will need the
+      same treatment on first use. */
+.has-text-grey-dark {
+  color: var(--bulma-text) !important;
 }
 
 /* 2. `.is-size-7` carries BOTH the Small and Caption roles in §3 and is

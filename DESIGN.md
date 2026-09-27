@@ -271,8 +271,28 @@ block that replaces Bulma's stock stops. What it changes and why:
   3:1 against the page; lightening it for presence would drop the label
   below AA.
 
-Swept 2026-09-27: all body, caption, link, help, title and six button variants
-clear AA, and every button fill clears 3:1 against the page.
+Swept 2026-09-27 across **both** the component set and the public landing page,
+in both schemes: all body, caption, link, help, title, tag and six button
+variants clear AA, and every button fill clears 3:1 against the page.
+
+The landing-page sweep (added after merging master, which brought
+`landing.css`) caught two dark-scheme failures that the component sweep could
+not, because neither element appears outside that page:
+
+- **`.has-text-grey-dark` measured 1.68:1** — hardcoded to a *dark* cool grey,
+  so in the dark scheme it is dark-on-dark. It carries the footer sign-in link,
+  i.e. a real control nobody could read. Same defect class as
+  `.has-text-grey`; remapped the same way (see §7).
+- **`.tag.is-light` measured 3.74:1** — a regression from `--bulma-light-l: 40%`
+  above. Bulma emits `.tag.is-light.is-light` at specificity 0,3,0, which always
+  wins and reads `--bulma-light-light-invert-l` — a variable **Bulma never
+  defines**, so `--bulma-tag-color-l` was invalid and the tag silently inherited
+  body text colour. Harmless while `is-light` was near-white; broken against a
+  mid-tone fill. Fixed by defining it.
+
+Both are why the sweep has to cover real pages and not just a component
+harness: `landing.css` is entirely token-driven and inherited the warm scheme
+for free, yet the page still had two unreadable elements.
 
 One judgement call recorded so it is not re-litigated: `.button.is-light` in
 the **light** scheme has a fill at 1:1 against the page and cannot reach 3:1
@@ -418,11 +438,17 @@ UX_ROADMAP §2 remains binding and is not repeated here. Additions:
   styles for body text, captions, inline links, help text, and all six button
   variants in **both** colour schemes; all clear AA. Redo that sweep — do not
   eyeball it — on any change to a colour token.
-- **`.has-text-grey` is remapped in `app.css`.** Bulma hardcodes it to a cool
-  `hsl(221, 14%, 48%)`, which measures 4.31:1 on the warm page — below AA,
-  where it cleared 4.69:1 on Bulma's old white ground. Since §3 mandates that
-  class for the Caption role and Bulma 1.0.4 ships no `.has-text-weak`, the
-  class is remapped onto `--bulma-text-weak`.
+- **`.has-text-grey` and `.has-text-grey-dark` are remapped in `app.css`.**
+  Bulma hardcodes every `has-text-grey*` helper with `!important`, so none of
+  them follow the token scheme. `grey` is a cool `hsl(221, 14%, 48%)` measuring
+  4.31:1 on the warm page — below AA, where it cleared 4.69:1 on Bulma's old
+  white ground. `grey-dark` is a cool *dark* `hsl(221, 14%, 29%)`, which in the
+  dark scheme is dark-on-dark at 1.68:1. Since §3 mandates `has-text-grey` for
+  the Caption role and Bulma 1.0.4 ships no `.has-text-weak`, they are remapped
+  onto `--bulma-text-weak` and `--bulma-text`.
+  Only these two are used today (33 and 1 sites). `-darker`, `-light`, and
+  `-lighter` are hardcoded the same way and will need the same treatment on
+  first use — check before reaching for one.
 - Touch targets ≥ 44px on interactive controls — enforced by the `app.css`
   block, not by per-page diligence.
 - Icon-only buttons (when icons exist at all — §12) require `aria-label`.
