@@ -1,8 +1,10 @@
 # Post-Authentication School-Registration Handoff
 
-Status: proposed for review. This proposal describes the navigation and
-security contract implemented by the accompanying change; it is not evidence
-of production deployment.
+Status: implemented on 2026-09-27. Every bullet of the contract below is
+current behavior; the current-state statement lives in
+[`specs/current-system.md`](../specs/current-system.md) under Web UI. This
+record is retained for the rationale and the security argument, and is not
+evidence of production deployment.
 
 ## Verified Baseline
 
@@ -59,9 +61,33 @@ boundary prevents this public query parameter from becoming an open redirect.
   allow-list fallback, and access to the school form with the resulting
   session.
 
+## Implementation
+
+The landing CTAs, the rendered destination, and the allow-list shipped first;
+the direct-entry redirect and the registration retry path followed on
+2026-09-27.
+
+- [`PostAuthenticationDestination.java`](../../src/main/java/com/example/roshdeandishe/iam/shared/PostAuthenticationDestination.java) -
+  `from()` resolves the rendered `next`; `loginUrlFor()` resolves the login URL
+  for an anonymous request. Both read the same allow-list.
+- [`SecurityConfig.java`](../../src/main/java/com/example/roshdeandishe/iam/shared/SecurityConfig.java) -
+  `PostAuthenticationAwareLoginEntryPoint` replaces the stock
+  `LoginUrlAuthenticationEntryPoint`. It builds the redirect from the
+  allow-list constant rather than echoing the request, and strips the context
+  path before matching.
+- [`login.js`](../../src/main/resources/static/js/login.js) and
+  [`register.js`](../../src/main/resources/static/js/register.js) - password
+  login, OTP login, and the successful automatic login navigate to the
+  rendered destination; `loginPagePath` covers the failed-auto-login retry.
+
 ## Verification
 
 Run `./mvnw test -Dtest=LoginDashboardFlowIntegrationTest,RegistrationFlowIntegrationTest`
 and `git diff --check`. No migration or module-boundary verification is needed:
 this is a page-security entry-point and client-navigation change within
 `iam.shared`.
+
+Last run on 2026-09-27: the full suite passed at 186 tests, 0 failures.
+Browser verification was not performed; the environment had no PostgreSQL
+instance, so the evidence is the integration tests driving the real Spring
+Security filter chain.
