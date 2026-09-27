@@ -1,6 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="1200" height="680" viewBox="0 0 1200 680" role="img" aria-labelledby="title desc">
   <title id="title">IAM C4 Level 2 Containers</title>
-  <desc id="desc">Web browser and Android clients call the Spring Boot backend, which persists IAM data and uses email and SMS integrations.</desc>
+  <desc id="desc">Web browser and Android clients call the Spring Boot backend, which persists IAM data and sends activation email. The SMS gateway is drawn dashed because no provider integration is implemented.</desc>
   <defs>
     <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
       <path d="M 0 0 L 10 5 L 0 10 z" fill="#475569"/>
@@ -17,6 +17,9 @@
       .small { font: 400 13px Arial, sans-serif; fill: #334155; }
       .edge { stroke: #475569; stroke-width: 2; fill: none; marker-end: url(#arrow); }
       .edge-label { font: 400 12px Arial, sans-serif; fill: #334155; }
+      .stub { fill: #fef3c7; stroke: #d97706; stroke-width: 2; stroke-dasharray: 6 4; }
+      .stub-note { font: 700 12px Arial, sans-serif; fill: #b45309; }
+      .edge-stub { stroke: #94a3b8; stroke-width: 2; stroke-dasharray: 6 4; fill: none; marker-end: url(#arrow); }
     </style>
   </defs>
 
@@ -59,9 +62,10 @@
   <text class="label" x="950" y="316">SMTP</text>
   <text class="small" x="928" y="338">Activation emails</text>
 
-  <rect class="external" x="890" y="456" width="220" height="70" rx="8"/>
-  <text class="label" x="952" y="486">SMS gateway</text>
-  <text class="small" x="943" y="508">OTP delivery</text>
+  <rect class="stub" x="890" y="450" width="220" height="82" rx="8"/>
+  <text class="label" x="952" y="480">SMS gateway</text>
+  <text class="small" x="943" y="502">OTP delivery</text>
+  <text class="stub-note" x="938" y="522">NOT IMPLEMENTED</text>
 
   <path class="edge" d="M 774 270 C 830 215, 864 160, 906 149"/>
   <text class="edge-label" x="803" y="222">JPA repositories</text>
@@ -69,9 +73,11 @@
   <path class="edge" d="M 774 320 H 890"/>
   <text class="edge-label" x="801" y="308">JavaMailSender</text>
 
-  <path class="edge" d="M 774 372 C 833 410, 855 485, 890 491"/>
-  <text class="edge-label" x="804" y="438">SmsDriver</text>
+  <path class="edge-stub" d="M 774 372 C 833 410, 855 485, 890 491"/>
+  <text class="edge-label" x="804" y="438">SmsDriver - stub, no provider is called</text>
 
-  <rect x="72" y="575" width="1056" height="54" rx="8" fill="#fff" stroke="#cbd5e1"/>
-  <text class="small" x="96" y="607">Authorization is not based on Spring Security authorities. Protected school APIs use @RequiresModule and @RequiresPermission backed by IAM tables.</text>
+  <rect x="72" y="552" width="1056" height="100" rx="8" fill="#fff" stroke="#cbd5e1"/>
+  <text class="small" x="96" y="582">Authorization is not based on Spring Security authorities. Protected school APIs use @RequiresModule and @RequiresPermission backed by IAM tables.</text>
+  <text class="small" x="96" y="608">Dashed box and edge mean not implemented: SmsDriver.sendOtp calls no provider. It can log the code in dev and otherwise fails closed,</text>
+  <text class="small" x="96" y="630">so OTP login cannot be enabled by configuration alone.</text>
 </svg>

@@ -21,6 +21,8 @@
       .edge { stroke: #475569; stroke-width: 2; fill: none; marker-end: url(#arrow); }
       .edge2 { stroke: #64748b; stroke-width: 1.6; fill: none; marker-end: url(#arrow); }
       .edge-label { font: 400 11px Arial, sans-serif; fill: #334155; }
+      .stub { fill: #dcfce7; stroke: #16a34a; stroke-width: 2; stroke-dasharray: 6 4; }
+      .stub-note { font: 700 12px Arial, sans-serif; fill: #b45309; }
     </style>
   </defs>
 
@@ -78,8 +80,9 @@
   <text class="label" x="844" y="358">PermissionDecisionService</text>
   <rect class="service" x="812" y="400" width="250" height="46" rx="7"/>
   <text class="label" x="866" y="428">InviteEmailSender</text>
-  <rect class="service" x="812" y="470" width="250" height="46" rx="7"/>
-  <text class="label" x="893" y="498">SmsDriver</text>
+  <rect class="stub" x="812" y="470" width="250" height="58" rx="7"/>
+  <text class="label" x="893" y="493">SmsDriver</text>
+  <text class="stub-note" x="870" y="514">no provider call yet</text>
 
   <rect class="group" x="780" y="596" width="314" height="194" rx="10"/>
   <text class="group-title" x="804" y="626">Reference data seeding</text>
@@ -140,7 +143,6 @@
   <path class="edge" d="M 937 230 C 937 372, 937 438, 937 470"/>
 
   <path class="edge2" d="M 1062 204 H 1174"/>
-  <path class="edge2" d="M 1062 283 H 1174"/>
   <path class="edge2" d="M 1062 353 H 1174"/>
   <path class="edge2" d="M 1062 682 C 1108 682, 1126 463, 1174 463"/>
   <path class="edge2" d="M 1062 682 C 1112 682, 1126 355, 1174 355"/>
@@ -153,11 +155,13 @@
   <path class="edge2" d="M 1062 353 C 1118 353, 1118 409, 1174 409"/>
 
   <path class="edge2" d="M 1062 283 C 1126 283, 1126 571, 1174 571"/>
+  <path class="edge2" d="M 1062 204 C 1104 204, 1104 301, 1174 301"/>
   <path class="edge2" d="M 1062 204 C 1132 204, 1132 625, 1174 625"/>
   <path class="edge2" d="M 1062 204 C 1138 204, 1138 679, 1174 679"/>
 
   <text class="edge-label" x="1090" y="192">reads/writes</text>
 
-  <rect x="52" y="835" width="1296" height="48" rx="8" fill="#fff" stroke="#cbd5e1"/>
-  <text class="small" x="76" y="864">Spring Security establishes identity only. IAM aspects enforce module entitlement and permission using active memberships and role-permission rows.</text>
+  <rect x="52" y="822" width="1296" height="72" rx="8" fill="#fff" stroke="#cbd5e1"/>
+  <text class="small" x="76" y="852">Spring Security establishes identity only. IAM aspects enforce module entitlement and permission using active memberships and role-permission rows.</text>
+  <text class="small" x="76" y="876">The dashed SmsDriver box means not implemented: sendOtp calls no SMS provider. It can log the code in dev and otherwise fails closed.</text>
 </svg>

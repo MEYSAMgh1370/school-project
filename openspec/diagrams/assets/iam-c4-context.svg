@@ -17,6 +17,9 @@
       .small { font: 400 13px Arial, sans-serif; fill: #334155; }
       .edge { stroke: #475569; stroke-width: 2; fill: none; marker-end: url(#arrow); }
       .edge-label { font: 400 12px Arial, sans-serif; fill: #334155; }
+      .stub { fill: #fef3c7; stroke: #d97706; stroke-width: 2; stroke-dasharray: 6 4; }
+      .stub-note { font: 700 12px Arial, sans-serif; fill: #b45309; }
+      .edge-stub { stroke: #94a3b8; stroke-width: 2; stroke-dasharray: 6 4; fill: none; marker-end: url(#arrow); }
     </style>
   </defs>
 
@@ -74,9 +77,10 @@
   <text class="label" x="937" y="333">SMTP server</text>
   <text class="small" x="924" y="353">Activation emails</text>
 
-  <rect class="external" x="885" y="454" width="220" height="66" rx="8"/>
-  <text class="label" x="937" y="483">SMS provider</text>
-  <text class="small" x="944" y="503">OTP delivery</text>
+  <rect class="stub" x="885" y="448" width="220" height="80" rx="8"/>
+  <text class="label" x="937" y="477">SMS provider</text>
+  <text class="small" x="944" y="497">OTP delivery</text>
+  <text class="stub-note" x="933" y="517">NOT IMPLEMENTED</text>
 
   <path class="edge" d="M 755 292 C 810 235, 850 178, 898 162"/>
   <text class="edge-label" x="785" y="230">users, roles, memberships, entitlements</text>
@@ -84,6 +88,10 @@
   <path class="edge" d="M 755 326 H 885"/>
   <text class="edge-label" x="775" y="315">best-effort invite email</text>
 
-  <path class="edge" d="M 755 365 C 812 406, 840 476, 885 487"/>
-  <text class="edge-label" x="775" y="435">OTP code delivery</text>
+  <path class="edge-stub" d="M 755 365 C 812 406, 840 476, 885 487"/>
+  <text class="edge-label" x="775" y="435">OTP code delivery - stub, no provider is called</text>
+
+  <rect x="62" y="600" width="1076" height="66" rx="8" fill="#fff" stroke="#cbd5e1"/>
+  <text class="small" x="86" y="628">Dashed box and edge mean not implemented. SmsDriver.sendOtp calls no SMS provider: in dev it can log the code, and with an api-key</text>
+  <text class="small" x="86" y="650">configured it still returns failure. OTP login therefore cannot be enabled by configuration alone; provider integration is unwritten.</text>
 </svg>

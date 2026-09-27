@@ -37,7 +37,7 @@ flowchart LR
 
     postgres[(PostgreSQL)]
     smtp[SMTP server]
-    sms[SMS provider]
+    sms[SMS provider\nNOT IMPLEMENTED]
 
     schoolAdmin -->|Browser session login, school admin APIs| system
     teacher -->|Browser session login, protected APIs| system
@@ -47,8 +47,13 @@ flowchart LR
 
     system -->|IAM users, roles, memberships, permissions, entitlements| postgres
     system -->|Activation email best effort| smtp
-    system -->|OTP delivery| sms
+    system -.->|OTP delivery - stub, no provider is called| sms
 ```
+
+The dashed edge to the SMS provider is an unimplemented stub, not current
+behavior. `SmsDriver.sendOtp` calls no provider: without an API key it can log
+the code in dev and otherwise fails closed, and with an API key configured it
+still returns failure. OTP delivery cannot be enabled by configuration alone.
 
 ## Level 2: Containers
 
@@ -61,7 +66,7 @@ flowchart LR
     backend[Spring Boot modular monolith\nJava 21]
     db[(PostgreSQL\nFlyway-managed schemas)]
     mail[SMTP]
-    sms[SMS gateway]
+    sms[SMS gateway\nNOT IMPLEMENTED]
 
     browser -->|Cookie session + XSRF token| backend
     browser -->|X-School-ID for school-scoped APIs| backend
@@ -69,8 +74,11 @@ flowchart LR
 
     backend -->|JPA repositories| db
     backend -->|Invite activation email| mail
-    backend -->|OTP code send| sms
+    backend -.->|OTP code send - stub, no provider is called| sms
 ```
+
+As in the context diagram, the dashed SMS gateway edge marks an unimplemented
+stub rather than a deployed integration.
 
 The backend is one Spring Boot artifact, not a Maven multi-module reactor.
 Spring Modulith treats top-level packages as application modules. IAM is the
@@ -115,7 +123,7 @@ flowchart TB
         moduleDecision[AccessDecisionService]
         permissionDecision[PermissionDecisionService]
         inviteSender[InviteEmailSender]
-        smsDriver[SmsDriver]
+        smsDriver[SmsDriver\nno provider call yet]
         seed[IamSeedDataRunner]
     end
 
@@ -270,6 +278,7 @@ sequenceDiagram
 | `AccessDecisionService` | Chooses entitlement source by module scope: `PLATFORM` grants unconditionally to any authenticated caller, `SCHOOL` checks `school_entitlements` for the context school, `USER` checks `user_entitlements` for the caller. |
 | `PermissionDecisionService` | Grants only when an active membership role has the required permission. |
 | `TenantResolverFilter` | Belongs to the `platform` module, not IAM. Reads the `X-School-ID` header on non-excluded paths and sets the `TenantContext` ThreadLocal. The IAM aspects read that context; the filter never calls them. |
+| `SmsDriver` | Unimplemented OTP delivery stub. `sendOtp` calls no SMS provider: with a blank `roshdeandishe.sms.api-key` it logs the code and returns success only when `roshdeandishe.sms.dev-log-codes` is on, and with an API key set it logs an error and returns failure. No configuration makes it deliver a message. |
 | `IamSeedDataRunner` | Idempotently seeds reference catalog data: modules, system roles, permissions, and role-permission grants. It seeds demo admin data outside `prod`. |
 
 ## Current Limits
@@ -278,9 +287,12 @@ sequenceDiagram
   permission-check path and is hidden from role-management UI responses.
 - `USER`-scoped module checks exist through `user_entitlements`, but there is no
   public facade/API workflow to grant user entitlements yet.
-- Real SMS provider integration is not implemented. `SmsDriver` can log codes in
-  dev/test when configured, and production fails closed if delivery is not
-  available.
+- Real SMS provider integration is not implemented, and setting
+  `roshdeandishe.sms.api-key` does not enable it — `SmsDriver.sendOtp` has no
+  provider call at all and returns failure on that path. Only
+  `roshdeandishe.sms.dev-log-codes` produces a usable code, by logging it. The
+  SMS provider is drawn dashed in the context and container diagrams for this
+  reason.
 
 ## Evidence
 
