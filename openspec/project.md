@@ -16,6 +16,7 @@ These OpenSpec documents are the curated entry point for current behavior, propo
 
 - [`architecture.md`](architecture.md) - verified architecture and deployment shape.
 - [`specs/current-system.md`](specs/current-system.md) - current product/module behavior and known limitations.
+- [`diagrams/iam-c4.md`](diagrams/iam-c4.md) - C4-style IAM context, container, component, and flow diagrams, with PlantUML sources.
 - [`conventions.md`](conventions.md) - development, testing, documentation, and frontend conventions.
 - [`changes/proposed-work.md`](changes/proposed-work.md) - planned or unresolved work that is not current behavior.
 - [`changes/finance-monetary-unit.md`](changes/finance-monetary-unit.md) - proposed finance monetary-unit contract; no implementation has occurred.
