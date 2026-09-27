@@ -24,7 +24,7 @@ rectangle "Roshdeandishe school management system\nSpring Boot modular monolith\
 
 database "PostgreSQL\nIAM schema tables" as postgres
 rectangle "SMTP server\nActivation emails" as smtp <<External>> #FEF3C7
-rectangle "SMS provider\nOTP delivery" as sms <<External>> #FEF3C7
+rectangle "SMS provider\nOTP delivery\n<b>NOT IMPLEMENTED</b>" as sms <<External>> #FEF3C7
 
 schoolAdmin --> system : Browser session login\nschool admin APIs
 teacher --> system : Browser session login\nprotected APIs
@@ -34,11 +34,15 @@ bale --> system : Webhook
 
 system --> postgres : IAM users, roles,\nmemberships, permissions,\nentitlements
 system --> smtp : Activation email\nbest effort
-system --> sms : OTP delivery
+system ..> sms : OTP delivery\n<b>stub, no provider is called</b>
 
 legend right
   This is C4-style without external C4-PlantUML includes.
   It should render with the standard IntelliJ PlantUML plugin.
+
+  The dashed SMS edge is an unimplemented stub, not current behavior.
+  SmsDriver.sendOtp calls no provider: it can log the code in dev and
+  otherwise fails closed, so setting an api-key does not enable delivery.
 endlegend
 @enduml
 
@@ -65,19 +69,23 @@ rectangle "Spring Boot backend\nJava 21 modular monolith\nIAM, school, academic,
 
 database "PostgreSQL\nFlyway-managed schemas" as db
 rectangle "SMTP\nActivation emails" as mail <<External>> #FEF3C7
-rectangle "SMS gateway\nOTP delivery" as sms <<External>> #FEF3C7
+rectangle "SMS gateway\nOTP delivery\n<b>NOT IMPLEMENTED</b>" as sms <<External>> #FEF3C7
 
 browser --> backend : HTML + JSON APIs\nX-School-ID on protected APIs
 android --> backend : POST /api/auth/token\nAuthorization: Bearer
 
 backend --> db : JPA repositories
 backend --> mail : JavaMailSender
-backend --> sms : SmsDriver
+backend ..> sms : SmsDriver\n<b>stub, no provider is called</b>
 
 note bottom of backend
 Authorization is not based on Spring Security authorities.
 Protected school APIs use @RequiresModule and @RequiresPermission
 backed by IAM tables.
+
+The dashed SMS edge is an unimplemented stub. SmsDriver.sendOtp calls
+no provider: it can log the code in dev and otherwise fails closed, so
+OTP login cannot be enabled by configuration alone.
 end note
 @enduml
 
@@ -130,7 +138,7 @@ package "IAM application services" as app {
   rectangle "AccessDecisionService" as accessDecision #DCFCE7
   rectangle "PermissionDecisionService" as permissionDecision #DCFCE7
   rectangle "InviteEmailSender" as inviteSender #DCFCE7
-  rectangle "SmsDriver" as smsDriver #DCFCE7
+  rectangle "SmsDriver\n<b>no provider call yet</b>" as smsDriver #DCFCE7
   rectangle "IamSeedDataRunner" as seedRunner #DCFCE7
 }
 
@@ -195,6 +203,10 @@ note bottom
 Spring Security establishes identity only.
 IAM aspects enforce module entitlement and permission using active
 memberships and role-permission rows.
+
+IamFacadeImpl calls SmsDriver, but SmsDriver.sendOtp reaches no SMS
+provider yet. AccessDecisionService reads modules and the two
+entitlement tables only; role rows are read through IamFacadeImpl.
 end note
 @enduml
 

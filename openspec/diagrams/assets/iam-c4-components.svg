@@ -1,6 +1,6 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="1400" height="920" viewBox="0 0 1400 920" role="img" aria-labelledby="title desc">
+<svg xmlns="http://www.w3.org/2000/svg" width="1400" height="1120" viewBox="0 0 1400 1120" role="img" aria-labelledby="title desc">
   <title id="title">IAM C4 Level 3 Components</title>
-  <desc id="desc">IAM controllers, security aspects, facade, services, and persistence tables.</desc>
+  <desc id="desc">IAM controllers, public contract, security components, platform tenancy, application services, and persistence tables. Every node and edge corresponds one-for-one with the Mermaid component flowchart in iam-c4.md.</desc>
   <defs>
     <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
       <path d="M 0 0 L 10 5 L 0 10 z" fill="#475569"/>
@@ -16,148 +16,194 @@
       .platform { fill: #fef3c7; stroke: #d97706; stroke-width: 2; }
       .service { fill: #dcfce7; stroke: #16a34a; stroke-width: 2; }
       .store { fill: #ede9fe; stroke: #7c3aed; stroke-width: 2; }
-      .label { font: 700 14px Arial, sans-serif; fill: #0f172a; }
-      .small { font: 400 12px Arial, sans-serif; fill: #334155; }
+      .stub { fill: #dcfce7; stroke: #16a34a; stroke-width: 2; stroke-dasharray: 6 4; }
+      .label { font: 700 14px Arial, sans-serif; fill: #0f172a; text-anchor: middle; }
+      .small { font: 400 12px Arial, sans-serif; fill: #334155; text-anchor: middle; }
+      .stub-note { font: 700 12px Arial, sans-serif; fill: #b45309; text-anchor: middle; }
       .edge { stroke: #475569; stroke-width: 2; fill: none; marker-end: url(#arrow); }
       .edge2 { stroke: #64748b; stroke-width: 1.6; fill: none; marker-end: url(#arrow); }
+      .edge-dotted { stroke: #64748b; stroke-width: 1.6; fill: none; stroke-dasharray: 2 4; marker-end: url(#arrow); }
       .edge-label { font: 400 11px Arial, sans-serif; fill: #334155; }
+      .note { font: 400 13px Arial, sans-serif; fill: #334155; }
     </style>
   </defs>
 
-  <rect class="bg" x="0" y="0" width="1400" height="920"/>
+  <rect class="bg" x="0" y="0" width="1400" height="1120"/>
   <text class="title" x="48" y="54">IAM C4 - Level 3: Components</text>
   <text class="subtitle" x="48" y="80">Implemented IAM components and their main dependencies.</text>
 
-  <rect class="group" x="52" y="118" width="304" height="286" rx="10"/>
-  <text class="group-title" x="76" y="148">HTTP entry points</text>
+  <!-- ===== IAM HTTP entry points ===== -->
+  <rect class="group" x="52" y="118" width="304" height="352" rx="10"/>
+  <text class="group-title" x="76" y="148">IAM HTTP entry points</text>
 
-  <rect class="api" x="82" y="174" width="244" height="44" rx="7"/>
-  <text class="label" x="146" y="202">AuthController</text>
-  <rect class="api" x="82" y="236" width="244" height="44" rx="7"/>
-  <text class="label" x="151" y="264">MeController</text>
-  <rect class="api" x="82" y="298" width="244" height="44" rx="7"/>
-  <text class="label" x="119" y="326">MembershipController</text>
-  <rect class="api" x="82" y="360" width="244" height="44" rx="7"/>
-  <text class="label" x="149" y="388">RoleController</text>
+  <rect data-node="auth" class="api" x="82" y="174" width="244" height="44" rx="7"/>
+  <text class="label" x="204" y="202">AuthController</text>
+  <rect data-node="me" class="api" x="82" y="230" width="244" height="44" rx="7"/>
+  <text class="label" x="204" y="258">MeController</text>
+  <rect data-node="memberships" class="api" x="82" y="286" width="244" height="44" rx="7"/>
+  <text class="label" x="204" y="314">MembershipController</text>
+  <rect data-node="roles" class="api" x="82" y="342" width="244" height="44" rx="7"/>
+  <text class="label" x="204" y="370">RoleController</text>
+  <rect data-node="pages" class="api" x="82" y="398" width="244" height="50" rx="7"/>
+  <text class="label" x="204" y="418">Login / Register / Activate</text>
+  <text class="small" x="204" y="437">page controllers</text>
 
-  <rect class="group" x="52" y="438" width="304" height="232" rx="10"/>
-  <text class="group-title" x="76" y="468">Security and tenancy</text>
+  <!-- ===== IAM public API ===== -->
+  <rect class="group" x="410" y="118" width="308" height="182" rx="10"/>
+  <text class="group-title" x="434" y="148">IAM public API</text>
 
-  <rect class="security" x="82" y="494" width="244" height="40" rx="7"/>
-  <text class="label" x="145" y="519">SecurityConfig</text>
-  <rect class="security" x="82" y="548" width="244" height="40" rx="7"/>
-  <text class="label" x="110" y="573">JwtAuthenticationFilter</text>
-  <rect class="platform" x="82" y="602" width="244" height="50" rx="7"/>
-  <text class="label" x="122" y="622">TenantResolverFilter</text>
-  <text class="small" x="139" y="641">platform module, not IAM</text>
+  <rect data-node="facade" class="api" x="442" y="178" width="244" height="50" rx="7"/>
+  <text class="label" x="564" y="208">IamFacade</text>
+  <rect data-node="accessContext" class="api" x="442" y="246" width="244" height="38" rx="7"/>
+  <text class="small" x="564" y="270">AccessContext / AccessDecision</text>
 
-  <rect class="group" x="410" y="118" width="308" height="170" rx="10"/>
-  <text class="group-title" x="434" y="148">Public IAM contract</text>
+  <!-- ===== IAM application services ===== -->
+  <rect class="group" x="780" y="118" width="314" height="508" rx="10"/>
+  <text class="group-title" x="804" y="148">IAM application services</text>
 
-  <rect class="api" x="442" y="178" width="244" height="50" rx="7"/>
-  <text class="label" x="508" y="207">IamFacade</text>
-  <rect class="api" x="442" y="242" width="244" height="36" rx="7"/>
-  <text class="small" x="475" y="264">AccessContext / AccessDecision</text>
+  <rect data-node="facadeImpl" class="service" x="812" y="178" width="250" height="52" rx="7"/>
+  <text class="label" x="937" y="209">IamFacadeImpl</text>
+  <rect data-node="moduleDecision" class="service" x="812" y="260" width="250" height="46" rx="7"/>
+  <text class="label" x="937" y="288">AccessDecisionService</text>
+  <rect data-node="permissionDecision" class="service" x="812" y="330" width="250" height="46" rx="7"/>
+  <text class="label" x="937" y="358">PermissionDecisionService</text>
+  <rect data-node="inviteSender" class="service" x="812" y="400" width="250" height="46" rx="7"/>
+  <text class="label" x="937" y="428">InviteEmailSender</text>
+  <rect data-node="smsDriver" class="stub" x="812" y="470" width="250" height="58" rx="7"/>
+  <text class="label" x="937" y="494">SmsDriver</text>
+  <text class="stub-note" x="937" y="514">no provider call yet</text>
+  <rect data-node="seed" class="service" x="812" y="552" width="250" height="52" rx="7"/>
+  <text class="label" x="937" y="583">IamSeedDataRunner</text>
 
-  <rect class="group" x="410" y="324" width="308" height="226" rx="10"/>
-  <text class="group-title" x="434" y="354">Authorization aspects</text>
-
-  <rect class="security" x="442" y="384" width="244" height="46" rx="7"/>
-  <text class="label" x="492" y="412">ModuleAccessAspect</text>
-  <rect class="security" x="442" y="454" width="244" height="46" rx="7"/>
-  <text class="label" x="480" y="482">PermissionAccessAspect</text>
-
-  <rect class="group" x="780" y="118" width="314" height="432" rx="10"/>
-  <text class="group-title" x="804" y="148">Application services</text>
-
-  <rect class="service" x="812" y="178" width="250" height="52" rx="7"/>
-  <text class="label" x="891" y="207">IamFacadeImpl</text>
-  <rect class="service" x="812" y="260" width="250" height="46" rx="7"/>
-  <text class="label" x="861" y="288">AccessDecisionService</text>
-  <rect class="service" x="812" y="330" width="250" height="46" rx="7"/>
-  <text class="label" x="844" y="358">PermissionDecisionService</text>
-  <rect class="service" x="812" y="400" width="250" height="46" rx="7"/>
-  <text class="label" x="866" y="428">InviteEmailSender</text>
-  <rect class="service" x="812" y="470" width="250" height="46" rx="7"/>
-  <text class="label" x="893" y="498">SmsDriver</text>
-
-  <rect class="group" x="780" y="596" width="314" height="194" rx="10"/>
-  <text class="group-title" x="804" y="626">Reference data seeding</text>
-  <rect class="service" x="812" y="656" width="250" height="52" rx="7"/>
-  <text class="label" x="877" y="685">IamSeedDataRunner</text>
-  <text class="small" x="827" y="734">Seeds modules, system roles, permissions,</text>
-  <text class="small" x="827" y="754">role-permission grants, and dev demo data.</text>
-
-  <rect class="group" x="1144" y="118" width="204" height="672" rx="10"/>
+  <!-- ===== IAM persistence ===== -->
+  <rect class="group" x="1144" y="118" width="204" height="572" rx="10"/>
   <text class="group-title" x="1168" y="148">IAM persistence</text>
 
-  <rect class="store" x="1174" y="174" width="144" height="38" rx="7"/>
-  <text class="small" x="1200" y="198">iam.users</text>
-  <rect class="store" x="1174" y="228" width="144" height="38" rx="7"/>
-  <text class="small" x="1190" y="252">school_memberships</text>
-  <rect class="store" x="1174" y="282" width="144" height="38" rx="7"/>
-  <text class="small" x="1201" y="306">iam.roles</text>
-  <rect class="store" x="1174" y="336" width="144" height="38" rx="7"/>
-  <text class="small" x="1190" y="360">iam.permissions</text>
-  <rect class="store" x="1174" y="390" width="144" height="38" rx="7"/>
-  <text class="small" x="1190" y="414">role_permissions</text>
-  <rect class="store" x="1174" y="444" width="144" height="38" rx="7"/>
-  <text class="small" x="1197" y="468">iam.modules</text>
-  <rect class="store" x="1174" y="498" width="144" height="38" rx="7"/>
-  <text class="small" x="1188" y="522">school_entitlements</text>
-  <rect class="store" x="1174" y="552" width="144" height="38" rx="7"/>
-  <text class="small" x="1192" y="576">user_entitlements</text>
-  <rect class="store" x="1174" y="606" width="144" height="38" rx="7"/>
-  <text class="small" x="1194" y="630">invite_tokens</text>
-  <rect class="store" x="1174" y="660" width="144" height="38" rx="7"/>
-  <text class="small" x="1186" y="684">verification_codes</text>
+  <rect data-node="users" class="store" x="1174" y="174" width="144" height="38" rx="7"/>
+  <text class="small" x="1246" y="198">iam.users</text>
+  <rect data-node="membershipsTable" class="store" x="1174" y="224" width="144" height="38" rx="7"/>
+  <text class="small" x="1246" y="248">school_memberships</text>
+  <rect data-node="rolesTable" class="store" x="1174" y="274" width="144" height="38" rx="7"/>
+  <text class="small" x="1246" y="298">iam.roles</text>
+  <rect data-node="permissionsTable" class="store" x="1174" y="324" width="144" height="38" rx="7"/>
+  <text class="small" x="1246" y="348">iam.permissions</text>
+  <rect data-node="rolePermissions" class="store" x="1174" y="374" width="144" height="38" rx="7"/>
+  <text class="small" x="1246" y="398">role_permissions</text>
+  <rect data-node="modulesTable" class="store" x="1174" y="424" width="144" height="38" rx="7"/>
+  <text class="small" x="1246" y="448">iam.modules</text>
+  <rect data-node="schoolEntitlements" class="store" x="1174" y="474" width="144" height="38" rx="7"/>
+  <text class="small" x="1246" y="498">school_entitlements</text>
+  <rect data-node="userEntitlements" class="store" x="1174" y="524" width="144" height="38" rx="7"/>
+  <text class="small" x="1246" y="548">user_entitlements</text>
+  <rect data-node="inviteTokens" class="store" x="1174" y="574" width="144" height="38" rx="7"/>
+  <text class="small" x="1246" y="598">invite_tokens</text>
+  <rect data-node="verificationCodes" class="store" x="1174" y="624" width="144" height="38" rx="7"/>
+  <text class="small" x="1246" y="648">verification_codes</text>
 
+  <!-- ===== Authentication and request security ===== -->
+  <rect class="group" x="52" y="520" width="666" height="252" rx="10"/>
+  <text class="group-title" x="76" y="548">Authentication and request security</text>
+
+  <rect data-node="securityConfig" class="security" x="82" y="562" width="260" height="50" rx="7"/>
+  <text class="label" x="212" y="592">SecurityConfig</text>
+  <rect data-node="userDetails" class="security" x="440" y="562" width="250" height="50" rx="7"/>
+  <text class="label" x="565" y="592">IamUserDetailsService</text>
+  <rect data-node="jwtFilter" class="security" x="82" y="632" width="260" height="50" rx="7"/>
+  <text class="label" x="212" y="662">JwtAuthenticationFilter</text>
+  <rect data-node="jwtProvider" class="security" x="440" y="632" width="250" height="50" rx="7"/>
+  <text class="label" x="565" y="662">JwtTokenProvider</text>
+  <rect data-node="moduleAspect" class="security" x="82" y="702" width="260" height="50" rx="7"/>
+  <text class="label" x="212" y="732">ModuleAccessAspect</text>
+  <rect data-node="permissionAspect" class="security" x="440" y="702" width="250" height="50" rx="7"/>
+  <text class="label" x="565" y="732">PermissionAccessAspect</text>
+
+  <!-- ===== Platform module - outside IAM ===== -->
+  <rect class="group" x="52" y="810" width="666" height="140" rx="10"/>
+  <text class="group-title" x="76" y="838">Platform module - outside IAM</text>
+
+  <rect data-node="tenantFilter" class="platform" x="82" y="862" width="240" height="50" rx="7"/>
+  <text class="label" x="202" y="884">TenantResolverFilter</text>
+  <text class="small" x="202" y="902">platform module, not IAM</text>
+  <rect data-node="tenantContext" class="platform" x="420" y="862" width="266" height="50" rx="7"/>
+  <text class="small" x="553" y="892">TenantContext (ThreadLocal)</text>
+
+  <!-- ===== Edges: controllers -> IamFacade ===== -->
   <path class="edge" d="M 326 196 H 442"/>
-  <path class="edge" d="M 326 258 H 442"/>
-  <path class="edge" d="M 326 320 H 442"/>
-  <path class="edge" d="M 326 382 H 442"/>
-  <text class="edge-label" x="354" y="184">calls facade</text>
+  <path class="edge" d="M 326 252 C 380 252, 392 210, 442 205"/>
+  <path class="edge" d="M 326 308 C 384 308, 396 218, 442 213"/>
+  <path class="edge" d="M 326 364 C 388 364, 400 226, 442 221"/>
+  <text class="edge-label" x="352" y="186">calls facade</text>
 
-  <rect class="group" x="410" y="572" width="308" height="88" rx="10"/>
-  <text class="group-title" x="434" y="600">Request tenancy</text>
-  <rect class="platform" x="442" y="612" width="244" height="34" rx="7"/>
-  <text class="small" x="474" y="634">TenantContext (ThreadLocal)</text>
+  <!-- page controllers -> AuthController (renders only) -->
+  <path class="edge-dotted" d="M 82 423 C 58 423, 58 196, 82 196"/>
+  <text class="edge-label" x="74" y="322" transform="rotate(-90 74 322)">renders only</text>
 
-  <path class="edge" d="M 326 627 H 442"/>
-  <text class="edge-label" x="334" y="619">sets per request</text>
+  <!-- ===== IamFacade -> IamFacadeImpl ===== -->
+  <path class="edge" d="M 686 190 H 812"/>
+  <text class="edge-label" x="700" y="180">implemented by</text>
 
-  <path class="edge" d="M 670 500 V 612"/>
-  <text class="edge-label" x="678" y="545">both aspects read</text>
-
-  <path class="edge" d="M 686 203 H 812"/>
-  <path class="edge" d="M 686 407 C 736 407, 760 223, 812 204"/>
-  <path class="edge" d="M 686 477 C 746 477, 761 234, 812 215"/>
-  <text class="edge-label" x="719" y="191">implemented by</text>
-
+  <!-- ===== IamFacadeImpl -> application services ===== -->
   <path class="edge" d="M 937 230 V 260"/>
   <path class="edge" d="M 937 230 C 937 282, 937 302, 937 330"/>
   <path class="edge" d="M 937 230 C 937 324, 937 370, 937 400"/>
   <path class="edge" d="M 937 230 C 937 372, 937 438, 937 470"/>
 
+  <!-- ===== IamFacadeImpl -> persistence (9 tables) ===== -->
   <path class="edge2" d="M 1062 204 H 1174"/>
-  <path class="edge2" d="M 1062 283 H 1174"/>
+  <path class="edge2" d="M 1062 204 C 1100 204, 1100 243, 1174 243"/>
+  <path class="edge2" d="M 1062 204 C 1104 204, 1104 293, 1174 293"/>
+  <path class="edge2" d="M 1062 204 C 1108 204, 1108 343, 1174 343"/>
+  <path class="edge2" d="M 1062 204 C 1112 204, 1112 393, 1174 393"/>
+  <path class="edge2" d="M 1062 204 C 1116 204, 1116 443, 1174 443"/>
+  <path class="edge2" d="M 1062 204 C 1120 204, 1120 493, 1174 493"/>
+  <path class="edge2" d="M 1062 204 C 1132 204, 1132 593, 1174 593"/>
+  <path class="edge2" d="M 1062 204 C 1136 204, 1136 643, 1174 643"/>
+  <text class="edge-label" x="1092" y="166">reads/writes</text>
+
+  <!-- ===== AccessDecisionService -> modules, school_entitlements, user_entitlements ===== -->
+  <path class="edge2" d="M 1062 283 C 1124 283, 1124 443, 1174 443"/>
+  <path class="edge2" d="M 1062 283 C 1128 283, 1128 493, 1174 493"/>
+  <path class="edge2" d="M 1062 283 C 1132 283, 1132 543, 1174 543"/>
+
+  <!-- ===== PermissionDecisionService -> memberships, permissions, role_permissions ===== -->
+  <path class="edge2" d="M 1062 353 C 1118 353, 1118 243, 1174 243"/>
   <path class="edge2" d="M 1062 353 H 1174"/>
-  <path class="edge2" d="M 1062 682 C 1108 682, 1126 463, 1174 463"/>
-  <path class="edge2" d="M 1062 682 C 1112 682, 1126 355, 1174 355"/>
-  <path class="edge2" d="M 1062 682 C 1112 682, 1126 409, 1174 409"/>
+  <path class="edge2" d="M 1062 353 C 1118 353, 1118 393, 1174 393"/>
 
-  <path class="edge2" d="M 1062 283 C 1118 283, 1118 463, 1174 463"/>
-  <path class="edge2" d="M 1062 283 C 1118 283, 1118 517, 1174 517"/>
-  <path class="edge2" d="M 1062 353 C 1118 353, 1118 247, 1174 247"/>
-  <path class="edge2" d="M 1062 353 C 1118 353, 1118 355, 1174 355"/>
-  <path class="edge2" d="M 1062 353 C 1118 353, 1118 409, 1174 409"/>
+  <!-- ===== IamSeedDataRunner -> modules, roles, permissions, role_permissions ===== -->
+  <path class="edge2" d="M 1062 578 C 1122 578, 1130 443, 1174 443"/>
+  <path class="edge2" d="M 1062 578 C 1126 578, 1134 293, 1174 293"/>
+  <path class="edge2" d="M 1062 578 C 1126 578, 1134 343, 1174 343"/>
+  <path class="edge2" d="M 1062 578 C 1126 578, 1134 393, 1174 393"/>
 
-  <path class="edge2" d="M 1062 283 C 1126 283, 1126 571, 1174 571"/>
-  <path class="edge2" d="M 1062 204 C 1132 204, 1132 625, 1174 625"/>
-  <path class="edge2" d="M 1062 204 C 1138 204, 1138 679, 1174 679"/>
+  <!-- ===== Security wiring ===== -->
+  <path class="edge" d="M 342 587 H 440"/>
+  <text class="edge-label" x="352" y="578">configures</text>
+  <path class="edge" d="M 212 612 V 632"/>
+  <text class="edge-label" x="220" y="628">installs</text>
+  <path class="edge" d="M 342 657 H 440"/>
+  <text class="edge-label" x="348" y="648">validates JWT</text>
 
-  <text class="edge-label" x="1090" y="192">reads/writes</text>
+  <!-- IamUserDetailsService -> iam.users -->
+  <path class="edge2" d="M 690 587 H 730 V 100 H 1246 V 174"/>
+  <text class="edge-label" x="980" y="92">loads user by email</text>
 
-  <rect x="52" y="835" width="1296" height="48" rx="8" fill="#fff" stroke="#cbd5e1"/>
-  <text class="small" x="76" y="864">Spring Security establishes identity only. IAM aspects enforce module entitlement and permission using active memberships and role-permission rows.</text>
+  <!-- aspects -> IamFacade -->
+  <path class="edge" d="M 212 752 V 762 H 772 V 210 H 686"/>
+  <path class="edge" d="M 690 727 H 744 V 222 H 686"/>
+
+  <!-- aspects -> TenantContext -->
+  <path class="edge" d="M 260 752 V 792 H 500 V 862"/>
+  <text class="edge-label" x="350" y="786">reads</text>
+  <path class="edge" d="M 565 752 V 862"/>
+  <text class="edge-label" x="572" y="800">reads</text>
+
+  <!-- TenantResolverFilter -> TenantContext -->
+  <path class="edge" d="M 322 887 H 420"/>
+  <text class="edge-label" x="326" y="878">sets per request</text>
+
+  <rect x="52" y="990" width="1296" height="96" rx="8" fill="#fff" stroke="#cbd5e1"/>
+  <text class="note" x="76" y="1018">Spring Security establishes identity only. IAM aspects enforce module entitlement and permission using active memberships and role-permission rows.</text>
+  <text class="note" x="76" y="1042">Dashed SmsDriver box = not implemented: sendOtp calls no SMS provider. Dotted page-controller edge = renders only. Both match the Mermaid source.</text>
+  <text class="note" x="76" y="1066">Every node, group, and edge here corresponds one-for-one with the Mermaid component flowchart in iam-c4.md.</text>
 </svg>

@@ -77,6 +77,12 @@ views.py (SMSViewSet)}`.
   only logs — same convention as `bale.internal.BaleClient`'s
   empty-token-means-log-only default, for consistency. Real provider is
   deployment config (`roshdeandishe.sms.*`), not missing code.
+  > **As built, this last sentence is wrong.** `SmsDriver` shipped as a
+  > concrete class, not an interface (YAGNI — no second provider was asked
+  > for), and it contains no provider call at all. Setting
+  > `roshdeandishe.sms.api-key` logs an error and returns failure rather than
+  > delivering. Unlike `BaleClient`, a real provider here is missing code, not
+  > deployment config.
 - `IamFacade` additions: `requestOtp(phoneNumber)` (looks up the user by
   their already-registered phone, generates+sends a code — 404s if no user
   has that phone, since there's nothing to authenticate into) and
