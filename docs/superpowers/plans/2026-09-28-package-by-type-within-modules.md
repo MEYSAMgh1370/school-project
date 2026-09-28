@@ -12,7 +12,7 @@
 
 ## Global Constraints
 
-- **No behavior changes.** Only `package` lines, `import` lines, file locations, JTE `@import` lines, and the documented visibility widenings — 3 types and 5 members, enumerated in Tasks 2 and 10.
+- **No behavior changes.** Only `package` lines, `import` lines, file locations, JTE `@import` lines, the documented visibility widenings (3 types and 5 members, enumerated in Tasks 2 and 10), and the two comment refreshes in Task 4. Nothing else.
 - **Widen the minimum.** A type or member becomes `public` only when a consumer lands in a *different* package. If the caller moves to the same destination package, it stays package-private. Each task names exactly which members qualify; do not widen others for consistency or convenience.
 - **Never edit an AOP pointcut string.** Three pointcuts name types as string literals (`LoggingAspect:36`, `ModuleAccessAspect:52`, `PermissionAccessAspect:36`). All three stay valid under this plan because the types they name do not move. If you find yourself needing to edit one, something has been moved that this plan says stays put.
 - **Never move a class into a module base package.** Base packages are the exposed module API; moving a class in silently widens the module's contract. `ModularityTests` does **not** catch this — only diff review does.
