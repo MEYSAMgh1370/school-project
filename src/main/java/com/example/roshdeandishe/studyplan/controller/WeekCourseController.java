@@ -10,7 +10,6 @@ import com.example.roshdeandishe.studyplan.dto.CreateWeekCourseRequest;
 import com.example.roshdeandishe.studyplan.dto.WeekCourseResponse;
 import org.springframework.web.bind.annotation.*;
 
-import java.time.LocalDate;
 import java.util.List;
 
 /**

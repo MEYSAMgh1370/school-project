@@ -15,7 +15,6 @@ import com.example.roshdeandishe.studyplan.dto.UpdateIntervalRequest;
 import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDate;
-import java.time.LocalDateTime;
 import java.util.List;
 
 /**

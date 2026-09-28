@@ -63,7 +63,7 @@ Use these repository conventions, verified against current code and tests:
   [`changes/package-by-type-within-modules.md`](changes/package-by-type-within-modules.md)
   for the full rationale and the alternatives this rejected.
 - Constructor injection only in production code; no field injection and no unnecessary `@Autowired` when Spring can wire a single constructor.
-- Package-private implementations, entities, repositories, constructors, and internal services by default. Public types are facade interfaces, REST/page controllers, and explicitly exposed `@NamedInterface` contracts.
+- Package-private implementations, entities, repositories, constructors, and internal services by default. Public types are facade interfaces, REST/page controllers, and explicitly exposed `@NamedInterface` contracts. Request/response records in `dto/` are also public, for their controller's use, but `dto/` carries no `@NamedInterface`, so they are not part of the module's exposed API.
 - Facade interfaces are the normal cross-module contracts. Do not depend on another module's `internal/` package.
 - `record` DTOs, facade return types, IDs, and value objects unless a mutable JPA entity or neighboring pattern requires otherwise.
 - Keep Lombok to low-value boilerplate already established locally, primarily JPA entities with `@Getter`, `@Setter`, and `@NoArgsConstructor`. Prefer explicit constructors outside entities unless matching a verified local exception-handler pattern.

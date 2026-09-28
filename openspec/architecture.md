@@ -114,7 +114,7 @@ Evidence:
 - [`app.css`](../src/main/resources/static/css/app.css) owns shared design tokens and global CSS rules.
 - [`src/main/resources/static/js/`](../src/main/resources/static/js/) contains page-level Alpine components.
 
-Auth/identity pages can live in `iam.controller`. Cross-module product pages live in `web` and compose data through facades or client-side REST calls. Do not put REST endpoints in `web`.
+Auth/identity pages can live in `iam/controller/`. Cross-module product pages live in `web` and compose data through facades or client-side REST calls. Do not put REST endpoints in `web`.
 
 ## Native Android
 
