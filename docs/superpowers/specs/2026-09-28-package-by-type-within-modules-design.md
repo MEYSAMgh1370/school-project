@@ -22,8 +22,12 @@ could not pass. Separation therefore happens *inside* each module.
 
 **Constraint 2: package-private visibility is a second enforcement layer.**
 114 of 225 types are package-private, concentrated in the `internal/` packages.
+Of those 114, 3 — `JwtTokenProvider`, `PostAuthenticationDestination`,
+`NavbarModelAssembler` — sit outside `internal/` and are widened to `public`
+elsewhere in this design, for controller extraction (see the widenings table
+below), leaving 111 package-private types actually inside `internal/`.
 Splitting `internal/` into `entity/`, `repository/`, and `service/` would require
-widening all 114 to `public`, because a package-private `FinanceFacadeImpl`
+widening those 111 to `public`, because a package-private `FinanceFacadeImpl`
 cannot see a package-private `InvoiceRepository` in a sibling package. Today the
 *compiler* prevents cross-module leakage even if `ModularityTests` were deleted.
 That guarantee is worth more than the filing convention, so `internal/` stays
@@ -232,9 +236,9 @@ So the full tally is **3 types, 5 members, and 8 record factory methods.**
 
 ### Out of scope
 
-- **Splitting `internal/`** into `entity/`, `repository/`, `service/`. Costs 114
-  visibility widenings and the compiler-enforced encapsulation layer. Rejected;
-  see Constraint 2.
+- **Splitting `internal/`** into `entity/`, `repository/`, `service/`. Costs 111
+  visibility widenings (the package-private types actually inside `internal/`;
+  see Constraint 2) and the compiler-enforced encapsulation layer. Rejected.
 - **Facade nested types** (`IamFacade.UserProfile`, `SchoolFacade.SchoolInfo`, and
   57 others). These are the exposed cross-module API. A `dto/` sub-package is
   *not* exposed by Modulith, so extracting them there would break every module

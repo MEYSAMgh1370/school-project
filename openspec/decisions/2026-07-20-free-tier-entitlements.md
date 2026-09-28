@@ -30,7 +30,7 @@ Paid or platform-controlled grants remain facade-only until platform/billing inf
 
 ## Evidence
 
-- [`SchoolController.java`](../../src/main/java/com/example/roshdeandishe/school/SchoolController.java)
+- [`SchoolController.java`](../../src/main/java/com/example/roshdeandishe/school/controller/SchoolController.java)
 - [`SchoolFacadeImpl.java`](../../src/main/java/com/example/roshdeandishe/school/internal/SchoolFacadeImpl.java)
 - [`IamSeedDataRunner.java`](../../src/main/java/com/example/roshdeandishe/iam/internal/IamSeedDataRunner.java)
 - [`current-system.md`](../specs/current-system.md)

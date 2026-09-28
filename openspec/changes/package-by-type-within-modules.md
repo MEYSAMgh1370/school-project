@@ -73,15 +73,21 @@ application.
 
 **2. Splitting each module's `internal/` package into `entity/`,
 `repository/`, `service/`** was rejected because of a second, independent cost.
-114 of 225 types measured in
+A pre-refactor, repository-wide audit in
 [`docs/superpowers/specs/2026-09-28-package-by-type-within-modules-design.md`](../../docs/superpowers/specs/2026-09-28-package-by-type-within-modules-design.md)
-are package-private, concentrated in `internal/` packages (for example
+found 114 of 225 types package-private, concentrated in `internal/` packages.
+That 114 also counted 3 types outside `internal/` — `JwtTokenProvider`,
+`PostAuthenticationDestination`, `NavbarModelAssembler` — that this refactor
+has since widened to `public` for controller extraction (see "Visibility
+widenings" below), so the count of package-private types actually inside
+`internal/` in the current tree is 111 (for example
 [`FinanceFacadeImpl`](../../src/main/java/com/example/roshdeandishe/finance/internal/FinanceFacadeImpl.java)
 and
 [`InvoiceRepository`](../../src/main/java/com/example/roshdeandishe/finance/internal/InvoiceRepository.java)
 are both package-private today). Splitting `internal/` by type would require
-widening all 114 to `public`, because a package-private facade implementation
-cannot see a package-private repository sitting in a sibling package.
+widening those 111 to `public`, because a package-private facade
+implementation cannot see a package-private repository sitting in a sibling
+package.
 Package-private visibility inside `internal/` is currently a *second*,
 compiler-enforced encapsulation layer underneath Spring Modulith: even if
 `ModularityTests` were deleted, the compiler alone still stops `finance` from
