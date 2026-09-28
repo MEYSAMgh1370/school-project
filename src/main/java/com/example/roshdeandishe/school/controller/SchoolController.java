@@ -1,11 +1,14 @@
-package com.example.roshdeandishe.school;
+package com.example.roshdeandishe.school.controller;
 
 import com.example.roshdeandishe.iam.IamFacade;
 import com.example.roshdeandishe.iam.IamFacade.MembershipInfo;
 import com.example.roshdeandishe.iam.shared.exception.IamError;
 import com.example.roshdeandishe.iam.shared.exception.IamException;
+import com.example.roshdeandishe.school.SchoolFacade;
 import com.example.roshdeandishe.school.SchoolFacade.SchoolId;
 import com.example.roshdeandishe.school.SchoolFacade.SchoolInfo;
+import com.example.roshdeandishe.school.dto.CreateSchoolRequest;
+import com.example.roshdeandishe.school.dto.SchoolResponse;
 import com.example.roshdeandishe.school.shared.SchoolError;
 import com.example.roshdeandishe.school.shared.SchoolException;
 import org.springframework.transaction.annotation.Transactional;
@@ -72,19 +75,5 @@ public class SchoolController {
         SchoolInfo info = schoolFacade.findSchool(new SchoolId(schoolId))
                 .orElseThrow(() -> new SchoolException(new SchoolError.SchoolNotFound(schoolId)));
         return SchoolResponse.from(info);
-    }
-
-    public record CreateSchoolRequest(String name, String timezone, String locale, SchoolFacade.SchoolLevel level,
-                                      String slug) {
-    }
-
-    public record SchoolResponse(Long id, String name, String status, String timezone, String locale, String level,
-                                 String slug) {
-        static SchoolResponse from(SchoolInfo info) {
-            return new SchoolResponse(
-                    info.id().value(), info.name(), info.status().name(), info.timezone(), info.locale(),
-                    info.level().name(), info.slug()
-            );
-        }
     }
 }
