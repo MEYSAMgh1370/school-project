@@ -8,6 +8,23 @@
    فقط توکن‌های موجود در app.css استفاده می‌شود (بدون رنگ/فونت تازه،
    DESIGN.md §2/§4)؛ فقط خواص منطقی (logical properties)، هرگز left/right
    فیزیکی (DESIGN.md §7).
+
+   این ادعا تا ۱۴۰۵/۰۷/۰۶ (2026-09-28) درست نبود: فاصله و شعاع توکنی بودند
+   ولی هر ۳۳ اعلانِ رنگ hard-code شده بود (#fff، #e6e9ec، #9aa0a7 …) و
+   هیچ‌کدام var() نداشت. نتیجه‌اش دو چیز بود:
+
+   ۱. در تم روشن، خاکستریِ سرد این فایل با کاغذِ گرمِ بقیه‌ی برنامه
+      هم‌خوان نبود.
+   ۲. در تم تیره، `background: #fff` یک تخته‌ی سفید وسط رابطِ تیره
+      می‌ساخت و `#9aa0a7` روی آن ۲٫۴:۱ بود — یعنی زیر حد WCAG AA.
+
+   حالا هر ۳۳ اعلان توکنی است. نکته‌ی ظریف‌تر هم اصلاح شد: رنگ‌های تاکیدی
+   قبلاً hue/saturation را از توکن می‌گرفتند ولی lightness را ثابت
+   (۹۲%/۲۶%/۲۴%/۴۰%) نوشته بودند، پس نمی‌توانستند تمِ تیره را دنبال کنند؛
+   جایشان `--bulma-*-soft`/`-on-scheme`/`-invert` نشسته که هر دو تم را
+   خودشان مدیریت می‌کنند. fallbackهای `var(--bulma-success-h, 141deg)` هم
+   حذف شدند: آن ۱۴۱deg مقدارِ پیش‌فرضِ قدیمیِ بولما بود و بعد از گرم‌شدن
+   پالت (۱۴۴deg) دیگر اشتباه بود.
    ========================================================================== */
 
 .sp-toolbar {
@@ -35,8 +52,8 @@
   inset-inline-end: 0;
   z-index: 30;
   width: 280px;
-  background: #fff;
-  border: 1px solid #e6e9ec;
+  background: var(--bulma-scheme-main);
+  border: 1px solid var(--bulma-border-weak);
   border-radius: var(--radius-md);
   box-shadow: var(--shadow-md);
   padding: var(--space-4);
@@ -61,7 +78,7 @@
   align-items: center;
   justify-content: center;
   font-size: 0.72rem;
-  color: #9aa0a7;
+  color: var(--bulma-text-weak);
 }
 
 .sp-picker-day {
@@ -74,22 +91,22 @@
   border: none;
   cursor: pointer;
   background: transparent;
-  color: #3a3f45;
+  color: var(--bulma-text);
 }
 
 .sp-picker-day:hover {
-  background: #f2f4f6;
+  background: var(--bulma-background);
 }
 
 .sp-picker-day--in-week {
-  background: hsl(var(--bulma-primary-h) var(--bulma-primary-s) 92%);
-  color: hsl(var(--bulma-primary-h) var(--bulma-primary-s) var(--bulma-primary-l));
+  background: var(--bulma-primary-soft);
+  color: var(--bulma-primary-bold);
   font-weight: 700;
 }
 
 .sp-picker-day--today {
-  background: hsl(var(--bulma-primary-h) var(--bulma-primary-s) var(--bulma-primary-l));
-  color: #fff;
+  background: var(--bulma-primary);
+  color: var(--bulma-primary-invert);
   font-weight: 700;
 }
 
@@ -100,7 +117,7 @@
   flex-wrap: wrap;
   margin-block-end: var(--space-4);
   font-size: 0.85rem;
-  color: #6b7280;
+  color: var(--bulma-text-weak);
 }
 
 .sp-legend-item {
@@ -117,13 +134,13 @@
 }
 
 .sp-swatch--pending {
-  background: hsl(var(--bulma-primary-h) var(--bulma-primary-s) 92%);
-  border: 1px solid hsl(var(--bulma-primary-h) var(--bulma-primary-s) var(--bulma-primary-l));
+  background: var(--bulma-primary-soft);
+  border: 1px solid var(--bulma-primary-bold);
 }
 
 .sp-swatch--done {
-  background: hsl(var(--bulma-success-h, 141deg) var(--bulma-success-s, 53%) 92%);
-  border: 1px solid hsl(var(--bulma-success-h, 141deg) var(--bulma-success-s, 53%) 40%);
+  background: var(--bulma-success-soft);
+  border: 1px solid var(--bulma-success-bold);
 }
 
 .sp-grid-box {
@@ -141,7 +158,7 @@
   width: 52px;
   position: relative;
   height: 1092px;
-  border-inline-end: 1px solid #e6e9ec;
+  border-inline-end: 1px solid var(--bulma-border-weak);
 }
 
 .sp-hour {
@@ -149,30 +166,30 @@
   inset-inline-end: 8px;
   transform: translateY(-50%);
   font-size: 0.7rem;
-  color: #b7bcc2;
+  color: var(--bulma-text-weak);
   white-space: nowrap;
 }
 
 .sp-day {
   flex: 1;
   min-width: 118px;
-  border-inline-start: 1px solid #f0f2f4;
+  border-inline-start: 1px solid var(--bulma-border-weak);
 }
 
 .sp-day--today {
-  background-color: #fbfcfe;
+  background-color: var(--bulma-scheme-main-bis);
 }
 
 .sp-day-head {
   text-align: center;
   padding: var(--space-3) var(--space-1);
-  border-block-end: 1px solid #e6e9ec;
-  background: #fcfcfd;
+  border-block-end: 1px solid var(--bulma-border-weak);
+  background: var(--bulma-scheme-main-bis);
 }
 
 .sp-day-name {
   font-size: 0.72rem;
-  color: #9aa0a7;
+  color: var(--bulma-text-weak);
   letter-spacing: 0.02em;
   margin-block-end: var(--space-2);
 }
@@ -180,7 +197,7 @@
 .sp-day-num {
   font-size: 1.15rem;
   font-weight: 700;
-  color: #1f2429;
+  color: var(--bulma-text-strong);
 }
 
 .sp-day-num--today {
@@ -190,14 +207,14 @@
   width: 30px;
   height: 30px;
   border-radius: 999px;
-  background: hsl(var(--bulma-primary-h) var(--bulma-primary-s) var(--bulma-primary-l));
-  color: #fff;
+  background: var(--bulma-primary);
+  color: var(--bulma-primary-invert);
 }
 
 .sp-day-body {
   position: relative;
   height: 1080px;
-  background-image: linear-gradient(to bottom, #f2f4f6 1px, transparent 1px);
+  background-image: linear-gradient(to bottom, var(--bulma-border-weak) 1px, transparent 1px);
   background-size: 100% 60px;
 }
 
@@ -227,15 +244,15 @@
 }
 
 .sp-block--pending {
-  background: hsl(var(--bulma-primary-h) var(--bulma-primary-s) 92%);
-  border-color: hsl(var(--bulma-primary-h) var(--bulma-primary-s) var(--bulma-primary-l));
-  color: hsl(var(--bulma-primary-h) var(--bulma-primary-s) 26%);
+  background: var(--bulma-primary-soft);
+  border-color: var(--bulma-primary-bold);
+  color: var(--bulma-primary-bold);
 }
 
 .sp-block--done {
-  background: hsl(var(--bulma-success-h, 141deg) var(--bulma-success-s, 53%) 92%);
-  border-color: hsl(var(--bulma-success-h, 141deg) var(--bulma-success-s, 40%) 40%);
-  color: hsl(var(--bulma-success-h, 141deg) var(--bulma-success-s, 53%) 24%);
+  background: var(--bulma-success-soft);
+  border-color: var(--bulma-success-bold);
+  color: var(--bulma-success-bold);
 }
 
 .sp-block-title {
@@ -261,8 +278,8 @@
   width: 16px;
   height: 16px;
   border-radius: 999px;
-  background: hsl(var(--bulma-success-h, 141deg) var(--bulma-success-s, 40%) 40%);
-  color: #fff;
+  background: var(--bulma-success);
+  color: var(--bulma-success-invert);
   font-size: 10px;
   display: flex;
   align-items: center;
@@ -281,23 +298,23 @@
 .sp-kpi {
   flex: 1 1 180px;
   min-inline-size: 170px;
-  background: #f6f8fa;
-  border: 1px solid #e6e9ec;
-  border-inline-start: 3px solid hsl(var(--bulma-primary-h) var(--bulma-primary-s) var(--bulma-primary-l));
+  background: var(--bulma-background);
+  border: 1px solid var(--bulma-border-weak);
+  border-inline-start: 3px solid var(--bulma-primary);
   border-radius: var(--radius-md);
   padding: var(--space-4) var(--space-5);
 }
 
 .sp-kpi-label {
   font-size: 0.8rem;
-  color: #8a9098;
+  color: var(--bulma-text-weak);
   margin-block-end: var(--space-2);
 }
 
 .sp-kpi-value {
   font-size: 1.5rem;
   font-weight: 700;
-  color: hsl(var(--bulma-primary-h) var(--bulma-primary-s) var(--bulma-primary-l));
+  color: var(--bulma-primary-on-scheme);
 }
 
 .sp-charts {
@@ -330,7 +347,7 @@
 .sp-daybar-track {
   width: 100%;
   max-inline-size: 26px;
-  background: #e8ecf0;
+  background: var(--bulma-border-weak);
   border-radius: 6px;
   display: flex;
   align-items: flex-end;
@@ -340,7 +357,7 @@
 
 .sp-daybar-fill {
   width: 100%;
-  background: hsl(var(--bulma-primary-h) var(--bulma-primary-s) var(--bulma-primary-l));
+  background: var(--bulma-primary-on-scheme);
   border-radius: 6px;
 }
 
@@ -358,13 +375,13 @@
 .sp-topicbar-track {
   height: 8px;
   border-radius: 999px;
-  background: #eef1f4;
+  background: var(--bulma-border-weak);
   overflow: hidden;
 }
 
 .sp-topicbar-fill {
   height: 100%;
-  background: hsl(var(--bulma-primary-h) var(--bulma-primary-s) var(--bulma-primary-l));
+  background: var(--bulma-primary-on-scheme);
   border-radius: 999px;
 }
 
