@@ -1,5 +1,6 @@
-package com.example.roshdeandishe.finance;
+package com.example.roshdeandishe.finance.controller;
 
+import com.example.roshdeandishe.finance.ExpenseFacade;
 import com.example.roshdeandishe.finance.ExpenseFacade.AttachmentContent;
 import com.example.roshdeandishe.finance.ExpenseFacade.AttachmentInfo;
 import com.example.roshdeandishe.finance.ExpenseFacade.CategoryInfo;
@@ -9,6 +10,20 @@ import com.example.roshdeandishe.finance.ExpenseFacade.FinanceSummary;
 import com.example.roshdeandishe.finance.ExpenseFacade.MethodSummary;
 import com.example.roshdeandishe.finance.ExpenseFacade.VendorInfo;
 import com.example.roshdeandishe.finance.ExpenseFacade.VendorSummary;
+import com.example.roshdeandishe.finance.ExpenseStatus;
+import com.example.roshdeandishe.finance.PaymentMethod;
+import com.example.roshdeandishe.finance.dto.AttachmentResponse;
+import com.example.roshdeandishe.finance.dto.CategoryRequest;
+import com.example.roshdeandishe.finance.dto.CategoryResponse;
+import com.example.roshdeandishe.finance.dto.CategorySummaryResponse;
+import com.example.roshdeandishe.finance.dto.ExpenseRequest;
+import com.example.roshdeandishe.finance.dto.ExpenseResponse;
+import com.example.roshdeandishe.finance.dto.FinanceSummaryResponse;
+import com.example.roshdeandishe.finance.dto.MethodSummaryResponse;
+import com.example.roshdeandishe.finance.dto.SeedDefaultsResponse;
+import com.example.roshdeandishe.finance.dto.VendorRequest;
+import com.example.roshdeandishe.finance.dto.VendorResponse;
+import com.example.roshdeandishe.finance.dto.VendorSummaryResponse;
 import com.example.roshdeandishe.finance.shared.FinanceError;
 import com.example.roshdeandishe.finance.shared.FinanceException;
 import com.example.roshdeandishe.iam.shared.RequiresModule;
@@ -22,9 +37,7 @@ import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
 import java.io.UncheckedIOException;
-import java.math.BigDecimal;
 import java.nio.charset.StandardCharsets;
-import java.time.Instant;
 import java.time.LocalDate;
 import java.util.List;
 
@@ -278,49 +291,5 @@ public class ExpenseController {
 
     private static MethodSummaryResponse toResponse(MethodSummary summary) {
         return new MethodSummaryResponse(summary.method(), summary.total(), summary.count());
-    }
-
-    public record CategoryRequest(String name, Boolean active) {
-    }
-
-    public record CategoryResponse(Long id, String name, boolean active) {
-    }
-
-    public record SeedDefaultsResponse(int createdCount) {
-    }
-
-    public record VendorRequest(String name, String phone, String nationalId, String economicCode,
-                                String address, Boolean active) {
-    }
-
-    public record VendorResponse(Long id, String name, String phone, String nationalId, String economicCode,
-                                 String address, boolean active) {
-    }
-
-    public record ExpenseRequest(LocalDate expenseDate, BigDecimal amount, Long categoryId, Long vendorId,
-                                 PaymentMethod paymentMethod, String description, String receiptNumber,
-                                 String invoiceNumber, String documentNumber) {
-    }
-
-    public record ExpenseResponse(Long id, LocalDate expenseDate, BigDecimal amount, Long categoryId,
-                                  Long vendorId, PaymentMethod paymentMethod, ExpenseStatus status,
-                                  String description, String receiptNumber, String invoiceNumber,
-                                  String documentNumber, Instant createdAt, Instant updatedAt) {
-    }
-
-    public record AttachmentResponse(Long id, String fileName, String contentType, long sizeBytes,
-                                     Instant uploadedAt) {
-    }
-
-    public record CategorySummaryResponse(Long categoryId, String categoryName, BigDecimal total, long count) {
-    }
-
-    public record VendorSummaryResponse(Long vendorId, String vendorName, BigDecimal total, long count) {
-    }
-
-    public record MethodSummaryResponse(PaymentMethod method, BigDecimal total, long count) {
-    }
-
-    public record FinanceSummaryResponse(BigDecimal income, BigDecimal expense) {
     }
 }

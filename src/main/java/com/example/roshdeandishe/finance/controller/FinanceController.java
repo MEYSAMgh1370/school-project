@@ -1,9 +1,16 @@
-package com.example.roshdeandishe.finance;
+package com.example.roshdeandishe.finance.controller;
 
 import com.example.roshdeandishe.academic.AcademicFacade;
+import com.example.roshdeandishe.finance.FinanceFacade;
 import com.example.roshdeandishe.finance.FinanceFacade.InvoiceInfo;
 import com.example.roshdeandishe.finance.FinanceFacade.PaymentInfo;
 import com.example.roshdeandishe.finance.FinanceFacade.TuitionFeeInfo;
+import com.example.roshdeandishe.finance.dto.BackfillResponse;
+import com.example.roshdeandishe.finance.dto.InvoiceResponse;
+import com.example.roshdeandishe.finance.dto.PaymentResponse;
+import com.example.roshdeandishe.finance.dto.RecordPaymentRequest;
+import com.example.roshdeandishe.finance.dto.SetTuitionFeeRequest;
+import com.example.roshdeandishe.finance.dto.TuitionFeeResponse;
 import com.example.roshdeandishe.finance.shared.FinanceError;
 import com.example.roshdeandishe.finance.shared.FinanceException;
 import com.example.roshdeandishe.iam.IamFacade;
@@ -12,8 +19,6 @@ import com.example.roshdeandishe.iam.shared.RequiresPermission;
 import com.example.roshdeandishe.platform.TenantContext;
 import org.springframework.web.bind.annotation.*;
 
-import java.math.BigDecimal;
-import java.time.Instant;
 import java.util.List;
 
 /**
@@ -149,26 +154,5 @@ public class FinanceController {
     private static PaymentResponse toResponse(PaymentInfo info) {
         return new PaymentResponse(info.id(), info.invoiceId(), info.amount(), info.method(),
                 info.note(), info.paidAt());
-    }
-
-    public record SetTuitionFeeRequest(BigDecimal amount) {
-    }
-
-    public record TuitionFeeResponse(Long schoolId, BigDecimal amount) {
-    }
-
-    public record InvoiceResponse(Long id, Long schoolId, Long studentId, BigDecimal amount,
-                                  BigDecimal amountPaid, Instant issuedAt, Instant dueDate,
-                                  InvoiceStatus status) {
-    }
-
-    public record RecordPaymentRequest(BigDecimal amount, PaymentMethod method, String note) {
-    }
-
-    public record PaymentResponse(Long id, Long invoiceId, BigDecimal amount, PaymentMethod method,
-                                  String note, Instant paidAt) {
-    }
-
-    public record BackfillResponse(int issuedCount) {
     }
 }
