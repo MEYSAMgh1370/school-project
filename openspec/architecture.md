@@ -29,13 +29,49 @@ The base package is `com.example.roshdeandishe`. Important top-level modules inc
 
 Cross-module access should go through a module's public facade or explicitly exposed named interface. Internal packages are not cross-module contracts.
 
+### Package Layout
+
+Within each domain module, classes are grouped by type:
+
+```
+<module>/
+  <Module>Facade.java, enums, events    exposed module API
+  controller/                           @RestController / @Controller
+  dto/                                  request/response records
+  config/                               @Configuration, filters, aspects
+  internal/                             entities, repositories, services — flat
+  shared/                               @NamedInterface
+```
+
+`config/` exists only in `iam` and `platform`, the only modules with
+`@Configuration` classes, filters, or aspects to hold. `dto/` exists only where
+a controller had nested request/response records to extract; `bale` has no
+`dto/`. `web` has no `internal/`/`shared/` split — it is a pure
+view-composition module with `controller/`, `dto/`, and `model/` (the shared
+navbar/role-label support classes) only.
+
+Two rules keep this shape from widening a module's exposed contract:
+
+- Nothing moves into a base package. The base package is a module's exposed
+  API; moving a class into it silently widens that module's contract, and
+  `ApplicationModules.verify()` does not catch this, because exposing more is
+  not a violation it checks for.
+- `internal/` stays flat. Most of its types are package-private, and splitting
+  it into `entity/`/`repository/`/`service/` packages would force widening all
+  of them to `public`, removing the compiler-enforced encapsulation layer that
+  currently sits beneath Spring Modulith inside every module.
+
+See [`changes/package-by-type-within-modules.md`](changes/package-by-type-within-modules.md)
+for the full rationale, the alternatives this rejected, and the visibility
+widenings the split did require.
+
 ## Tenancy
 
 The current tenant is a school. API requests that operate on school-scoped data usually require `X-School-ID`, resolved by `TenantResolverFilter` into `TenantContext`.
 
 Evidence:
 
-- [`TenantResolverFilter.java`](../src/main/java/com/example/roshdeandishe/platform/TenantResolverFilter.java) requires `X-School-ID` for protected API routes and excludes public, account, page, Bale webhook, and exam-take routes.
+- [`TenantResolverFilter.java`](../src/main/java/com/example/roshdeandishe/platform/config/TenantResolverFilter.java) requires `X-School-ID` for protected API routes and excludes public, account, page, Bale webhook, and exam-take routes.
 - Controllers with both a `{schoolId}` path variable and tenant-scoped behavior explicitly compare the path value with the header-selected tenant before calling facades.
 
 ## Authentication And Authorization
@@ -51,7 +87,7 @@ Public endpoints, account endpoints, `my` endpoints, Bale webhook endpoints, and
 
 Evidence:
 
-- [`SecurityConfig.java`](../src/main/java/com/example/roshdeandishe/iam/shared/SecurityConfig.java) configures session auth, bearer auth, CSRF behavior, and public paths.
+- [`SecurityConfig.java`](../src/main/java/com/example/roshdeandishe/iam/config/SecurityConfig.java) configures session auth, bearer auth, CSRF behavior, and public paths.
 - `@RequiresModule` and `@RequiresPermission` annotations are used across protected REST controllers.
 
 ## Persistence
@@ -78,7 +114,7 @@ Evidence:
 - [`app.css`](../src/main/resources/static/css/app.css) owns shared design tokens and global CSS rules.
 - [`src/main/resources/static/js/`](../src/main/resources/static/js/) contains page-level Alpine components.
 
-Auth/identity pages can live in `iam.shared`. Cross-module product pages live in `web` and compose data through facades or client-side REST calls. Do not put REST endpoints in `web`.
+Auth/identity pages can live in `iam.controller`. Cross-module product pages live in `web` and compose data through facades or client-side REST calls. Do not put REST endpoints in `web`.
 
 ## Native Android
 
