@@ -12,9 +12,11 @@
 
 ## Global Constraints
 
-- **No behavior changes.** Only `package` lines, `import` lines, file locations, JTE `@import` lines, and exactly three documented visibility widenings.
+- **No behavior changes.** Only `package` lines, `import` lines, file locations, JTE `@import` lines, and the documented visibility widenings — 3 types and 5 members, enumerated in Tasks 2 and 10.
+- **Widen the minimum.** A type or member becomes `public` only when a consumer lands in a *different* package. If the caller moves to the same destination package, it stays package-private. Each task names exactly which members qualify; do not widen others for consistency or convenience.
+- **Never edit an AOP pointcut string.** Three pointcuts name types as string literals (`LoggingAspect:36`, `ModuleAccessAspect:52`, `PermissionAccessAspect:36`). All three stay valid under this plan because the types they name do not move. If you find yourself needing to edit one, something has been moved that this plan says stays put.
 - **Never move a class into a module base package.** Base packages are the exposed module API; moving a class in silently widens the module's contract. `ModularityTests` does **not** catch this — only diff review does.
-- **Never move a class out of `internal/` or `shared/`.** The one exception is the four `iam/shared` classes named in Task 2, which are module-internal despite their location.
+- **Never move a class out of `internal/` or `shared/`.** The one exception is the ten `iam/shared` classes named in Task 2 — four page/API controllers and six config classes — which are module-internal despite their location. `RequiresModule` and `RequiresPermission` stay.
 - **Do not rename anything.** Record names, class names, and record component names stay byte-identical, or JSON contracts change.
 - **Do not split `internal/`.** 114 of 225 types are package-private and would need widening. Out of scope per the spec.
 - **Record extraction is mechanical:** a nested `public record Foo(...)` becomes a top-level `public record Foo(...)` in `<module>/dto/Foo.java`. Same name, same components, same order.
@@ -26,10 +28,11 @@
 These are the failure modes this refactor can introduce that the per-task compile check will *not* catch. Each has a step in the task that owns it.
 
 1. **Stale JTE precompilation** — `jte-maven-plugin` precompiles templates; a reused `target/` yields a runtime "Circular view path" 500 rather than a build failure. Tasks 2 and 10 run `./mvnw clean verify`, not incremental verify.
-2. **Accidentally widening a module's exposed API** — moving a class *into* a base package is not a Modulith violation, so `verify()` stays green while the module's contract silently grows. Every task has an explicit diff-review step asserting no file landed in a base package.
-3. **JSON contract drift during record extraction** — a mistyped component name or reordered component changes the API shape, and only the HTTP-level integration tests catch it. Each module task runs its own integration tests, not just `ModularityTests`.
-4. **Spring bean name collision** — bean names derive from simple class names, which do not change here, but moving `@Component`-annotated classes between packages is when collisions surface. Any `@SpringBootTest` failing to load the context is the signal; each task runs at least one.
-5. **Open-redirect allow-list regression in `PostAuthenticationDestination`** — it becomes `public` and moves packages in Task 2. `LoginDashboardFlowIntegrationTest.loginAndRegistrationPagesRejectExternalPostAuthenticationDestinations` (line 95) is the pin; Task 2 runs it by name.
+2. **A moved type named by an AOP pointcut string** — `LoggingAspect:36`, `ModuleAccessAspect:52`, and `PermissionAccessAspect:36` name annotation types as string literals, which import rewriting cannot fix. A broken pointcut produces no compile error and no test failure; the aspect just silently stops advising. This plan keeps all three named types (`Loggable`, `RequiresModule`, `RequiresPermission`) where they are, so no literal needs editing — Task 9 Step 2b and Task 11 Step 5 grep to prove none changed.
+3. **Accidentally widening a module's exposed API** — moving a class *into* a base package is not a Modulith violation, so `verify()` stays green while the module's contract silently grows. Every task has an explicit diff-review step asserting no file landed in a base package.
+4. **JSON contract drift during record extraction** — a mistyped component name or reordered component changes the API shape, and only the HTTP-level integration tests catch it. Each module task runs its own integration tests, not just `ModularityTests`.
+5. **Spring bean name collision** — bean names derive from simple class names, which do not change here, but moving `@Component`-annotated classes between packages is when collisions surface. Any `@SpringBootTest` failing to load the context is the signal; each task runs at least one.
+6. **Open-redirect allow-list regression in `PostAuthenticationDestination`** — it becomes `public` and moves packages in Task 2. `LoginDashboardFlowIntegrationTest.loginAndRegistrationPagesRejectExternalPostAuthenticationDestinations` (line 95) is the pin; Task 2 runs it by name.
 
 ---
 
@@ -152,7 +155,7 @@ From `MyInvoicesController` (1): `MyInvoiceResponse`
 ./mvnw test -Dtest='FinanceFlowIntegrationTest,FinanceManagementFlowIntegrationTest,FinancePaymentFlowIntegrationTest,ExpenseManagementFlowIntegrationTest,ExpenseReportFlowIntegrationTest,ExpenseAttachmentFlowIntegrationTest,MyInvoicesPageFlowIntegrationTest'
 ```
 
-Expected: all pass. These exercise the JSON shape of all 19 extracted records over HTTP — this is the Review Focus item 3 check for finance.
+Expected: all pass. These exercise the JSON shape of all 19 extracted records over HTTP — this is the Review Focus item 4 check for finance.
 
 - [ ] **Step 6: Phase F — commit**
 
@@ -197,34 +200,34 @@ From `AccountActivationPageController` (1): `ActivatePageModel`
 
 `git mv` all six, set `package com.example.roshdeandishe.iam.config;` in each.
 
-Two must change visibility, because their consumers now span `iam/config/` and `iam/controller/`:
+Two must change visibility, because some of their callers land in `iam/controller/` while the classes themselves land in `iam/config/`. Widen the type **and only the members actually called across that boundary**:
 
 ```java
-// JwtTokenProvider.java — was: class JwtTokenProvider {
-public class JwtTokenProvider {
+// JwtTokenProvider.java
+public class JwtTokenProvider {        // was: class JwtTokenProvider {
+    public long expirationSeconds()    // line 43, was: long expirationSeconds()
+    public String generateToken(...)   // line 47, was: String generateToken(...)
 ```
+
+`AuthController:71-72` calls exactly these two. Leave `validateAndExtractEmail`
+(line 57) and the constructor (line 35) package-private — `JwtAuthenticationFilter`
+calls the former and Spring calls the latter, and both live in `iam/config/`
+alongside the class.
 
 ```java
-// PostAuthenticationDestination.java — was: final class PostAuthenticationDestination {
-public final class PostAuthenticationDestination {
+// PostAuthenticationDestination.java
+public final class PostAuthenticationDestination {        // was: final class ...
+    public static String from(String requestedDestination)  // line 16, was: static String from(...)
 ```
 
-`PostAuthenticationDestination`'s members are also package-private and are read
-from `iam/controller/`. Widen the three constants and both static methods to
-`public`:
+`LoginPageController:20` and `RegisterPageController:21` call `from`. Leave
+everything else package-private: `loginUrlFor` (line 28) is called only by
+`SecurityConfig:171`, which moves into the same `iam/config/` package, and the
+three constants (lines 9-11) are read only inside the class itself. The private
+constructor at line 13 stays private.
 
-```java
-public static final String DASHBOARD = "/dashboard";          // line 9
-public static final String SCHOOL_REGISTRATION = "/schools/new";  // line 10
-public static final String LOGIN = "/login";                  // line 11
-
-public static String from(String requestedDestination) { ... }    // line 16
-public static String loginUrlFor(String requestedPath) { ... }    // line 28
-```
-
-Leave the private constructor at line 13 private. Do not change any method body
-— the allow-list logic in `from` and `loginUrlFor` is exactly what Review Focus
-item 5 protects.
+Do not change any method body — the allow-list logic in `from` and `loginUrlFor`
+is exactly what Review Focus item 6 protects.
 
 This class moves to `config/` rather than staying in `shared/` deliberately: a
 `public` type inside a `@NamedInterface` package joins the module's *exposed*
@@ -278,7 +281,7 @@ and surface later as a runtime "Circular view path" 500. Do not substitute
 ./mvnw test -Dtest='LoginDashboardFlowIntegrationTest#loginAndRegistrationPagesRejectExternalPostAuthenticationDestinations'
 ```
 
-Expected: PASS. This is Review Focus item 5 — it proves widening
+Expected: PASS. This is Review Focus item 6 — it proves widening
 `PostAuthenticationDestination` to `public` did not disturb the allow-list that
 stops `?next=` from becoming an open redirect.
 
@@ -560,24 +563,53 @@ No behavior change."
 No controllers and no records — this task only creates `platform/config/`.
 
 **Files:**
-- Move to `platform/config/`: `platform/OpenApiConfig.java`, `platform/TenantResolverFilter.java`, `platform/LoggingAspect.java`, `platform/Loggable.java`
+- Move to `platform/config/`: `platform/OpenApiConfig.java`, `platform/TenantResolverFilter.java`, `platform/LoggingAspect.java`
 - Test: no changes
 
 **Interfaces:**
 - Consumes: the layout from Task 2's `config/` package.
 - Produces: nothing other modules consume. **`TenantContext` and `ProblemDetailFactory` must stay in the base package** — 20 and 8 files in other modules import them respectively, and moving them to `config/` would un-expose them and break every one. `PlatformExceptionHandler` also stays, consistent with every other module's exception handler staying put.
 
-- [ ] **Step 1: Move the 4 classes to `platform/config/`**
+**`Loggable` stays in the base package. Do not move it.** `LoggingAspect:36`
+names it twice as a string literal inside its `@Around` expression:
 
-`git mv` each, set `package com.example.roshdeandishe.platform.config;`. `LoggingAspect` uses `Loggable`; both move together, so neither needs a new import.
+```java
+@Around("@annotation(com.example.roshdeandishe.platform.Loggable) || @within(com.example.roshdeandishe.platform.Loggable)")
+```
 
-- [ ] **Step 2: Confirm the exposed pair did not move**
+String literals are not touched by import rewriting, so moving `Loggable` to
+`platform/config/` would leave this pointcut naming a class that no longer
+exists — Spring would either fail to resolve it or silently stop advising every
+`@Loggable` method, with no compile error and no test failure. Leaving the
+annotation in place keeps the literal correct and costs nothing: `Loggable` is a
+public annotation meant to be applied by other code, so the exposed base package
+is where it belongs. This mirrors `RequiresModule`/`RequiresPermission`, which
+stay in `iam/shared` while their aspects move to `iam/config`.
+
+- [ ] **Step 1: Move the 3 classes to `platform/config/`**
+
+`git mv` each, set `package com.example.roshdeandishe.platform.config;`.
+`LoggingAspect` now needs `import com.example.roshdeandishe.platform.Loggable;`
+for its Javadoc `{@link Loggable}` reference at line 12 — the `@Around` string
+at line 36 already carries the fully-qualified name and must be left byte-identical.
+
+- [ ] **Step 2: Confirm the exposed types did not move**
 
 ```bash
 ls src/main/java/com/example/roshdeandishe/platform/
 ```
 
-Expected exactly: `TenantContext.java`, `ProblemDetailFactory.java`, `PlatformExceptionHandler.java`, `config/`, `package-info.java`
+Expected exactly: `TenantContext.java`, `ProblemDetailFactory.java`, `PlatformExceptionHandler.java`, `Loggable.java`, `config/`, `package-info.java`
+
+- [ ] **Step 2b: Confirm no pointcut literal changed**
+
+```bash
+git diff -- '*Aspect.java' | grep -E '^[+-].*@(Around|Before|After|Pointcut)'
+```
+
+Expected: no output. If any pointcut line appears in the diff, a type named by a
+string literal was moved — revert it. This is the one failure mode in this plan
+that neither the compiler nor the test suite catches.
 
 - [ ] **Step 3: Phase C — compile**
 
@@ -596,9 +628,12 @@ Expected: BUILD SUCCESS. If this fails with "cannot find symbol: TenantContext" 
 git add -A
 git commit -m "Move platform infrastructure classes to platform/config/
 
-OpenApiConfig, TenantResolverFilter, LoggingAspect, and Loggable move to
-platform/config/. TenantContext and ProblemDetailFactory stay in the base
-package because 28 files across other modules import them, and
+OpenApiConfig, TenantResolverFilter, and LoggingAspect move to platform/config/.
+
+Loggable deliberately stays in the base package: LoggingAspect names it twice as
+a string literal in its @Around pointcut, and moving it would break the pointcut
+silently, with no compile error and no failing test. TenantContext and
+ProblemDetailFactory stay because 28 files across other modules import them, and
 PlatformExceptionHandler stays alongside them. No behavior change."
 ```
 
@@ -631,14 +666,25 @@ From `SchoolEntryPageController` (1): `SchoolEntryModel`
 
 `git mv` all three, set `package com.example.roshdeandishe.web.model;`.
 
-`NavbarModelAssembler` is package-private and is called by 17 page controllers that are about to land in `web/controller/`:
+`NavbarModelAssembler` is package-private and is called by 17 page controllers that are about to land in `web/controller/`. Widen the type and exactly the two methods those controllers call:
 
 ```java
-// NavbarModelAssembler.java — was: class NavbarModelAssembler {
-public class NavbarModelAssembler {
+// NavbarModelAssembler.java
+public class NavbarModelAssembler {                          // was: class NavbarModelAssembler {
+    public NavbarModel forCurrentUser()                      // line 34, was: NavbarModel forCurrentUser()
+    public NavbarModel assemble(UserProfile, List<MembershipInfo>)  // line 44, was: NavbarModel assemble(...)
 ```
 
-Its methods called from the page controllers must be `public` too. `NavbarModel` and `RoleLabels` are already public — do not touch their visibility.
+Leave `schoolName(Long)` (line 63) and the constructor (line 26)
+package-private. `schoolName` is called only from line 53 inside
+`NavbarModelAssembler` itself, and the constructor only by Spring.
+
+Do not be misled by `DashboardPageController.schoolName(Optional<SchoolInfo>, Long)`
+at line 120 — that is a different, `private` method with a different signature
+that travels with its controller into `web/controller/`. The two are unrelated
+despite the shared name; neither needs the other.
+
+`NavbarModel` and `RoleLabels` are already public — do not touch their visibility.
 
 - [ ] **Step 3: Phase B — move the 19 page controllers to `web/controller/`**
 
@@ -761,10 +807,18 @@ git diff master --stat
 git diff master -- '*.java' | grep '^[+-]' | grep -v '^[+-][+-]' | grep -vE '^[+-](package |import |\s*$)' | head -50
 ```
 
-Expected: the surviving lines are only the three documented visibility
-widenings, the two refreshed comments from Task 4, and the record declarations
-moved between files. Anything else is an unintended behavior change — investigate
-before proceeding.
+Expected: the surviving lines are only the documented visibility widenings (3
+types and 5 members), the two refreshed comments from Task 4, and the record
+declarations moved between files. Anything else is an unintended behavior change
+— investigate before proceeding.
+
+Confirm no pointcut literal changed anywhere on the branch:
+
+```bash
+git diff master -- '*.java' | grep -E '^[+-].*@(Around|Before|After|Pointcut)\('
+```
+
+Expected: no output.
 
 - [ ] **Step 6: Commit**
 

@@ -128,7 +128,7 @@ Two rules preserve the module boundaries:
 | `curriculum` | 2 | 5 | — |
 | `school` | 1 | 2 | — |
 | `bale` | 1 | 0 | — |
-| `platform` | — | — | 4 |
+| `platform` | — | — | 3 |
 | `web` | 19 | 4 | — |
 
 Notable specifics:
@@ -153,8 +153,17 @@ no `@NamedInterface`, it is public to `iam` and invisible to everyone else.
 **platform** — `TenantContext` and `ProblemDetailFactory` stay in the base
 package; they have 28 cross-module imports between them. `PlatformExceptionHandler`
 also stays, consistent with every other module's exception handler staying put.
-`config/` takes `OpenApiConfig`, `TenantResolverFilter`, `LoggingAspect`,
-`Loggable`.
+`config/` takes `OpenApiConfig`, `TenantResolverFilter`, and `LoggingAspect`.
+
+**`Loggable` stays in the base package**, even though `LoggingAspect` moves.
+`LoggingAspect:36` names the annotation twice as a *string literal* inside its
+`@Around` expression, and string literals are not updated by import rewriting —
+moving `Loggable` would leave the pointcut silently matching nothing. Keeping the
+annotation put dissolves the hazard instead of patching it, and matches the
+precedent set by `RequiresModule` and `RequiresPermission`, which stay in
+`iam/shared` while their aspects move to `iam/config`. `Loggable` is a public
+annotation intended to be applied by other code, so the exposed base package is
+where it belongs.
 
 **web** — `controller/` takes the 19 page controllers; `model/` takes
 `NavbarModel`, `NavbarModelAssembler`, `RoleLabels`; `dto/` takes the four
@@ -162,18 +171,36 @@ extracted page models from `DashboardPageController` and
 `SchoolEntryPageController`. `NavbarModel`'s own nested record moves with it into
 `model/`.
 
-### The three visibility widenings
+### The visibility widenings
 
-These are forced by the split and are the only non-mechanical edits in the change.
-Each is a package-private type whose consumers end up in two different packages:
+These are forced by the split and are the only non-mechanical edits in the
+change. Three package-private *types* end up with consumers in a sibling
+package, and each needs the type plus exactly the members those consumers call
+widened — nothing more:
 
-| Type | Consumers after the split | Becomes |
+| Type (destination) | Members to widen | Consumer that forces it |
 |---|---|---|
-| `PostAuthenticationDestination` (→ `config/`) | `SecurityConfig` (→ `config/`), `LoginPageController` + `RegisterPageController` (→ `controller/`) | `public` |
-| `JwtTokenProvider` (→ `config/`) | `JwtAuthenticationFilter` + `SecurityConfig` (→ `config/`), `AuthController` (→ `controller/`) | `public` |
-| `NavbarModelAssembler` (→ `web/model/`) | 17 page controllers (→ `web/controller/`) | `public` |
+| `PostAuthenticationDestination` (`iam/config/`) | `from(String)` | `LoginPageController`, `RegisterPageController` (→ `iam/controller/`) |
+| `JwtTokenProvider` (`iam/config/`) | `generateToken(String)`, `expirationSeconds()` | `AuthController` (→ `iam/controller/`) |
+| `NavbarModelAssembler` (`web/model/`) | `forCurrentUser()`, `assemble(UserProfile, List<MembershipInfo>)` | 17 page controllers (→ `web/controller/`) |
 
-All three stay inside their own module, so no module boundary widens. The
+So: 3 types and 5 members, all becoming `public`. Everything else in these three
+classes stays package-private, because its callers land in the *same* package:
+
+- `PostAuthenticationDestination.loginUrlFor(String)` — called only by
+  `SecurityConfig`, which also moves to `iam/config/`.
+- `PostAuthenticationDestination.DASHBOARD` / `SCHOOL_REGISTRATION` / `LOGIN` —
+  read only inside the class itself.
+- `JwtTokenProvider.validateAndExtractEmail(String)` and its constructor —
+  the former is called by `JwtAuthenticationFilter`, also bound for
+  `iam/config/`; the latter only by Spring.
+- `NavbarModelAssembler.schoolName(Long)` and its constructor — `schoolName` is
+  called only from inside `NavbarModelAssembler`. Note
+  `DashboardPageController.schoolName(Optional<SchoolInfo>, Long)` is a
+  different, `private` method that travels with its controller; the two are
+  unrelated despite the shared name.
+
+All three types stay inside their own module, so no module boundary widens. The
 `exam/internal/ExamTokenService` mentions of `JwtTokenProvider` are comments, not
 imports — checked, not a boundary violation.
 
@@ -214,6 +241,20 @@ a reused `target/`.
 safe by the measurement above. If a cross-module controller reference is
 introduced later, `ModularityTests` will catch it.
 
+**AOP pointcuts name types as strings**, which no import rewrite can fix. There
+are exactly three such literals in the codebase, and all three stay valid under
+this design:
+
+| Literal | Location | Why it survives |
+|---|---|---|
+| `...platform.Loggable` (×2) | `LoggingAspect:36` | `Loggable` stays in `platform/` — see above |
+| `...iam.shared.RequiresModule` | `ModuleAccessAspect:52` | `RequiresModule` stays in `iam/shared` |
+| `...iam.shared.RequiresPermission` | `PermissionAccessAspect:36` | `RequiresPermission` stays in `iam/shared` |
+
+The two `iam` aspects move to `iam/config/`, but the annotations they name do
+not, so the literals still resolve. **No pointcut string is edited anywhere in
+this change** — and the `platform` task verifies that by grepping.
+
 **Non-hazards, checked:** no package names appear as strings in
 `src/main/resources` or `pom.xml`; entity and component scanning derive from
 `@SpringBootApplication`'s package and every move stays beneath it; bean names
@@ -253,5 +294,5 @@ Testcontainers as normal.
 
 Acceptance: `ApplicationModules.verify()` passes; the full suite passes; `git
 diff` over the branch shows changes confined to `package` lines, `import` lines,
-file locations, JTE `@import` lines, the three documented widenings, and the
-documentation commit.
+file locations, JTE `@import` lines, the documented widenings (3 types and 5
+members), and the documentation commit.
