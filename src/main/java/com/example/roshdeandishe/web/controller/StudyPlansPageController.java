@@ -1,5 +1,6 @@
-package com.example.roshdeandishe.web;
+package com.example.roshdeandishe.web.controller;
 
+import com.example.roshdeandishe.web.model.NavbarModelAssembler;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -7,7 +8,7 @@ import org.springframework.web.bind.annotation.GetMapping;
 /**
  * صفحه‌ی مدیریت برنامه‌های مطالعه (دومین برش UI پورت moshavere - CLAUDE.md
  * §۳/§۴/§۷). shell نازک مثل /curriculum: فقط ناوبار مشترک - داده کاملاً
- * client-side و از طریق REST موجود در studyplan.PlanController/
+ * client-side و از طریق REST موجود در studyplan.controller.PlanController/
  * IntervalScheduleController/StudyIntervalController انجام می‌شود.
  * <p>
  * دامنه‌ی عمدی این برش: ساخت برنامه با وزن‌دهی درس + تخصیص به دانش‌آموز +

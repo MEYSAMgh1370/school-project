@@ -1,4 +1,4 @@
-package com.example.roshdeandishe.web;
+package com.example.roshdeandishe.web.controller;
 
 import com.example.roshdeandishe.iam.IamFacade;
 import com.example.roshdeandishe.iam.IamFacade.MembershipInfo;
@@ -7,6 +7,10 @@ import com.example.roshdeandishe.iam.IamFacade.UserProfile;
 import com.example.roshdeandishe.school.SchoolFacade;
 import com.example.roshdeandishe.school.SchoolFacade.SchoolId;
 import com.example.roshdeandishe.school.SchoolFacade.SchoolInfo;
+import com.example.roshdeandishe.web.dto.DashboardModel;
+import com.example.roshdeandishe.web.dto.MembershipRow;
+import com.example.roshdeandishe.web.dto.SchoolEntryRow;
+import com.example.roshdeandishe.web.model.NavbarModelAssembler;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -119,19 +123,5 @@ public class DashboardPageController {
      */
     private String schoolName(Optional<SchoolInfo> school, Long schoolId) {
         return school.map(SchoolInfo::name).orElse("مدرسه #" + schoolId);
-    }
-
-    public record DashboardModel(String fullName, String email, String phoneNumber, List<MembershipRow> memberships,
-                                 List<SchoolEntryRow> schoolEntries) {
-    }
-
-    public record MembershipRow(Long schoolId, String schoolName, String roleCode, boolean active) {
-    }
-
-    public record SchoolEntryRow(String schoolName, String slug) {
-
-        public boolean hasSlug() {
-            return slug != null && !slug.isBlank();
-        }
     }
 }

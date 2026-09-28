@@ -1,4 +1,4 @@
-package com.example.roshdeandishe.web;
+package com.example.roshdeandishe.web.model;
 
 import com.example.roshdeandishe.iam.IamFacade;
 import com.example.roshdeandishe.iam.IamFacade.MembershipInfo;
@@ -18,7 +18,7 @@ import java.util.Map;
  * جا، تا هر page controller جدیدِ ماژول web این منطق را دوباره ننویسد.
  */
 @Component
-class NavbarModelAssembler {
+public class NavbarModelAssembler {
 
     private final IamFacade iamFacade;
     private final SchoolFacade schoolFacade;
@@ -31,7 +31,7 @@ class NavbarModelAssembler {
     /**
      * برای صفحه‌هایی که جز ناوبار داده‌ی دیگری از iam لازم ندارند.
      */
-    NavbarModel forCurrentUser() {
+    public NavbarModel forCurrentUser() {
         UserId userId = iamFacade.currentUserId();
         UserProfile profile = iamFacade.findUser(userId).orElseThrow();
         return assemble(profile, iamFacade.findMembershipsByUser(userId));
@@ -41,7 +41,7 @@ class NavbarModelAssembler {
      * برای صفحه‌هایی (مثل داشبورد) که خودشان profile و memberships را
      * برای محتوای صفحه گرفته‌اند - از واکشی دوباره جلوگیری می‌کند.
      */
-    NavbarModel assemble(UserProfile profile, List<MembershipInfo> memberships) {
+    public NavbarModel assemble(UserProfile profile, List<MembershipInfo> memberships) {
         // گزینه‌های سوییچر: فقط عضویت‌های فعال، گروه‌شده per-school با
         // فهرست نقش‌های فعالِ همان مدرسه (برای دراپ‌داون نقش).
         Map<Long, NavbarModel.SchoolOption> options = new LinkedHashMap<>();

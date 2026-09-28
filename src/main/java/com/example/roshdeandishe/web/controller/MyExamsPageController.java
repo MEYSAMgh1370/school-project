@@ -1,5 +1,6 @@
-package com.example.roshdeandishe.web;
+package com.example.roshdeandishe.web.controller;
 
+import com.example.roshdeandishe.web.model.NavbarModelAssembler;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;

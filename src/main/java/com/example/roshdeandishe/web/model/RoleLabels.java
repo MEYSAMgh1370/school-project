@@ -1,4 +1,4 @@
-package com.example.roshdeandishe.web;
+package com.example.roshdeandishe.web.model;
 
 import java.util.Map;
 

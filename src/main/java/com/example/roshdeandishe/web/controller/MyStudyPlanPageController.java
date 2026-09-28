@@ -1,5 +1,6 @@
-package com.example.roshdeandishe.web;
+package com.example.roshdeandishe.web.controller;
 
+import com.example.roshdeandishe.web.model.NavbarModelAssembler;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -9,7 +10,7 @@ import org.springframework.web.bind.annotation.GetMapping;
  * صفحه‌های /my-exams و /my-invoices: بدون X-School-ID (endpoint زیرمجموعه‌ی
  * /api/me است)، schoolId فقط از سوییچر navbar/localStorage خوانده می‌شود.
  * فقط ناوبار مشترک را می‌سازد - داده کاملاً client-side از
- * studyplan.MyStudyIntervalController خوانده می‌شود.
+ * studyplan.controller.MyStudyIntervalController خوانده می‌شود.
  */
 @Controller
 public class MyStudyPlanPageController {
