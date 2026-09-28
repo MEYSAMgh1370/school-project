@@ -1,11 +1,15 @@
-package com.example.roshdeandishe.exam;
+package com.example.roshdeandishe.exam.controller;
 
+import com.example.roshdeandishe.exam.ExamFacade;
 import com.example.roshdeandishe.exam.ExamFacade.ExamTakeInfo;
 import com.example.roshdeandishe.exam.ExamFacade.SectionInfo;
 import com.example.roshdeandishe.exam.ExamFacade.TakeQuestionInfo;
+import com.example.roshdeandishe.exam.dto.ExamTakeResponse;
+import com.example.roshdeandishe.exam.dto.SectionTakeResponse;
+import com.example.roshdeandishe.exam.dto.SubmitRequest;
+import com.example.roshdeandishe.exam.dto.TakeQuestionResponse;
 import org.springframework.web.bind.annotation.*;
 
-import java.time.LocalDateTime;
 import java.util.List;
 
 /**
@@ -63,19 +67,5 @@ public class ExamTakeController {
     private static TakeQuestionResponse toResponse(TakeQuestionInfo info) {
         return new TakeQuestionResponse(info.questionId(), info.text(), info.choice1(), info.choice2(),
                 info.choice3(), info.choice4(), info.selectedChoice());
-    }
-
-    public record SubmitRequest(Long sectionId, Long questionId, Integer choice) {
-    }
-
-    public record ExamTakeResponse(Long id, String title, LocalDateTime start, LocalDateTime end,
-                                   int durationMinutes, List<SectionTakeResponse> sections) {
-    }
-
-    public record SectionTakeResponse(Long id, Long topicId, String name, int questionCount) {
-    }
-
-    public record TakeQuestionResponse(Long questionId, String text, String choice1, String choice2,
-                                       String choice3, String choice4, Integer selectedChoice) {
     }
 }

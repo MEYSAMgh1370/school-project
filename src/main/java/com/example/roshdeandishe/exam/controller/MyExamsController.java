@@ -1,21 +1,22 @@
-package com.example.roshdeandishe.exam;
+package com.example.roshdeandishe.exam.controller;
 
 import com.example.roshdeandishe.academic.AcademicFacade;
-import com.example.roshdeandishe.exam.ExamController.ExamResponse;
-import com.example.roshdeandishe.exam.ExamController.SectionResponse;
+import com.example.roshdeandishe.exam.ExamFacade;
 import com.example.roshdeandishe.exam.ExamFacade.AttemptResult;
 import com.example.roshdeandishe.exam.ExamFacade.ExamInfo;
 import com.example.roshdeandishe.exam.ExamFacade.ExamResultSummary;
 import com.example.roshdeandishe.exam.ExamFacade.SectionInfo;
 import com.example.roshdeandishe.exam.ExamFacade.SectionResult;
-import com.example.roshdeandishe.exam.ExamResultController.ExamResultResponse;
-import com.example.roshdeandishe.exam.ExamResultController.SectionResultResponse;
+import com.example.roshdeandishe.exam.dto.AttemptResponse;
+import com.example.roshdeandishe.exam.dto.ExamResponse;
+import com.example.roshdeandishe.exam.dto.ExamResultResponse;
+import com.example.roshdeandishe.exam.dto.SectionResponse;
+import com.example.roshdeandishe.exam.dto.SectionResultResponse;
 import com.example.roshdeandishe.exam.shared.ExamError;
 import com.example.roshdeandishe.exam.shared.ExamException;
 import com.example.roshdeandishe.iam.IamFacade;
 import org.springframework.web.bind.annotation.*;
 
-import java.time.Instant;
 import java.util.List;
 
 /**
@@ -111,8 +112,5 @@ public class MyExamsController {
         return new SectionResultResponse(result.sectionId().value(), result.name(), result.topicId(),
                 result.questionCount(), result.correctCount(), result.incorrectCount(), result.unansweredCount(),
                 result.score());
-    }
-
-    public record AttemptResponse(String token, Instant expireAt) {
     }
 }

@@ -1,9 +1,16 @@
-package com.example.roshdeandishe.exam;
+package com.example.roshdeandishe.exam.controller;
 
+import com.example.roshdeandishe.exam.ExamFacade;
 import com.example.roshdeandishe.exam.ExamFacade.ExamId;
 import com.example.roshdeandishe.exam.ExamFacade.ExamInfo;
 import com.example.roshdeandishe.exam.ExamFacade.SectionId;
 import com.example.roshdeandishe.exam.ExamFacade.SectionInfo;
+import com.example.roshdeandishe.exam.dto.AssignStudentsRequest;
+import com.example.roshdeandishe.exam.dto.CreateExamRequest;
+import com.example.roshdeandishe.exam.dto.CreateSectionAutoRequest;
+import com.example.roshdeandishe.exam.dto.CreateSectionRequest;
+import com.example.roshdeandishe.exam.dto.ExamResponse;
+import com.example.roshdeandishe.exam.dto.SectionResponse;
 import com.example.roshdeandishe.iam.shared.RequiresModule;
 import com.example.roshdeandishe.iam.shared.RequiresPermission;
 import com.example.roshdeandishe.platform.TenantContext;
@@ -148,25 +155,5 @@ public class ExamController {
     private static SectionResponse toSectionResponse(SectionInfo info) {
         return new SectionResponse(info.id().value(), info.examId().value(), info.topicId(), info.name(),
                 info.questionCount());
-    }
-
-    public record CreateExamRequest(String title, LocalDateTime start, LocalDateTime end, int durationMinutes) {
-    }
-
-    public record AssignStudentsRequest(List<Long> studentIds) {
-    }
-
-    public record CreateSectionRequest(Long topicId, String name, List<Long> questionIds) {
-    }
-
-    public record CreateSectionAutoRequest(Long topicId, String name, int count, Boolean lazy) {
-    }
-
-    public record ExamResponse(Long id, Long schoolId, ExamType type, String title, Long teacherId, Long studentId,
-                               LocalDateTime start, LocalDateTime end, int durationMinutes, LocalDate weekStart,
-                               List<SectionResponse> sections) {
-    }
-
-    public record SectionResponse(Long id, Long examId, Long topicId, String name, int questionCount) {
     }
 }

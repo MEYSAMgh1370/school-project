@@ -1,14 +1,17 @@
-package com.example.roshdeandishe.exam;
+package com.example.roshdeandishe.exam.controller;
 
+import com.example.roshdeandishe.exam.ExamFacade;
 import com.example.roshdeandishe.exam.ExamFacade.AttemptedStudentInfo;
 import com.example.roshdeandishe.exam.ExamFacade.ExamResultSummary;
 import com.example.roshdeandishe.exam.ExamFacade.SectionResult;
+import com.example.roshdeandishe.exam.dto.AttemptedStudentResponse;
+import com.example.roshdeandishe.exam.dto.ExamResultResponse;
+import com.example.roshdeandishe.exam.dto.SectionResultResponse;
 import com.example.roshdeandishe.iam.shared.RequiresModule;
 import com.example.roshdeandishe.iam.shared.RequiresPermission;
 import com.example.roshdeandishe.platform.TenantContext;
 import org.springframework.web.bind.annotation.*;
 
-import java.time.Instant;
 import java.util.List;
 
 /**
@@ -65,16 +68,5 @@ public class ExamResultController {
         return new SectionResultResponse(result.sectionId().value(), result.name(), result.topicId(),
                 result.questionCount(), result.correctCount(), result.incorrectCount(), result.unansweredCount(),
                 result.score());
-    }
-
-    public record AttemptedStudentResponse(Long studentId, Instant startedAt) {
-    }
-
-    public record SectionResultResponse(Long sectionId, String name, Long topicId, int questionCount,
-                                        int correctCount, int incorrectCount, int unansweredCount, double score) {
-    }
-
-    public record ExamResultResponse(Long examId, Long studentId, List<SectionResultResponse> sections,
-                                     double overallScore) {
     }
 }
