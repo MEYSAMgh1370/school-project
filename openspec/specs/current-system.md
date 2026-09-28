@@ -189,7 +189,9 @@ Evidence:
 
 These are not bugs unless a change proposal says otherwise:
 
-- no platform-admin actor model or platform permission path;
+- no platform-admin actor model or platform permission path — a
+  `PLATFORM_ADMIN` role row is seeded, but it is unreachable: no permission
+  check grants it anything and every role listing filters it out;
 - no billing/upgrade UI or REST endpoint for paid entitlements;
 - no horizontal web-session scaling support;
 - no SMS provider integration exists in `SmsDriver`, so OTP delivery cannot be
