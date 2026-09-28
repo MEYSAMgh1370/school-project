@@ -189,7 +189,14 @@ Evidence:
 
 These are not bugs unless a change proposal says otherwise:
 
-- no platform-admin actor model or platform permission path;
+- no platform-admin actor model or platform permission path — a
+  `PLATFORM_ADMIN` role row is seeded and it is assignable:
+  `createMembership` resolves any system role code, so a `MEMBERSHIP_MANAGE`
+  holder can persist such a membership and it comes back in the membership
+  listings. What is missing is the permission path, not the row: the role
+  has no permission grants, and `PermissionDecisionService` only decides
+  school contexts, so the membership confers nothing. `listRoles` also keeps
+  the code out of role pickers, so nothing in the UI offers it;
 - no billing/upgrade UI or REST endpoint for paid entitlements;
 - no horizontal web-session scaling support;
 - no SMS provider integration exists in `SmsDriver`, so OTP delivery cannot be
