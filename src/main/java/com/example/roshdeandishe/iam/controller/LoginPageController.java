@@ -1,5 +1,6 @@
-package com.example.roshdeandishe.iam.shared;
+package com.example.roshdeandishe.iam.controller;
 
+import com.example.roshdeandishe.iam.config.PostAuthenticationDestination;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;

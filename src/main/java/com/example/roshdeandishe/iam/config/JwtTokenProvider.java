@@ -1,4 +1,4 @@
-package com.example.roshdeandishe.iam.shared;
+package com.example.roshdeandishe.iam.config;
 
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.JwtException;
@@ -27,7 +27,7 @@ import java.util.Optional;
  * (AuthController برای صدور، JwtAuthenticationFilter برای اعتبارسنجی).
  */
 @Service
-class JwtTokenProvider {
+public class JwtTokenProvider {
 
     private final SecretKey signingKey;
     private final long expirationSeconds;
@@ -40,11 +40,11 @@ class JwtTokenProvider {
         this.expirationSeconds = expirationSeconds;
     }
 
-    long expirationSeconds() {
+    public long expirationSeconds() {
         return expirationSeconds;
     }
 
-    String generateToken(String email) {
+    public String generateToken(String email) {
         Instant now = Instant.now();
         return Jwts.builder()
                 .subject(email)

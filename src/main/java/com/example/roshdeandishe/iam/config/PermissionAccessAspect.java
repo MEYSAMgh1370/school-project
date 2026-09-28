@@ -1,8 +1,9 @@
-package com.example.roshdeandishe.iam.shared;
+package com.example.roshdeandishe.iam.config;
 
 import com.example.roshdeandishe.iam.AccessContext;
 import com.example.roshdeandishe.iam.AccessDecision;
 import com.example.roshdeandishe.iam.IamFacade;
+import com.example.roshdeandishe.iam.shared.RequiresPermission;
 import com.example.roshdeandishe.iam.shared.exception.IamError;
 import com.example.roshdeandishe.iam.shared.exception.IamException;
 import com.example.roshdeandishe.platform.TenantContext;

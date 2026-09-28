@@ -1,6 +1,17 @@
-package com.example.roshdeandishe.iam.shared;
+package com.example.roshdeandishe.iam.controller;
 
 import com.example.roshdeandishe.iam.IamFacade;
+import com.example.roshdeandishe.iam.config.JwtTokenProvider;
+import com.example.roshdeandishe.iam.dto.ActivateAccountRequest;
+import com.example.roshdeandishe.iam.dto.ActivateAccountResponse;
+import com.example.roshdeandishe.iam.dto.LoginRequest;
+import com.example.roshdeandishe.iam.dto.LoginResponse;
+import com.example.roshdeandishe.iam.dto.OtpRequestRequest;
+import com.example.roshdeandishe.iam.dto.OtpRequestResponse;
+import com.example.roshdeandishe.iam.dto.OtpVerifyRequest;
+import com.example.roshdeandishe.iam.dto.RegisterRequest;
+import com.example.roshdeandishe.iam.dto.RegisterResponse;
+import com.example.roshdeandishe.iam.dto.TokenResponse;
 import com.example.roshdeandishe.iam.shared.exception.IamError;
 import com.example.roshdeandishe.iam.shared.exception.IamException;
 import jakarta.servlet.http.HttpServletRequest;
@@ -145,35 +156,5 @@ public class AuthController {
         securityContextRepository.saveContext(context, httpRequest, httpResponse);
 
         return new LoginResponse(authenticationResult.getName());
-    }
-
-    public record LoginRequest(String email, String password) {
-    }
-
-    public record LoginResponse(String email) {
-    }
-
-    public record TokenResponse(String accessToken, String tokenType, long expiresInSeconds) {
-    }
-
-    public record ActivateAccountRequest(String token, String newPassword) {
-    }
-
-    public record ActivateAccountResponse(String message) {
-    }
-
-    public record RegisterRequest(String email, String fullName, String password) {
-    }
-
-    public record RegisterResponse(String message) {
-    }
-
-    public record OtpRequestRequest(String phoneNumber) {
-    }
-
-    public record OtpRequestResponse(String message) {
-    }
-
-    public record OtpVerifyRequest(String phoneNumber, String code) {
     }
 }

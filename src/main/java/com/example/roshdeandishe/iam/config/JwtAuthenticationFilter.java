@@ -1,4 +1,4 @@
-package com.example.roshdeandishe.iam.shared;
+package com.example.roshdeandishe.iam.config;
 
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;

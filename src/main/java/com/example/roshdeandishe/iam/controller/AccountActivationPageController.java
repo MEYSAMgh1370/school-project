@@ -1,5 +1,6 @@
-package com.example.roshdeandishe.iam.shared;
+package com.example.roshdeandishe.iam.controller;
 
+import com.example.roshdeandishe.iam.dto.ActivatePageModel;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -23,8 +24,5 @@ public class AccountActivationPageController {
     public String activatePage(@RequestParam(required = false) String token, Model model) {
         model.addAttribute("model", new ActivatePageModel(token == null ? "" : token));
         return "activate";
-    }
-
-    public record ActivatePageModel(String token) {
     }
 }

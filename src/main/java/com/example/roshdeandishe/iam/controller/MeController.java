@@ -1,8 +1,11 @@
-package com.example.roshdeandishe.iam;
+package com.example.roshdeandishe.iam.controller;
 
-import com.example.roshdeandishe.iam.IamFacade.MembershipInfo;
+import com.example.roshdeandishe.iam.IamFacade;
 import com.example.roshdeandishe.iam.IamFacade.UserId;
 import com.example.roshdeandishe.iam.IamFacade.UserProfile;
+import com.example.roshdeandishe.iam.dto.MeResponse;
+import com.example.roshdeandishe.iam.dto.MyMembershipResponse;
+import com.example.roshdeandishe.iam.dto.SetPhoneRequest;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -55,19 +58,5 @@ public class MeController {
     public void setPhoneNumber(@RequestBody SetPhoneRequest request) {
         UserId userId = iamFacade.currentUserId();
         iamFacade.setPhoneNumber(userId, request.phoneNumber());
-    }
-
-    public record MeResponse(Long userId, String email, String fullName) {
-    }
-
-    public record SetPhoneRequest(String phoneNumber) {
-    }
-
-    public record MyMembershipResponse(Long membershipId, Long schoolId, String roleCode, boolean active) {
-        static MyMembershipResponse from(MembershipInfo info) {
-            return new MyMembershipResponse(
-                    info.membershipId(), info.schoolId(), info.roleCode(), info.active()
-            );
-        }
     }
 }

@@ -1,7 +1,13 @@
-package com.example.roshdeandishe.iam;
+package com.example.roshdeandishe.iam.controller;
 
+import com.example.roshdeandishe.iam.IamFacade;
 import com.example.roshdeandishe.iam.IamFacade.MembershipInfo;
 import com.example.roshdeandishe.iam.IamFacade.UserId;
+import com.example.roshdeandishe.iam.dto.CreateMembershipRequest;
+import com.example.roshdeandishe.iam.dto.InviteTokenResponse;
+import com.example.roshdeandishe.iam.dto.MemberNameResponse;
+import com.example.roshdeandishe.iam.dto.MembershipResponse;
+import com.example.roshdeandishe.iam.dto.SetActiveRequest;
 import com.example.roshdeandishe.iam.shared.RequiresPermission;
 import com.example.roshdeandishe.platform.TenantContext;
 import org.springframework.web.bind.annotation.*;
@@ -98,35 +104,5 @@ public class MembershipController {
         return iamFacade.issueInviteToken(schoolId, membershipId)
                 .map(issued -> new InviteTokenResponse(issued.token(), true, issued.emailSent()))
                 .orElseGet(() -> new InviteTokenResponse(null, false, false));
-    }
-
-
-    public record CreateMembershipRequest(String email, String fullName, String roleCode) {
-    }
-
-    public record SetActiveRequest(boolean active) {
-    }
-
-    public record MemberNameResponse(Long userId, String fullName) {
-    }
-
-    public record MembershipResponse(
-            Long membershipId, Long userId, String email, String fullName,
-            Long schoolId, String roleCode, boolean active, boolean hasPassword
-    ) {
-        static MembershipResponse from(Long membershipId, MembershipInfo info) {
-            return new MembershipResponse(
-                    membershipId, info.userId().value(), info.email(), info.fullName(),
-                    info.schoolId(), info.roleCode(), info.active(), info.hasPassword()
-            );
-        }
-    }
-
-    /**
-     * emailSent=false با issued=true یعنی توکن صادر شد اما ایمیل به مقصد
-     * نرسید (مثلاً SMTP در دسترس نبود) - ادمین باید لینک
-     * /activate?token=... را دستی به فرد دعوت‌شده برساند.
-     */
-    public record InviteTokenResponse(String inviteToken, boolean issued, boolean emailSent) {
     }
 }

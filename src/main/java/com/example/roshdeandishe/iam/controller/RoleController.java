@@ -1,7 +1,10 @@
-package com.example.roshdeandishe.iam;
+package com.example.roshdeandishe.iam.controller;
 
-import com.example.roshdeandishe.iam.IamFacade.PermissionInfo;
+import com.example.roshdeandishe.iam.IamFacade;
 import com.example.roshdeandishe.iam.IamFacade.RoleInfo;
+import com.example.roshdeandishe.iam.dto.CreateRoleRequest;
+import com.example.roshdeandishe.iam.dto.PermissionResponse;
+import com.example.roshdeandishe.iam.dto.RoleResponse;
 import com.example.roshdeandishe.iam.shared.RequiresPermission;
 import com.example.roshdeandishe.platform.TenantContext;
 import org.springframework.web.bind.annotation.*;
@@ -57,20 +60,5 @@ public class RoleController {
         RoleInfo info = iamFacade.createCustomRole(
                 schoolId, request.code(), request.displayName(), request.permissionCodes());
         return RoleResponse.from(info);
-    }
-
-    public record PermissionResponse(Long id, String code, String displayName) {
-        static PermissionResponse from(PermissionInfo info) {
-            return new PermissionResponse(info.id(), info.code(), info.displayName());
-        }
-    }
-
-    public record RoleResponse(Long id, String code, String displayName, boolean custom, List<String> permissionCodes) {
-        static RoleResponse from(RoleInfo info) {
-            return new RoleResponse(info.id(), info.code(), info.displayName(), info.schoolId() != null, info.permissionCodes());
-        }
-    }
-
-    public record CreateRoleRequest(String code, String displayName, List<String> permissionCodes) {
     }
 }
