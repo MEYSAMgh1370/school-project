@@ -1,5 +1,6 @@
-package com.example.roshdeandishe.bale;
+package com.example.roshdeandishe.bale.controller;
 
+import com.example.roshdeandishe.bale.BaleFacade;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PathVariable;
