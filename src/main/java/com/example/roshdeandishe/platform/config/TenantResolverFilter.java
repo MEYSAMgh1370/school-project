@@ -1,5 +1,6 @@
-package com.example.roshdeandishe.platform;
+package com.example.roshdeandishe.platform.config;
 
+import com.example.roshdeandishe.platform.TenantContext;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
