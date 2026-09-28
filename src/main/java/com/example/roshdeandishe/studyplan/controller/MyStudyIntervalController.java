@@ -1,10 +1,13 @@
-package com.example.roshdeandishe.studyplan;
+package com.example.roshdeandishe.studyplan.controller;
 
 import com.example.roshdeandishe.academic.AcademicFacade;
 import com.example.roshdeandishe.curriculum.CurriculumFacade;
 import com.example.roshdeandishe.curriculum.CurriculumFacade.TopicInfo;
 import com.example.roshdeandishe.iam.IamFacade;
+import com.example.roshdeandishe.studyplan.StudyPlanFacade;
 import com.example.roshdeandishe.studyplan.StudyPlanFacade.IntervalInfo;
+import com.example.roshdeandishe.studyplan.dto.MyIntervalResponse;
+import com.example.roshdeandishe.studyplan.dto.UpdateMyIntervalRequest;
 import com.example.roshdeandishe.studyplan.shared.StudyPlanError;
 import com.example.roshdeandishe.studyplan.shared.StudyPlanException;
 import org.springframework.web.bind.annotation.*;
@@ -99,12 +102,5 @@ public class MyStudyIntervalController {
         String topicName = topicNames.getOrDefault(info.topicId(), "سرفصل #" + info.topicId());
         return new MyIntervalResponse(info.id().value(), info.topicId(), topicName, info.start(), info.end(),
                 info.done(), info.testCount());
-    }
-
-    public record UpdateMyIntervalRequest(Boolean done, Integer testCount) {
-    }
-
-    public record MyIntervalResponse(Long id, Long topicId, String topicName, LocalDateTime start, LocalDateTime end,
-                                     boolean done, int testCount) {
     }
 }

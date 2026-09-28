@@ -1,10 +1,13 @@
-package com.example.roshdeandishe.studyplan;
+package com.example.roshdeandishe.studyplan.controller;
 
 import com.example.roshdeandishe.iam.shared.RequiresModule;
 import com.example.roshdeandishe.iam.shared.RequiresPermission;
 import com.example.roshdeandishe.platform.TenantContext;
+import com.example.roshdeandishe.studyplan.StudyPlanFacade;
 import com.example.roshdeandishe.studyplan.StudyPlanFacade.WeekCourseId;
 import com.example.roshdeandishe.studyplan.StudyPlanFacade.WeekCourseInfo;
+import com.example.roshdeandishe.studyplan.dto.CreateWeekCourseRequest;
+import com.example.roshdeandishe.studyplan.dto.WeekCourseResponse;
 import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDate;
@@ -51,12 +54,5 @@ public class WeekCourseController {
     private static WeekCourseResponse toResponse(WeekCourseInfo info) {
         return new WeekCourseResponse(info.id().value(), info.planId().value(), info.weekStart(),
                 info.courseTopicId(), info.subTopicIds());
-    }
-
-    public record CreateWeekCourseRequest(LocalDate weekStart, Long courseTopicId, List<Long> subTopicIds) {
-    }
-
-    public record WeekCourseResponse(Long id, Long planId, LocalDate weekStart, Long courseTopicId,
-                                     List<Long> subTopicIds) {
     }
 }

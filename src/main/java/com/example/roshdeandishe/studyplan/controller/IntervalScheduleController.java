@@ -1,14 +1,15 @@
-package com.example.roshdeandishe.studyplan;
+package com.example.roshdeandishe.studyplan.controller;
 
 import com.example.roshdeandishe.iam.shared.RequiresModule;
 import com.example.roshdeandishe.iam.shared.RequiresPermission;
 import com.example.roshdeandishe.platform.TenantContext;
+import com.example.roshdeandishe.studyplan.StudyPlanFacade;
 import com.example.roshdeandishe.studyplan.StudyPlanFacade.ScheduleInfo;
 import com.example.roshdeandishe.studyplan.StudyPlanFacade.TimeRange;
 import com.example.roshdeandishe.studyplan.StudyPlanFacade.Weekday;
+import com.example.roshdeandishe.studyplan.dto.ScheduleResponse;
 import org.springframework.web.bind.annotation.*;
 
-import java.time.Instant;
 import java.util.Map;
 
 /**
@@ -52,10 +53,5 @@ public class IntervalScheduleController {
         TenantContext.requireMatches(schoolId);
 
         studyPlanFacade.setCurrentSchedule(schoolId, studentId, schedule);
-    }
-
-    public record ScheduleResponse(Long studentId, Map<Weekday, java.util.List<TimeRange>> defaultSchedule,
-                                   Map<Weekday, java.util.List<TimeRange>> currentSchedule,
-                                   Instant lastEditedAt, boolean currentActive) {
     }
 }

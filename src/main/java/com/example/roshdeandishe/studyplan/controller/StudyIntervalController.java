@@ -1,11 +1,17 @@
-package com.example.roshdeandishe.studyplan;
+package com.example.roshdeandishe.studyplan.controller;
 
 import com.example.roshdeandishe.iam.shared.RequiresModule;
 import com.example.roshdeandishe.iam.shared.RequiresPermission;
 import com.example.roshdeandishe.platform.TenantContext;
+import com.example.roshdeandishe.studyplan.StudyPlanFacade;
 import com.example.roshdeandishe.studyplan.StudyPlanFacade.CopyResult;
 import com.example.roshdeandishe.studyplan.StudyPlanFacade.IntervalId;
 import com.example.roshdeandishe.studyplan.StudyPlanFacade.IntervalInfo;
+import com.example.roshdeandishe.studyplan.dto.CopyResultResponse;
+import com.example.roshdeandishe.studyplan.dto.CopyWeekRequest;
+import com.example.roshdeandishe.studyplan.dto.CreateIntervalRequest;
+import com.example.roshdeandishe.studyplan.dto.IntervalResponse;
+import com.example.roshdeandishe.studyplan.dto.UpdateIntervalRequest;
 import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDate;
@@ -106,21 +112,5 @@ public class StudyIntervalController {
     private static IntervalResponse toResponse(IntervalInfo info) {
         return new IntervalResponse(info.id().value(), info.studentId(), info.topicId(), info.subTopicIds(),
                 info.start(), info.end(), info.done(), info.testCount());
-    }
-
-    public record CreateIntervalRequest(Long topicId, List<Long> subTopicIds, LocalDateTime start, LocalDateTime end) {
-    }
-
-    public record UpdateIntervalRequest(Boolean done, Integer testCount) {
-    }
-
-    public record CopyWeekRequest(LocalDate weekStart, List<Long> targetStudentIds) {
-    }
-
-    public record IntervalResponse(Long id, Long studentId, Long topicId, List<Long> subTopicIds,
-                                   LocalDateTime start, LocalDateTime end, boolean done, int testCount) {
-    }
-
-    public record CopyResultResponse(Long studentId, boolean ok, String message) {
     }
 }

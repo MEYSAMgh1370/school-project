@@ -1,15 +1,19 @@
-package com.example.roshdeandishe.studyplan;
+package com.example.roshdeandishe.studyplan.controller;
 
 import com.example.roshdeandishe.iam.shared.RequiresModule;
 import com.example.roshdeandishe.iam.shared.RequiresPermission;
 import com.example.roshdeandishe.platform.TenantContext;
+import com.example.roshdeandishe.studyplan.StudyPlanFacade;
 import com.example.roshdeandishe.studyplan.StudyPlanFacade.AssignmentInfo;
 import com.example.roshdeandishe.studyplan.StudyPlanFacade.CourseWeight;
 import com.example.roshdeandishe.studyplan.StudyPlanFacade.PlanId;
 import com.example.roshdeandishe.studyplan.StudyPlanFacade.PlanInfo;
+import com.example.roshdeandishe.studyplan.dto.AssignPlanRequest;
+import com.example.roshdeandishe.studyplan.dto.AssignmentResponse;
+import com.example.roshdeandishe.studyplan.dto.CreatePlanRequest;
+import com.example.roshdeandishe.studyplan.dto.PlanResponse;
 import org.springframework.web.bind.annotation.*;
 
-import java.time.Instant;
 import java.util.List;
 
 /**
@@ -70,17 +74,5 @@ public class PlanController {
 
     private static PlanResponse toResponse(PlanInfo info) {
         return new PlanResponse(info.id().value(), info.schoolId(), info.teacherId(), info.title(), info.weights());
-    }
-
-    public record CreatePlanRequest(String title, List<CourseWeight> weights) {
-    }
-
-    public record AssignPlanRequest(Long studentId) {
-    }
-
-    public record PlanResponse(Long id, Long schoolId, Long teacherId, String title, List<CourseWeight> weights) {
-    }
-
-    public record AssignmentResponse(Long studentId, Long planId, Instant assignedAt) {
     }
 }
