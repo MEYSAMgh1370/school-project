@@ -1,8 +1,12 @@
-package com.example.roshdeandishe.curriculum;
+package com.example.roshdeandishe.curriculum.controller;
 
+import com.example.roshdeandishe.curriculum.CurriculumFacade;
 import com.example.roshdeandishe.curriculum.CurriculumFacade.TopicId;
 import com.example.roshdeandishe.curriculum.CurriculumFacade.TopicInfo;
 import com.example.roshdeandishe.curriculum.CurriculumFacade.TopicTreeNode;
+import com.example.roshdeandishe.curriculum.dto.CreateTopicRequest;
+import com.example.roshdeandishe.curriculum.dto.TopicResponse;
+import com.example.roshdeandishe.curriculum.dto.TopicTreeResponse;
 import com.example.roshdeandishe.iam.shared.RequiresModule;
 import com.example.roshdeandishe.iam.shared.RequiresPermission;
 import com.example.roshdeandishe.platform.TenantContext;
@@ -79,14 +83,5 @@ public class TopicController {
                 node.id().value(), node.name(), node.sortOrder(),
                 node.children().stream().map(TopicController::toTreeResponse).toList()
         );
-    }
-
-    public record CreateTopicRequest(Long parentId, String name, Integer sortOrder) {
-    }
-
-    public record TopicResponse(Long id, Long schoolId, Long parentId, String name, int sortOrder) {
-    }
-
-    public record TopicTreeResponse(Long id, String name, int sortOrder, List<TopicTreeResponse> children) {
     }
 }

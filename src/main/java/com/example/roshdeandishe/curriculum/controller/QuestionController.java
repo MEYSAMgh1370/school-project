@@ -1,9 +1,13 @@
-package com.example.roshdeandishe.curriculum;
+package com.example.roshdeandishe.curriculum.controller;
 
+import com.example.roshdeandishe.curriculum.CurriculumFacade;
 import com.example.roshdeandishe.curriculum.CurriculumFacade.NewQuestion;
 import com.example.roshdeandishe.curriculum.CurriculumFacade.QuestionFilter;
 import com.example.roshdeandishe.curriculum.CurriculumFacade.QuestionId;
 import com.example.roshdeandishe.curriculum.CurriculumFacade.QuestionInfo;
+import com.example.roshdeandishe.curriculum.QuestionDifficulty;
+import com.example.roshdeandishe.curriculum.dto.CreateQuestionRequest;
+import com.example.roshdeandishe.curriculum.dto.QuestionResponse;
 import com.example.roshdeandishe.iam.shared.RequiresModule;
 import com.example.roshdeandishe.iam.shared.RequiresPermission;
 import com.example.roshdeandishe.platform.TenantContext;
@@ -68,35 +72,5 @@ public class QuestionController {
                 info.choice1(), info.choice2(), info.choice3(), info.choice4(),
                 info.correctChoice(), info.answer(), info.difficulty(), info.discriminationIndex()
         );
-    }
-
-    public record CreateQuestionRequest(
-            Long topicId,
-            String text,
-            String choice1,
-            String choice2,
-            String choice3,
-            String choice4,
-            Integer correctChoice,
-            String answer,
-            QuestionDifficulty difficulty,
-            Double discriminationIndex
-    ) {
-    }
-
-    public record QuestionResponse(
-            Long id,
-            Long schoolId,
-            Long topicId,
-            String text,
-            String choice1,
-            String choice2,
-            String choice3,
-            String choice4,
-            int correctChoice,
-            String answer,
-            QuestionDifficulty difficulty,
-            Double discriminationIndex
-    ) {
     }
 }
