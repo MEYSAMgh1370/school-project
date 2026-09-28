@@ -51,7 +51,7 @@
 
                 <p role="status" x-cloak x-show="loadingQuestions">در حال بارگذاری سؤال‌ها...</p>
 
-                <p class="has-text-info mb-4" role="status" aria-live="polite"
+                <p class="has-text-info-on-scheme mb-4" role="status" aria-live="polite"
                    x-cloak x-show="saveStatusMessage()" x-text="saveStatusMessage()"></p>
 
                 <div class="notification is-danger" role="alert" x-cloak x-show="saveErrorBySection[selectedSectionId]"

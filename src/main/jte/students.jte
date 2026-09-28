@@ -28,10 +28,10 @@
                             @click="sendInviteForPendingStudent" :class="{ 'is-loading': invitingPending }">
                         ارسال دعوت‌نامه
                     </button>
-                    <p class="has-text-success" x-show="pendingInviteResult && pendingInviteResult.alreadyActivated">
+                    <p class="has-text-success-on-scheme" x-show="pendingInviteResult && pendingInviteResult.alreadyActivated">
                         این کاربر قبلاً حسابش را فعال کرده است.
                     </p>
-                    <p class="has-text-success" x-show="pendingInviteResult && pendingInviteResult.emailSent">
+                    <p class="has-text-success-on-scheme" x-show="pendingInviteResult && pendingInviteResult.emailSent">
                         ایمیل دعوت ارسال شد.
                     </p>
                     <div class="field has-addons mt-2"

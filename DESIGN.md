@@ -465,6 +465,16 @@ UX_ROADMAP §2 remains binding and is not repeated here. Additions:
   styles for body text, captions, inline links, help text, and all six button
   variants in **both** colour schemes; all clear AA. Redo that sweep — do not
   eyeball it — on any change to a colour token.
+- **Semantic text helpers take the `-on-scheme` suffix.** Write
+  `has-text-success-on-scheme`, not `has-text-success`. The plain helper reads
+  `--bulma-success-l` — the *fill* lightness — so on a dark card it measured
+  2.76:1 (`students.jte`) and 2.72:1 (`exam-take.jte`). The `-on-scheme`
+  variant reads `--bulma-success-on-scheme-l`, which flips per scheme: the same
+  text now measures 6.8:1 dark / 8.5:1 light. Bulma ships `-on-scheme` for
+  every named colour, so this needs no override — just the right class.
+  Plain `has-text-<colour>` is correct only on a matching coloured fill.
+  `has-text-white` on the `hero is-link` in `school-entry.jte` is the one
+  legitimate case in this codebase: measured 5.47:1 and left alone.
 - **`.has-text-grey` and `.has-text-grey-dark` are remapped in `app.css`.**
   Bulma hardcodes every `has-text-grey*` helper with `!important`, so none of
   them follow the token scheme. `grey` is a cool `hsl(221, 14%, 48%)` measuring
@@ -650,12 +660,21 @@ Recorded so nothing was dropped silently:
    (`my-study-plan.css`). Each of those three sweeps found real failures the
    previous one could not — 2, 2, and 6 respectively — so the remaining pages
    should be assumed to hold more, not assumed clean.
-   Already-identified candidates, computed but **not yet measured in place**:
-   `has-text-success` ×2 (`students.jte`) and `has-text-info` ×1
-   (`exam-take.jte`) read `--bulma-success-l`/`--bulma-info-l` directly rather
-   than the `-on-scheme` variant, which puts them near 2.7:1 on a dark card;
-   `has-text-white` ×2 (`school-entry.jte`) depends on a background nobody has
-   checked.
+   The three previously-predicted cases were measured on 2026-09-28 and are
+   now closed. The predictions were accurate where they were failures and
+   wrong where they were not, which is the argument for measuring rather than
+   fixing from inspection:
+   - `has-text-success` ×2 (`students.jte`) — predicted ~2.7:1, **measured
+     2.76:1**, fixed.
+   - `has-text-info` ×1 (`exam-take.jte`) — predicted ~2.7:1, **measured
+     2.72:1**, fixed.
+   - `has-text-white` ×2 (`school-entry.jte`) — flagged as unknown, **measured
+     5.47:1 and correct**. It sits on a `hero is-link`, so white is the right
+     choice; remapping it would have been damage.
+
+   What remains is genuinely unexplored: the management pages other than
+   students, the auth/registration pages, the dashboard, and the exam and
+   grade flows have had no per-page sweep at all.
 9. **Empty-state copy — unresolved.** 15 empty states now share one shape, but
    the words are unchanged and most just state absence; only 8 name a next
    action, which §5 says all of them should. Fixing this means choosing the
