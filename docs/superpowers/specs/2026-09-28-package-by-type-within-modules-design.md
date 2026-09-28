@@ -204,6 +204,32 @@ All three types stay inside their own module, so no module boundary widens. The
 `exam/internal/ExamTokenService` mentions of `JwtTokenProvider` are comments, not
 imports — checked, not a boundary violation.
 
+#### Static factory methods on extracted records
+
+Record extraction forces a second, separate category of widening, discovered
+while implementing the `finance` module. Several nested records carry a
+package-private `static from(...)` factory that their own controller invokes.
+While the record is nested, `from` needs no modifier; once the record moves to
+`<module>/dto/` and the controller to `<module>/controller/`, the call crosses a
+package boundary and `from` must be `public`.
+
+`MyInvoicesController:59` calls it as a method reference — `MyInvoiceResponse::from`
+— which is why a plain grep for `.from(` does not find these. There are eight:
+
+| Module | Method |
+|---|---|
+| `finance` | `MyInvoiceResponse.from(InvoiceInfo)` |
+| `iam` | `MyMembershipResponse.from(MembershipInfo)`, `PermissionResponse.from(PermissionInfo)`, `RoleResponse.from(RoleInfo)`, `MembershipResponse.from(Long, MembershipInfo)` |
+| `academic` | `MyEnrollmentResponse.from(EnrollmentInfo)`, `MyGradeResponse.from(GradeInfo)` |
+| `school` | `SchoolResponse.from(SchoolInfo)` |
+
+`exam`, `studyplan`, `curriculum`, and `web` have none — their controllers build
+their responses inline. Any further instance found during implementation gets the
+same treatment: widen it to `public` and report it, since the alternative is a
+module that does not compile.
+
+So the full tally is **3 types, 5 members, and 8 record factory methods.**
+
 ### Out of scope
 
 - **Splitting `internal/`** into `entity/`, `repository/`, `service/`. Costs 114
