@@ -472,9 +472,19 @@ UX_ROADMAP §2 remains binding and is not repeated here. Additions:
   variant reads `--bulma-success-on-scheme-l`, which flips per scheme: the same
   text now measures 6.8:1 dark / 8.5:1 light. Bulma ships `-on-scheme` for
   every named colour, so this needs no override — just the right class.
-  Plain `has-text-<colour>` is correct only on a matching coloured fill.
-  `has-text-white` on the `hero is-link` in `school-entry.jte` is the one
-  legitimate case in this codebase: measured 5.47:1 and left alone.
+
+  **Plain `has-text-<colour>` has no correct use as a text colour.** An earlier
+  draft of this section said it was "correct on a matching coloured fill" —
+  that was wrong, and backwards: `has-text-success` on an `is-success` fill
+  resolves to the *same* `--bulma-success-l` the background uses, i.e. the text
+  disappears into it. It also contradicted §4a. The value is a fill lightness,
+  not a text lightness. Per §4a, text over an accent fill takes **`-invert`**
+  (Bulma applies that itself for `.button.is-*` / `.notification.is-*`; write
+  `has-text-<colour>-invert` only when you are colouring text on an accent fill
+  by hand), and accent text on a neutral surface takes **`-on-scheme`**.
+  `has-text-white` on the `hero is-link` in `school-entry.jte` is an explicit
+  invert of exactly that kind — white on the accent fill — which is why it
+  measured 5.47:1 and was left alone.
 - **`.has-text-grey` and `.has-text-grey-dark` are remapped in `app.css`.**
   Bulma hardcodes every `has-text-grey*` helper with `!important`, so none of
   them follow the token scheme. `grey` is a cool `hsl(221, 14%, 48%)` measuring
