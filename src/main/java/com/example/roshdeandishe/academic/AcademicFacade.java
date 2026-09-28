@@ -44,7 +44,7 @@ public interface AcademicFacade {
      * ندارد AcademicError.SchoolNotFound می‌دهد.
      * <p>
      * gradingScheme صریح است، نه مشتق‌شده در پایگاه‌داده - اما وقتی صدا زننده
-     * null بدهد (ClassController.CreateClassRequest)، پیش‌فرضش از روی
+     * null بدهد (CreateClassRequest)، پیش‌فرضش از روی
      * gradeLevel محاسبه می‌شود (۱ تا ۶ → DESCRIPTIVE، ۷ تا ۱۲ → NUMERIC، §11
      * Q8's reconciliation با classification که در PR جداگانه‌ای اضافه شد).
      */

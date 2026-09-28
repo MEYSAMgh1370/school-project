@@ -1,14 +1,16 @@
-package com.example.roshdeandishe.academic;
+package com.example.roshdeandishe.academic.controller;
 
+import com.example.roshdeandishe.academic.AcademicFacade;
 import com.example.roshdeandishe.academic.AcademicFacade.GradeId;
 import com.example.roshdeandishe.academic.AcademicFacade.GradeInfo;
+import com.example.roshdeandishe.academic.GradingTerm;
+import com.example.roshdeandishe.academic.dto.GradeResponse;
+import com.example.roshdeandishe.academic.dto.RecordGradeRequest;
 import com.example.roshdeandishe.iam.shared.RequiresModule;
 import com.example.roshdeandishe.iam.shared.RequiresPermission;
 import com.example.roshdeandishe.platform.TenantContext;
 import org.springframework.web.bind.annotation.*;
 
-import java.math.BigDecimal;
-import java.time.Instant;
 import java.util.List;
 
 /**
@@ -67,14 +69,5 @@ public class GradeController {
                 info.term(), info.scheme(), info.descriptiveLevel(), info.numericScore(), info.comment(),
                 info.recordedByUserId(), info.recordedAt()
         );
-    }
-
-    public record RecordGradeRequest(Long studentId, Long classId, String academicYear, GradingTerm term,
-                                      DescriptiveGradeLevel descriptiveLevel, BigDecimal numericScore, String comment) {
-    }
-
-    public record GradeResponse(Long id, Long studentId, Long classId, String academicYear, GradingTerm term,
-                                 GradingScheme scheme, DescriptiveGradeLevel descriptiveLevel, BigDecimal numericScore,
-                                 String comment, Long recordedByUserId, Instant recordedAt) {
     }
 }

@@ -1,7 +1,10 @@
-package com.example.roshdeandishe.academic;
+package com.example.roshdeandishe.academic.controller;
 
+import com.example.roshdeandishe.academic.AcademicFacade;
 import com.example.roshdeandishe.academic.AcademicFacade.ClassId;
 import com.example.roshdeandishe.academic.AcademicFacade.ClassInfo;
+import com.example.roshdeandishe.academic.dto.ClassResponse;
+import com.example.roshdeandishe.academic.dto.CreateClassRequest;
 import com.example.roshdeandishe.iam.shared.RequiresModule;
 import com.example.roshdeandishe.iam.shared.RequiresPermission;
 import com.example.roshdeandishe.platform.TenantContext;
@@ -61,24 +64,5 @@ public class ClassController {
     private static ClassResponse toResponse(ClassInfo info) {
         return new ClassResponse(info.id().value(), info.schoolId(), info.name(), info.teacherId(), info.section(),
                 info.gradeLevel(), info.gradingScheme());
-    }
-
-    /**
-     * {@code gradingScheme} اختیاری است. وقتی صریحاً داده نشود، پیش‌فرضش از
-     * روی {@code gradeLevel} مشتق می‌شود - پایه‌ی ۱ تا ۶ → DESCRIPTIVE، ۷ تا
-     * ۱۲ → NUMERIC (تصمیم صریح کاربر، آشتی‌دادنِ classification که در PR
-     * جداگانه‌ای اضافه شد با شِمای صریحِ per-class که در همین PR ساخته شد -
-     * CLAUDE.md §11 Q8). هنوز یک فیلد صریح و قابل override روی خودِ کلاس
-     * است، نه چیزی که هر بار خودکار محاسبه شود.
-     */
-    public record CreateClassRequest(String name, Long teacherId, String section, int gradeLevel, GradingScheme gradingScheme) {
-        public CreateClassRequest {
-            if (gradingScheme == null) {
-                gradingScheme = gradeLevel <= 6 ? GradingScheme.DESCRIPTIVE : GradingScheme.NUMERIC;
-            }
-        }
-    }
-
-    public record ClassResponse(Long id, Long schoolId, String name, Long teacherId, String section, int gradeLevel, GradingScheme gradingScheme) {
     }
 }

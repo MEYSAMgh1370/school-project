@@ -1,8 +1,13 @@
-package com.example.roshdeandishe.academic;
+package com.example.roshdeandishe.academic.controller;
 
+import com.example.roshdeandishe.academic.AcademicFacade;
 import com.example.roshdeandishe.academic.AcademicFacade.GuardianLinkId;
 import com.example.roshdeandishe.academic.AcademicFacade.StudentId;
 import com.example.roshdeandishe.academic.AcademicFacade.StudentInfo;
+import com.example.roshdeandishe.academic.dto.EnrollStudentRequest;
+import com.example.roshdeandishe.academic.dto.GuardianLinkResponse;
+import com.example.roshdeandishe.academic.dto.LinkGuardianRequest;
+import com.example.roshdeandishe.academic.dto.StudentResponse;
 import com.example.roshdeandishe.iam.shared.RequiresModule;
 import com.example.roshdeandishe.iam.shared.RequiresPermission;
 import com.example.roshdeandishe.platform.TenantContext;
@@ -92,17 +97,5 @@ public class StudentController {
 
     private static StudentResponse toResponse(StudentInfo info) {
         return new StudentResponse(info.id().value(), info.userId(), info.schoolId(), info.classId().value());
-    }
-
-    public record EnrollStudentRequest(String email, String fullName, Long classId) {
-    }
-
-    public record StudentResponse(Long studentId, Long userId, Long schoolId, Long classId) {
-    }
-
-    public record LinkGuardianRequest(Long guardianUserId) {
-    }
-
-    public record GuardianLinkResponse(Long guardianLinkId, Long studentId, Long guardianUserId) {
     }
 }
