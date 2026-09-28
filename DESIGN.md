@@ -294,6 +294,33 @@ Both are why the sweep has to cover real pages and not just a component
 harness: `landing.css` is entirely token-driven and inherited the warm scheme
 for free, yet the page still had two unreadable elements.
 
+**`my-study-plan.css` (2026-09-28).** Swept next, and it was worse — a
+correction to an earlier claim in this file that it "already read
+`var(--bulma-border)`, so it followed for free." It uses `var()` 46 times, but
+**only for spacing and radius**; all **33** colour declarations were hardcoded
+and none tokenized. It therefore adopted the new geometry and kept a cool
+palette, and `background: #fff` put a white slab in the middle of the dark UI
+with `#9aa0a7` on it at 2.4:1 — an AA failure that predates this direction.
+All 33 are now tokenized. Six further dark-scheme failures surfaced only after
+that, all one root cause plus one new category:
+
+- **Accent text on an accent fill needs `*-bold`, not `*-on-scheme`.** Bulma
+  defines `--bulma-soft-l`/`--bulma-bold-l` as a *swapping* pair — 90%/20% in
+  light, 20%/90% in dark — so `*-soft` background with `*-bold` text is
+  scheme-correct by construction. `-on-scheme` is for accent text on a
+  **neutral** surface, which is a different situation and the wrong tool here.
+  Four elements were failing at 1.66–4.35:1; they now measure 7.8–8.5:1.
+- **Chart fills are graphical objects, not decoration.** The day and topic bars
+  used the raw accent against a `border-weak` track: 1.95:1 in dark, a bar
+  invisible against the thing it is measured against. Moved to
+  `-on-scheme` (3.55:1 dark / 7.19:1 light). If a mark carries data, it owes
+  3:1 to its track (WCAG 1.4.11).
+
+Rule of thumb this produced, worth applying before the remaining pages:
+**accent on neutral → `-on-scheme`; accent on its own `-soft` → `-bold`;
+accent as a fill behind text → `-invert` for that text.** A bare
+`var(--bulma-primary)` is right only as a fill.
+
 One judgement call recorded so it is not re-litigated: `.button.is-light` in
 the **light** scheme has a fill at 1:1 against the page and cannot reach 3:1
 while remaining light. That is not a WCAG 1.4.11 failure — a control
@@ -617,10 +644,18 @@ Recorded so nothing was dropped silently:
 7. ~~Empty-state illustration and an icon subset~~ — **split and resolved
    2026-09-27:** illustration adopted (§5a); the icon subset **rejected on
    evidence**, see the re-examination in §11.3.
-8. ~~Owning the dark scheme~~ — **resolved 2026-09-27:** owned, not
-   suppressed. See §4a and the corrected §12. Contrast is verified at the
-   component level; per-page verification across all 24 templates has **not**
-   been done and is the remaining risk.
+8. **Owning the dark scheme** — adopted 2026-09-27 (§4a, corrected §12), but
+   **per-page verification is incomplete and is the live risk.** Swept so far:
+   the component set, the landing page, and the weekly-grid pages
+   (`my-study-plan.css`). Each of those three sweeps found real failures the
+   previous one could not — 2, 2, and 6 respectively — so the remaining pages
+   should be assumed to hold more, not assumed clean.
+   Already-identified candidates, computed but **not yet measured in place**:
+   `has-text-success` ×2 (`students.jte`) and `has-text-info` ×1
+   (`exam-take.jte`) read `--bulma-success-l`/`--bulma-info-l` directly rather
+   than the `-on-scheme` variant, which puts them near 2.7:1 on a dark card;
+   `has-text-white` ×2 (`school-entry.jte`) depends on a background nobody has
+   checked.
 9. **Empty-state copy — unresolved.** 15 empty states now share one shape, but
    the words are unchanged and most just state absence; only 8 name a next
    action, which §5 says all of them should. Fixing this means choosing the
