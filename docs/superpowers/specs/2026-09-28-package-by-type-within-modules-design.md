@@ -195,7 +195,7 @@ imports — checked, not a boundary violation.
 ## Hazards
 
 **JTE templates import Java types by name.** Five `@import` targets across the 27
-templates in `src/main/jte` must change, covering 20 import lines:
+templates in `src/main/jte` must change, covering 22 import lines in 19 files:
 
 | From | To | Lines |
 |---|---|---|
