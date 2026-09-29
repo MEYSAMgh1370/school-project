@@ -398,6 +398,24 @@ afterwards are pre-existing and reproduce on a clean tree.
   state on the triggering control (button/section); >2s shows a progress
   message. No skeleton component exists yet — build one only when a real
   page needs it, then record it here.
+- **The landing slider is landing-page-only** (added 2026-09-29). There is no
+  general carousel in this system and there should not be one: a carousel
+  hides content behind a timer, which is the opposite of what a management
+  page owes its user. It exists because the public landing page has a
+  marketing job the app pages do not. Scope of the exception:
+  `landing.jte` + `static/js/landing.js` + the `.app-landing-slider-*` rules
+  in `landing.css`. **Do not adopt it on an authenticated page** — if a
+  second page ever wants one, that is a new decision, not a rule-of-three
+  extraction.
+
+  Two things it does deliberately, worth copying if the exception is ever
+  widened: the active slide changes via `x-show`, **not** an inline-axis
+  transform, so RTL has no direction arithmetic to get wrong; and autoplay
+  is skipped entirely when `matchMedia('(prefers-reduced-motion: reduce)')`
+  matches, because the global `app.css` reduced-motion block collapses CSS
+  transitions but cannot stop a `setInterval`. The slides carry no
+  `x-cloak`, so a page where Alpine never boots renders all four stacked and
+  readable rather than blank.
 
 ---
 
