@@ -86,9 +86,14 @@ public interface IamFacade {
      * "ادمین، فلان معلم را با نقش TEACHER به مدرسه اضافه می‌کند". اگر همین
      * (user, school, role) از قبل وجود داشته باشد، آن Membership موجود
      * دوباره فعال می‌شود (idempotent) به‌جای ساخت ردیف تکراری.
+     * <p>
+     * PLATFORM_ADMIN قابل تخصیص نیست و همان RoleNotFound را می‌گیرد که یک کد
+     * ناموجود می‌گیرد - همان قراردادی که listRoles با فیلتر کردنش اجرا
+     * می‌کند: این نقش نباید در هیچ UI ای ظاهر شود و پاسخ هم نباید وجودش را
+     * لو بدهد.
      *
      * @throws com.example.roshdeandishe.iam.shared.exception.IamException
-     * با IamError.RoleNotFound اگر roleCode معتبر نباشد
+     * با IamError.RoleNotFound اگر roleCode معتبر نباشد یا PLATFORM_ADMIN باشد
      */
     Long createMembership(UserId userId, Long schoolId, String roleCode);
 
