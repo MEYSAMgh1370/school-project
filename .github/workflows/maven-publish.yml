@@ -2,7 +2,13 @@ name: Build
 
 on:
   push:
+    # master است که شاخه‌ی پیش‌فرض این مخزن است و تا امروز در این فهرست نبود؛
+    # main و develop هیچ‌کدام وجود ندارند. یعنی این workflow روی هیچ push ای به
+    # master اجرا نمی‌شد و فقط از مسیر pull_request پایین کار می‌کرد - پس کامیتِ
+    # حاصل از merge هر PR هیچ‌وقت build نمی‌شد. همان سه نام در
+    # diagram-parity.yml درست فهرست شده‌اند و اینجا هم‌راستا می‌شود.
     branches:
+      - master
       - main
       - develop
 
