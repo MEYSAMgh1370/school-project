@@ -19,6 +19,7 @@ These OpenSpec documents are the curated entry point for current behavior, propo
 - [`diagrams/iam-c4.md`](diagrams/iam-c4.md) - C4-style IAM context, container, component, and flow diagrams, with PlantUML sources.
 - [`conventions.md`](conventions.md) - development, testing, documentation, and frontend conventions.
 - [`changes/proposed-work.md`](changes/proposed-work.md) - planned or unresolved work that is not current behavior.
+- [`changes/eu-market-readiness.md`](changes/eu-market-readiness.md) - audit of the market-specific coupling in the current build (localization, calendar, currency, messaging, data protection, commercial surface) and the work items it implies; no implementation has occurred.
 - [`changes/finance-monetary-unit.md`](changes/finance-monetary-unit.md) - proposed finance monetary-unit contract; no implementation has occurred.
 - [`changes/post-authentication-school-registration.md`](changes/post-authentication-school-registration.md) - post-authentication school-registration handoff contract; implemented 2026-09-27, current behavior is in `specs/current-system.md`.
 - [`changes/package-by-type-within-modules.md`](changes/package-by-type-within-modules.md) - by-type package layout within each module (`controller/`, `dto/`, `config/`); implemented 2026-09-28, current behavior is in `conventions.md` and `architecture.md`.
