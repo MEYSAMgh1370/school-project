@@ -98,6 +98,28 @@ public interface IamFacade {
     Long createMembership(UserId userId, Long schoolId, String roleCode);
 
     /**
+     * افزودن یک عضو به مدرسه در یک تراکنش: پیدا/ساخت کاربر و سپس تخصیص نقش.
+     * همان ترکیبی که پنل مدیریت لازم دارد، ولی به‌صورت اتمیک.
+     * <p>
+     * دلیل وجودش (issue #80): اگر caller این دو گام را جدا صدا بزند و خودش
+     * تراکنش نداشته باشد، {@link #findOrCreateUser} تراکنش خودش را commit
+     * می‌کند و بعد شکستِ {@link #createMembership} فقط گام دوم را rollback
+     * می‌کند - یک ردیف کاربرِ بی‌عضویت جا می‌ماند که دیگر نه می‌تواند
+     * ثبت‌نام کند (EmailAlreadyRegistered) و نه دعوت‌نامه بگیرد (دعوت
+     * Membership لازم دارد). اینجا هر دو گام زیر یک تراکنش‌اند، پس ردشدن
+     * roleCode کاربر تازه‌ساخته را هم برمی‌گرداند.
+     * <p>
+     * دقیقاً همان Membershipای برمی‌گردد که ساخته/فعال شد - نه «اولین
+     * Membership این کاربر در این مدرسه» که {@link #findMembership} می‌دهد
+     * و برای کاربرِ چندنقشی می‌تواند ردیف دیگری باشد.
+     *
+     * @throws com.example.roshdeandishe.iam.shared.exception.IamException
+     * با همان خطاهای {@link #createMembership} - از جمله IamError.RoleNotFound
+     * اگر roleCode معتبر نباشد یا PLATFORM_ADMIN باشد
+     */
+    MembershipInfo addMember(String email, String fullName, Long schoolId, String roleCode);
+
+    /**
      * فعال/غیرفعال کردن یک Membership خاص با شناسه‌ی آن، در محدوده‌ی همان
      * مدرسه. این دقیقاً همان
      * عملیاتی است که "مدرسه می‌خواهد دسترسی یک دانش‌آموز خاص را غیرفعال

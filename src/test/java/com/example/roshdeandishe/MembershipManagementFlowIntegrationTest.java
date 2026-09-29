@@ -224,6 +224,47 @@ class MembershipManagementFlowIntegrationTest {
                 .andExpect(jsonPath("$.roleCode").value("FINANCE_ADMIN"));
     }
 
+    /**
+     * issue #80: کنترلر عمداً تراکنش ندارد، پس تا وقتی findOrCreateUser و
+     * createMembership دو فراخوانی جدا بودند، گام اول commit می‌شد و ردِ
+     * roleCode فقط گام دوم را برمی‌گرداند - یک کاربرِ بی‌عضویت جا می‌ماند.
+     * <p>
+     * نبودِ آن ردیف از روی رفتار بررسی می‌شود، نه با کوئری مستقیم: اگر
+     * کاربر جا مانده باشد، ثبت‌نام با همان ایمیل EmailAlreadyRegistered
+     * می‌گیرد - دقیقاً همان بن‌بستی که issue توصیف می‌کند.
+     */
+    @Test
+    void rejectedMembershipLeavesNoUserBehind() throws Exception {
+        MockHttpSession session = loginAsAdmin();
+
+        // کد ناموجود (مثلاً غلط املایی) و کد رزروشده‌ی پلتفرم - هر دو از
+        // همان شاخه‌ی ردشدن عبور می‌کنند
+        assertRejectedRoleLeavesNoUser(session, "NOT_A_REAL_ROLE");
+        assertRejectedRoleLeavesNoUser(session, "PLATFORM_ADMIN");
+    }
+
+    private void assertRejectedRoleLeavesNoUser(MockHttpSession session, String roleCode) throws Exception {
+        String email = "orphan.check." + System.nanoTime() + "@roshdeandishe.test";
+
+        mockMvc.perform(post("/api/admin/schools/1/memberships")
+                        .with(csrf())
+                        .header("X-School-ID", "1")
+                        .session(session)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"email\":\"" + email + "\",\"fullName\":\"کاربر ردشده\","
+                                + "\"roleCode\":\"" + roleCode + "\"}"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.type").value(org.hamcrest.Matchers.endsWith("role-not-found")));
+
+        // موفق شدنِ ثبت‌نام یعنی تراکنش واقعاً برگشت خورده و ایمیل آزاد است
+        mockMvc.perform(post("/api/auth/register")
+                        .with(csrf())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"email\":\"" + email + "\",\"fullName\":\"کاربر ردشده\","
+                                + "\"password\":\"password123\"}"))
+                .andExpect(status().isOk());
+    }
+
     @Test
     void membershipMutationsCannotTargetAnotherSchoolsMembershipId() throws Exception {
         MockHttpSession session = loginAsAdmin();
