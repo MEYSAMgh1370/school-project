@@ -72,7 +72,7 @@ Acceptance criteria:
 
 Evidence:
 
-- [`SchoolController.java`](../../src/main/java/com/example/roshdeandishe/school/SchoolController.java)
+- [`SchoolController.java`](../../src/main/java/com/example/roshdeandishe/school/controller/SchoolController.java)
 - [`SchoolFacadeImpl.java`](../../src/main/java/com/example/roshdeandishe/school/internal/SchoolFacadeImpl.java)
 - [`IamSeedDataRunner.java`](../../src/main/java/com/example/roshdeandishe/iam/internal/IamSeedDataRunner.java)
 - [`2026-07-20-free-tier-entitlements.md`](../decisions/2026-07-20-free-tier-entitlements.md)
@@ -103,8 +103,8 @@ Failure cases:
 
 Evidence:
 
-- [`SecurityConfig.java`](../../src/main/java/com/example/roshdeandishe/iam/shared/SecurityConfig.java)
-- [`TenantResolverFilter.java`](../../src/main/java/com/example/roshdeandishe/platform/TenantResolverFilter.java)
+- [`SecurityConfig.java`](../../src/main/java/com/example/roshdeandishe/iam/config/SecurityConfig.java)
+- [`TenantResolverFilter.java`](../../src/main/java/com/example/roshdeandishe/platform/config/TenantResolverFilter.java)
 - authorization annotations across module controllers.
 
 ## Web UI
@@ -190,13 +190,14 @@ Evidence:
 These are not bugs unless a change proposal says otherwise:
 
 - no platform-admin actor model or platform permission path — a
-  `PLATFORM_ADMIN` role row is seeded and it is assignable:
-  `createMembership` resolves any system role code, so a `MEMBERSHIP_MANAGE`
-  holder can persist such a membership and it comes back in the membership
-  listings. What is missing is the permission path, not the row: the role
-  has no permission grants, and `PermissionDecisionService` only decides
-  school contexts, so the membership confers nothing. `listRoles` also keeps
-  the code out of role pickers, so nothing in the UI offers it;
+  `PLATFORM_ADMIN` role row is seeded, but it is reserved at both boundaries:
+  `listRoles` keeps the code out of role pickers, and `createMembership`
+  rejects it with the same `RoleNotFound` an undefined code produces, so it
+  cannot be assigned. The role also has no permission grants, and
+  `PermissionDecisionService` only decides school contexts, so it would confer
+  nothing even if a row existed. Whether such rows already exist in the
+  deployed database is unverified — see
+  [`changes/platform-admin-not-assignable.md`](../changes/platform-admin-not-assignable.md);
 - no billing/upgrade UI or REST endpoint for paid entitlements;
 - no horizontal web-session scaling support;
 - no SMS provider integration exists in `SmsDriver`, so OTP delivery cannot be

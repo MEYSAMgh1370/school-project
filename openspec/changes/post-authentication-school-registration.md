@@ -17,7 +17,7 @@ school-registration URL reliably reached the intended form.
 Evidence:
 
 - [`landing.jte`](../../src/main/jte/landing.jte)
-- [`SecurityConfig.java`](../../src/main/java/com/example/roshdeandishe/iam/shared/SecurityConfig.java)
+- [`SecurityConfig.java`](../../src/main/java/com/example/roshdeandishe/iam/config/SecurityConfig.java)
 - [`login.js`](../../src/main/resources/static/js/login.js)
 - [`register.js`](../../src/main/resources/static/js/register.js)
 - [`LoginDashboardFlowIntegrationTest.java`](../../src/test/java/com/example/roshdeandishe/LoginDashboardFlowIntegrationTest.java)
@@ -67,10 +67,10 @@ The landing CTAs, the rendered destination, and the allow-list shipped first;
 the direct-entry redirect and the registration retry path followed on
 2026-09-27.
 
-- [`PostAuthenticationDestination.java`](../../src/main/java/com/example/roshdeandishe/iam/shared/PostAuthenticationDestination.java) -
+- [`PostAuthenticationDestination.java`](../../src/main/java/com/example/roshdeandishe/iam/config/PostAuthenticationDestination.java) -
   `from()` resolves the rendered `next`; `loginUrlFor()` resolves the login URL
   for an anonymous request. Both read the same allow-list.
-- [`SecurityConfig.java`](../../src/main/java/com/example/roshdeandishe/iam/shared/SecurityConfig.java) -
+- [`SecurityConfig.java`](../../src/main/java/com/example/roshdeandishe/iam/config/SecurityConfig.java) -
   `PostAuthenticationAwareLoginEntryPoint` replaces the stock
   `LoginUrlAuthenticationEntryPoint`. It builds the redirect from the
   allow-list constant rather than echoing the request, and strips the context

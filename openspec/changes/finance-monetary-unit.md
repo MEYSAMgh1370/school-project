@@ -31,9 +31,9 @@ The present implementation deliberately avoids a currency decision:
   renders Persian digits, but it performs no Rial/Toman conversion or unit
   labelling. [`money.test.js`](../../src/test/js/money.test.js) asserts that
   neutral behavior and digit normalization.
-- [`FinanceController.java`](../../src/main/java/com/example/roshdeandishe/finance/FinanceController.java),
-  [`ExpenseController.java`](../../src/main/java/com/example/roshdeandishe/finance/ExpenseController.java),
-  and [`MyInvoicesController.java`](../../src/main/java/com/example/roshdeandishe/finance/MyInvoicesController.java)
+- [`FinanceController.java`](../../src/main/java/com/example/roshdeandishe/finance/controller/FinanceController.java),
+  [`ExpenseController.java`](../../src/main/java/com/example/roshdeandishe/finance/controller/ExpenseController.java),
+  and [`MyInvoicesController.java`](../../src/main/java/com/example/roshdeandishe/finance/controller/MyInvoicesController.java)
   expose `BigDecimal` amount fields without a unit contract.
 - The finance, expense, and self-service invoice pages display those raw API
   fields through the shared formatter and serialize normalized raw form input.
@@ -195,11 +195,11 @@ minimum:
   loading/wiring in [`finance.jte`](../../src/main/jte/finance.jte),
   [`expenses.jte`](../../src/main/jte/expenses.jte), and
   [`my-invoices.jte`](../../src/main/jte/my-invoices.jte);
-- V2 DTOs and validation in [`FinanceController.java`](../../src/main/java/com/example/roshdeandishe/finance/FinanceController.java),
-  [`ExpenseController.java`](../../src/main/java/com/example/roshdeandishe/finance/ExpenseController.java),
-  and [`MyInvoicesController.java`](../../src/main/java/com/example/roshdeandishe/finance/MyInvoicesController.java),
+- V2 DTOs and validation in [`FinanceController.java`](../../src/main/java/com/example/roshdeandishe/finance/controller/FinanceController.java),
+  [`ExpenseController.java`](../../src/main/java/com/example/roshdeandishe/finance/controller/ExpenseController.java),
+  and [`MyInvoicesController.java`](../../src/main/java/com/example/roshdeandishe/finance/controller/MyInvoicesController.java),
   including the generated OpenAPI documentation configured by
-  [`OpenApiConfig.java`](../../src/main/java/com/example/roshdeandishe/platform/OpenApiConfig.java);
+  [`OpenApiConfig.java`](../../src/main/java/com/example/roshdeandishe/platform/config/OpenApiConfig.java);
 - canonical validation and serialization through the finance and expense
   facades, implementations, events, entities, audit listener, and audit rows;
 - Toman-labelled, formatted Bale invoice messages in

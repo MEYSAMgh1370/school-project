@@ -26,7 +26,7 @@ import lombok.Setter;
  * ذخیره می‌شود (نه صرفاً مشتق‌شده در لحظه‌ی خواندن)، تا یک ادمین بتواند آن
  * را به‌ازای هر کلاس override کند. پیش‌فرضش وقتی صریحاً داده نشود از
  * gradeLevel مشتق می‌شود (۱ تا ۶ → DESCRIPTIVE، ۷ تا ۱۲ → NUMERIC) - در
- * ClassController.CreateClassRequest، نه اینجا. ستون nullable می‌ماند (نه
+ * CreateClassRequest، نه اینجا. ستون nullable می‌ماند (نه
  * NOT NULL) تا افزودن آن به جدول موجود، دیتابیسِ dev را نشکند.
  */
 @Entity

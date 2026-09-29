@@ -86,11 +86,38 @@ public interface IamFacade {
      * "ادمین، فلان معلم را با نقش TEACHER به مدرسه اضافه می‌کند". اگر همین
      * (user, school, role) از قبل وجود داشته باشد، آن Membership موجود
      * دوباره فعال می‌شود (idempotent) به‌جای ساخت ردیف تکراری.
+     * <p>
+     * PLATFORM_ADMIN قابل تخصیص نیست و همان RoleNotFound را می‌گیرد که یک کد
+     * ناموجود می‌گیرد - همان قراردادی که listRoles با فیلتر کردنش اجرا
+     * می‌کند: این نقش نباید در هیچ UI ای ظاهر شود و پاسخ هم نباید وجودش را
+     * لو بدهد.
      *
      * @throws com.example.roshdeandishe.iam.shared.exception.IamException
-     * با IamError.RoleNotFound اگر roleCode معتبر نباشد
+     * با IamError.RoleNotFound اگر roleCode معتبر نباشد یا PLATFORM_ADMIN باشد
      */
     Long createMembership(UserId userId, Long schoolId, String roleCode);
+
+    /**
+     * افزودن یک عضو به مدرسه در یک تراکنش: پیدا/ساخت کاربر و سپس تخصیص نقش.
+     * همان ترکیبی که پنل مدیریت لازم دارد، ولی به‌صورت اتمیک.
+     * <p>
+     * دلیل وجودش (issue #80): اگر caller این دو گام را جدا صدا بزند و خودش
+     * تراکنش نداشته باشد، {@link #findOrCreateUser} تراکنش خودش را commit
+     * می‌کند و بعد شکستِ {@link #createMembership} فقط گام دوم را rollback
+     * می‌کند - یک ردیف کاربرِ بی‌عضویت جا می‌ماند که دیگر نه می‌تواند
+     * ثبت‌نام کند (EmailAlreadyRegistered) و نه دعوت‌نامه بگیرد (دعوت
+     * Membership لازم دارد). اینجا هر دو گام زیر یک تراکنش‌اند، پس ردشدن
+     * roleCode کاربر تازه‌ساخته را هم برمی‌گرداند.
+     * <p>
+     * دقیقاً همان Membershipای برمی‌گردد که ساخته/فعال شد - نه «اولین
+     * Membership این کاربر در این مدرسه» که {@link #findMembership} می‌دهد
+     * و برای کاربرِ چندنقشی می‌تواند ردیف دیگری باشد.
+     *
+     * @throws com.example.roshdeandishe.iam.shared.exception.IamException
+     * با همان خطاهای {@link #createMembership} - از جمله IamError.RoleNotFound
+     * اگر roleCode معتبر نباشد یا PLATFORM_ADMIN باشد
+     */
+    MembershipInfo addMember(String email, String fullName, Long schoolId, String roleCode);
 
     /**
      * فعال/غیرفعال کردن یک Membership خاص با شناسه‌ی آن، در محدوده‌ی همان

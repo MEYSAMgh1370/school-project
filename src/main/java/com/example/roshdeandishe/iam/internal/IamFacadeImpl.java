@@ -34,6 +34,10 @@ class IamFacadeImpl implements IamFacade {
     // §9: کدهای نقش UPPER_SNAKE_CASE هستند - همین قرارداد روی نقش‌های
     // سفارشی هم اجباری می‌شود تا در کنار نقش‌های سیستمی یکدست بمانند
     private static final Pattern ROLE_CODE_PATTERN = Pattern.compile("^[A-Z][A-Z0-9_]*$");
+    // نقش رزروشده‌ی پلتفرم: نه در listRoles دیده می‌شود و نه در
+    // createMembership قابل تخصیص است - هر دو نقطه از همین ثابت استفاده
+    // می‌کنند تا این دو قرارداد از هم جدا نیفتند
+    private static final String PLATFORM_ADMIN_ROLE_CODE = "PLATFORM_ADMIN";
 
     private final UserRepository userRepository;
     private final RoleRepository roleRepository;
@@ -262,6 +266,20 @@ class IamFacadeImpl implements IamFacade {
     @Override
     @Transactional
     public Long createMembership(UserId userId, Long schoolId, String roleCode) {
+        // PLATFORM_ADMIN مسیر بررسی مجوز ندارد (PermissionDecisionService فقط
+        // SchoolContext را تصمیم می‌گیرد) و هیچ ردیف role_permissions هم
+        // ندارد، پس امروز چیزی به کسی نمی‌دهد. مسئله ترتیب کارهاست: بدون این
+        // نگهبان، ردیف‌های عضویت همین حالا انباشته می‌شوند و همان لحظه که
+        // مسیر مجوز پلتفرم ساخته شود، ناگهان دسترسی می‌دهند - پاک کردن
+        // بعدی‌شان از ردکردن همین حالا بدتر است.
+        //
+        // عمداً همان RoleNotFound برمی‌گردد که یک کد ناموجود می‌گیرد: قرارداد
+        // listRoles/RoleLabels این است که این کد در هیچ UI ای ظاهر نشود، پس
+        // پاسخ هم نباید وجودش را لو بدهد.
+        if (PLATFORM_ADMIN_ROLE_CODE.equals(roleCode)) {
+            throw new IamException(new IamError.RoleNotFound(roleCode));
+        }
+
         // نقش سفارشیِ خودِ این مدرسه اولویت دارد، وگرنه نقش سیستمی - نقش
         // سفارشیِ مدرسه‌ی دیگری با همین کد هرگز اینجا resolve نمی‌شود
         // (RoleCodeAlreadyExists در createCustomRole تضمین می‌کند این دو
@@ -280,6 +298,25 @@ class IamFacadeImpl implements IamFacade {
         membership.setActive(true);
         SchoolMembershipEntity saved = schoolMembershipRepository.save(membership);
         return saved.getId();
+    }
+
+    @Override
+    @Transactional
+    public MembershipInfo addMember(String email, String fullName, Long schoolId, String roleCode) {
+        // این دو فراخوانی عمداً مستقیم (self-invocation) هستند و از proxy رد
+        // نمی‌شوند: به همین دلیل @Transactional خودشان اعمال نمی‌شود و هر دو
+        // داخل همین تراکنش اجرا می‌شوند - که دقیقاً هدف است. اگر روزی برای
+        // «تمیزتر شدن» به self-injection یا فراخوانی از طریق proxy تغییر
+        // کنند، findOrCreateUser دوباره جدا commit می‌کند و باگ issue #80
+        // برمی‌گردد: کاربرِ بی‌عضویتِ جامانده بعد از ردِ roleCode.
+        UserId userId = findOrCreateUser(email, fullName);
+        Long membershipId = createMembership(userId, schoolId, roleCode);
+
+        // همان ردیفی که همین حالا ساخته/فعال شد - نه findMembership که برای
+        // کاربرِ چندنقشی در یک مدرسه ممکن است Membership دیگری را برگرداند
+        return schoolMembershipRepository.findByIdAndSchoolId(membershipId, schoolId)
+                .map(this::toMembershipInfo)
+                .orElseThrow(() -> new IamException(new IamError.MembershipIdNotFound(membershipId)));
     }
 
     @Override
@@ -408,7 +445,7 @@ class IamFacadeImpl implements IamFacade {
         return roleRepository.findBySchoolIdIsNullOrSchoolId(schoolId).stream()
                 // PLATFORM_ADMIN مسیر بررسی مجوز ندارد و نباید در هیچ UI ای
                 // ظاهر شود - همان قرارداد web.RoleLabels
-                .filter(r -> !"PLATFORM_ADMIN".equals(r.getCode()))
+                .filter(r -> !PLATFORM_ADMIN_ROLE_CODE.equals(r.getCode()))
                 .map(this::toRoleInfo)
                 .toList();
     }

@@ -175,6 +175,96 @@ class MembershipManagementFlowIntegrationTest {
                 ).exists());
     }
 
+    /**
+     * قرینه‌ی سمتِ نوشتنِ
+     * RoleManagementFlowIntegrationTest.adminSeesSystemPermissionsAndRolesButNotPlatformAdmin
+     * که فقط سمت خواندن را پوشش می‌داد: نقش رزروشده‌ی پلتفرم نه دیده می‌شود
+     * و نه تخصیص داده می‌شود، و پاسخ باید از یک کد ناموجود قابل‌تشخیص نباشد.
+     */
+    @Test
+    void adminCannotAssignPlatformAdminRole() throws Exception {
+        MockHttpSession session = loginAsAdmin();
+
+        mockMvc.perform(post("/api/admin/schools/1/memberships")
+                        .with(csrf())
+                        .header("X-School-ID", "1")
+                        .session(session)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"email\":\"platform.admin." + System.nanoTime()
+                                + "@roshdeandishe.test\",\"fullName\":\"مدیر پلتفرم\","
+                                + "\"roleCode\":\"PLATFORM_ADMIN\"}"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.type").value(org.hamcrest.Matchers.endsWith("role-not-found")));
+
+        // و هیچ ردیفی هم ساخته نشده باشد - نه فعال و نه غیرفعال
+        mockMvc.perform(get("/api/admin/schools/1/memberships")
+                        .header("X-School-ID", "1")
+                        .session(session))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[?(@.roleCode == 'PLATFORM_ADMIN')]").doesNotExist());
+    }
+
+    /**
+     * ردشدنِ PLATFORM_ADMIN نباید به یک ردِ کلیِ «هر کد ناشناخته» تبدیل شده
+     * باشد: کد سیستمیِ همسایه هنوز باید تخصیص داده شود.
+     */
+    @Test
+    void otherSystemRolesRemainAssignable() throws Exception {
+        MockHttpSession session = loginAsAdmin();
+
+        mockMvc.perform(post("/api/admin/schools/1/memberships")
+                        .with(csrf())
+                        .header("X-School-ID", "1")
+                        .session(session)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"email\":\"finance.admin." + System.nanoTime()
+                                + "@roshdeandishe.test\",\"fullName\":\"مدیر مالی تازه\","
+                                + "\"roleCode\":\"FINANCE_ADMIN\"}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.roleCode").value("FINANCE_ADMIN"));
+    }
+
+    /**
+     * issue #80: کنترلر عمداً تراکنش ندارد، پس تا وقتی findOrCreateUser و
+     * createMembership دو فراخوانی جدا بودند، گام اول commit می‌شد و ردِ
+     * roleCode فقط گام دوم را برمی‌گرداند - یک کاربرِ بی‌عضویت جا می‌ماند.
+     * <p>
+     * نبودِ آن ردیف از روی رفتار بررسی می‌شود، نه با کوئری مستقیم: اگر
+     * کاربر جا مانده باشد، ثبت‌نام با همان ایمیل EmailAlreadyRegistered
+     * می‌گیرد - دقیقاً همان بن‌بستی که issue توصیف می‌کند.
+     */
+    @Test
+    void rejectedMembershipLeavesNoUserBehind() throws Exception {
+        MockHttpSession session = loginAsAdmin();
+
+        // کد ناموجود (مثلاً غلط املایی) و کد رزروشده‌ی پلتفرم - هر دو از
+        // همان شاخه‌ی ردشدن عبور می‌کنند
+        assertRejectedRoleLeavesNoUser(session, "NOT_A_REAL_ROLE");
+        assertRejectedRoleLeavesNoUser(session, "PLATFORM_ADMIN");
+    }
+
+    private void assertRejectedRoleLeavesNoUser(MockHttpSession session, String roleCode) throws Exception {
+        String email = "orphan.check." + System.nanoTime() + "@roshdeandishe.test";
+
+        mockMvc.perform(post("/api/admin/schools/1/memberships")
+                        .with(csrf())
+                        .header("X-School-ID", "1")
+                        .session(session)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"email\":\"" + email + "\",\"fullName\":\"کاربر ردشده\","
+                                + "\"roleCode\":\"" + roleCode + "\"}"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.type").value(org.hamcrest.Matchers.endsWith("role-not-found")));
+
+        // موفق شدنِ ثبت‌نام یعنی تراکنش واقعاً برگشت خورده و ایمیل آزاد است
+        mockMvc.perform(post("/api/auth/register")
+                        .with(csrf())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"email\":\"" + email + "\",\"fullName\":\"کاربر ردشده\","
+                                + "\"password\":\"password123\"}"))
+                .andExpect(status().isOk());
+    }
+
     @Test
     void membershipMutationsCannotTargetAnotherSchoolsMembershipId() throws Exception {
         MockHttpSession session = loginAsAdmin();

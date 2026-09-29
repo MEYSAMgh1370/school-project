@@ -5,7 +5,7 @@
      بازدید گذری یک کاربرِ چندمدرسه‌ای انتخاب قبلی‌اش را عوض نکند.
      (navbar.js مقدار را با عضویت‌های واقعی می‌سنجد و در صورت نامعتبر
      بودن به اولین مدرسه‌ی خود کاربر برمی‌گردد.) --%>
-@import com.example.roshdeandishe.web.SchoolEntryPageController.SchoolEntryModel
+@import com.example.roshdeandishe.web.dto.SchoolEntryModel
 
 @param SchoolEntryModel model
 

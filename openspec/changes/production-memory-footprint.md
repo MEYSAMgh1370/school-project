@@ -42,6 +42,13 @@ These numbers describe an idle-to-lightly-loaded instance with no real data.
 Production RSS will differ; the relative savings are the claim, not the
 absolute figures.
 
+The baseline was measured at commit `26e2020`, before
+[`package-by-type-within-modules.md`](package-by-type-within-modules.md) landed.
+That change relocates types between packages and extracts nested records into
+top-level files; it moves no work to startup and changes no dependency, so the
+figures below carry over. Re-measure on the deployed container regardless, per
+the note above.
+
 ### Where the memory goes
 
 Baseline configuration as currently deployed, 532 to 541 MB RSS across two
@@ -162,7 +169,7 @@ Remove from [`pom.xml`](../../pom.xml):
 Removing springdoc also requires:
 
 - Deleting
-  [`OpenApiConfig.java`](../../src/main/java/com/example/roshdeandishe/platform/OpenApiConfig.java),
+  [`OpenApiConfig.java`](../../src/main/java/com/example/roshdeandishe/platform/config/OpenApiConfig.java),
   which imports `io.swagger.v3.oas.models`.
 - Declaring `com.fasterxml.jackson.core:jackson-databind` as a direct
   dependency. Four production files use Jackson 2 —
