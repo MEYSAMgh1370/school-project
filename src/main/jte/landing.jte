@@ -89,6 +89,7 @@
 
                 <div class="app-landing-slider mt-5"
                      x-data="landingSlider(4)"
+                     :class="'is-live'"
                      role="region"
                      aria-roledescription="اسلایدر"
                      aria-label="بخش‌های رشدِاندیشه"

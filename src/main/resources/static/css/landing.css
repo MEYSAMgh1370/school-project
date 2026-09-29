@@ -151,9 +151,14 @@
   box-shadow: var(--shadow-sm);
 }
 
-.app-landing-slide + .app-landing-slide {
-  /* فقط وقتی دیده می‌شود که Alpine بالا نیامده و همه‌ی اسلایدها
-     پشت سر هم رندر شده‌اند. */
+/* جداکننده‌ی میان اسلایدها فقط برای حالتی است که Alpine بالا نیامده و
+   هر چهار اسلاید پشت سر هم رندر شده‌اند. کلاس is-live را خودِ Alpine بعد
+   از init اضافه می‌کند، پس نبودِ آن یعنی «جاوااسکریپت اجرا نشد».
+
+   انتخابگر همسایه (+) بر اساس جای عنصر در DOM کار می‌کند و کاری ندارد که
+   اسلاید قبلی display:none است؛ بدون این حفاظ، اسلایدهای ۲ تا ۴ در حالت
+   عادی هم یک خط و یک فاصله‌ی بی‌جا بالای خودشان می‌انداختند. */
+.app-landing-slider:not(.is-live) .app-landing-slide + .app-landing-slide {
   margin-block-start: var(--space-6);
   padding-block-start: var(--space-6);
   border-block-start: 1px solid var(--bulma-border);
@@ -229,10 +234,13 @@
 }
 
 /* --- پرسش‌های رایج -------------------------------------------------------- */
+/* چهار پرسش داریم، پس دو ستون می‌خواهیم نه سه: با سه ستون، پرسش چهارم
+   تنها در ردیف دوم می‌ماند و یک جای خالی بزرگ کنارش می‌افتد. min(100%,…)
+   باعث می‌شود روی صفحه‌ی باریک همان یک ستون شود. */
 .app-landing-faq {
   display: grid;
   gap: var(--space-4);
-  grid-template-columns: repeat(auto-fit, minmax(18rem, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 26rem), 1fr));
 }
 
 .app-landing-faq-item {
@@ -269,6 +277,16 @@
 }
 
 @media screen and (max-width: 768px) {
+  /* نقصِ از پیش‌موجود، نه چیزی که با این صفحه آمده باشد: کلاس is-8 مقدار
+     --bulma-column-gap را ۲rem می‌کند و Bulma همان را منفی روی حاشیه‌ی
+     .columns می‌گذارد (margin ‎-32px‎)، ولی .section روی موبایل فقط ۲۴px
+     padding دارد. نتیجه ۸px لغزش افقی در کل صفحه بود. روی موبایل ستون‌ها
+     زیر هم می‌روند و این فاصله دیده هم نمی‌شود، پس کوچک‌کردنش چیزی از
+     چیدمان کم نمی‌کند. */
+  .app-landing .columns.is-variable {
+    --bulma-column-gap: var(--space-3);
+  }
+
   .app-landing-footer-columns {
     grid-template-columns: 1fr;
     gap: var(--space-5);
