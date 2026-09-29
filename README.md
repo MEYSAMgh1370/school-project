@@ -60,6 +60,9 @@ separate build artifacts.
    admin login: `admin@roshdeandishe.test` / `password`. That demo data is
    skipped under the `prod` profile — see [`DEPLOYMENT.md`](DEPLOYMENT.md).
 
+4. **Swagger UI**: `http://localhost:8080/swagger-ui.html` (off by default in
+   production).
+
 ## Deploying (Liara / any Docker host)
 
 The repo root carries a multi-stage [`Dockerfile`](Dockerfile) (Maven +

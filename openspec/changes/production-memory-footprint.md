@@ -1,28 +1,46 @@
 # Production Memory Footprint Reduction
 
-Status: proposed on 2026-09-28. **Tier 1 and Tier 2 both implemented
-2026-09-29**; current behavior is in [`../architecture.md`](../architecture.md).
-This proposal is retained for its rationale and its measurements.
+Status: proposed on 2026-09-28. **Tier 1 implemented 2026-09-29** and is current
+behavior; see [`../architecture.md`](../architecture.md). **Tier 2 was
+implemented on 2026-09-29 and reverted the same day** — see "Tier 2, rejected
+after implementation" below. This document authorizes no further dependency or
+source change by itself.
 
-Verified on the implementation commits, same tree and same session:
+Tier 1 as verified on the implementation commit, same tree and same session:
+537 MB RSS before, 408 MB after, with zero ArchUnit classes loaded, a clean
+`prod` boot, `ModularityTests` green, and `/actuator/modulith` still served on
+the development profile.
 
-| Step | RSS | Notes |
-|---|---|---|
-| Before | 537 MB | `MaxRAMPercentage=75`, both dependencies present |
-| After Tier 1 | 408 MB | explicit JVM limits, `prod`-scoped exclusions |
-| After Tier 2 | 390 MB | `spring-modulith-actuator` and springdoc removed |
+## Tier 2, rejected after implementation
 
-The Tier 2 figure is the mean of five runs spanning 372 to 409 MB. That spread
-is the same ±10 to 20 MB band described above, and it is wider than the 18 MB
-Tier 2 gains over Tier 1. Tier 2's saving is therefore real but modest, and it
-is better justified by what it removes from the classpath — two libraries that
-production never used, one of them scanning every class at every boot — than by
-the RSS delta alone.
+Tier 2 was built and measured, then reverted. It is recorded here so the work
+is not repeated on the assumption that it is simply untried.
 
-Zero ArchUnit classes load in either tier, `ModularityTests` stays green, and
-the `prod` boot is clean. Two intended losses arrived with Tier 2:
-`/actuator/modulith` now exists in no profile, and there is no Swagger UI. See
-acceptance criterion 6, which was written for Tier 1 and had to be corrected.
+What it did: removed `springdoc-openapi` and `spring-modulith-actuator` from
+[`pom.xml`](../../pom.xml), deleted `platform/config/OpenApiConfig.java`,
+declared `jackson-databind` directly, and cleaned the swagger traces out of
+`SecurityConfig`, `TenantResolverFilter`, both YAML files, and the docs.
+
+Why it was reverted, on two grounds:
+
+1. **The saving did not survive its own error bars.** Tier 2 measured 390 MB as
+   the mean of five runs spanning 372 to 409 MB. That is 18 MB below Tier 1's
+   408 MB, inside the ±10 to 20 MB run-to-run band this document records for
+   every other figure. A change whose effect is smaller than the noise of the
+   instrument measuring it is not a memory win that can be claimed.
+2. **It cost development tooling in every profile.** Removing the artifact,
+   rather than excluding its autoconfiguration, takes `/actuator/modulith` and
+   the Swagger UI away from development too. Tier 1 keeps both by scoping its
+   exclusions to the `prod` profile, which is the better mechanism for a
+   development-versus-production difference: one branch, one artifact, and the
+   production JVM still loads zero ArchUnit classes.
+
+What the attempt was worth keeping: it established that four production classes
+import Jackson 2 and that `jackson-databind` reaches the classpath only as a
+transitive dependency of springdoc, so the build breaks the moment springdoc
+leaves. Declaring that dependency directly is correct on its own merits and
+independent of any memory work; it is not currently declared, and is left as an
+open item below.
 
 ## Decision Requested
 
@@ -189,9 +207,9 @@ Remove from [`pom.xml`](../../pom.xml):
 
 Removing springdoc also requires:
 
-- Deleting `platform/config/OpenApiConfig.java`, which imports
-  `io.swagger.v3.oas.models`. Deliberately not a link: Tier 2 removed the file,
-  so there is nothing to point at.
+- Deleting
+  [`OpenApiConfig.java`](../../src/main/java/com/example/roshdeandishe/platform/config/OpenApiConfig.java),
+  which imports `io.swagger.v3.oas.models`.
 - Declaring `com.fasterxml.jackson.core:jackson-databind` as a direct
   dependency. Four production files use Jackson 2 —
   [`StudyPlanFacadeImpl.java`](../../src/main/java/com/example/roshdeandishe/studyplan/internal/StudyPlanFacadeImpl.java),
@@ -222,21 +240,6 @@ the same change.
 5. `ModularityTests.verifyModularStructure()` passes, confirming the module
    model is still verified at test time.
 6. The development profile still exposes `health`, `info`, and `modulith`.
-
-   **Corrected 2026-09-29, during Tier 2.** This criterion was written for
-   Tier 1 and cannot hold for Tier 2, which removes `spring-modulith-actuator`
-   outright: the endpoint it provides then exists in no profile, development
-   included. The criterion was wrong to require otherwise, and the conflict was
-   found by testing rather than by reading. It stands as written for Tier 1,
-   which scopes its exclusions to the `prod` profile and was verified against
-   it. For Tier 2 it reads: the development profile still exposes `health` and
-   `info`, and `management.endpoints.web.exposure.include` in
-   [`application.yml`](../../src/main/resources/application.yml) no longer names
-   an endpoint that does not exist.
-
-   What the endpoint was for is not lost. Module boundaries are verified by
-   `ModularityTests`, which still passes; only the runtime view of the module
-   model goes away, and nothing in the project reads it.
 7. For Tier 2 only: the application starts and the Bale webhook and study-plan
    JSON paths behave unchanged, with no `NoClassDefFoundError` from Jackson.
 
@@ -315,8 +318,18 @@ Each was measured, not assumed.
 1. What is the target container plan? The measured savings make a 512 MB plan
    viable where the baseline's 535 MB does not fit, but the choice depends on
    real session and attachment load, which this measurement does not cover.
-2. Is `/swagger-ui.html` used by anyone against the production deployment with
-   `SWAGGER_ENABLED=true`? Tier 2 removes that possibility permanently.
-3. Should `DATABASE_POOL_SIZE` be lowered from its default of 10? Connection
+2. Should `com.fasterxml.jackson.core:jackson-databind` be declared directly in
+   [`pom.xml`](../../pom.xml)? Four production classes import Jackson 2 —
+   [`BaleClient.java`](../../src/main/java/com/example/roshdeandishe/bale/internal/BaleClient.java),
+   [`BaleUpdate.java`](../../src/main/java/com/example/roshdeandishe/bale/internal/BaleUpdate.java),
+   [`BaleWebhookService.java`](../../src/main/java/com/example/roshdeandishe/bale/internal/BaleWebhookService.java)
+   and [`StudyPlanFacadeImpl.java`](../../src/main/java/com/example/roshdeandishe/studyplan/internal/StudyPlanFacadeImpl.java)
+   — yet it arrives only as a transitive dependency of springdoc, so removing or
+   replacing springdoc breaks compilation with no warning beforehand. This is a
+   one-line change with no memory effect, deliberately not bundled into the
+   reverted Tier 2.
+3. Is `/swagger-ui.html` used by anyone against the production deployment with
+   `SWAGGER_ENABLED=true`? It stays available, since Tier 2 was reverted.
+4. Should `DATABASE_POOL_SIZE` be lowered from its default of 10? Connection
    buffers were not isolated in this measurement, and the setting is already
    documented as a Postgres-side constraint rather than a memory one.

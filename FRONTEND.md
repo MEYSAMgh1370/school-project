@@ -103,9 +103,7 @@ Log in with the seeded demo admin: **`admin@roshdeandishe.test` / `password`**
 (dev only — not seeded in production). There's a demo school with all five modules
 enabled, so every page is reachable out of the box.
 
-There is no Swagger UI. springdoc was removed from the project; `/swagger-ui.html`
-and `/v3/api-docs` no longer exist in any profile. Read the REST contracts from the
-controllers under each module's `controller/` package and the records in its `dto/`.
+Swagger UI (live API reference, with try-it-out): **http://localhost:8080/swagger-ui.html**
 
 ### ⚠️ The single biggest gotcha: templates and static files are compiled in
 

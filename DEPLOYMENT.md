@@ -114,6 +114,7 @@ This is intentional. An application that boots with a public signing key or a
 | `BALE_BOT_TOKEN` | *(empty)* | Bale bot token. Empty = the bot logs what it would send and makes no HTTP call |
 | `BALE_WEBHOOK_SECRET` | *(empty)* | Secret path segment for the Bale webhook. Empty = the webhook always 404s (fails closed) |
 | `SMS_API_KEY` | *(empty)* | Placeholder for a future SMS provider key. **Setting it does not enable OTP delivery** — no provider integration is written yet, so a nonblank key makes `SmsDriver` log an error and report failure. OTP login does not work in production at any value (see below) |
+| `SWAGGER_ENABLED` | `false` | API docs are **off** in production. `/swagger-ui.html` and `/v3/api-docs` are `permitAll` in `SecurityConfig`, so enabling this publishes your whole API surface publicly |
 | `SESSION_COOKIE_SECURE` | `true` | Session cookie `Secure` flag. Leave on; only turn off if you deliberately serve plain HTTP |
 | `HEALTH_CHECK_MAIL` | `false` | Whether SMTP reachability counts toward `/actuator/health` (see §7) |
 
@@ -230,11 +231,8 @@ Logs: `liara logs --follow`.
 The image sets its own JVM limits in `JAVA_OPTS` (`Dockerfile`), so the plan's
 memory is not handed to the heap wholesale: the heap is capped at 192 MB
 against a measured live set of about 54 MB, and the collector is SerialGC
-because this is a single instance with a small heap.
-
-Measured at **390 MB RSS, down from 537 MB** before this work, in two steps:
-537 → 408 MB from the JVM limits above, and 408 → 390 MB from dropping two
-dependencies that did nothing in production.
+because this is a single instance with a small heap. Measured at 408 MB RSS,
+down from 537 MB before those limits were set.
 
 Two cautions before you size a plan on that number. It was measured on an
 **empty database** with no accumulated logins, and sessions live in this
@@ -242,16 +240,12 @@ container's memory (see below), so real heap grows with concurrent users.
 Expense attachments also pass through the heap as `byte[]`, up to 5 MB each.
 Watch memory on the current plan before moving to a smaller one.
 
-The dependencies dropped were `spring-modulith-actuator`, which pulled in a
-runtime bootstrap that scanned the whole classpath through ArchUnit at every
-startup to build a module model production never exposed, and `springdoc-openapi`,
-whose API docs were already switched off in production. Module boundaries are
-still verified by `ModularityTests` in CI.
-
-Two consequences worth knowing, both intended: `/actuator/modulith` no longer
-exists in **any** profile, including development, and there is no Swagger UI —
-`/swagger-ui.html` and `/v3/api-docs` are gone, so `SWAGGER_ENABLED` no longer
-exists as a variable. Full rationale and the measurement method are in
+`spring.autoconfigure.exclude` in `application-prod.yml` switches off the Spring
+Modulith runtime bootstrap, which otherwise scans the whole classpath through
+ArchUnit at every startup for a module model that production never exposes.
+Module boundaries are still verified by `ModularityTests` in CI, and
+`/actuator/modulith` still works in development. Full rationale and the
+measurement method are in
 [`openspec/changes/production-memory-footprint.md`](openspec/changes/production-memory-footprint.md).
 
 ---

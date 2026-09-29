@@ -50,9 +50,8 @@
             <version>3.2.4</version>
         </dependency>
 
-        <!-- Alpine.js و Bulma به‌صورت WebJar. تا وقتی springdoc اینجا بود،
-             org.webjars:swagger-ui هم ترنزیتیو می‌آمد و این الگو از قبل در
-             پروژه وجود داشت؛ حالا این دو تنها WebJarهای پروژه‌اند. -->
+        <!-- Alpine.js و Bulma به‌صورت WebJar، هم‌راستا با الگوی موجود پروژه
+             (springdoc از قبل org.webjars:swagger-ui را ترنزیتیو می‌آورد) -->
         <dependency>
             <groupId>org.webjars.npm</groupId>
             <artifactId>alpinejs</artifactId>
@@ -64,18 +63,10 @@
             <version>1.0.4</version>
         </dependency>
 
-        <!-- Jackson 2. چهار کلاس تولیدی این پروژه مستقیماً به آن وابسته‌اند
-             (bale/internal/BaleClient، BaleUpdate، BaleWebhookService و
-             studyplan/internal/StudyPlanFacadeImpl)، چون Spring Boot 4 با
-             حضور Jackson 3 دیگر یک Bean واحد از ObjectMapper نمی‌سازد و آن
-             کلاس‌ها ObjectMapper خودشان را می‌سازند - رجوع به کامنت داخل
-             StudyPlanFacadeImpl.
-             تا امروز این وابستگی فقط ترنزیتیو و از مسیر springdoc می‌آمد،
-             یعنی حذف springdoc کامپایل را می‌شکست. وابستگی‌ای که کد مستقیم
-             از آن import می‌کند باید مستقیم اعلام شود. -->
         <dependency>
-            <groupId>com.fasterxml.jackson.core</groupId>
-            <artifactId>jackson-databind</artifactId>
+            <groupId>org.springdoc</groupId>
+            <artifactId>springdoc-openapi-starter-webmvc-ui</artifactId>
+            <version>3.0.2</version>
         </dependency>
         <!-- JPA / Hibernate -->
         <dependency>
@@ -185,13 +176,11 @@
             <artifactId>spring-boot-starter-actuator</artifactId>
         </dependency>
 
-        <!-- spring-modulith-actuator عمداً اینجا نیست. تنها چیزی که می‌داد،
-             endpoint مربوط به /actuator/modulith بود، و بهایش این بود که
-             spring-modulith-runtime را هم می‌آورد: آن ماژول در هر بالا آمدن
-             کل classpath را با ArchUnit import می‌کرد تا مدل ماژول‌ها را
-             بسازد. صحت مرزهای ماژول را ModularityTests در زمان تست تأیید
-             می‌کند، پس این کار در زمان اجرا تکرار مصرف حافظه بود بدون سود.
-             رجوع به openspec/changes/production-memory-footprint.md. -->
+        <!-- پشتیبانی از ActuatorObservability ماژول‌ها (اختیاری ولی توصیه‌شده) -->
+        <dependency>
+            <groupId>org.springframework.modulith</groupId>
+            <artifactId>spring-modulith-actuator</artifactId>
+        </dependency>
 
         <!-- Lombok برای کاهش Boilerplate در Entityها -->
         <dependency>
