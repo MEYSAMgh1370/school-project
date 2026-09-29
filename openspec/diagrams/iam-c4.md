@@ -262,10 +262,10 @@ sequenceDiagram
     participant AuthController
 
     Admin->>MembershipController: POST /memberships
-    MembershipController->>IamFacadeImpl: findOrCreateUser(email, fullName)
+    MembershipController->>IamFacadeImpl: addMember(email, fullName, schoolId, roleCode)
     IamFacadeImpl->>Users: create or reuse user
-    MembershipController->>IamFacadeImpl: createMembership(userId, schoolId, roleCode)
     IamFacadeImpl->>Memberships: create or reactivate row
+    Note over IamFacadeImpl,Memberships: one transaction: a rejected roleCode rolls the new user back too
     Admin->>MembershipController: POST /{membershipId}/invite-token
     MembershipController->>IamFacadeImpl: issueInviteToken(schoolId, membershipId)
     IamFacadeImpl->>Invites: reuse valid token or create new one
