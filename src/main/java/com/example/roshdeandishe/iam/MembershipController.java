@@ -1,7 +1,6 @@
 package com.example.roshdeandishe.iam;
 
 import com.example.roshdeandishe.iam.IamFacade.MembershipInfo;
-import com.example.roshdeandishe.iam.IamFacade.UserId;
 import com.example.roshdeandishe.iam.shared.RequiresPermission;
 import com.example.roshdeandishe.platform.TenantContext;
 import org.springframework.web.bind.annotation.*;
@@ -38,11 +37,13 @@ public class MembershipController {
     public MembershipResponse createMembership(@PathVariable Long schoolId, @RequestBody CreateMembershipRequest request) {
         TenantContext.requireMatches(schoolId);
 
-        UserId userId = iamFacade.findOrCreateUser(request.email(), request.fullName());
-        Long membershipId = iamFacade.createMembership(userId, schoolId, request.roleCode());
-
-        MembershipInfo info = iamFacade.findMembership(userId, schoolId).orElseThrow();
-        return MembershipResponse.from(membershipId, info);
+        // یک فراخوانی اتمیک به‌جای ساخت کاربر و سپس تخصیص نقش - وگرنه
+        // کنترلر (که عمداً تراکنش ندارد) بین این دو گام commit می‌کند و
+        // roleCodeِ ردشده یک کاربرِ بی‌عضویت جا می‌گذارد (issue #80)
+        MembershipInfo info = iamFacade.addMember(
+                request.email(), request.fullName(), schoolId, request.roleCode()
+        );
+        return MembershipResponse.from(info.membershipId(), info);
     }
 
     @GetMapping

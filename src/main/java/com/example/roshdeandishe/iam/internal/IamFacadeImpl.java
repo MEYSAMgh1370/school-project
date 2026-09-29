@@ -302,6 +302,25 @@ class IamFacadeImpl implements IamFacade {
 
     @Override
     @Transactional
+    public MembershipInfo addMember(String email, String fullName, Long schoolId, String roleCode) {
+        // این دو فراخوانی عمداً مستقیم (self-invocation) هستند و از proxy رد
+        // نمی‌شوند: به همین دلیل @Transactional خودشان اعمال نمی‌شود و هر دو
+        // داخل همین تراکنش اجرا می‌شوند - که دقیقاً هدف است. اگر روزی برای
+        // «تمیزتر شدن» به self-injection یا فراخوانی از طریق proxy تغییر
+        // کنند، findOrCreateUser دوباره جدا commit می‌کند و باگ issue #80
+        // برمی‌گردد: کاربرِ بی‌عضویتِ جامانده بعد از ردِ roleCode.
+        UserId userId = findOrCreateUser(email, fullName);
+        Long membershipId = createMembership(userId, schoolId, roleCode);
+
+        // همان ردیفی که همین حالا ساخته/فعال شد - نه findMembership که برای
+        // کاربرِ چندنقشی در یک مدرسه ممکن است Membership دیگری را برگرداند
+        return schoolMembershipRepository.findByIdAndSchoolId(membershipId, schoolId)
+                .map(this::toMembershipInfo)
+                .orElseThrow(() -> new IamException(new IamError.MembershipIdNotFound(membershipId)));
+    }
+
+    @Override
+    @Transactional
     public void setMembershipActive(Long schoolId, Long membershipId, boolean active) {
         SchoolMembershipEntity membership = schoolMembershipRepository.findByIdAndSchoolId(membershipId, schoolId)
                 .orElseThrow(() -> new IamException(new IamError.MembershipIdNotFound(membershipId)));
