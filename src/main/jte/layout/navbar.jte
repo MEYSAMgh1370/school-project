@@ -1,5 +1,5 @@
-@import com.example.roshdeandishe.web.NavbarModel
-@import com.example.roshdeandishe.web.RoleLabels
+@import com.example.roshdeandishe.web.model.NavbarModel
+@import com.example.roshdeandishe.web.model.RoleLabels
 
 @param NavbarModel navbar
 

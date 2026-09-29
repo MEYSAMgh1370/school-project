@@ -1,4 +1,4 @@
-@import com.example.roshdeandishe.web.NavbarModel
+@import com.example.roshdeandishe.web.model.NavbarModel
 
 @param NavbarModel navbar
 

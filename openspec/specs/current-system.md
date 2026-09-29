@@ -72,7 +72,7 @@ Acceptance criteria:
 
 Evidence:
 
-- [`SchoolController.java`](../../src/main/java/com/example/roshdeandishe/school/SchoolController.java)
+- [`SchoolController.java`](../../src/main/java/com/example/roshdeandishe/school/controller/SchoolController.java)
 - [`SchoolFacadeImpl.java`](../../src/main/java/com/example/roshdeandishe/school/internal/SchoolFacadeImpl.java)
 - [`IamSeedDataRunner.java`](../../src/main/java/com/example/roshdeandishe/iam/internal/IamSeedDataRunner.java)
 - [`2026-07-20-free-tier-entitlements.md`](../decisions/2026-07-20-free-tier-entitlements.md)
@@ -103,8 +103,8 @@ Failure cases:
 
 Evidence:
 
-- [`SecurityConfig.java`](../../src/main/java/com/example/roshdeandishe/iam/shared/SecurityConfig.java)
-- [`TenantResolverFilter.java`](../../src/main/java/com/example/roshdeandishe/platform/TenantResolverFilter.java)
+- [`SecurityConfig.java`](../../src/main/java/com/example/roshdeandishe/iam/config/SecurityConfig.java)
+- [`TenantResolverFilter.java`](../../src/main/java/com/example/roshdeandishe/platform/config/TenantResolverFilter.java)
 - authorization annotations across module controllers.
 
 ## Web UI

@@ -28,8 +28,42 @@ Status: current guidance checked against the repository on 2026-08-06.
 
 Use these repository conventions, verified against current code and tests:
 
+- Within each module, group classes by type rather than mixing them in the base package:
+
+  ```
+  <module>/
+    <Module>Facade.java, enums, events    exposed module API
+    controller/                           @RestController / @Controller
+    dto/                                  request/response records
+    config/                               @Configuration, filters, aspects
+    internal/                             entities, repositories, services — flat
+    shared/                               @NamedInterface
+  ```
+
+  `config/` exists only where a module has `@Configuration` classes, filters, or
+  aspects to hold (currently `iam` and `platform`). `dto/` exists only where a
+  controller has request/response records to extract.
+
+- Nothing moves into a base package. The base package is a module's exposed API;
+  moving a class into it silently widens that module's contract, and
+  `ModularityTests.verifyModularStructure()` does **not** catch this, because
+  exposing more than before is not a boundary violation it checks for. Only diff
+  review catches an accidental base-package addition.
+- `internal/` stays flat — do not split it into `entity/`, `repository/`,
+  `service/` packages. Package-private visibility inside `internal/` is a second,
+  compiler-enforced encapsulation layer beneath Spring Modulith: entities,
+  repositories, and services are mostly package-private, so a package-private
+  `FinanceFacadeImpl` can see a package-private `InvoiceRepository` only because
+  they share a package. Splitting `internal/` by type would require widening
+  every such type to `public` to preserve compilation, which removes that layer
+  even though `ModularityTests` would still pass. That guarantee was judged worth
+  more than the filing convenience, so entities, repositories, and services stay
+  identifiable by their `*Entity`, `*Repository`, and `*Impl` suffixes instead of
+  by package. See
+  [`changes/package-by-type-within-modules.md`](changes/package-by-type-within-modules.md)
+  for the full rationale and the alternatives this rejected.
 - Constructor injection only in production code; no field injection and no unnecessary `@Autowired` when Spring can wire a single constructor.
-- Package-private implementations, entities, repositories, constructors, and internal services by default. Public types are facade interfaces, REST/page controllers, and explicitly exposed `@NamedInterface` contracts.
+- Package-private implementations, entities, repositories, constructors, and internal services by default. Public types are facade interfaces, REST/page controllers, and explicitly exposed `@NamedInterface` contracts. Request/response records in `dto/` are also public, for their controller's use, but `dto/` carries no `@NamedInterface`, so they are not part of the module's exposed API.
 - Facade interfaces are the normal cross-module contracts. Do not depend on another module's `internal/` package.
 - `record` DTOs, facade return types, IDs, and value objects unless a mutable JPA entity or neighboring pattern requires otherwise.
 - Keep Lombok to low-value boilerplate already established locally, primarily JPA entities with `@Getter`, `@Setter`, and `@NoArgsConstructor`. Prefer explicit constructors outside entities unless matching a verified local exception-handler pattern.
@@ -43,8 +77,8 @@ Use these repository conventions, verified against current code and tests:
 - Protected school-scoped REST endpoints use `@RequiresModule("<MODULE>")` for entitlement and `@RequiresPermission("<ACTION>")` for permission. Do not replace this with Spring Security `hasRole()` or `GrantedAuthority` checks.
 - Validate `X-School-ID`/`TenantContext` against any `{schoolId}` path variable before calling a facade, using `TenantContext.requireMatches`.
 - `@RestControllerAdvice` beans need explicit unique names through `@Component("...")`; do not use `@RestControllerAdvice("...")` as a bean name.
-- REST controllers live at module root, next to the facade, not under `internal/`.
-- Cross-module page controllers live in `web`; pure auth/identity page controllers may live in `iam.shared`. Do not put REST endpoints in `web`.
+- REST and page controllers live in `<module>/controller/` — not at module root, and not under `internal/`.
+- Cross-module page controllers live in `web/controller`; pure auth/identity page controllers live in `iam/controller`. Do not put REST endpoints in `web`.
 - Run `ModularityTests.verifyModularStructure()` after module-boundary changes.
 - Use existing `*FlowIntegrationTest` style for behavior crossing HTTP, security, tenant, transaction, module, or async event boundaries.
 

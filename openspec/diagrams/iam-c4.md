@@ -315,8 +315,8 @@ sequenceDiagram
 - Current system spec: [`openspec/specs/current-system.md`](../specs/current-system.md)
 - Public IAM contract: [`IamFacade.java`](../../src/main/java/com/example/roshdeandishe/iam/IamFacade.java)
 - IAM application service: [`IamFacadeImpl.java`](../../src/main/java/com/example/roshdeandishe/iam/internal/IamFacadeImpl.java)
-- Security configuration: [`SecurityConfig.java`](../../src/main/java/com/example/roshdeandishe/iam/shared/SecurityConfig.java)
-- Tenant header filter: [`TenantResolverFilter.java`](../../src/main/java/com/example/roshdeandishe/platform/TenantResolverFilter.java)
+- Security configuration: [`SecurityConfig.java`](../../src/main/java/com/example/roshdeandishe/iam/config/SecurityConfig.java)
+- Tenant header filter: [`TenantResolverFilter.java`](../../src/main/java/com/example/roshdeandishe/platform/config/TenantResolverFilter.java)
 - IAM schema tables: [`V1__baseline_schema.sql`](../../src/main/resources/db/migration/V1__baseline_schema.sql)
 - IAM flow tests: [`LoginDashboardFlowIntegrationTest.java`](../../src/test/java/com/example/roshdeandishe/LoginDashboardFlowIntegrationTest.java),
   [`RegistrationFlowIntegrationTest.java`](../../src/test/java/com/example/roshdeandishe/RegistrationFlowIntegrationTest.java),
