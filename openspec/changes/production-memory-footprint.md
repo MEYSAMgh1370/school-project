@@ -318,16 +318,23 @@ Each was measured, not assumed.
 1. What is the target container plan? The measured savings make a 512 MB plan
    viable where the baseline's 535 MB does not fit, but the choice depends on
    real session and attachment load, which this measurement does not cover.
-2. Should `com.fasterxml.jackson.core:jackson-databind` be declared directly in
-   [`pom.xml`](../../pom.xml)? Four production classes import Jackson 2 —
+2. ~~Should `com.fasterxml.jackson.core:jackson-databind` be declared directly?~~
+   **Resolved 2026-09-29: it now is.** Four production classes import Jackson 2 —
    [`BaleClient.java`](../../src/main/java/com/example/roshdeandishe/bale/internal/BaleClient.java),
    [`BaleUpdate.java`](../../src/main/java/com/example/roshdeandishe/bale/internal/BaleUpdate.java),
    [`BaleWebhookService.java`](../../src/main/java/com/example/roshdeandishe/bale/internal/BaleWebhookService.java)
    and [`StudyPlanFacadeImpl.java`](../../src/main/java/com/example/roshdeandishe/studyplan/internal/StudyPlanFacadeImpl.java)
-   — yet it arrives only as a transitive dependency of springdoc, so removing or
-   replacing springdoc breaks compilation with no warning beforehand. This is a
-   one-line change with no memory effect, deliberately not bundled into the
-   reverted Tier 2.
+   — but its only compile-scope path was springdoc. `jjwt-jackson` also carries
+   it, at `runtime` scope, which does not serve compilation; that is why
+   removing springdoc during Tier 2 failed with `package
+   com.fasterxml.jackson.databind does not exist`, an error naming none of those
+   four classes and giving no warning beforehand.
+
+   It is now declared directly in [`pom.xml`](../../pom.xml), without a version,
+   since `spring-boot-dependencies` already manages it. The resolved version is
+   unchanged at 2.21.4, and removing springdoc from a scratch copy now compiles
+   cleanly. No memory effect: this is a correctness fix, not part of either
+   tier.
 3. Is `/swagger-ui.html` used by anyone against the production deployment with
    `SWAGGER_ENABLED=true`? It stays available, since Tier 2 was reverted.
 4. Should `DATABASE_POOL_SIZE` be lowered from its default of 10? Connection
