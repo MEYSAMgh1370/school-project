@@ -1,7 +1,14 @@
 # Production Memory Footprint Reduction
 
-Status: proposed on 2026-09-28. Not implemented. This document authorizes no
-code, configuration, dependency, or deployment change by itself.
+Status: proposed on 2026-09-28. **Tier 1 implemented 2026-09-29**; current
+behavior is in [`../architecture.md`](../architecture.md). Tier 2 remains
+proposed and is not implemented — this document authorizes no dependency or
+source change by itself.
+
+Tier 1 as verified on the implementation commit, same tree and same session:
+537 MB RSS before, 408 MB after, with zero ArchUnit classes loaded, a clean
+`prod` boot, `ModularityTests` green, and `/actuator/modulith` still served on
+the development profile.
 
 ## Decision Requested
 

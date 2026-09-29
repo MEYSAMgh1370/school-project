@@ -226,6 +226,28 @@ have Liara flagging every deploy unhealthy over an optional feature.
 
 Logs: `liara logs --follow`.
 
+### Memory
+
+The image sets its own JVM limits in `JAVA_OPTS` (`Dockerfile`), so the plan's
+memory is not handed to the heap wholesale: the heap is capped at 192 MB
+against a measured live set of about 54 MB, and the collector is SerialGC
+because this is a single instance with a small heap. Measured at 408 MB RSS,
+down from 537 MB before those limits were set.
+
+Two cautions before you size a plan on that number. It was measured on an
+**empty database** with no accumulated logins, and sessions live in this
+container's memory (see below), so real heap grows with concurrent users.
+Expense attachments also pass through the heap as `byte[]`, up to 5 MB each.
+Watch memory on the current plan before moving to a smaller one.
+
+`spring.autoconfigure.exclude` in `application-prod.yml` switches off the Spring
+Modulith runtime bootstrap, which otherwise scans the whole classpath through
+ArchUnit at every startup for a module model that production never exposes.
+Module boundaries are still verified by `ModularityTests` in CI, and
+`/actuator/modulith` still works in development. Full rationale and the
+measurement method are in
+[`openspec/changes/production-memory-footprint.md`](openspec/changes/production-memory-footprint.md).
+
 ---
 
 ## Known limitations

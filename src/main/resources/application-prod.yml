@@ -18,10 +18,46 @@ spring:
       maximum-pool-size: ${DATABASE_POOL_SIZE:10}
 
   jpa:
+    # پیش‌فرض اسپرینگ true است و در هر بالا آمدن هشدار می‌دهد: Session هایبرنیت
+    # تا پایان رندر شدن view باز می‌ماند، یعنی first-level cache یک درخواست تا
+    # آخرین بایت پاسخ در heap می‌ماند.
+    #
+    # بستن آن اینجا بی‌خطر است، و دلیلش ساختاری است نه سلیقه‌ای: در کل
+    # src/main/java هیچ association ای وجود ندارد - نه @OneToMany، نه @ManyToOne،
+    # نه @ElementCollection. انتیتی‌ها فقط ستون شناسه نگه می‌دارند. جایی که
+    # association نباشد، lazy-loading و در نتیجه LazyInitializationException هم
+    # ممکن نیست. علاوه بر آن هیچ قالب JTE ای انتیتی نمی‌گیرد؛ کنترلرهای صفحه
+    # رکورد/DTO آماده از facade می‌گیرند (رجوع به conventions.md).
+    #
+    # اگر روزی اولین association به یک انتیتی اضافه شد، این سطر دوباره باید
+    # بررسی شود.
+    open-in-view: false
     properties:
       hibernate:
         # لاگ SQLهای فرمت‌شده فقط برای dev مفید است.
         format_sql: false
+
+  # این دو autoconfiguration فقط در production کنار گذاشته می‌شوند، نه در dev.
+  #
+  # SpringModulithRuntimeAutoConfiguration اصل ماجراست: ApplicationModulesBootstrap
+  # آن، در هر بالا آمدن کل classpath را با ArchUnit import می‌کند تا مدل ماژول‌ها
+  # را بسازد - ۸۸۸ کلاس ArchUnit، و چون ArchUnit مدل هر کلاس را نگه می‌دارد،
+  # live heap از ۵۴ به ۹۳ مگابایت می‌رود. این artifact از طریق
+  # spring-modulith-actuator وارد شده، و ApplicationModulesEndpointConfiguration
+  # هم همان مدل را برای endpointای می‌خواهد که در production اصلاً expose نشده
+  # (بخش management پایین همین فایل فقط health را باز می‌کند).
+  #
+  # هر دو لازم‌اند: کنار گذاشتن تنهای endpoint، bootstrap را متوقف نمی‌کند چون
+  # در ماژول دیگری (spring-modulith-runtime) زندگی می‌کند - این حالت تست شد و
+  # هر ۸۸۸ کلاس همچنان بار می‌شدند.
+  #
+  # چیزی از دست نمی‌رود: صحت مرزهای ماژول را ModularityTests در زمان تست تأیید
+  # می‌کند، نه این bootstrap در زمان اجرا. در dev هم /actuator/modulith سر
+  # جایش می‌ماند، چون application.yml این بخش را ندارد.
+  autoconfigure:
+    exclude:
+      - org.springframework.modulith.runtime.autoconfigure.SpringModulithRuntimeAutoConfiguration
+      - org.springframework.modulith.actuator.autoconfigure.ApplicationModulesEndpointConfiguration
 
   # برخلاف بقیه‌ی این فایل، SMTP عمداً required نیست: ارسال ایمیل دعوت در این
   # پروژه از ابتدا best-effort است (شکست SMTP هرگز صدور توکن را fail نمی‌کند،
