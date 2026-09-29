@@ -175,6 +175,55 @@ class MembershipManagementFlowIntegrationTest {
                 ).exists());
     }
 
+    /**
+     * قرینه‌ی سمتِ نوشتنِ
+     * RoleManagementFlowIntegrationTest.adminSeesSystemPermissionsAndRolesButNotPlatformAdmin
+     * که فقط سمت خواندن را پوشش می‌داد: نقش رزروشده‌ی پلتفرم نه دیده می‌شود
+     * و نه تخصیص داده می‌شود، و پاسخ باید از یک کد ناموجود قابل‌تشخیص نباشد.
+     */
+    @Test
+    void adminCannotAssignPlatformAdminRole() throws Exception {
+        MockHttpSession session = loginAsAdmin();
+
+        mockMvc.perform(post("/api/admin/schools/1/memberships")
+                        .with(csrf())
+                        .header("X-School-ID", "1")
+                        .session(session)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"email\":\"platform.admin." + System.nanoTime()
+                                + "@roshdeandishe.test\",\"fullName\":\"مدیر پلتفرم\","
+                                + "\"roleCode\":\"PLATFORM_ADMIN\"}"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.type").value(org.hamcrest.Matchers.endsWith("role-not-found")));
+
+        // و هیچ ردیفی هم ساخته نشده باشد - نه فعال و نه غیرفعال
+        mockMvc.perform(get("/api/admin/schools/1/memberships")
+                        .header("X-School-ID", "1")
+                        .session(session))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[?(@.roleCode == 'PLATFORM_ADMIN')]").doesNotExist());
+    }
+
+    /**
+     * ردشدنِ PLATFORM_ADMIN نباید به یک ردِ کلیِ «هر کد ناشناخته» تبدیل شده
+     * باشد: کد سیستمیِ همسایه هنوز باید تخصیص داده شود.
+     */
+    @Test
+    void otherSystemRolesRemainAssignable() throws Exception {
+        MockHttpSession session = loginAsAdmin();
+
+        mockMvc.perform(post("/api/admin/schools/1/memberships")
+                        .with(csrf())
+                        .header("X-School-ID", "1")
+                        .session(session)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"email\":\"finance.admin." + System.nanoTime()
+                                + "@roshdeandishe.test\",\"fullName\":\"مدیر مالی تازه\","
+                                + "\"roleCode\":\"FINANCE_ADMIN\"}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.roleCode").value("FINANCE_ADMIN"));
+    }
+
     @Test
     void membershipMutationsCannotTargetAnotherSchoolsMembershipId() throws Exception {
         MockHttpSession session = loginAsAdmin();
