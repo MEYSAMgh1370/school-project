@@ -1,14 +1,28 @@
 # Production Memory Footprint Reduction
 
-Status: proposed on 2026-09-28. **Tier 1 implemented 2026-09-29**; current
-behavior is in [`../architecture.md`](../architecture.md). Tier 2 remains
-proposed and is not implemented — this document authorizes no dependency or
-source change by itself.
+Status: proposed on 2026-09-28. **Tier 1 and Tier 2 both implemented
+2026-09-29**; current behavior is in [`../architecture.md`](../architecture.md).
+This proposal is retained for its rationale and its measurements.
 
-Tier 1 as verified on the implementation commit, same tree and same session:
-537 MB RSS before, 408 MB after, with zero ArchUnit classes loaded, a clean
-`prod` boot, `ModularityTests` green, and `/actuator/modulith` still served on
-the development profile.
+Verified on the implementation commits, same tree and same session:
+
+| Step | RSS | Notes |
+|---|---|---|
+| Before | 537 MB | `MaxRAMPercentage=75`, both dependencies present |
+| After Tier 1 | 408 MB | explicit JVM limits, `prod`-scoped exclusions |
+| After Tier 2 | 390 MB | `spring-modulith-actuator` and springdoc removed |
+
+The Tier 2 figure is the mean of five runs spanning 372 to 409 MB. That spread
+is the same ±10 to 20 MB band described above, and it is wider than the 18 MB
+Tier 2 gains over Tier 1. Tier 2's saving is therefore real but modest, and it
+is better justified by what it removes from the classpath — two libraries that
+production never used, one of them scanning every class at every boot — than by
+the RSS delta alone.
+
+Zero ArchUnit classes load in either tier, `ModularityTests` stays green, and
+the `prod` boot is clean. Two intended losses arrived with Tier 2:
+`/actuator/modulith` now exists in no profile, and there is no Swagger UI. See
+acceptance criterion 6, which was written for Tier 1 and had to be corrected.
 
 ## Decision Requested
 
@@ -175,9 +189,9 @@ Remove from [`pom.xml`](../../pom.xml):
 
 Removing springdoc also requires:
 
-- Deleting
-  [`OpenApiConfig.java`](../../src/main/java/com/example/roshdeandishe/platform/config/OpenApiConfig.java),
-  which imports `io.swagger.v3.oas.models`.
+- Deleting `platform/config/OpenApiConfig.java`, which imports
+  `io.swagger.v3.oas.models`. Deliberately not a link: Tier 2 removed the file,
+  so there is nothing to point at.
 - Declaring `com.fasterxml.jackson.core:jackson-databind` as a direct
   dependency. Four production files use Jackson 2 —
   [`StudyPlanFacadeImpl.java`](../../src/main/java/com/example/roshdeandishe/studyplan/internal/StudyPlanFacadeImpl.java),
@@ -208,6 +222,21 @@ the same change.
 5. `ModularityTests.verifyModularStructure()` passes, confirming the module
    model is still verified at test time.
 6. The development profile still exposes `health`, `info`, and `modulith`.
+
+   **Corrected 2026-09-29, during Tier 2.** This criterion was written for
+   Tier 1 and cannot hold for Tier 2, which removes `spring-modulith-actuator`
+   outright: the endpoint it provides then exists in no profile, development
+   included. The criterion was wrong to require otherwise, and the conflict was
+   found by testing rather than by reading. It stands as written for Tier 1,
+   which scopes its exclusions to the `prod` profile and was verified against
+   it. For Tier 2 it reads: the development profile still exposes `health` and
+   `info`, and `management.endpoints.web.exposure.include` in
+   [`application.yml`](../../src/main/resources/application.yml) no longer names
+   an endpoint that does not exist.
+
+   What the endpoint was for is not lost. Module boundaries are verified by
+   `ModularityTests`, which still passes; only the runtime view of the module
+   model goes away, and nothing in the project reads it.
 7. For Tier 2 only: the application starts and the Bale webhook and study-plan
    JSON paths behave unchanged, with no `NoClassDefFoundError` from Jackson.
 

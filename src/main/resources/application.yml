@@ -85,7 +85,12 @@ management:
   endpoints:
     web:
       exposure:
-        include: health, info, modulith
+        # modulith از این فهرست برداشته شد چون endpoint اش دیگر وجود ندارد:
+        # spring-modulith-actuator از pom حذف شده (رجوع به کامنت همان‌جا و به
+        # openspec/changes/production-memory-footprint.md). نگه داشتن نامش
+        # اینجا فقط یک فهرستِ نادرست می‌ساخت. ساختار ماژول‌ها همچنان با
+        # ModularityTests در زمان تست تأیید می‌شود.
+        include: health, info
 
 logging:
   level:
@@ -94,14 +99,6 @@ logging:
 gg:
   jte:
     use-precompiled-templates: true
-
-# CSRF فعال است (SecurityConfig)؛ این تنظیم به Swagger UI می‌گوید کوکی
-# XSRF-TOKEN را بخواند و در هدر X-XSRF-TOKEN بفرستد تا try-it-outهای
-# تغییردهنده (POST/PUT) در dev همچنان کار کنند.
-springdoc:
-  swagger-ui:
-    csrf:
-      enabled: true
 
 roshdeandishe:
   finance:
