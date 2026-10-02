@@ -1,6 +1,7 @@
 # Academic Year (سال تحصیلی) And Year Rollover
 
-Status: proposed 2026-10-02, **not implemented**. Foundational change: several
+Status: proposed 2026-10-02, **not implemented**; four design questions answered
+by the product owner the same day (below), the rest still open. Foundational change: several
 other proposals depend on it ([`class-timetable.md`](class-timetable.md), and the
 deferred "course list changes over time" question in
 [`grades-by-course.md`](grades-by-course.md)). Nothing in
@@ -14,6 +15,17 @@ Every item that is a product decision is a question below, not invented here.
   students** change.
 - In the Ministry's own systems a **school can choose the academic year**.
 - **Students' grade change (ارتقای پایه)** must be thought through.
+
+## Decisions Taken By The Product Owner (2026-10-02)
+
+1. **Previous years are read-only** when they hold data: once a school moves to
+   a newer year, the older year's data can be viewed but not changed.
+2. **Tuition is per school and year only** (not per grade level), and **the
+   school admin sets it every year**: a new year starts with no tuition until the
+   admin sets it.
+3. **Classes are separate per year** (a class belongs to one year).
+4. **Promotion is automatic by default, can also be done by hand, and the
+   automatic mode can be switched on or off** (a school setting).
 
 ## Verified Baseline
 
@@ -76,26 +88,44 @@ re-modelling.
   (from/until), so a grade level's list changes over time without rewriting
   history; pickers show only courses valid for the chosen year. This resolves
   the deferred question in `grades-by-course.md`.
-- **Phase 2 - tuition per year.** The tuition amount and the invoices carry the
-  year; a new year means a new amount and new invoices for the students enrolled
-  in it. Whether tuition also varies by grade level is a question below.
-- **Phase 3 - classes, enrollments and promotion.** Recommended model: **classes
-  belong to a year** and a separate **enrollment** record says which student is in
+- **Phase 2 - tuition per year.** `finance.tuition_fees` becomes one amount per
+  (school, year) and invoices carry the year (decision 2). A new year has **no
+  tuition until the admin sets it** - the same rule as today ("no fee, no
+  invoice"). Not per grade level. How students already enrolled in the new year
+  get their invoices once the fee is set is question 3 below.
+- **Phase 3 - classes, enrollments and promotion.** **Classes belong to a year**
+  (decision 3) and a separate **enrollment** record says which student is in
   which class in which year, so history is kept and a student's identity (user,
-  guardians, past grades and invoices) persists across years. Promotion is then
-  a year-rollover action that creates the next year's enrollments.
+  guardians, past grades and invoices) persists across years. Promotion is a
+  year-rollover action that creates the next year's enrollments.
 
-### Promotion (ارتقای پایه), shape only
+### Read-only previous years (decision 1)
 
-At the start of a year the school admin runs a rollover for the old year's
-classes. Per student the outcome is one of: **promote** (a class of the next
-grade level in the new year), **repeat the grade** (a class of the same level),
-**graduate** (the school's last grade, `SchoolLevel.maxGrade`), or **leave**
-(transfer/withdraw). It is a bulk screen with per-student overrides, not an
-automatic rule: how a student "passes" is a Ministry/product rule and is not
-invented here (question 5). Guardian links stay; new-year invoices are issued
-through the existing enrollment event; last year's grades stay on the old
-enrollment.
+Once a school's current year moves on, writes to older years are rejected with a
+clear error: grades, timetable, enrollments and the year's tuition. Reads stay
+open. Paying an old year's **unpaid invoice** is a different matter (a family
+may still owe last year's tuition): see question 4. Phase 0 can apply the rule
+only to what already carries a validated year (grades), and later phases extend
+it as each kind of data becomes year-scoped.
+
+### Promotion (ارتقای پایه) (decision 4)
+
+At the start of a year the school can promote the old year's students into the
+new year's classes. Per student the outcome is one of: **promote** (a class of
+the next grade level in the new year), **repeat the grade** (a class of the same
+level), **graduate** (the school's last grade, `SchoolLevel.maxGrade`), or
+**leave** (transfer/withdraw).
+
+- A **school setting turns automatic promotion on or off.**
+- **Automatic** runs the rollover for the school without a manual pass, using a
+  default rule; **manual** is the same bulk screen with a per-student choice, and
+  the admin can use it even when the automatic mode is on, to override outcomes
+  or to run it by hand when it is off.
+- What "automatic" means exactly - the rule that decides promote/repeat, and
+  whether it runs by itself or only pre-fills the admin's screen - is question
+  1 below. It is a Ministry/product rule and is not invented here.
+- Guardian links stay; last year's grades stay on the old enrollment; new-year
+  invoices follow the tuition rule (question 3).
 
 ### Out of scope here
 
@@ -141,28 +171,35 @@ systems, and multi-year transcripts.
 
 ## Unresolved Questions
 
-1. **Who defines years, who selects.** Are years defined only by the platform
-   operator (as proposed), with the school choosing its current year? May a
-   school pick any listed year (past or future) or only the next one? Which
-   permission: a new one (e.g. `ACADEMIC_YEAR_MANAGE`, `SCHOOL_ADMIN`)?
-2. **What is a year, exactly?** Just a code (`1404-1405`), or with start/end
-   dates (so "today" can suggest the year, and a year can close automatically)?
-   Are the two terms (`FIRST`/`SECOND`) always the whole year?
-3. **Tuition.** Per school and year only, or also per grade level (today it is
-   one amount per school)? Does a new year re-invoice every student or only new
-   enrollments?
-4. **Classes: per year or persistent?** Recommended: classes belong to a year
-   with enrollments as history (phase 3). The alternative is persistent classes
-   and moving students (simpler, but last year's roster is lost). And for
-   existing data: which year do all current classes, enrollments, tuition and
-   grades belong to?
-5. **Promotion rules.** Fully manual per student with the admin choosing, or
-   suggested from grades (and by what rule)? Who may run it (`SCHOOL_ADMIN`
-   only)? Are "repeat", "graduate" and "leave" the right outcomes? Can a
-   rollover be undone?
-6. **Closing a year.** After the school switches to the next year, can the old
-   year's grades, timetable and invoices still be edited (corrections), or are
-   they read-only? Is there an explicit "close year" step?
-7. **Order.** Phase 0 unblocks the timetable at low cost; phases 1-3 are
-   progressively larger. Confirm the order (0, then the timetable, then 1, 2, 3),
-   or say if tuition/classes-per-year should come before the timetable.
+1. **What does "automatic" promotion do?** Options: (a) the default rule is
+   "everyone moves to the next grade level, repeaters are changed by hand", run
+   automatically when the school switches year; (b) the same default, but it only
+   pre-fills the promotion screen and the admin confirms with one click
+   (recommended: nothing changes students' classes without a person confirming,
+   and the school setting then decides whether the screen opens pre-filled);
+   (c) a rule from grades (a pass mark, per-term averages), which needs the
+   Ministry's rule, an overall average and grades per course, all open. Also: new
+   classes for the new year must exist before promoting; are they created by the
+   admin, or copied from last year's classes (same name/section, grade level
+   kept)? And can an automatic run be undone?
+2. **Who defines years and who selects (phase 0).** Years are defined only by the
+   platform operator (as proposed) and the school admin chooses the school's
+   current year from that list (decision: the school selects). May the admin pick
+   any listed year or only the next one? Which permission: a new one (e.g.
+   `ACADEMIC_YEAR_MANAGE`, held by `SCHOOL_ADMIN`)? Is a year just a code
+   (`1404-1405`) or does it have start/end dates?
+3. **Invoices when tuition is set late.** The admin sets the year's tuition
+   after students are already enrolled in the year. Are invoices issued at the
+   moment the fee is saved (for everyone enrolled that year without one), by a
+   separate "issue the year's invoices" action, or only for students enrolled
+   afterwards (today's rule)?
+4. **Read-only and money.** Should a family still be able to pay last year's
+   unpaid invoice (recommended: yes, payments are not "editing the year's
+   data")? Are grades/timetable/enrollments the only things frozen? Is there an
+   explicit "close year" step, or does switching the current year freeze it?
+5. **Existing data.** When the feature is enabled, which year do all current
+   classes, enrollments, tuition and grades belong to? One year chosen by the
+   admin (as proposed), and existing free-text grade years that match no listed
+   year are reported, not guessed.
+6. **Order.** Phase 0, then the class timetable, then phases 1-3 (as proposed),
+   or should tuition/classes-per-year come first?
