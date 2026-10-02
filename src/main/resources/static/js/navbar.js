@@ -2,7 +2,9 @@ document.addEventListener('alpine:init', () => {
     // نقشِ انتخاب‌شده برای بخش‌هایی خارج از navbar (کارت‌های «دسترسی سریع»
     // داشبورد) - منبع حقیقت همچنان state خودِ سوییچر است و این store فقط
     // آینه‌ی آن است.
-    Alpine.store('nav', { selectedRole: '' });
+    Alpine.store('nav', {
+        selectedRole: ''
+    });
 
     // سوییچر مدرسه/نقش (Open Question 2 - حل‌شده): انتخاب فقط client-side
     // است و در localStorage می‌ماند؛ نقش صرفاً نمایشی است (backend همه‌ی
@@ -17,7 +19,13 @@ document.addEventListener('alpine:init', () => {
         openGroups: {},
         init() {
             const ids = Object.keys(this.schoolRoles).map(Number);
-            const savedId = parseInt(localStorage.getItem('selectedSchoolId') || '', 10);
+            // ?school=<id> (لینک‌های فرزندانِ داشبورد) بر مقدار ذخیره‌شده مقدم است و
+            // فقط اگر عضویتِ کاربر باشد پذیرفته می‌شود؛ چون در خودِ URL است، با
+            // کلیک میانی/«باز کردن در تب جدید» هم کار می‌کند. navbar قبل از
+            // کامپوننت صفحه init می‌شود، پس صفحه همین مدرسه را از localStorage می‌خواند.
+            const rawSchool = new URLSearchParams(window.location.search).get('school') || '';
+            const urlId = /^\d+$/.test(rawSchool) ? parseInt(rawSchool, 10) : NaN;
+            const savedId = ids.includes(urlId) ? urlId : parseInt(localStorage.getItem('selectedSchoolId') || '', 10);
             this.selectedSchoolId = ids.includes(savedId) ? savedId : (ids.length ? ids[0] : null);
             const roles = this.selectedSchoolId ? this.schoolRoles[this.selectedSchoolId] : [];
             const savedRole = localStorage.getItem('selectedRole') || '';

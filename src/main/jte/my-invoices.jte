@@ -18,7 +18,13 @@
 
                 <p x-show="loading">در حال بارگذاری...</p>
 
-                <div class="table-container" x-show="!loading && invoices.length > 0">
+                <%-- فیلتر یک فرزند (از لینک داشبورد): همیشه دیده می‌شود و راه برگشت دارد. --%>
+                <div class="notification is-light" x-cloak x-show="studentFilter !== null">
+                    فقط فاکتورهای دانش‌آموز #<span x-text="studentFilter"></span> نمایش داده می‌شود.
+                    <a href="/my-invoices">نمایش همه</a>
+                </div>
+
+                <div class="table-container" x-show="!loading && visibleInvoices().length > 0">
                 <table class="table is-fullwidth is-striped">
                     <thead>
                     <tr>
@@ -32,7 +38,7 @@
                     </tr>
                     </thead>
                     <tbody>
-                    <template x-for="invoice in invoices" :key="invoice.id">
+                    <template x-for="invoice in visibleInvoices()" :key="invoice.id">
                         <tr>
                             <td>دانش‌آموز #<span x-text="invoice.studentId"></span></td>
                             <td x-text="Money.formatAmount(invoice.amount)"></td>
@@ -51,7 +57,7 @@
                 </div>
 
                 @template.layout.empty-state(
-                    show = "!loading && !error && invoices.length === 0",
+                    show = "!loading && !error && visibleInvoices().length === 0",
                     art = "money",
                     message = @`فاکتوری برای شما یا فرزندانتان در این مدرسه ثبت نشده است.`)
             `)

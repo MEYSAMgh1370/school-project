@@ -17,3 +17,14 @@
 .app-shortcut p {
   margin-block-end: 0;
 }
+
+/* Child cards in the parent dashboard's "my children" section (dashboard.jte). */
+.app-ward {
+  block-size: 100%;
+  border: 1px solid var(--bulma-border);
+  box-shadow: var(--shadow-sm);
+}
+
+.app-ward .tags {
+  margin-block-end: var(--space-2);
+}

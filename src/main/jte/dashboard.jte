@@ -6,7 +6,7 @@
 @param DashboardModel model
 @param NavbarModel navbar
 
-@template.layout.main(title = "داشبورد", scripts = java.util.List.of("/js/navbar.js", "/js/dashboard.js"),
+@template.layout.main(title = "داشبورد", scripts = java.util.List.of("/js/navbar.js", "/js/jalali.js", "/js/dashboard.js"),
         styles = java.util.List.of("/css/dashboard.css"), content = @`
 @template.layout.navbar(navbar = navbar)
 
@@ -35,6 +35,66 @@
                 @endfor
             </div>
         </section>
+
+        <%-- «فرزندان من»: فقط برای کاربری که در حداقل یک مدرسه والدِ فعال است و فقط
+             وقتی نقشِ انتخاب‌شده «والد» است (همان مدل کارت‌های دسترسی سریع،
+             $store.nav). داده فقط فرزندانِ واقعاً لینک‌شده به همین کاربر است
+             (WardsAssembler). وضعیت مالی فقط شمارش فاکتورها بر اساس وضعیتشان است،
+             نه مبلغ (واحد پولی هنوز تصمیم‌نگرفته). عددها اینجا ASCII رندر می‌شوند و
+             با Jalali.toPersianDigits به رقم فارسی درمی‌آیند (DESIGN.md §8).
+             x-data خالی لازم است: Alpine بدون ریشه‌ی x-data x-show را اجرا نمی‌کند. --%>
+        @if(model.parent())
+            <section class="mb-5" aria-labelledby="dashboard-wards-title" x-data
+                     x-cloak x-show="['PARENT'].includes($store.nav.selectedRole)">
+                <h2 class="title is-5" id="dashboard-wards-title">فرزندان من</h2>
+                @if(model.wards().isEmpty())
+                    <div class="notification is-light">
+                        هنوز دانش‌آموزی به حساب شما لینک نشده است. مدیر مدرسه می‌تواند از صفحه‌ی
+                        «دانش‌آموزان» فرزندتان را به حساب شما متصل کند.
+                    </div>
+                @else
+                    <div class="columns is-multiline is-variable is-3">
+                        @for(var ward : model.wards())
+                            <div class="column is-6-desktop is-12-tablet is-12-mobile">
+                                <article class="box app-ward">
+                                    <h3 class="title is-6 mb-2">${ward.name()}</h3>
+                                    <p class="is-size-7 has-text-grey mb-2">${ward.schoolName()}</p>
+                                    <div class="tags mb-2">
+                                        @if(ward.hasClass())
+                                            <span class="tag is-light">کلاس ${ward.className()}</span>
+                                        @endif
+                                        @if(ward.hasSection())
+                                            <span class="tag is-light">بخش ${ward.section()}</span>
+                                        @endif
+                                    </div>
+                                    <p class="mb-0">
+                                        <span class="is-size-7 has-text-grey">وضعیت مالی:</span>
+                                        @if(ward.hasNoInvoices())
+                                            <span class="tag is-light">فاکتوری صادر نشده</span>
+                                        @elseif(ward.isOverdue())
+                                            <span class="tag is-danger"><span x-text="Jalali.toPersianDigits('${ward.overdueCount()}')">${ward.overdueCount()}</span>&nbsp;فاکتور دیرکرد</span>
+                                        @elseif(ward.isOpen())
+                                            <span class="tag is-warning"><span x-text="Jalali.toPersianDigits('${ward.openCount()}')">${ward.openCount()}</span>&nbsp;فاکتور در انتظار پرداخت</span>
+                                        @else
+                                            <span class="tag is-success">همه‌ی فاکتورها تسویه‌شده</span>
+                                        @endif
+                                    </p>
+                                    <%-- لینک‌های هر فرزند: فقط شناسه‌ی او و شناسه‌ی مدرسه در URL می‌رود
+                                         (نه نام - اطلاعات کودک نباید در تاریخچه/لاگ نشت کند). navbar
+                                         مقصد، ?school را به‌عنوان مدرسه‌ی انتخاب‌شده می‌پذیرد، پس لینک
+                                         بدون وابستگی به کلیک (تب جدید، کلیک میانی) درست کار می‌کند.
+                                         کنترل‌ها اندازه‌ی عادی دارند (۴۴px). --%>
+                                    <div class="buttons mt-3 mb-0">
+                                        <a class="button is-light" href="/my-grades?student=${ward.studentId()}&school=${ward.schoolId()}">نمره‌ها</a>
+                                        <a class="button is-light" href="/my-invoices?student=${ward.studentId()}&school=${ward.schoolId()}">فاکتورها</a>
+                                    </div>
+                                </article>
+                            </div>
+                        @endfor
+                    </div>
+                @endif
+            </section>
+        @endif
 
         <%-- CTA ثبت مدرسه فقط در حالت بدون عضویت (جریان بنیان‌گذار):
              به دانش‌آموز/والدِ دعوت‌شده پیشنهاد «مدرسه بسازید» نمی‌دهیم
