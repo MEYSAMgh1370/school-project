@@ -114,7 +114,7 @@ The current web UI is server-rendered JTE with page-level Alpine.js components a
 Built page areas include:
 
 - public landing (with login, account-registration, and school-registration entry paths that preserve the approved post-authentication destination), login, registration, account activation, school entry, and exam-take; direct anonymous `/schools/new` entry preserves the same approved destination;
-- dashboard (role-gated «دسترسی سریع» shortcut cards, memberships, school-entry box for admins, phone box) and shared navbar with a grouped sidebar;
+- dashboard (role-gated «دسترسی سریع» shortcut cards, «فرزندان من» for parents, memberships, school-entry box for admins, phone box) and shared navbar with a grouped sidebar;
 - people, roles, classes, students, and grades;
 - curriculum, study plans, and exams;
 - finance, expenses, invoices, and payments;

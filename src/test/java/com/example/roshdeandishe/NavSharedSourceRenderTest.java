@@ -45,7 +45,7 @@ class NavSharedSourceRenderTest {
     private static DashboardModel dashboardModel() {
         return new DashboardModel("سارا احمدی", "sara@example.com", null,
                 List.of(new MembershipRow(1L, "مدرسه‌ی نمونه", "SCHOOL_ADMIN", true)),
-                List.of(new SchoolEntryRow("مدرسه‌ی نمونه", "rosh")));
+                List.of(new SchoolEntryRow("مدرسه‌ی نمونه", "rosh")), false, List.of());
     }
 
     private static Set<String> hrefsIn(String html) {
