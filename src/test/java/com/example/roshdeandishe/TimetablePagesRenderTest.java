@@ -109,7 +109,7 @@ class TimetablePagesRenderTest {
         assertThat(html).contains("برنامه‌ی امروز").contains("href=\"/my-timetable\">برنامه‌ی کل هفته</a>");
         // کم‌اثر نبودنِ شکست: هر وضعیتِ خالی پیامِ خودش را دارد
         assertThat(html).contains("id=\"dashboardTimetableNoYear\"", "id=\"dashboardTimetableHoliday\"",
-                "id=\"dashboardTimetableNone\"");
+                "id=\"dashboardTimetableNone\"", "id=\"dashboardTimetableNotEnrolled\"");
         assertThat(html.indexOf("/js/timetable-grid.js")).isLessThan(html.indexOf("/js/dashboard-timetable.js"));
     }
 

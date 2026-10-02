@@ -8,6 +8,9 @@ document.addEventListener('alpine:init', () => {
         periods: [],
         entries: [],
         className: '',
+        // false = پاسخ دیدِ «خودم» ندارد (هنوز در کلاسی ثبت‌نام نشده)؛ academicYear تهی در این حالت یعنی
+        // «دیدی نیست»، نه «مدرسه سالِ جاری را انتخاب نکرده»
+        enrolled: false,
         loading: false,
         // فقط بعد از یک بارگذاریِ موفق true است تا شکست «امروز کلاس ندارید» نشان ندهد
         loaded: false,
@@ -39,6 +42,7 @@ document.addEventListener('alpine:init', () => {
             this.periods = [];
             this.entries = [];
             this.className = '';
+            this.enrolled = false;
             this.loaded = false;
             this.error = '';
         },
@@ -66,6 +70,7 @@ document.addEventListener('alpine:init', () => {
                     this.periods = data.periods;
                     this.entries = own ? own.entries : [];
                     this.className = own && own.className ? own.className : '';
+                    this.enrolled = !!own;
                     this.loaded = true;
                 }
             } catch (e) {

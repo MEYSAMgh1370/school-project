@@ -53,17 +53,20 @@
                 <div class="notification is-danger" role="alert" x-show="error" x-text="error"></div>
 
                 <div x-show="loaded && !error">
-                    <p id="dashboardTimetableNoYear" x-show="academicYear === null">
+                    <p id="dashboardTimetableNotEnrolled" x-show="!enrolled">
+                        هنوز در هیچ کلاسی ثبت‌نام نشده‌اید؛ بعد از ثبت‌نام، برنامه‌ی کلاس شما اینجا می‌آید.
+                    </p>
+                    <p id="dashboardTimetableNoYear" x-show="enrolled && academicYear === null">
                         مدیر مدرسه هنوز سال تحصیلیِ جاری را انتخاب نکرده است.
                     </p>
-                    <p id="dashboardTimetableHoliday" x-show="academicYear !== null && !isSchoolDay()">
+                    <p id="dashboardTimetableHoliday" x-show="enrolled && academicYear !== null && !isSchoolDay()">
                         امروز روز کلاسی نیست (روزهای کلاسی شنبه تا چهارشنبه است).
                     </p>
                     <p id="dashboardTimetableNone"
-                       x-show="academicYear !== null && isSchoolDay() && todayRows().length === 0">
+                       x-show="enrolled && academicYear !== null && isSchoolDay() && todayRows().length === 0">
                         برای امروز درسی در برنامه‌ی کلاس شما ثبت نشده است.
                     </p>
-                    <ul class="app-tt-today-list" id="dashboardTimetableList" x-show="isSchoolDay() && todayRows().length > 0">
+                    <ul class="app-tt-today-list" id="dashboardTimetableList" x-show="enrolled && isSchoolDay() && todayRows().length > 0">
                         <template x-for="row in todayRows()" :key="row.period.id">
                             <li>
                                 <span class="app-tt-time" x-text="rangeLabel(row.period)"></span>
