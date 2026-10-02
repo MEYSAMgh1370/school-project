@@ -606,9 +606,13 @@ document.addEventListener('alpine:init', () => {
                 if (seq === this.mutateSeq) {
                     const message = e.blocking !== undefined ? e.message : 'ارتباط با سرور برقرار نشد.';
                     if (e.blocking) {
+                        // ماژول/مجوز پس گرفته شده: بدنه‌ی صفحه بسته می‌شود، پس دلیل باید در ناحیه‌ی خطای
+                        // صفحه بماند (modalها هم بسته می‌شوند تا بعد از بستنشان صفحه‌ی خالی نماند)
                         this.blocked = true;
-                    }
-                    if (onFailure) {
+                        this.cell = null;
+                        this.confirm = null;
+                        this.error = message;
+                    } else if (onFailure) {
                         // خطا کنار همان modal می‌ماند، نه در ناحیه‌ی خطای صفحه‌ی پشتِ آن
                         onFailure(message);
                     } else {
