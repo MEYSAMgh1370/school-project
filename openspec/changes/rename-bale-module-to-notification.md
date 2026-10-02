@@ -38,9 +38,9 @@ environment variables, database schema and table names. Changing them would
 need a new Flyway migration, re-registering the webhook with Bale and changing
 production environment variables, and is not part of this change.
 
-**Deliberately not built:** a channel abstraction. With one channel it would be
-speculative; add it when a second channel (for example SMS, which `iam` already
-sends for OTP) is actually routed through this module.
+**Deferred, then built:** a channel abstraction was left out of the rename and
+added afterwards in
+[`notification-channel-abstraction.md`](notification-channel-abstraction.md).
 
 ## Compatibility And Deployment
 
