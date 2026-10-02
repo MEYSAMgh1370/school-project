@@ -127,7 +127,15 @@ re-modelling.
   answer is `409 academic-year-changed` and nothing is written, so two requests
   that finish in the wrong order (the same admin going A→B→A in the browser, or
   two admins) can never silently put an older choice over a newer one. The page
-  then reloads and says the year changed.
+  then reloads and says the year changed. The check compares **the value**, not a
+  revision counter, on purpose: the current year *is* the whole state, so "it is
+  still what you saw" is exactly the condition under which the caller's decision
+  still holds. If another admin goes A→B→A in between, the page's premise ("the
+  year is A") is still true and applying the caller's choice is the same outcome
+  as the two admins acting one after the other; a version column would add a
+  migration and an API field to reject a request that is not wrong. Revisit it
+  only if the history of changes ever matters (an audit trail, or a setting with
+  more than one field).
 - The page **«سال تحصیلی»** (`/academic-year`, `SCHOOL_ADMIN`, sidebar group
   «مدرسه» and a dashboard shortcut) shows the current year, a select of the
   years and a save button.
