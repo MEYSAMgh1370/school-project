@@ -46,7 +46,8 @@ class GradesCoursePickerRenderTest {
         String html = render("grades.jte", Map.of("navbar", NAVBAR));
 
         assertThat(html).contains(":disabled=\"!filter.classId\"");
-        assertThat(html).contains("@change=\"if (loaded) load()\"");
+        // حتی وسطِ بارگذاری هم دوباره بارگذاری می‌شود (پاسخ کهنه در JS دور ریخته می‌شود)
+        assertThat(html).contains("@change=\"if (loaded || loading) load()\"");
     }
 
     @Test

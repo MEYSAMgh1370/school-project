@@ -10,6 +10,10 @@ document.addEventListener('alpine:init', () => {
         roster: [],
         filterText: '',
         loading: false,
+        // شمارنده‌ی بارگذاری: فقط پاسخ آخرین درخواست روی roster اثر می‌گذارد
+        // (تغییرِ سریع درس/کلاس پاسخ کهنه را دور می‌ریزد، وگرنه جدولِ یک درس
+        // با برچسب و ثبتِ درسِ دیگر نمایش داده می‌شد).
+        loadSeq: 0,
         loaded: false,
         blocked: false,
         error: '',
@@ -196,6 +200,7 @@ document.addEventListener('alpine:init', () => {
                 return;
             }
             this.filter.academicYear = this.normalizeDigits(this.filter.academicYear).trim();
+            const seq = ++this.loadSeq;
             this.loading = true;
             this.error = '';
             this.notice = '';
@@ -216,11 +221,17 @@ document.addEventListener('alpine:init', () => {
                 });
                 if (!response.ok) {
                     const classified = await this.classifyError(response);
+                    if (seq !== this.loadSeq) {
+                        return;
+                    }
                     this.error = classified.message;
                     this.blocked = classified.blocking;
                     return;
                 }
                 const existingGrades = await response.json();
+                if (seq !== this.loadSeq) {
+                    return;
+                }
                 this.roster = this.rosterStudents()
                     .map(student => {
                         const existing = existingGrades.find(g => g.studentId === student.studentId);
@@ -239,9 +250,13 @@ document.addEventListener('alpine:init', () => {
                     .sort((a, b) => a.name.localeCompare(b.name, 'fa'));
                 this.loaded = true;
             } catch (e) {
-                this.error = 'ارتباط با سرور برقرار نشد.';
+                if (seq === this.loadSeq) {
+                    this.error = 'ارتباط با سرور برقرار نشد.';
+                }
             } finally {
-                this.loading = false;
+                if (seq === this.loadSeq) {
+                    this.loading = false;
+                }
             }
         },
 

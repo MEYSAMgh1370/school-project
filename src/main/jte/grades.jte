@@ -38,7 +38,7 @@
                                         <label class="label" for="gradeCourse">درس</label>
                                         <div class="select">
                                             <select id="gradeCourse" x-model="filter.courseId" :disabled="!filter.classId"
-                                                    aria-describedby="gradeCourseHelp" @change="if (loaded) load()">
+                                                    aria-describedby="gradeCourseHelp" @change="if (loaded || loading) load()">
                                                 <option value="">نمره‌ی کل</option>
                                                 <template x-for="course in courses" :key="course.id">
                                                     <option :value="course.id" x-text="course.name"></option>
