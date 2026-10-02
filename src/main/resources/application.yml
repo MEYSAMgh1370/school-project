@@ -104,6 +104,15 @@ springdoc:
       enabled: true
 
 roshdeandishe:
+  # سال تحصیلی را خودِ سیستم می‌سازد (school.internal.AcademicYearProvisioner،
+  # openspec/changes/academic-year.md): از تاریخِ شمسیِ زیر در هر سال، سالِ تحصیلیِ
+  # همان سال ساخته و ذخیره می‌شود (در ۱ مرداد ۱۴۰۵ سالِ 1405-1406). ماه ۱ تا ۱۲
+  # (۵ = مرداد)، روز ۱ تا طولِ ماه (اسفند حداکثر ۲۹)؛ مقدارِ نامعتبر همان لحظه‌ی
+  # بالا آمدن fail می‌کند. timezone مبنای «امروز» است.
+  academic-year:
+    start-month: ${ACADEMIC_YEAR_START_MONTH:5}
+    start-day: ${ACADEMIC_YEAR_START_DAY:1}
+    timezone: ${ACADEMIC_YEAR_TIMEZONE:Asia/Tehran}
   finance:
     # سررسید پیش‌فرض فاکتور شهریه: صدور + این تعداد روز. عمداً سراسری، نه
     # per-school - سررسید مدرسه‌به‌مدرسه هنوز توسط کسی خواسته نشده (YAGNI).

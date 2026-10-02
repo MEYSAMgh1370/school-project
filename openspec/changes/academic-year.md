@@ -22,16 +22,19 @@ Every item that is a product decision is a question below, not invented here.
 
 1. **Previous years' data stays editable** (corrections are allowed): moving the
    school to a newer year freezes nothing.
-2. **Who sees which year.** The **school admin (and the platform operator) can
-   pick any year to look at it; everyone else sees only the current year.**
+2. **Who sees which year.** The **school admin can pick any year to look at it;
+   everyone else sees only the current year.**
    Interpretation to confirm (question 6): a past year that holds data is for
    *viewing* by the admin, not something the school's current year is switched
    back to.
-3. **The platform operator defines the years and decides when a new year is open
-   for schools to choose**; a school's admin can only choose among the open
-   years. A year has **no start or end date**: when a year starts and ends is the
-   **school admin's choice** (choosing the next year is what ends the previous
-   one), not a fixed calendar and not automatic.
+3. **Nobody creates the years - the system does.** A Solar-calendar date is set
+   in configuration (for example 1 Mordad); every year, from that date on, the
+   application creates that Solar year's academic year and stores it (in 1405 the
+   year `1405-1406`). Neither the platform operator nor a school admin has to
+   create or open it. A year has **no start or end date** of its own: when a year
+   starts and ends *for a school* is the **school admin's choice** (choosing the
+   next year is what ends the previous one). This replaces the earlier idea that
+   the operator defines years and opens them for selection.
 4. **Tuition is per school and year only** (not per grade level), and **the
    school admin sets it every year**: a new year starts with no tuition until the
    admin sets it.
@@ -78,14 +81,25 @@ re-modelling.
 ### The year and the school's current year (phase 0, implemented)
 
 - **A global list of academic years** (`school.academic_years`): a `code` such as
-  `1404-1405` (ASCII digits, the same shape grades use today), a `start_year` for
-  ordering, and an **`is_open`** flag. No dates. Read-only in the application: the
-  **platform operator** adds years and opens them by data migration (there is no
-  platform-actor permission model yet; that is the deferred phase-2 platform
-  work). The migration seeds `1404-1405` and `1405-1406`, both open.
+  `1404-1405` (ASCII digits, the same shape grades use today) and a `start_year`
+  (unique, for ordering). No dates, no flags. **The application creates the
+  rows itself** (`AcademicYearProvisioner`): configuration holds the Solar date
+  the academic year starts (`roshdeandishe.academic-year.start-month` /
+  `start-day`, default month 5 day 1 = 1 Mordad, overridable by environment
+  variables, with `timezone` default `Asia/Tehran` as the basis of "today"). From
+  that date in each Solar year the year `Y-(Y+1)` exists; before it, the newest
+  year is last year's. It runs once at startup and every night (00:15), is
+  idempotent (`insert ... on conflict do nothing`, safe with several instances),
+  and fills years missed while the application was down one by one, without gaps.
+  An invalid date (month outside 1-12, a day the month does not have, 30 Esfand)
+  fails at startup. The migration seeds only the base year `1404-1405`, which
+  existing grades already use; every later year comes from the provisioner.
+  Read-only for schools; the Gregorian→Solar conversion is a dependency-free port
+  of the algorithm in `static/js/jalali.js` (`SolarCalendar`), checked against it
+  on every day from 1990 to 2060.
 - Each **school has a current academic year** (`school.schools.current_academic_year_id`),
-  **chosen by its admin among the open years**. It is null until chosen: nothing
-  is guessed for existing schools. It is the default year wherever a year is
+  **chosen by its admin among the listed years**. It is null until chosen: nothing
+  is guessed for existing schools, and creating a new year changes no school. It is the default year wherever a year is
   needed; today only `/grades` uses it (the year field is prefilled and stays
   editable, so earlier years can still be corrected).
 - **New permission `ACADEMIC_YEAR_MANAGE`** (a named right, like `GRADES_EDIT`),
@@ -96,12 +110,12 @@ re-modelling.
   **only the current year** to any active member of the school;
   `GET /api/admin/schools/{id}/academic-year` returns the **whole list with the
   `open` flag** and the current year, and `PUT` chooses the current year; both
-  need `ACADEMIC_YEAR_MANAGE`. Choosing a year that is not open is rejected
-  (`409 academic-year-not-open`), an unknown year `404`. Choosing changes only that
-  one value; nothing is deleted or altered.
+  need `ACADEMIC_YEAR_MANAGE`. A year not in the list (including next year's,
+  before its start date) is `404 academic-year-not-found`. Choosing changes only
+  that one value; nothing is deleted or altered.
 - The page **«سال تحصیلی»** (`/academic-year`, `SCHOOL_ADMIN`, sidebar group
   «مدرسه» and a dashboard shortcut) shows the current year, a select of the
-  years (closed ones listed as «هنوز باز نشده» and disabled) and a save button.
+  years and a save button.
 - Reading the current year is a facade call (`SchoolFacade.findCurrentAcademicYear`)
   so other modules can use it without depending on each other; the list lives in
   `school`, which already owns school settings.
@@ -184,10 +198,13 @@ systems, and multi-year transcripts.
 
 Phase 0 (met; later phases are refined when scheduled):
 
-- A school admin (`ACADEMIC_YEAR_MANAGE`) reads the whole list of years with
-  their `open` flag and sets the school's current year to an **open** year and no
-  other; an unopened year is rejected (`409`) and an unknown one `404`, with
-  nothing changed.
+- The application creates the academic year itself from the configured Solar
+  date: on and after it (1 Mordad by default) the year of that Solar year exists,
+  the day before it does not; years missed while down are filled without gaps;
+  running it again creates nothing; an impossible date fails at startup.
+- A school admin (`ACADEMIC_YEAR_MANAGE`) reads the whole list of years and sets
+  the school's current year to a listed year and no other; an unknown year is
+  `404`, with nothing changed.
 - Every active member of the school reads **only** the current year (no list);
   a user without the permission gets `403` on the admin endpoints; a stranger who
   is not a member gets nothing.
@@ -202,14 +219,21 @@ classes/enrollments and promotion.
 
 ## Tests
 
-- Unit (no Docker): `AcademicYearFacadeTest` (only open years selectable,
-  unknown year/school rejected with nothing stored, "not chosen" is empty, the
-  list includes closed years) and `AcademicYearPageRenderTest`.
+- Unit (no Docker): `SolarCalendarTest` (Nowruz of 1400-1406, 30 Esfand 1403,
+  1 Mordad and the day before, the Shahrivar/Mehr boundary),
+  `AcademicYearProvisionerTest` (the 1 Mordad boundary, nothing when the year
+  exists, gap fill, empty list, a concurrent insert, another start date from
+  configuration, invalid dates), `AcademicYearFacadeTest`,
+  `AcademicYearControllerTest` (any active membership counts) and
+  `AcademicYearPageRenderTest`.
 - Integration: `AcademicYearFlowIntegrationTest` (list, choose, the two views,
-  permission and stranger negatives, closed/unknown year). Verified locally
-  against PostgreSQL 16 with Flyway `V1`→`V6` on an empty database and
-  `ddl-auto=validate` (the full suite: 275 tests, one error that only needs
-  Docker); CI runs them on Testcontainers `postgres:18`.
+  permission and stranger negatives, an unknown year, and that the application
+  created the years itself without gaps or duplicates). Verified locally against
+  PostgreSQL 16 with Flyway `V1`→`V6` on an empty database and
+  `ddl-auto=validate` (the full suite: 291 tests, one error that only needs
+  Docker; the database ends with `1404-1405` from the migration and
+  `1405-1406` created by the application); CI runs them on Testcontainers
+  `postgres:18`.
 - Browser (compiled templates, mocked APIs): the page (no year, choose and save,
   save disabled when unchanged, `403` message) and the `/grades` prefill (current
   year, a typed year is kept, a school switch while the request is pending, no
@@ -250,7 +274,7 @@ classes/enrollments and promotion.
    the current year back to an earlier year (e.g. a mistaken choice), or is a
    past year that already holds data view-only and not selectable as current?
    Phase 0 allows any open year to be chosen (only grades carry a year so far).
-7. **The platform-operator actor.** Years are defined and opened by data
-   migration (like the course catalog) because no platform actor or permission
-   exists (`platform-admin-not-assignable.md`). A screen/API for the operator is
-   the deferred platform work.
+7. **The platform-operator actor.** Years need none (the system creates them).
+   Course catalog rows still come from data migrations because no platform actor
+   or permission exists (`platform-admin-not-assignable.md`); that deferred
+   platform work is unchanged.

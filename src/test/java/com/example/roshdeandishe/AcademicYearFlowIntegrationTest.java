@@ -19,10 +19,10 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 /**
  * سال تحصیلی جاریِ مدرسه (openspec/changes/academic-year.md، فاز ۰) روی Postgres
- * واقعی: مدیر فهرست همه‌ی سال‌ها را می‌بیند و فقط از سال‌های باز انتخاب می‌کند؛
+ * واقعی: مدیر فهرست همه‌ی سال‌ها را می‌بیند و سال جاری را از آن انتخاب می‌کند؛
  * بقیه‌ی اعضا فقط «سال جاری» را می‌بینند (بدون فهرست) و نمی‌توانند چیزی تغییر
- * دهند؛ بیگانه چیزی نمی‌بیند. فهرست سال‌ها در برنامه فقط‌خواندنی است، پس تست
- * سالِ بسته را مستقیم با JDBC درج می‌کند (مثل مهاجرتِ داده‌ی اپراتور).
+ * دهند؛ بیگانه چیزی نمی‌بیند. سال‌ها را خودِ برنامه می‌سازد
+ * (AcademicYearProvisioner)، نه مدیر و نه اپراتور.
  */
 @SpringBootTest
 @AutoConfigureMockMvc
@@ -103,23 +103,23 @@ class AcademicYearFlowIntegrationTest {
     @Test
     void adminSeesAllYearsAndPicksAnOpenOneAndEveryMemberSeesOnlyTheCurrentYear() throws Exception {
         MockHttpSession admin = loginAsAdmin();
-        long open = yearId("1405-1406");
+        long chosen = yearId("1405-1406");
 
         mockMvc.perform(get("/api/admin/schools/1/academic-year")
                         .header("X-School-ID", "1")
                         .session(admin))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.years[?(@.code == '1404-1405' && @.open == true)]").exists())
-                .andExpect(jsonPath("$.years[?(@.code == '1405-1406' && @.open == true)]").exists());
+                .andExpect(jsonPath("$.years[?(@.code == '1404-1405')]").exists())
+                .andExpect(jsonPath("$.years[?(@.code == '1405-1406')]").exists());
 
         mockMvc.perform(put("/api/admin/schools/1/academic-year")
                         .with(csrf())
                         .header("X-School-ID", "1")
                         .session(admin)
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"academicYearId\":" + open + "}"))
+                        .content("{\"academicYearId\":" + chosen + "}"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.current.id").value(open))
+                .andExpect(jsonPath("$.current.id").value(chosen))
                 .andExpect(jsonPath("$.current.code").value("1405-1406"));
 
         // یک عضوِ عادی (دانش‌آموز): فقط سال جاری، بدون فهرست سال‌ها
@@ -151,24 +151,12 @@ class AcademicYearFlowIntegrationTest {
     }
 
     @Test
-    void aYearThePlatformHasNotOpenedCannotBeChosenAndAnUnknownYearIsNotFound() throws Exception {
+    void aYearThatDoesNotExistYetCannotBeChosenAndNothingChanges() throws Exception {
         MockHttpSession admin = loginAsAdmin();
-        // start_year یکتاست و بازه‌ی مجاز ۱۳۰۰ تا ۱۷۰۰ - سالِ بسته‌ی آزمایشی
-        long closed = jdbc.queryForObject(
-                "insert into school.academic_years (code, start_year, is_open) values ('1600-1601', 1600, false) returning id",
-                Long.class);
         long before = yearId("1404-1405");
         selectYear(admin, before, 200);
 
-        mockMvc.perform(put("/api/admin/schools/1/academic-year")
-                        .with(csrf())
-                        .header("X-School-ID", "1")
-                        .session(admin)
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"academicYearId\":" + closed + "}"))
-                .andExpect(status().isConflict())
-                .andExpect(jsonPath("$.type").value(org.hamcrest.Matchers.endsWith("academic-year-not-open")));
-
+        // سالِ آینده تا تاریخِ ساخته‌شدنش (کانفیگ) در فهرست نیست: شناسه‌ی ناموجود = 404
         mockMvc.perform(put("/api/admin/schools/1/academic-year")
                         .with(csrf())
                         .header("X-School-ID", "1")
@@ -182,8 +170,24 @@ class AcademicYearFlowIntegrationTest {
         mockMvc.perform(get("/api/admin/schools/1/academic-year")
                         .header("X-School-ID", "1")
                         .session(admin))
-                .andExpect(jsonPath("$.current.id").value(before))
-                .andExpect(jsonPath("$.years[?(@.code == '1600-1601')].open").value(org.hamcrest.Matchers.contains(false)));
+                .andExpect(jsonPath("$.current.id").value(before));
+    }
+
+    @Test
+    void theApplicationCreatesTheAcademicYearsItselfWithoutGapsOrDuplicates() {
+        // AcademicYearProvisioner هنگام بالا آمدن اجرا شده: سال‌ها از سالِ پایه (1404)
+        // تا سالِ تحصیلیِ امروز پشت‌سرهم و بدون تکرار ساخته شده‌اند، نه با دست.
+        // (بعد از ۱ مرداد ۱۴۰۵ حداقل 1405-1406 هم هست.)
+        Integer count = jdbc.queryForObject("select count(*) from school.academic_years", Integer.class);
+        Integer min = jdbc.queryForObject("select min(start_year) from school.academic_years", Integer.class);
+        Integer max = jdbc.queryForObject("select max(start_year) from school.academic_years", Integer.class);
+
+        assertThat(min).isEqualTo(1404);
+        assertThat(max).isGreaterThanOrEqualTo(1405);
+        assertThat(count).isEqualTo(max - min + 1);
+        assertThat(jdbc.queryForObject(
+                "select count(*) from school.academic_years where code <> start_year || '-' || (start_year + 1)",
+                Integer.class)).isZero();
     }
 
     @Test

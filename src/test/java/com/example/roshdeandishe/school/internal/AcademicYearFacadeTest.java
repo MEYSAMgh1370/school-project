@@ -22,8 +22,9 @@ import static org.mockito.Mockito.when;
 
 /**
  * سال تحصیلی جاری (openspec/changes/academic-year.md، فاز ۰) بدون Spring و
- * Docker: فقط سالِ باز انتخاب می‌شود، سالِ ناموجود/بسته و مدرسه‌ی ناموجود رد
- * می‌شود و چیزی ذخیره نمی‌شود، و «انتخاب‌نشده» خالی است نه حدس.
+ * Docker: فقط سالِ موجودِ فهرست انتخاب می‌شود، سالِ ناموجود (مثلاً سالِ آینده‌ای
+ * که هنوز ساخته نشده) و مدرسه‌ی ناموجود رد می‌شود و چیزی ذخیره نمی‌شود، و
+ * «انتخاب‌نشده» خالی است نه حدس.
  */
 class AcademicYearFacadeTest {
 
@@ -44,24 +45,22 @@ class AcademicYearFacadeTest {
         when(schools.findById(5L)).thenReturn(Optional.of(school));
     }
 
-    private static AcademicYearEntity year(long id, String code, int startYear, boolean open) {
+    private static AcademicYearEntity year(long id, String code, int startYear) {
         AcademicYearEntity year = new AcademicYearEntity();
         ReflectionTestUtils.setField(year, "id", id);
         ReflectionTestUtils.setField(year, "code", code);
         ReflectionTestUtils.setField(year, "startYear", startYear);
-        ReflectionTestUtils.setField(year, "open", open);
         return year;
     }
 
     @Test
-    void listIncludesClosedYearsInOrderWithTheirOpenFlag() {
+    void listIsOrderedFromOldestToNewest() {
         when(years.findAllByOrderByStartYearAsc()).thenReturn(List.of(
-                year(1L, "1404-1405", 1404, true), year(3L, "1406-1407", 1406, false)));
+                year(1L, "1404-1405", 1404), year(2L, "1405-1406", 1405)));
 
         List<AcademicYearInfo> result = facade.listAcademicYears();
 
-        assertThat(result).extracting(AcademicYearInfo::code).containsExactly("1404-1405", "1406-1407");
-        assertThat(result).extracting(AcademicYearInfo::open).containsExactly(true, false);
+        assertThat(result).extracting(AcademicYearInfo::code).containsExactly("1404-1405", "1405-1406");
     }
 
     @Test
@@ -72,7 +71,7 @@ class AcademicYearFacadeTest {
 
     @Test
     void choosingAnOpenYearStoresItAsTheCurrentYear() {
-        when(years.findById(2L)).thenReturn(Optional.of(year(2L, "1405-1406", 1405, true)));
+        when(years.findById(2L)).thenReturn(Optional.of(year(2L, "1405-1406", 1405)));
 
         facade.setCurrentAcademicYear(SCHOOL, new AcademicYearId(2L));
 
@@ -83,13 +82,13 @@ class AcademicYearFacadeTest {
     }
 
     @Test
-    void aYearThePlatformHasNotOpenedIsRejectedAndNothingChanges() {
+    void aYearNotInTheListYetIsRejectedAndNothingChanges() {
         school.setCurrentAcademicYearId(1L);
-        when(years.findById(3L)).thenReturn(Optional.of(year(3L, "1406-1407", 1406, false)));
+        when(years.findById(3L)).thenReturn(Optional.empty());
 
         assertThatThrownBy(() -> facade.setCurrentAcademicYear(SCHOOL, new AcademicYearId(3L)))
                 .isInstanceOfSatisfying(SchoolException.class, e ->
-                        assertThat(e.error()).isEqualTo(new SchoolError.AcademicYearNotOpen(3L)));
+                        assertThat(e.error()).isEqualTo(new SchoolError.AcademicYearNotFound(3L)));
         assertThat(school.getCurrentAcademicYearId()).isEqualTo(1L);
         verify(schools, never()).save(any());
     }

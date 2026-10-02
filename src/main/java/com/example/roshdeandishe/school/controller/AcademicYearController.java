@@ -25,9 +25,9 @@ import java.util.List;
  * دو دید، طبق تصمیم محصول: <b>هر عضو فعالِ مدرسه فقط سال جاری را می‌بیند</b>
  * (GET /api/me/..، بدون مجوزِ جداگانه، schoolId از path)؛ <b>مدیر</b> (مجوز
  * ACADEMIC_YEAR_MANAGE) فهرستِ همه‌ی سال‌ها را هم می‌بیند و سال جاری را از میان
- * سال‌های بازِ فهرست انتخاب می‌کند (GET/PUT /api/admin/schools/{id}/academic-year).
- * فهرستِ سال‌ها سراسری و فقط‌خواندنی است (اپراتور تعریف و باز می‌کند)؛ سال تاریخ
- * ندارد و شروع/پایانش همین انتخابِ مدیر است. هیچ داده‌ای با این انتخاب حذف یا
+ * آن‌ها انتخاب می‌کند (GET/PUT /api/admin/schools/{id}/academic-year). فهرست
+ * سراسری است و خودِ برنامه هر سال آن را می‌سازد (AcademicYearProvisioner)؛ سال
+ * تاریخ ندارد و شروع/پایانش همین انتخابِ مدیر است. هیچ داده‌ای با این انتخاب حذف یا
  * تغییر نمی‌کند.
  */
 @RestController
@@ -89,6 +89,6 @@ public class AcademicYearController {
     }
 
     private static AcademicYearResponse toResponse(AcademicYearInfo info) {
-        return new AcademicYearResponse(info.id().value(), info.code(), info.open());
+        return new AcademicYearResponse(info.id().value(), info.code());
     }
 }

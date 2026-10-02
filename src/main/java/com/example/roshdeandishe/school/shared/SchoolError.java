@@ -20,8 +20,4 @@ public sealed interface SchoolError {
     /** academicYearId ای که در فهرست سراسری سال‌های تحصیلی نیست. */
     record AcademicYearNotFound(Long academicYearId) implements SchoolError {
     }
-
-    /** سال در فهرست هست ولی اپراتور هنوز آن را برای انتخاب باز نکرده. */
-    record AcademicYearNotOpen(Long academicYearId) implements SchoolError {
-    }
 }

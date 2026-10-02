@@ -48,19 +48,14 @@ class AcademicYearPageRenderTest {
     }
 
     @Test
-    void closedYearsAreVisibleButNotSelectable() {
-        String html = render();
-
-        assertThat(html).contains(":disabled=\"!year.open\"").contains("(هنوز باز نشده)");
-    }
-
-    @Test
-    void explainsThatChoosingDoesNotTouchDataAndThatTheAdminSetsStartAndEnd() {
+    void explainsThatChoosingDoesNotTouchDataAndThatYearsAreAddedAutomatically() {
         // متنِ راهنما در قالب چند خط است؛ فاصله‌ها یکی می‌شوند تا شکستنِ خط اهمیتی نداشته باشد
         String html = render().replaceAll("\\s+", " ");
 
         assertThat(html).contains("شروع و پایانِ هر سال با انتخابِ شما تعیین می‌شود")
-                .contains("هیچ داده‌ای حذف یا تغییر نمی‌کند");
+                .contains("هیچ داده‌ای حذف یا تغییر نمی‌کند")
+                .contains("خودکار")
+                .doesNotContain("هنوز باز نشده");
     }
 
     @Test
