@@ -114,7 +114,7 @@ The current web UI is server-rendered JTE with page-level Alpine.js components a
 Built page areas include:
 
 - public landing (with login, account-registration, and school-registration entry paths that preserve the approved post-authentication destination), login, registration, account activation, school entry, and exam-take; direct anonymous `/schools/new` entry preserves the same approved destination;
-- dashboard and shared navbar;
+- dashboard (role-gated «دسترسی سریع» shortcut cards, memberships, school-entry box for admins, phone box) and shared navbar with a grouped sidebar;
 - people, roles, classes, students, and grades;
 - curriculum, study plans, and exams;
 - finance, expenses, invoices, and payments;
@@ -123,7 +123,11 @@ Built page areas include:
 Current invariants:
 
 - `layout/main.jte` owns shared head assets.
-- `layout/navbar.jte` is reused by authenticated management pages.
+- `layout/navbar.jte` is reused by authenticated management pages: a top bar
+  (school/role switcher, user menu) plus a grouped, collapsible sidebar (a
+  drawer below 1024px). Page links come from `web.model.NavCatalog`, which also
+  drives the dashboard shortcut cards; see
+  [`changes/navigation-sidebar-and-dashboard-shortcuts.md`](../changes/navigation-sidebar-and-dashboard-shortcuts.md).
 - `layout/page-header.jte`, `layout/school-scope.jte`, and
   `layout/empty-state.jte` are shared partials extracted on 2026-09-27;
   `school-scope.jte` owns the "no school selected" warning plus the error and
