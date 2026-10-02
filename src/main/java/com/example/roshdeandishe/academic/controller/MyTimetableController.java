@@ -46,17 +46,29 @@ public class MyTimetableController {
     public MyTimetableResponse myTimetable(@PathVariable Long schoolId) {
         Long userId = iamFacade.currentUserId().value();
 
+        // هر دید به یک عضویتِ *فعال* با نقشِ متناظر در همین مدرسه بسته است: ثبت‌نام، لینکِ ولی و
+        // خانه‌ی معلم با غیرفعال‌شدنِ عضویت پاک نمی‌شوند، پس بدونِ این بررسی عضوِ سابق همچنان
+        // برنامه‌ی مدرسه را می‌گرفت. هر نقش عضویتِ جدا دارد، پس نقش‌ها جدا بررسی می‌شوند.
+        java.util.Set<String> activeRoles = new java.util.HashSet<>();
+        iamFacade.findMembershipsByUser(new IamFacade.UserId(userId)).stream()
+                .filter(m -> schoolId.equals(m.schoolId()) && m.active())
+                .forEach(m -> activeRoles.add(m.roleCode()));
+
         // اول هویت: بدونِ هیچ دیدی، حتی سالِ جاریِ مدرسه هم برای بیگانه برنگردد
         List<Pending> pending = new ArrayList<>();
-        academicFacade.findMyEnrollment(userId, schoolId).ifPresent(e -> pending.add(new Pending(
-                "OWN", e.studentId().value(), null, e.classId().value())));
-        for (AcademicFacade.StudentInfo ward : academicFacade.listWards(userId, schoolId)) {
-            pending.add(new Pending("WARD", ward.id().value(), ward.userId(), ward.classId().value()));
+        if (activeRoles.contains("STUDENT")) {
+            academicFacade.findMyEnrollment(userId, schoolId).ifPresent(e -> pending.add(new Pending(
+                    "OWN", e.studentId().value(), null, e.classId().value())));
+        }
+        if (activeRoles.contains("PARENT")) {
+            for (AcademicFacade.StudentInfo ward : academicFacade.listWards(userId, schoolId)) {
+                pending.add(new Pending("WARD", ward.id().value(), ward.userId(), ward.classId().value()));
+            }
         }
 
         String year = schoolFacade.findCurrentAcademicYear(new SchoolFacade.SchoolId(schoolId))
                 .map(AcademicYearInfo::code).orElse(null);
-        List<EntryInfo> teaching = year == null ? List.of()
+        List<EntryInfo> teaching = year == null || !activeRoles.contains("TEACHER") ? List.of()
                 : timetableFacade.listEntriesForTeacher(schoolId, year, userId);
         if (pending.isEmpty() && teaching.isEmpty()) {
             return new MyTimetableResponse(null, List.of(), List.of());

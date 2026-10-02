@@ -26,6 +26,7 @@ class TimetableFacadeImpl implements TimetableFacade {
 
     private static final int MAX_LABEL_LENGTH = 64;
     private static final int MAX_NAME_LENGTH = 128;
+    private static final int PERIOD_LOCK_NAMESPACE = 7401;
     private static final String TEACHER_SLOT_INDEX = "timetable_entries_teacher_slot_unique";
 
     private final TimetablePeriodRepository periodRepository;
@@ -69,6 +70,7 @@ class TimetableFacadeImpl implements TimetableFacade {
                                    LocalTime endTime) {
         requireKnownYear(academicYear);
         String cleanLabel = requireValidPeriod(label, startTime, endTime);
+        lockPeriods(schoolId, academicYear);
         requireNoOverlap(schoolId, academicYear, startTime, endTime, null);
         int position = periodRepository.maxPosition(schoolId, academicYear) + 1;
         return toPeriodInfo(periodRepository.save(
@@ -81,6 +83,7 @@ class TimetableFacadeImpl implements TimetableFacade {
                                    LocalTime endTime) {
         TimetablePeriodEntity period = requirePeriodInSchool(schoolId, periodId);
         String cleanLabel = requireValidPeriod(label, startTime, endTime);
+        lockPeriods(schoolId, period.getAcademicYear());
         requireNoOverlap(schoolId, period.getAcademicYear(), startTime, endTime, periodId);
         period.setLabel(cleanLabel);
         period.setStartTime(startTime);
@@ -308,6 +311,13 @@ class TimetableFacadeImpl implements TimetableFacade {
             throw new AcademicException(new AcademicError.InvalidPeriod("ساعت پایان باید بعد از شروع باشد"));
         }
         return clean;
+    }
+
+    // بعد از گرفتنِ قفل، زنگ‌ها دوباره خوانده می‌شوند (requireNoOverlap) - پس مقدارِ تازه‌ی
+    // تراکنشِ قبلی را می‌بیند. تراکنشِ ویرایش، زنگ را پیش از قفل خوانده است، ولی فقط برچسب/ساعت
+    // را عوض می‌کند و سال تغییر نمی‌کند.
+    private void lockPeriods(Long schoolId, String academicYear) {
+        periodRepository.lockSchoolYear(PERIOD_LOCK_NAMESPACE, Objects.hash(schoolId, academicYear));
     }
 
     private void requireNoOverlap(Long schoolId, String academicYear, LocalTime start, LocalTime end, Long selfId) {

@@ -220,6 +220,21 @@ class GradeCourseFacadeTest {
     }
 
     @Test
+    void gradesOfACourseThatBecameNonGradedAreHiddenFromStudentReadsButKept() {
+        CourseEntity retired = course(31L, GRADE_LEVEL, "علوم");
+        ReflectionTestUtils.setField(retired, "graded", false);
+        when(grades.findByStudentIdIn(List.of(STUDENT))).thenReturn(List.of(
+                gradeRow(1L, null), gradeRow(2L, 30L), gradeRow(3L, 31L)));
+        when(courses.findAllById(List.of(30L, 31L))).thenReturn(List.of(course(30L, GRADE_LEVEL, "ریاضی"), retired));
+
+        List<GradeInfo> rows = facade.listGradesForStudents(SCHOOL, List.of(STUDENT));
+
+        // نمره‌ی کل و درسِ نمره‌پذیر می‌مانند؛ درسِ غیرنمره‌پذیر پنهان است
+        assertThat(rows).extracting(GradeInfo::courseName).containsExactly(null, "ریاضی");
+        verify(grades, never()).delete(any());
+    }
+
+    @Test
     void coursesOfAClassAreTheGlobalCoursesOfItsGradeLevel() {
         when(courses.findByGradeLevelAndGradedTrueOrderByNameAsc(GRADE_LEVEL)).thenReturn(List.of(
                 course(30L, GRADE_LEVEL, "ریاضی"), course(31L, GRADE_LEVEL, "علوم")));

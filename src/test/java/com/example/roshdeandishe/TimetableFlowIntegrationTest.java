@@ -597,4 +597,130 @@ class TimetableFlowIntegrationTest {
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("href=\"/timetable\"")))
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("id=\"dashboardTimetable\"")));
     }
+
+    // ---- بازبینی Codex: هم‌زمانی زنگ‌ها، عضویتِ غیرفعال، درسِ غیرنمره‌پذیر ----
+
+    @Test
+    void concurrentOverlappingPeriodsLetExactlyOneThrough() throws Exception {
+        MockHttpSession admin = loginAsAdmin();
+        int threads = 8;
+        java.util.concurrent.ExecutorService pool = java.util.concurrent.Executors.newFixedThreadPool(threads);
+        java.util.concurrent.CountDownLatch start = new java.util.concurrent.CountDownLatch(1);
+        java.util.List<java.util.concurrent.Future<Integer>> results = new java.util.ArrayList<>();
+        for (int i = 0; i < threads; i++) {
+            int n = i;
+            results.add(pool.submit(() -> {
+                start.await();
+                // همه‌ی بازه‌ها با هم هم‌پوشانی دارند (۸:۰۰ تا ۹:۰۰ با شروع‌های کمی متفاوت)
+                return send(admin, post("/api/admin/schools/1/timetable/periods"),
+                        "{\"academicYear\":\"" + YEAR + "\",\"label\":\"هم‌زمان " + n + "\",\"startTime\":\"08:0" + n
+                                + "\",\"endTime\":\"09:00\"}").andReturn().getResponse().getStatus();
+            }));
+        }
+        start.countDown();
+        int ok = 0;
+        for (var f : results) {
+            if (f.get() == 200) {
+                ok++;
+            }
+        }
+        pool.shutdown();
+        assertThat(ok).isEqualTo(1);
+        assertThat(jdbc.queryForObject("select count(*) from academic.timetable_periods where academic_year = ?",
+                Integer.class, YEAR)).isEqualTo(1);
+    }
+
+    @Test
+    void concurrentUpdatesMovingTwoPeriodsIntoTheSameRangeLetExactlyOneThrough() throws Exception {
+        MockHttpSession admin = loginAsAdmin();
+        java.util.concurrent.ExecutorService pool = java.util.concurrent.Executors.newFixedThreadPool(2);
+        try {
+            for (int round = 0; round < 15; round++) {
+                jdbc.update("delete from academic.timetable_periods");
+                long a = createPeriod(admin, "الف", "08:00", "08:30");
+                long b = createPeriod(admin, "ب", "09:00", "09:30");
+                java.util.concurrent.CyclicBarrier barrier = new java.util.concurrent.CyclicBarrier(2);
+                // هر دو به بازه‌ی هنوز خالیِ ۱۰ تا ۱۱:۳۰ می‌روند و با هم هم‌پوشانی دارند
+                var first = pool.submit(() -> {
+                    barrier.await();
+                    return send(admin, put("/api/admin/schools/1/timetable/periods/" + a),
+                            "{\"label\":\"الف\",\"startTime\":\"10:00\",\"endTime\":\"11:00\"}")
+                            .andReturn().getResponse().getStatus();
+                });
+                var second = pool.submit(() -> {
+                    barrier.await();
+                    return send(admin, put("/api/admin/schools/1/timetable/periods/" + b),
+                            "{\"label\":\"ب\",\"startTime\":\"10:30\",\"endTime\":\"11:30\"}")
+                            .andReturn().getResponse().getStatus();
+                });
+                assertThat(java.util.List.of(first.get(), second.get())).as("round " + round)
+                        .containsExactlyInAnyOrder(200, 409);
+            }
+        } finally {
+            pool.shutdown();
+        }
+    }
+
+    @Test
+    void deactivatedMembershipsNoLongerSeeTheTimetable() throws Exception {
+        MockHttpSession admin = loginAsAdmin();
+        makeCurrentYear(admin);
+        long classId = createClass(admin, "پایه پنجم - عضو سابق", 5);
+        long period = createPeriod(admin, "زنگ اول", "08:00", "08:45");
+        long math = insertCourse(5, "ریاضی", true);
+        String teacherEmail = unique("tt.former.teacher") + "@roshdeandishe.test";
+        MockHttpSession teacher = registerAndLogin(teacherEmail, "معلم سابق");
+        long teacherId = membership(admin, teacherEmail, "معلم سابق", "TEACHER");
+        setEntry(admin, classId, period, "SAT", math, null, teacherId).andExpect(status().isOk());
+        String studentEmail = unique("tt.former.student") + "@roshdeandishe.test";
+        MockHttpSession student = registerAndLogin(studentEmail, "دانش‌آموز سابق");
+        long studentId = enrollStudent(admin, studentEmail, "دانش‌آموز سابق", classId);
+        String parentEmail = unique("tt.former.parent") + "@roshdeandishe.test";
+        MockHttpSession parent = registerAndLogin(parentEmail, "ولی سابق");
+        long parentId = membership(admin, parentEmail, "ولی سابق", "PARENT");
+        send(admin, post("/api/admin/schools/1/students/" + studentId + "/guardians"),
+                "{\"guardianUserId\":" + parentId + "}").andExpect(status().isOk());
+
+        for (MockHttpSession session : new MockHttpSession[]{student, parent, teacher}) {
+            mockMvc.perform(get("/api/me/schools/1/timetable").session(session))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.views.length()").value(1));
+        }
+
+        // مدرسه عضویت‌ها را غیرفعال می‌کند؛ ثبت‌نام، لینکِ ولی و خانه‌ی معلم می‌مانند
+        jdbc.update("update iam.school_memberships set active = false where school_id = 1 and user_id in "
+                + "(select id from iam.users where email in (?, ?, ?))", studentEmail, parentEmail, teacherEmail);
+        for (MockHttpSession session : new MockHttpSession[]{student, parent, teacher}) {
+            mockMvc.perform(get("/api/me/schools/1/timetable").session(session))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.academicYear").doesNotExist())
+                    .andExpect(jsonPath("$.views").isEmpty());
+        }
+    }
+
+    @Test
+    void gradesOfACourseThatBecameNonGradedDisappearFromMyGradesButOverallGradesStay() throws Exception {
+        MockHttpSession admin = loginAsAdmin();
+        long classId = createClass(admin, "پایه پنجم - درس بازنشسته", 5);
+        String email = unique("tt.retired") + "@roshdeandishe.test";
+        MockHttpSession student = registerAndLogin(email, "دانش‌آموز درس بازنشسته");
+        long studentId = enrollStudent(admin, email, "دانش‌آموز درس بازنشسته", classId);
+        long course = insertCourse(5, "علوم", true);
+        for (String courseJson : new String[]{"", ",\"courseId\":" + course}) {
+            send(admin, post("/api/admin/schools/1/grades"),
+                    "{\"studentId\":" + studentId + ",\"classId\":" + classId + ",\"academicYear\":\"" + YEAR
+                            + "\",\"term\":\"FIRST\",\"numericScore\":16" + courseJson + "}")
+                    .andExpect(status().isOk());
+        }
+        mockMvc.perform(get("/api/me/schools/1/grades").session(student))
+                .andExpect(jsonPath("$.length()").value(2));
+
+        // اپراتور درس را غیرنمره‌پذیر می‌کند: نمره‌ی آن از کارنامه پنهان می‌شود، ردیف می‌ماند
+        jdbc.update("update academic.courses set graded = false where id = ?", course);
+        mockMvc.perform(get("/api/me/schools/1/grades").session(student))
+                .andExpect(jsonPath("$.length()").value(1))
+                .andExpect(jsonPath("$[0].courseId").doesNotExist());
+        assertThat(jdbc.queryForObject("select count(*) from academic.grades where course_id = ?",
+                Integer.class, course)).isEqualTo(1);
+    }
 }

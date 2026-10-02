@@ -223,9 +223,17 @@ class AcademicFacadeImpl implements AcademicFacade {
         if (studentIds.isEmpty()) {
             return List.of();
         }
-        return toGradeInfos(gradeRepository.findByStudentIdIn(studentIds).stream()
+        List<GradeEntity> grades = gradeRepository.findByStudentIdIn(studentIds).stream()
                 .filter(g -> g.getSchoolId().equals(schoolId))
-                .toList());
+                .toList();
+        // درسی که بعد از ثبتِ نمره «غیرنمره‌پذیر» شده (graded = false) از کارنامه‌ی دانش‌آموز/ولی
+        // پنهان است؛ ردیف‌ها حذف نمی‌شوند (اگر دوباره نمره‌پذیر شود برمی‌گردند) و فهرستِ مدیر که
+        // صریحاً با courseId می‌پرسد همچنان آن‌ها را می‌دهد.
+        Map<Long, CourseEntity> coursesById = coursesOf(grades);
+        return toGradeInfos(grades.stream()
+                .filter(g -> g.getCourseId() == null || coursesById.get(g.getCourseId()) == null
+                        || coursesById.get(g.getCourseId()).isGraded())
+                .toList(), coursesById);
     }
 
     @Override
@@ -323,24 +331,33 @@ class AcademicFacadeImpl implements AcademicFacade {
                 c.getGradeLevel(), c.getGradingScheme());
     }
 
-    // نام درس‌ها با یک query برای همه‌ی ردیف‌ها گرفته می‌شود (نه یکی به‌ازای هر نمره).
-    private List<GradeInfo> toGradeInfos(List<GradeEntity> grades) {
+    // درس‌های یک فهرست از نمره با یک query برای همه‌ی ردیف‌ها گرفته می‌شود (نه یکی به‌ازای هر نمره).
+    private Map<Long, CourseEntity> coursesOf(List<GradeEntity> grades) {
         List<Long> courseIds = grades.stream()
                 .map(GradeEntity::getCourseId)
                 .filter(java.util.Objects::nonNull)
                 .distinct()
                 .toList();
-        Map<Long, String> courseNames = new HashMap<>();
+        Map<Long, CourseEntity> byId = new HashMap<>();
         if (!courseIds.isEmpty()) {
-            courseRepository.findAllById(courseIds).forEach(c -> courseNames.put(c.getId(), c.getName()));
+            courseRepository.findAllById(courseIds).forEach(c -> byId.put(c.getId(), c));
         }
+        return byId;
+    }
+
+    private List<GradeInfo> toGradeInfos(List<GradeEntity> grades) {
+        return toGradeInfos(grades, coursesOf(grades));
+    }
+
+    private List<GradeInfo> toGradeInfos(List<GradeEntity> grades, Map<Long, CourseEntity> coursesById) {
         return grades.stream()
                 .map(g -> new GradeInfo(
                         new GradeId(g.getId()), g.getSchoolId(), new StudentId(g.getStudentId()),
                         new ClassId(g.getClassId()), g.getAcademicYear(), g.getTerm(), g.getScheme(),
                         g.getDescriptiveLevel(), g.getNumericScore(), g.getComment(), g.getRecordedByUserId(),
                         g.getRecordedAt(), g.getCourseId(),
-                        g.getCourseId() == null ? null : courseNames.get(g.getCourseId())))
+                        g.getCourseId() == null || coursesById.get(g.getCourseId()) == null
+                                ? null : coursesById.get(g.getCourseId()).getName()))
                 .toList();
     }
 

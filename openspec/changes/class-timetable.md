@@ -208,6 +208,18 @@ natural follow-up), per-school configurable school days, and the Android client.
 - A race on the teacher unique index (two admins booking the same teacher at once)
   is reported as `409 teacher-double-booked` as well; any other integrity
   violation is not relabeled.
+- Creating/updating a period takes a transaction-level PostgreSQL advisory lock per
+  (school, year) before the overlap check, so two admins moving periods into the same
+  free range cannot both pass (no exclusion constraint: it needs the `btree_gist`
+  extension).
+- `GET /api/me/.../timetable` ties each view to an **active** membership with the
+  matching role in that school (`STUDENT` for `OWN`, `PARENT` for `WARD`, `TEACHER` for
+  `TEACHING`): enrollments, guardian links and timetable cells survive deactivating a
+  membership, so without this a former member kept receiving the timetable.
+- If the operator later sets `graded = false` on a course that already has grades, those
+  grade rows are kept but hidden from `/api/me/.../grades` (student/parent reads); the
+  admin list that asks for that `courseId` explicitly still returns them, and they come
+  back if the course is graded again. Overall grades are unaffected.
 - Granting the permission on an already deployed database: `IamSeedDataRunner`
   grants per `(role, permission)` pair idempotently at every start, so the next
   deploy adds `TIMETABLE_MANAGE` to `SCHOOL_ADMIN`.

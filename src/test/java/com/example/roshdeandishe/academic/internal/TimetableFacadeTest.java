@@ -135,6 +135,21 @@ class TimetableFacadeTest {
     // ---- زنگ‌ها ----
 
     @Test
+    void periodWritesTakeTheSchoolYearLockBeforeReadingForOverlap() {
+        when(periods.findBySchoolIdAndAcademicYearOrderByStartTimeAscPositionAsc(SCHOOL, YEAR)).thenReturn(List.of());
+
+        facade.createPeriod(SCHOOL, YEAR, "زنگ", LocalTime.of(8, 0), LocalTime.of(8, 45));
+        facade.updatePeriod(SCHOOL, PERIOD, "زنگ", LocalTime.of(8, 0), LocalTime.of(8, 50));
+
+        // قفل پیش از خواندنِ زنگ‌ها برای بررسیِ هم‌پوشانی، برای ساخت و ویرایش
+        org.mockito.InOrder order = org.mockito.Mockito.inOrder(periods);
+        order.verify(periods).lockSchoolYear(org.mockito.ArgumentMatchers.anyInt(), org.mockito.ArgumentMatchers.anyInt());
+        order.verify(periods).findBySchoolIdAndAcademicYearOrderByStartTimeAscPositionAsc(SCHOOL, YEAR);
+        order.verify(periods).lockSchoolYear(org.mockito.ArgumentMatchers.anyInt(), org.mockito.ArgumentMatchers.anyInt());
+        order.verify(periods).findBySchoolIdAndAcademicYearOrderByStartTimeAscPositionAsc(SCHOOL, YEAR);
+    }
+
+    @Test
     void aPeriodGetsTheNextPositionOfItsSchoolAndYear() {
         when(periods.findBySchoolIdAndAcademicYearOrderByStartTimeAscPositionAsc(SCHOOL, YEAR)).thenReturn(List.of());
         when(periods.maxPosition(SCHOOL, YEAR)).thenReturn(3);
