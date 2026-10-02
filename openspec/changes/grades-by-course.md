@@ -231,6 +231,9 @@ security design, so it is not recommended here.
    Whether recording a grade outside the validity range should be rejected or
    only hidden in the picker, and how a renamed course shows on historical
    grades, are part of that change.
+   Update 2026-10-02: the platform-wide academic year this needs is proposed in
+   [`academic-year.md`](academic-year.md); the validity range becomes phase 1 of
+   that proposal.
 6. **Scheme per course.** The class's `grading_scheme` applies to all of its
    courses. If some courses in the same class need the other scheme, that is a
    different data model.

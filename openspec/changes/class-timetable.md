@@ -1,9 +1,11 @@
 # Class Timetable (برنامهٔ کلاسی)
 
 Status: proposed 2026-10-02, **not implemented**. The product owner answered the
-seven original questions the same day (recorded below); four new questions
-that the answers raised are listed under Unresolved Questions and are not
-invented here. Nothing in [`specs/current-system.md`](../specs/current-system.md)
+seven original questions the same day (recorded below). The "current academic
+year" question became a platform-wide concept, designed in
+[`academic-year.md`](academic-year.md), which this proposal now **depends on**
+(its phase 0). The remaining questions are under Unresolved Questions and are
+not invented here. Nothing in [`specs/current-system.md`](../specs/current-system.md)
 changes until this is built.
 
 ## Verified Baseline
@@ -23,7 +25,9 @@ From code and docs, not from memory:
 - `academic.classes` has `grade_level`, `name`, `section`, `grading_scheme` and
   an optional `teacher_id` (one teacher per class, not per subject). A class is
   not tied to an academic year; academic years are free text on grades
-  (`"1404-1405"`). **No concept of a "current academic year" exists.**
+  (`"1404-1405"`). **No concept of a "current academic year" exists today**: the
+  product owner says the whole platform has one and each school chooses it; that
+  is designed in [`academic-year.md`](academic-year.md).
 - The global course catalog (`academic.courses`, per grade level, read-only in
   the app, empty until the operator adds rows) is in `master` since
   [`grades-by-course.md`](grades-by-course.md). Every course in it is currently
@@ -46,7 +50,10 @@ From code and docs, not from memory:
    without typing.
 4. A **main (catalog) course might also need to stay out of the report card**:
    unsure it happens, but kept as a precaution.
-5. **A separate timetable per academic year** (not one current timetable).
+5. **A separate timetable per academic year** (not one current timetable). The
+   year is the platform's academic year; the school's **current year** (chosen
+   by the school, see `academic-year.md`) decides which timetable students,
+   parents and teachers see by default.
 6. A teacher placed in two classes in the **same weekday and period is
    rejected**.
 7. A **new permission** (not `CLASS_MANAGE`).
@@ -80,7 +87,8 @@ students are referenced by opaque ids as elsewhere. Admin endpoints are gated by
   report card. A school sees its own activities plus the platform defaults and
   cannot change the defaults. An activity used by an entry cannot be deleted.
 - `academic.timetable_periods` (decisions 2, 5): `school_id`, `academic_year`
-  (free text, same shape as grades), `id`, `position` (1..n, unique per school
+  (a year from the platform list in `academic-year.md`; its canonical code),
+  `id`, `position` (1..n, unique per school
   and year), `label` (e.g. «زنگ اول», ≤ 64), `start_time`, `end_time` (`end >
   start`; periods of one school and year must not overlap). Periods belong to a
   year because changing a school's periods for next year must not rewrite last
@@ -132,8 +140,8 @@ Admin (ACADEMIC module + `TIMETABLE_MANAGE`):
 
 Self-service (no permission, caller's own data, like `/api/me/**`):
 
-- `GET /api/me/schools/{schoolId}/timetable?academicYear=` (year defaulting per
-  question 2 below) - the periods plus the entries of: the user's own class
+- `GET /api/me/schools/{schoolId}/timetable?academicYear=` (defaulting to the
+  school's current academic year) - the periods plus the entries of: the user's own class
   (student); the classes of the linked children (parent, tagged with the child
   so the page can show a student picker as `/my-grades` does); and the entries
   where the user is the teacher (teacher, decision 10 - own hours only).
@@ -171,9 +179,9 @@ natural follow-up), per-school configurable school days, and the Android client.
   `TenantContext.requireMatches` and check that class, period, activity and
   teacher belong to it. The self-service endpoint returns only the caller's own
   class, linked children's classes and own teaching slots.
-- Academic years are free text, as on grades. A timetable for `"1404-1405"`
-  and one for `"۱۴۰۴-۱۴۰۵"` would be different years unless digits are
-  normalized the way `/grades` does; the same normalization applies here.
+- The year is the platform's validated academic year (`academic-year.md`), so
+  the free-text digit problem on grades does not carry over: the year is chosen
+  from a list, never typed.
 - It shares the unresolved "course list changes over time" question in
   `grades-by-course.md`: with a timetable per year, a course retired in the
   catalog stays on old years' timetables.
@@ -218,13 +226,12 @@ natural follow-up), per-school configurable school days, and the Android client.
 1. **Platform-default activities.** Which defaults are registered for all schools
    (the names)? Product input; not invented here. Without it the platform list is
    empty and schools create their own.
-2. **"Current academic year".** The student's dashboard and `/my-timetable` need
-   to know which year's timetable to show, and no such concept exists. Options:
-   a school setting «سال تحصیلی جاری» that the admin sets when a year starts
-   (recommended: explicit, lets the admin prepare next year's timetable without
-   students seeing it); or the latest year that has periods (no setting, but
-   next year's timetable would go live as soon as it is created); or by date
-   range per year.
+2. **Current academic year - resolved by design, pending its own approval.** The
+   student's dashboard and `/my-timetable` use the school's current academic
+   year from [`academic-year.md`](academic-year.md). That proposal's phase 0
+   (the list of years and the school's current year) must exist first; the
+   timetable is scheduled after it. Until then the timetable cannot know which
+   year to show.
 3. **Who sees what, where.** Decision 10 says the student sees it on the
    dashboard and the teacher sees own hours. Assumed here: a **teacher's own
    hours on `/my-timetable`** (no dashboard section), a **parent's children's
