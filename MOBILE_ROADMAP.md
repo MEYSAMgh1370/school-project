@@ -69,16 +69,18 @@ product** — see §2.
   worldwide (§3). Building and shipping a whole parent app for that is
   disproportionate. Instead:
   - **Bale bot — built.** Shipped 2026-07-07 as the `bale` module (CLAUDE_LEGACY.md
-    §7 Done): outbound invoice notifications plus inbound self-service Persian
+    §7 Done; renamed the `notification` module on 2026-10-02): outbound invoice notifications plus inbound self-service Persian
     text commands ("مدرسه‌های من" / "فرزندان من"). Bale is sanctions-safe and
     reliably available inside Iran without a VPN, which is why it went first.
-  - **Telegram bot — not built, and not a drop-in second endpoint.**
-    `CLAUDE_LEGACY.md` §10 now has an explicit rule against a generic
-    `Notification`/multi-channel abstraction — the `bale` module is
-    intentionally Bale-specific. A Telegram channel, if ever wanted, means a
-    **second, independent module** (its own webhook, its own linking flow),
-    not reusing `BaleFacade` against a second token. Given Telegram's own
-    unreliability inside Iran, whether that's worth the maintenance cost at
+  - **Telegram bot — not built, and not a drop-in second endpoint.** A
+    Telegram channel, if ever wanted, means a second `NotificationChannel`
+    inside the `notification` module (its own webhook and its own linking flow;
+    Bale's linking is not reusable), not a separate module — the earlier
+    `CLAUDE_LEGACY.md` §10 rule against that is superseded (2026-10-02). How a
+    second channel is combined with Bale (fallback vs. send to all) is
+    undecided; see
+    `openspec/changes/notification-channel-abstraction.md`. Given Telegram's
+    own unreliability inside Iran, whether it is worth the maintenance cost at
     all is an open question — see §7.
   - **Scope, as built**: broadcast notifications + minimal self-service replies
     (fixed Persian-text commands, not free-form chat). Rich back-and-forth
@@ -173,20 +175,24 @@ product** — see §2.
   breakout rooms, polls) every regional leader converges on, and — critically
   for this project — it's self-hostable on Iranian infrastructure, unlike
   Zoom/Google Meet which are sanctions-blocked.
-- **Parent bot channel — `bale` module (built, corrected from this doc's
-  original proposal).** *Originally proposed here as a generic `notifications`
+- **Parent bot channel — `bale` module, now `notification` (built, corrected
+  from this doc's original proposal).** *Originally proposed here as a generic `notifications`
   module reusing the `InviteToken` pattern; the actual build, done in a
   separate session, took a different and now-authoritative shape:*
-  - The module is named `bale` and is deliberately Bale-specific, not a
-    generic gateway — `CLAUDE_LEGACY.md` §10 explicitly forbids building a
-    `Notification`/multi-channel abstraction (same YAGNI reasoning as keeping
-    `InviteEmailSender` inside `iam/internal`). A second channel gets its own
-    module when actually requested, not a shared abstraction built ahead of need.
+  - The module was built Bale-specific (named `bale`) on YAGNI grounds
+    (`CLAUDE_LEGACY.md` §10, same reasoning as keeping `InviteEmailSender`
+    inside `iam/internal`). On 2026-10-02 it was renamed `notification` and
+    gained a package-private `NotificationChannel` with Bale as its only channel
+    (PRs #87/#88, at the owner's request); that §10 rule is superseded. The
+    YAGNI concern still holds for what is not built: no second channel, no
+    multi-channel policy, nothing in `platform`. A second channel is added
+    inside this module. Current shape:
+    `openspec/changes/notification-channel-abstraction.md`.
   - Identity linking is **phone-number-based**, not `InviteToken`-based: a
     parent claims their phone via authenticated `PUT /api/me/phone`
     (`iam.UserEntity.phoneNumber`), then Bale's native "share contact" flow
     resolves an incoming chat to that phone number, linking `chat_id` → user
-    (`bale.internal.BaleLinkEntity`, upserted on re-link).
+    (`notification.internal.BaleLinkEntity`, upserted on re-link).
   - This forced a real prerequisite that didn't exist before:
     **`academic.StudentGuardianEntity`** + `AcademicFacade.linkGuardian` /
     `listGuardians` / `listWards`, gated by a new `GUARDIAN_MANAGE` permission
@@ -194,7 +200,7 @@ product** — see §2.
     the codebase (previously `PARENT` was just a role with no link to *which*
     child). This is reusable by any future parent-facing feature, not just the
     bot — worth keeping in mind for §5 item 4 (`homework`) and beyond.
-  - Outbound flow: `finance.InvoiceIssuedEvent` → `bale.internal.
+  - Outbound flow: `finance.InvoiceIssuedEvent` → `notification.internal.
     InvoiceIssuedEventListener` notifies the student and every linked guardian
     — same audit-listener shape as `FinanceAuditEventListener` (`CLAUDE_LEGACY.md`
     §3), just pushing via the bot instead of writing an audit row.
@@ -264,10 +270,11 @@ product** — see §2.
    green).
 2. Push notification provider for the native app — still open, deliberately
    deferred past the read-only shell (§5 item 3).
-3. Is a **second, fully-independent Telegram module** worth building at all,
-   given Telegram's own unreliability in Iran and the now-explicit rule
-   (`CLAUDE_LEGACY.md` §10) against sharing code with `bale`? Leaning Bale-only
-   unless a concrete need surfaces.
+3. Is a **second channel (Telegram)** worth building at all, given Telegram's own
+   unreliability in Iran? It would be a second `NotificationChannel` inside the
+   `notification` module (the earlier §10 rule against that is superseded,
+   2026-10-02), and the fallback-vs-send-to-all policy would have to be decided
+   first. Leaning Bale-only unless a concrete need surfaces.
 4. BigBlueButton hosting/ops — self-hosted infra for it doesn't exist yet; who
    runs it and where is unresolved.
 5. Should the Bale-established `phoneNumber` + `StudentGuardianEntity` model
