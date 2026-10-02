@@ -28,6 +28,16 @@ result (best-effort by contract). `iam` sends OTP SMS through its own
 - `NotificationFacade`'s public API is unchanged; no other module is affected.
 - With one channel the behavior is identical to before.
 
+## Supersedes
+
+`CLAUDE_LEGACY.md` §10 said not to build a generic notification/messaging
+abstraction and to give a second channel its own module. That rule is
+superseded (struck through there with a 2026-10-02 note): it was a YAGNI
+guardrail with no recorded technical incident behind it, and the owner asked for
+the rename and the channel layer. The same YAGNI concern still governs what is
+not built — a second channel, a multi-channel policy, or anything in `platform`.
+A second channel is added inside this module.
+
 ## Compatibility And Security
 
 No REST, permission, tenant, schema, configuration or event change. No new

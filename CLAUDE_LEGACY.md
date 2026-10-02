@@ -2392,11 +2392,18 @@ The full phase-by-phase build history (Phases A through O) has moved to
   mutation exists — see §3's audit pattern.
 - **Do not assume a `@RequiresPermission`-annotated controller's `schoolId` path
   variable is trustworthy without checking it against `TenantContext`** — see §5.
-- **Do not build a generic `Notification`/messaging abstraction.** The `bale`
+- ~~**Do not build a generic `Notification`/messaging abstraction.** The `bale`
   module is Bale-specific on purpose (§3, §4's BaleLink note) — the same YAGNI
   reasoning that keeps `InviteEmailSender` inside `iam/internal` instead of a
   shared `platform` abstraction. Build a second channel's own module when a
-  second channel is actually requested, not before.
+  second channel is actually requested, not before.~~ — **superseded
+  2026-10-02.** The module was renamed `notification` (PR #87) and gained a
+  package-private `NotificationChannel` with Bale as its only channel (PR #88),
+  both at the owner's explicit request. The YAGNI concern still stands for what
+  is *not* built: no second channel, no multi-channel policy, and nothing in
+  `platform`. A second channel is added inside the `notification` module, not as
+  a separate module. See `openspec/changes/rename-bale-module-to-notification.md`
+  and `openspec/changes/notification-channel-abstraction.md`.
 - ~~Do not build a grades data model or UI~~ — **resolved 2026-07-18, §11
   Q8.** The grades data model and REST layer are built (§4's Grade
   subsection, §7 Done) — the four decisions that unblocked it (per-class
