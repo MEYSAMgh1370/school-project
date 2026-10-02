@@ -29,9 +29,9 @@ public interface AcademicFacade {
     /**
      * نسخه‌ی Optional از getStudentInfo برای فراخوان‌هایی که «نبودن
      * دانش‌آموز» برایشان حالت عادی است، نه خطای دامنه - مثل
-     * bale.InvoiceIssuedEventListener که برای فاکتوری با studentId بدون
+     * notification.internal.InvoiceIssuedEventListener که برای فاکتوری با studentId بدون
      * StudentEntity فقط باید اطلاع‌رسانی را رد کند (همان قرارداد
-     * findMyEnrollment/BaleFacade.sendMessageToUser).
+     * findMyEnrollment/NotificationFacade.sendMessageToUser).
      */
     Optional<StudentInfo> findStudentInfo(Long studentId);
 
@@ -116,7 +116,7 @@ public interface AcademicFacade {
      * دانش‌آموز). Optional، نه throwing: «این کاربر در این مدرسه دانش‌آموز
      * نیست» یک حالت عادی است (مثلاً یک SCHOOL_ADMIN یا TEACHER که اصلاً
      * StudentEntity ندارد)، نه یک خطای دامنه - همان قرارداد
-     * issueInviteToken/BaleFacade.sendMessageToUser.
+     * issueInviteToken/NotificationFacade.sendMessageToUser.
      */
     Optional<EnrollmentInfo> findMyEnrollment(Long userId, Long schoolId);
 

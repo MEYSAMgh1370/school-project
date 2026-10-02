@@ -1,16 +1,16 @@
-package com.example.roshdeandishe.bale.internal;
+package com.example.roshdeandishe.notification.internal;
 
-import com.example.roshdeandishe.bale.BaleFacade;
+import com.example.roshdeandishe.notification.NotificationFacade;
 import org.springframework.stereotype.Service;
 
 @Service
-class BaleFacadeImpl implements BaleFacade {
+class NotificationFacadeImpl implements NotificationFacade {
 
     private final BaleLinkRepository baleLinkRepository;
     private final BaleClient baleClient;
     private final BaleWebhookService webhookService;
 
-    BaleFacadeImpl(BaleLinkRepository baleLinkRepository, BaleClient baleClient, BaleWebhookService webhookService) {
+    NotificationFacadeImpl(BaleLinkRepository baleLinkRepository, BaleClient baleClient, BaleWebhookService webhookService) {
         this.baleLinkRepository = baleLinkRepository;
         this.baleClient = baleClient;
         this.webhookService = webhookService;
