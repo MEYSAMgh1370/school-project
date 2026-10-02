@@ -74,7 +74,8 @@ public interface AcademicFacade {
 
     /**
      * درس‌های سراسریِ هم‌پایه‌ی یک کلاس، به ترتیب نام - برای انتخابگر درس در
-     * دفتر نمرات. فهرست فقط‌خواندنی است (openspec/changes/grades-by-course.md).
+     * دفتر نمرات (فقط درس‌های نمره‌پذیر: درسِ {@code graded = false} فقط در برنامهٔ
+     * کلاسی می‌آید). فهرست فقط‌خواندنی است (openspec/changes/grades-by-course.md).
      * AcademicError.ClassNotFound اگر کلاس متعلق به این مدرسه نباشد.
      */
     List<CourseInfo> listCoursesForClass(Long schoolId, Long classId);

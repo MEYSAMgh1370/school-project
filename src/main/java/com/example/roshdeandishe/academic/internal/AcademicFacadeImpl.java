@@ -140,6 +140,9 @@ class AcademicFacadeImpl implements AcademicFacade {
             if (course.getGradeLevel() != classEntity.getGradeLevel()) {
                 throw new AcademicException(new AcademicError.CourseNotForClass(courseId, classId));
             }
+            if (!course.isGraded()) {
+                throw new AcademicException(new AcademicError.CourseNotGradable(courseId));
+            }
         }
         StudentEntity student = studentRepository.findById(studentId)
                 .orElseThrow(() -> new AcademicException(new AcademicError.StudentNotFound(studentId)));
@@ -210,7 +213,7 @@ class AcademicFacadeImpl implements AcademicFacade {
     @Override
     public List<CourseInfo> listCoursesForClass(Long schoolId, Long classId) {
         ClassEntity classEntity = requireClassInSchool(schoolId, classId);
-        return courseRepository.findByGradeLevelOrderByNameAsc(classEntity.getGradeLevel()).stream()
+        return courseRepository.findByGradeLevelAndGradedTrueOrderByNameAsc(classEntity.getGradeLevel()).stream()
                 .map(c -> new CourseInfo(new CourseId(c.getId()), c.getGradeLevel(), c.getName()))
                 .toList();
     }

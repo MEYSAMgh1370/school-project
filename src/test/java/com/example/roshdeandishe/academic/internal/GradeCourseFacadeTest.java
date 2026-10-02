@@ -158,6 +158,19 @@ class GradeCourseFacadeTest {
     }
 
     @Test
+    void aCourseThatIsNotGradedCannotReceiveAGradeAndNothingIsStored() {
+        CourseEntity club = course(33L, GRADE_LEVEL, "کارگاه");
+        ReflectionTestUtils.setField(club, "graded", false);
+        when(courses.findById(33L)).thenReturn(Optional.of(club));
+
+        assertThatThrownBy(() -> facade.recordGrade(
+                SCHOOL, STUDENT, CLASS_ID, "1405", GradingTerm.FIRST, null, new BigDecimal("12"), null, 33L))
+                .isInstanceOfSatisfying(AcademicException.class, e ->
+                        assertThat(e.error()).isEqualTo(new AcademicError.CourseNotGradable(33L)));
+        verify(grades, never()).save(any());
+    }
+
+    @Test
     void theSchemeAndRangeRulesStillApplyToACourseGrade() {
         when(courses.findById(30L)).thenReturn(Optional.of(course(30L, GRADE_LEVEL, "ریاضی")));
 
@@ -208,7 +221,7 @@ class GradeCourseFacadeTest {
 
     @Test
     void coursesOfAClassAreTheGlobalCoursesOfItsGradeLevel() {
-        when(courses.findByGradeLevelOrderByNameAsc(GRADE_LEVEL)).thenReturn(List.of(
+        when(courses.findByGradeLevelAndGradedTrueOrderByNameAsc(GRADE_LEVEL)).thenReturn(List.of(
                 course(30L, GRADE_LEVEL, "ریاضی"), course(31L, GRADE_LEVEL, "علوم")));
 
         List<CourseInfo> result = facade.listCoursesForClass(SCHOOL, CLASS_ID);
@@ -222,7 +235,7 @@ class GradeCourseFacadeTest {
         assertThatThrownBy(() -> facade.listCoursesForClass(SCHOOL + 1, CLASS_ID))
                 .isInstanceOfSatisfying(AcademicException.class, e ->
                         assertThat(e.error()).isEqualTo(new AcademicError.ClassNotFound(CLASS_ID)));
-        verify(courses, never()).findByGradeLevelOrderByNameAsc(org.mockito.ArgumentMatchers.anyInt());
+        verify(courses, never()).findByGradeLevelAndGradedTrueOrderByNameAsc(org.mockito.ArgumentMatchers.anyInt());
     }
 
     private static GradeEntity gradeRow(Long id, Long courseId) {
