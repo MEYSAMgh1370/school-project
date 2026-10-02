@@ -14,9 +14,12 @@ document.addEventListener('alpine:init', () => {
         error: '',
         // پاسخ کهنه (مدرسه یا نقشِ عوض‌شده) دور ریخته می‌شود
         seq: 0,
-        todayCode: window.TimetableGrid.DAY_BY_JS_INDEX[new Date().getDay()] || null,
+        todayCode: window.TimetableGrid.todayCode(),
 
         init() {
+            window.TimetableGrid.watchToday((code) => {
+                this.todayCode = code;
+            });
             const saved = parseInt(localStorage.getItem('selectedSchoolId') || '', 10);
             this.schoolId = Number.isInteger(saved) ? saved : null;
             window.addEventListener('school-changed', (e) => {
