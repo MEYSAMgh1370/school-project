@@ -79,6 +79,8 @@ public class TenantResolverFilter extends OncePerRequestFilter {
             // خودش هم زیرمجموعه‌ی پیشوند /api/me است و بدون X-School-ID کار
             // می‌کند (schoolId از path می‌آید، نه هدر)
             "/my-grades",
+            // همان استدلال /people برای صفحه‌ی «سال تحصیلی» (تنظیم سال جاریِ مدرسه)
+            "/academic-year",
             // صفحه‌ی ثبت مدرسه: مدرسه هنوز وجود ندارد که schoolId داشته باشد
             "/schools/new",
             // درِ ورودی برنددار مدرسه (/s/{slug}): صفحه‌ی عمومی، بازدیدکننده

@@ -16,4 +16,8 @@ public sealed interface SchoolError {
 
     record SlugAlreadyTaken(String slug) implements SchoolError {
     }
+
+    /** academicYearId ای که در فهرست سراسری سال‌های تحصیلی نیست. */
+    record AcademicYearNotFound(Long academicYearId) implements SchoolError {
+    }
 }

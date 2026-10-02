@@ -34,9 +34,11 @@ class SchoolFacadeImpl implements SchoolFacade {
     );
 
     private final SchoolRepository schoolRepository;
+    private final AcademicYearRepository academicYearRepository;
 
-    SchoolFacadeImpl(SchoolRepository schoolRepository) {
+    SchoolFacadeImpl(SchoolRepository schoolRepository, AcademicYearRepository academicYearRepository) {
         this.schoolRepository = schoolRepository;
+        this.academicYearRepository = academicYearRepository;
     }
 
     @Override
@@ -72,6 +74,39 @@ class SchoolFacadeImpl implements SchoolFacade {
                 .orElseThrow(() -> new SchoolException(new SchoolError.SchoolNotFound(schoolId.value())));
         entity.setStatus(status);
         schoolRepository.save(entity);
+    }
+
+    @Override
+    public List<AcademicYearInfo> listAcademicYears() {
+        return academicYearRepository.findAllByOrderByStartYearAsc().stream()
+                .map(SchoolFacadeImpl::toYearInfo)
+                .toList();
+    }
+
+    @Override
+    public Optional<AcademicYearInfo> findCurrentAcademicYear(SchoolId schoolId) {
+        SchoolEntity school = schoolRepository.findById(schoolId.value())
+                .orElseThrow(() -> new SchoolException(new SchoolError.SchoolNotFound(schoolId.value())));
+        if (school.getCurrentAcademicYearId() == null) {
+            return Optional.empty();
+        }
+        return academicYearRepository.findById(school.getCurrentAcademicYearId())
+                .map(SchoolFacadeImpl::toYearInfo);
+    }
+
+    @Override
+    @Transactional
+    public void setCurrentAcademicYear(SchoolId schoolId, AcademicYearId academicYearId) {
+        SchoolEntity school = schoolRepository.findById(schoolId.value())
+                .orElseThrow(() -> new SchoolException(new SchoolError.SchoolNotFound(schoolId.value())));
+        AcademicYearEntity year = academicYearRepository.findById(academicYearId.value())
+                .orElseThrow(() -> new SchoolException(new SchoolError.AcademicYearNotFound(academicYearId.value())));
+        school.setCurrentAcademicYearId(year.getId());
+        schoolRepository.save(school);
+    }
+
+    private static AcademicYearInfo toYearInfo(AcademicYearEntity entity) {
+        return new AcademicYearInfo(new AcademicYearId(entity.getId()), entity.getCode(), entity.getStartYear());
     }
 
     /**

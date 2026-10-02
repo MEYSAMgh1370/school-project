@@ -49,6 +49,11 @@ public class SchoolExceptionHandler {
                     "نشانی اختصاصی قبلاً گرفته شده",
                     "نشانی «" + e.slug() + "» قبلاً توسط مدرسه‌ی دیگری ثبت شده است. نشانی دیگری انتخاب کنید."
             );
+            case SchoolError.AcademicYearNotFound e -> ProblemDetailFactory.problem(
+                    HttpStatus.NOT_FOUND, "academic-year-not-found",
+                    "سال تحصیلی یافت نشد",
+                    "سال تحصیلی‌ای با شناسه " + e.academicYearId() + " در فهرست سال‌ها نیست."
+            );
         };
     }
 }
