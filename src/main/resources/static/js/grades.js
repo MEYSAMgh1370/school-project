@@ -278,6 +278,10 @@ document.addEventListener('alpine:init', () => {
             row.saving = true;
             this.error = '';
             this.notice = '';
+            // درس (و برچسبش) همان لحظه‌ی ارسال ثابت می‌شود: اگر کاربر وسط درخواست
+            // درس را عوض کند، پیام موفقیت باید نام درسی را بگوید که واقعاً ثبت شد.
+            const submittedCourseId = this.filter.courseId ? parseInt(this.filter.courseId, 10) : null;
+            const submittedCourseLabel = this.courseLabel();
             try {
                 const response = await fetch(this.gradesBase(), {
                     method: 'POST',
@@ -294,7 +298,7 @@ document.addEventListener('alpine:init', () => {
                         descriptiveLevel: scheme === 'DESCRIPTIVE' ? row.descriptiveLevel : null,
                         numericScore: scheme === 'NUMERIC' ? row.numericScore : null,
                         comment: row.comment || null,
-                        courseId: this.filter.courseId ? parseInt(this.filter.courseId, 10) : null
+                        courseId: submittedCourseId
                     })
                 });
                 if (!response.ok) {
@@ -304,7 +308,7 @@ document.addEventListener('alpine:init', () => {
                 }
                 const saved = await response.json();
                 row.recordedAt = saved.recordedAt;
-                this.notice = `نمره‌ی ${row.name} (${this.courseLabel()}) با موفقیت ثبت شد.`;
+                this.notice = `نمره‌ی ${row.name} (${submittedCourseLabel}) با موفقیت ثبت شد.`;
             } catch (e) {
                 this.error = 'ارتباط با سرور برقرار نشد.';
             } finally {
