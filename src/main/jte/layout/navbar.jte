@@ -82,13 +82,14 @@
             <li><a href="/dashboard">داشبورد</a></li>
         </ul>
         @if(!navbar.schools().isEmpty())
-            <div x-cloak x-show="['SCHOOL_ADMIN'].includes(selectedRole)" data-group="0">
+            <div x-cloak x-show="['SCHOOL_ADMIN', 'TEACHER'].includes(selectedRole)" data-group="0">
                 <button type="button" class="app-sidebar-toggle" aria-controls="sidebar-group-0-list" :aria-expanded="isGroupOpen(0)" @click="toggleGroup(0)">
                     <span>مدرسه</span>
                     <span class="app-sidebar-chevron" aria-hidden="true"></span>
                 </button>
                 <ul class="menu-list" id="sidebar-group-0-list" x-show="isGroupOpen(0)">
                     <li><a href="/people" x-show="selectedRole === 'SCHOOL_ADMIN'">اعضای مدرسه</a></li>
+                    <li><a href="/students" x-show="selectedRole === 'SCHOOL_ADMIN' || selectedRole === 'TEACHER'">دانش‌آموزان</a></li>
                     <li><a href="/roles" x-show="selectedRole === 'SCHOOL_ADMIN'">نقش‌ها و دسترسی‌ها</a></li>
                 </ul>
             </div>
@@ -108,11 +109,10 @@
             </div>
             <div x-cloak x-show="['SCHOOL_ADMIN', 'TEACHER', 'STUDENT', 'PARENT'].includes(selectedRole)" data-group="2">
                 <button type="button" class="app-sidebar-toggle" aria-controls="sidebar-group-2-list" :aria-expanded="isGroupOpen(2)" @click="toggleGroup(2)">
-                    <span>دانش‌آموزان و نمرات</span>
+                    <span>نمرات</span>
                     <span class="app-sidebar-chevron" aria-hidden="true"></span>
                 </button>
                 <ul class="menu-list" id="sidebar-group-2-list" x-show="isGroupOpen(2)">
-                    <li><a href="/students" x-show="selectedRole === 'SCHOOL_ADMIN' || selectedRole === 'TEACHER'">دانش‌آموزان</a></li>
                     <li><a href="/grades" x-show="selectedRole === 'SCHOOL_ADMIN' || selectedRole === 'TEACHER'">نمرات</a></li>
                     <li><a href="/my-grades" x-show="selectedRole === 'STUDENT' || selectedRole === 'PARENT'">نمره‌های من</a></li>
                 </ul>
