@@ -22,6 +22,10 @@ interface TimetablePeriodRepository extends JpaRepository<TimetablePeriodEntity,
     @Query(value = "select 1 from (select pg_advisory_xact_lock(:namespace, :key)) as locked", nativeQuery = true)
     int lockSchoolYear(int namespace, int key);
 
+    /** قفلِ یک زنگ: حذفِ زنگ و ثبتِ خانه برای آن پشت سر هم اجرا می‌شوند (قفلِ خانه همیشه بعد از این گرفته می‌شود). */
+    @Query(value = "select 1 from (select pg_advisory_xact_lock(:namespace, :key)) as locked", nativeQuery = true)
+    int lockPeriod(int namespace, int key);
+
     @Query("select coalesce(max(p.position), 0) from TimetablePeriodEntity p "
             + "where p.schoolId = :schoolId and p.academicYear = :academicYear")
     int maxPosition(Long schoolId, String academicYear);

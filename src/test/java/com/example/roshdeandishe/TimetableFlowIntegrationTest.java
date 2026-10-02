@@ -736,6 +736,38 @@ class TimetableFlowIntegrationTest {
     }
 
     @Test
+    void deletingAPeriodWhileACellIsBeingSetNeverEndsInAServerError() throws Exception {
+        MockHttpSession admin = loginAsAdmin();
+        long classId = createClass(admin, "پایه پنجم - حذف و ثبت", 5);
+        long math = insertCourse(5, "ریاضی", true);
+        java.util.concurrent.ExecutorService pool = java.util.concurrent.Executors.newFixedThreadPool(2);
+        try {
+            for (int round = 0; round < 15; round++) {
+                jdbc.update("delete from academic.timetable_entries");
+                jdbc.update("delete from academic.timetable_periods");
+                long period = createPeriod(admin, "زنگ", "08:00", "08:45");
+                java.util.concurrent.CyclicBarrier barrier = new java.util.concurrent.CyclicBarrier(2);
+                var set = pool.submit(() -> {
+                    barrier.await();
+                    return setEntry(admin, classId, period, "SAT", math, null, null).andReturn().getResponse().getStatus();
+                });
+                var del = pool.submit(() -> {
+                    barrier.await();
+                    return send(admin, delete("/api/admin/schools/1/timetable/periods/" + period), null)
+                            .andReturn().getResponse().getStatus();
+                });
+                int setStatus = set.get();
+                int delStatus = del.get();
+                // یا خانه اول نشست (ثبت 200، حذف 409) یا زنگ اول رفت (حذف 204، ثبت 404)؛ هرگز 500
+                assertThat(java.util.List.of(setStatus, delStatus)).as("round " + round)
+                        .isIn(java.util.List.of(200, 409), java.util.List.of(404, 204));
+            }
+        } finally {
+            pool.shutdown();
+        }
+    }
+
+    @Test
     void concurrentActivitiesWithTheSameNameLetOneThroughAndTheOtherGetsAConflict() throws Exception {
         MockHttpSession admin = loginAsAdmin();
         java.util.concurrent.ExecutorService pool = java.util.concurrent.Executors.newFixedThreadPool(2);

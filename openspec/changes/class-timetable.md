@@ -213,6 +213,7 @@ natural follow-up), per-school configurable school days, and the Android client.
   free range cannot both pass (no exclusion constraint: it needs the `btree_gist`
   extension).
 - Setting a cell takes an advisory lock per (class, weekday, period) before reading the existing row, so two admins filling the same empty cell are serialized (the second replaces the first) instead of one failing on the unique index.
+- Deleting a period or an activity and writing a cell for it are serialized with row-level advisory locks (lock order is always period, then activity, then cell; clearing a cell takes the cell lock), so a concurrent delete and set end as `period-has-entries`/`period-not-found` (or `activity-in-use`/`activity-not-found`), never as a foreign-key `500`.
 - `GET /api/me/.../timetable` ties each view to an **active** membership with the
   matching role in that school (`STUDENT` for `OWN`, `PARENT` for `WARD`, `TEACHER` for
   `TEACHING`): enrollments, guardian links and timetable cells survive deactivating a

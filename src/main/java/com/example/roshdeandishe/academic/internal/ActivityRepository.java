@@ -14,4 +14,8 @@ interface ActivityRepository extends JpaRepository<ActivityEntity, Long> {
     boolean existsBySchoolIdAndName(Long schoolId, String name);
 
     boolean existsBySchoolIdIsNullAndName(String name);
+
+    /** قفلِ یک فعالیت: حذفِ فعالیت و ثبتِ خانه با آن پشت سر هم اجرا می‌شوند. */
+    @Query(value = "select 1 from (select pg_advisory_xact_lock(:namespace, :key)) as locked", nativeQuery = true)
+    int lockActivity(int namespace, int key);
 }

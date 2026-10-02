@@ -28,6 +28,8 @@ class TimetableFacadeImpl implements TimetableFacade {
     private static final int MAX_NAME_LENGTH = 128;
     private static final int PERIOD_LOCK_NAMESPACE = 7401;
     private static final int CELL_LOCK_NAMESPACE = 7402;
+    private static final int PERIOD_ROW_LOCK_NAMESPACE = 7403;
+    private static final int ACTIVITY_ROW_LOCK_NAMESPACE = 7404;
     private static final String TEACHER_SLOT_INDEX = "timetable_entries_teacher_slot_unique";
     private static final List<String> ACTIVITY_NAME_INDEXES =
             List.of("activities_school_name_unique", "activities_default_name_unique");
@@ -97,6 +99,9 @@ class TimetableFacadeImpl implements TimetableFacade {
     @Override
     @Transactional
     public void deletePeriod(Long schoolId, Long periodId) {
+        // با ثبتِ هم‌زمانِ خانه برای همین زنگ سریالی می‌شود: یکی از دو «زنگ خانه دارد» یا
+        // «زنگ یافت نشد» می‌گیرد، نه خطای کلیدِ خارجیِ ۵۰۰
+        periodRepository.lockPeriod(PERIOD_ROW_LOCK_NAMESPACE, Objects.hash(periodId));
         TimetablePeriodEntity period = requirePeriodInSchool(schoolId, periodId);
         if (entryRepository.existsByPeriodId(periodId)) {
             throw new AcademicException(new AcademicError.PeriodHasEntries(periodId));
@@ -135,6 +140,7 @@ class TimetableFacadeImpl implements TimetableFacade {
     @Override
     @Transactional
     public void deleteActivity(Long schoolId, Long activityId) {
+        activityRepository.lockActivity(ACTIVITY_ROW_LOCK_NAMESPACE, Objects.hash(activityId));
         ActivityEntity activity = requireOwnActivity(schoolId, activityId);
         if (entryRepository.existsByActivityId(activityId)) {
             throw new AcademicException(new AcademicError.ActivityInUse(activityId));
@@ -163,6 +169,9 @@ class TimetableFacadeImpl implements TimetableFacade {
     @Transactional
     public EntryInfo setEntry(Long schoolId, Long classId, Long periodId, TimetableDay weekday,
                               Long courseId, Long activityId, Long teacherUserId) {
+        // ترتیبِ قفل‌ها همیشه زنگ ← فعالیت ← خانه است (حذفِ زنگ/فعالیت فقط قفلِ خودش را می‌گیرد)، پس
+        // بن‌بست نمی‌شود؛ زنگ بعد از قفل خوانده می‌شود تا حذفِ هم‌زمان دیده شود
+        periodRepository.lockPeriod(PERIOD_ROW_LOCK_NAMESPACE, Objects.hash(periodId));
         ClassEntity classEntity = requireClassInSchool(schoolId, classId);
         requirePeriodInSchool(schoolId, periodId);
         if (weekday == null) {
@@ -180,6 +189,7 @@ class TimetableFacadeImpl implements TimetableFacade {
             }
         } else {
             // پیش‌فرضِ پلتفرم یا فعالیتِ همین مدرسه؛ فعالیتِ مدرسه‌ی دیگر «یافت نشد»
+            activityRepository.lockActivity(ACTIVITY_ROW_LOCK_NAMESPACE, Objects.hash(activityId));
             activityRepository.findById(activityId)
                     .filter(a -> a.getSchoolId() == null || a.getSchoolId().equals(schoolId))
                     .orElseThrow(() -> new AcademicException(new AcademicError.ActivityNotFound(activityId)));
@@ -225,6 +235,8 @@ class TimetableFacadeImpl implements TimetableFacade {
         if (weekday == null) {
             throw new AcademicException(new AcademicError.InvalidTimetableEntry("روز هفته الزامی است"));
         }
+        // همان قفلِ setEntry، تا پاک‌کردن و ویرایشِ هم‌زمانِ یک خانه سریالی شوند
+        entryRepository.lockCell(CELL_LOCK_NAMESPACE, Objects.hash(classId, weekday.name(), periodId));
         entryRepository.findByClassIdAndWeekdayAndPeriodId(classId, weekday, periodId)
                 .ifPresent(entryRepository::delete);
     }

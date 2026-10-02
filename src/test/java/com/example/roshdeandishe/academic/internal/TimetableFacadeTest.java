@@ -341,6 +341,51 @@ class TimetableFacadeTest {
     }
 
     @Test
+    void clearingACellTakesTheSameCellLockBeforeReadingTheRow() {
+        facade.clearEntry(SCHOOL, CLASS_ID, PERIOD, TimetableDay.MON);
+
+        org.mockito.InOrder order = org.mockito.Mockito.inOrder(entries);
+        order.verify(entries).lockCell(org.mockito.ArgumentMatchers.anyInt(), org.mockito.ArgumentMatchers.anyInt());
+        order.verify(entries).findByClassIdAndWeekdayAndPeriodId(CLASS_ID, TimetableDay.MON, PERIOD);
+    }
+
+    @Test
+    void settingACellLocksItsPeriodAndActivityBeforeReadingThem() {
+        when(activities.findById(61L)).thenReturn(Optional.of(activity(61L, null, "ورزش")));
+
+        facade.setEntry(SCHOOL, CLASS_ID, PERIOD, TimetableDay.SAT, null, 61L, null);
+
+        org.mockito.InOrder order = org.mockito.Mockito.inOrder(periods, activities, entries);
+        order.verify(periods).lockPeriod(org.mockito.ArgumentMatchers.anyInt(), org.mockito.ArgumentMatchers.anyInt());
+        order.verify(periods).findById(PERIOD);
+        order.verify(activities).lockActivity(org.mockito.ArgumentMatchers.anyInt(), org.mockito.ArgumentMatchers.anyInt());
+        order.verify(activities).findById(61L);
+        order.verify(entries).lockCell(org.mockito.ArgumentMatchers.anyInt(), org.mockito.ArgumentMatchers.anyInt());
+    }
+
+    @Test
+    void deletingAPeriodLocksItBeforeCheckingForEntries() {
+        facade.deletePeriod(SCHOOL, PERIOD);
+
+        org.mockito.InOrder order = org.mockito.Mockito.inOrder(periods, entries);
+        order.verify(periods).lockPeriod(org.mockito.ArgumentMatchers.anyInt(), org.mockito.ArgumentMatchers.anyInt());
+        order.verify(periods).findById(PERIOD);
+        order.verify(entries).existsByPeriodId(PERIOD);
+    }
+
+    @Test
+    void deletingAnActivityLocksItBeforeCheckingForEntries() {
+        when(activities.findById(63L)).thenReturn(Optional.of(activity(63L, SCHOOL, "شطرنج")));
+
+        facade.deleteActivity(SCHOOL, 63L);
+
+        org.mockito.InOrder order = org.mockito.Mockito.inOrder(activities, entries);
+        order.verify(activities).lockActivity(org.mockito.ArgumentMatchers.anyInt(), org.mockito.ArgumentMatchers.anyInt());
+        order.verify(activities).findById(63L);
+        order.verify(entries).existsByActivityId(63L);
+    }
+
+    @Test
     void aNonGradedCourseCanBeTimetabled() {
         when(courses.findById(33L)).thenReturn(Optional.of(course(33L, GRADE_LEVEL, false)));
 
