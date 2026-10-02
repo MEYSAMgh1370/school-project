@@ -14,6 +14,10 @@ document.addEventListener('alpine:init', () => {
         // (تغییرِ سریع درس/کلاس پاسخ کهنه را دور می‌ریزد، وگرنه جدولِ یک درس
         // با برچسب و ثبتِ درسِ دیگر نمایش داده می‌شد).
         loadSeq: 0,
+        // همین الگو برای درس‌ها و برای کلاس/دانش‌آموزان: فقط پاسخ آخرین درخواست
+        // (و فقط برای همان مدرسه/کلاس) اثر می‌گذارد.
+        courseSeq: 0,
+        schoolSeq: 0,
         loaded: false,
         blocked: false,
         error: '',
@@ -26,6 +30,9 @@ document.addEventListener('alpine:init', () => {
                 this.schoolId = e.detail.id;
                 this.error = '';
                 this.notice = '';
+                this.loadSeq++;
+                this.courseSeq++;
+                this.loading = false;
                 this.loaded = false;
                 this.roster = [];
                 this.courses = [];
@@ -34,7 +41,13 @@ document.addEventListener('alpine:init', () => {
             });
             // با عوض‌شدنِ کلاس، فهرست درس‌های همان پایه گرفته می‌شود و انتخابِ
             // درس به «نمره‌ی کل» برمی‌گردد (درسِ پایه‌ی قبلی برای این کلاس معتبر نیست).
+            // جدولِ کلاس قبلی هم کنار گذاشته می‌شود (و بارگذاری در جریانش دور ریخته
+            // می‌شود): ردیف‌های کلاس قبلی با کلاس جدید قابل ثبت نیستند.
             this.$watch('filter.classId', () => {
+                this.loadSeq++;
+                this.loading = false;
+                this.loaded = false;
+                this.roster = [];
                 this.filter.courseId = '';
                 this.loadCourses();
             });
@@ -82,6 +95,7 @@ document.addEventListener('alpine:init', () => {
         },
 
         async loadCourses() {
+            const seq = ++this.courseSeq;
             this.courses = [];
             const classId = this.filter.classId ? parseInt(this.filter.classId, 10) : null;
             if (!classId) {
@@ -93,15 +107,22 @@ document.addEventListener('alpine:init', () => {
                 });
                 if (!response.ok) {
                     // بدون فهرست درس‌ها، «نمره‌ی کل» همچنان قابل ثبت است
-                    this.error = (await this.classifyError(response)).message;
+                    const message = (await this.classifyError(response)).message;
+                    if (seq === this.courseSeq) {
+                        this.error = message;
+                    }
                     return;
                 }
-                // اگر کاربر در این فاصله کلاس را عوض کرده، پاسخِ کلاس قبلی را دور بریز
-                if (parseInt(this.filter.classId, 10) === classId) {
-                    this.courses = await response.json();
+                // بدنه اول خوانده می‌شود و درست قبل از انتساب بررسی می‌شود که هنوز همین
+                // درخواست آخرین است (کلاس/مدرسه ممکن است حین خواندنِ بدنه عوض شده باشد)
+                const courses = await response.json();
+                if (seq === this.courseSeq) {
+                    this.courses = courses;
                 }
             } catch (e) {
-                this.error = 'ارتباط با سرور برقرار نشد.';
+                if (seq === this.courseSeq) {
+                    this.error = 'ارتباط با سرور برقرار نشد.';
+                }
             }
         },
 
@@ -131,36 +152,50 @@ document.addEventListener('alpine:init', () => {
         },
 
         async loadClasses() {
+            const seq = ++this.schoolSeq;
+            const schoolId = this.schoolId;
             this.error = '';
             this.blocked = false;
             try {
                 const [classesResponse, studentsResponse, membershipsResponse] = await Promise.all([
-                    fetch(this.classesBase(), { headers: { 'X-School-ID': this.schoolId } }),
-                    fetch(this.studentsBase(), { headers: { 'X-School-ID': this.schoolId } }),
-                    fetch(this.membershipsBase(), { headers: { 'X-School-ID': this.schoolId } })
+                    fetch(this.classesBase(), { headers: { 'X-School-ID': schoolId } }),
+                    fetch(this.studentsBase(), { headers: { 'X-School-ID': schoolId } }),
+                    fetch(this.membershipsBase(), { headers: { 'X-School-ID': schoolId } })
                 ]);
                 if (!classesResponse.ok) {
                     const classified = await this.classifyError(classesResponse);
-                    this.error = classified.message;
-                    this.blocked = classified.blocking;
+                    if (seq === this.schoolSeq) {
+                        this.error = classified.message;
+                        this.blocked = classified.blocking;
+                    }
                     return;
                 }
-                this.classes = await classesResponse.json();
-                this.students = studentsResponse.ok ? await studentsResponse.json() : [];
+                const classes = await classesResponse.json();
+                const students = studentsResponse.ok ? await studentsResponse.json() : [];
+                let pupils;
                 if (membershipsResponse.ok) {
                     const memberships = await membershipsResponse.json();
-                    this.pupils = memberships.filter(m => m.active && m.roleCode === 'STUDENT');
+                    pupils = memberships.filter(m => m.active && m.roleCode === 'STUDENT');
                 } else {
                     // TEACHER can manage grades but intentionally cannot read the
                     // complete membership directory. Resolve only the roster names
                     // through MEMBER_NAMES_VIEW so every grade row remains identifiable.
-                    this.pupils = await window.MemberNames.resolve(
-                        this.schoolId,
-                        this.students.map(student => student.userId)
+                    pupils = await window.MemberNames.resolve(
+                        schoolId,
+                        students.map(student => student.userId)
                     );
                 }
+                // اگر در این فاصله مدرسه عوض شده، پاسخِ مدرسه‌ی قبلی دور ریخته می‌شود
+                if (seq !== this.schoolSeq) {
+                    return;
+                }
+                this.classes = classes;
+                this.students = students;
+                this.pupils = pupils;
             } catch (e) {
-                this.error = 'ارتباط با سرور برقرار نشد.';
+                if (seq === this.schoolSeq) {
+                    this.error = 'ارتباط با سرور برقرار نشد.';
+                }
             }
         },
 
