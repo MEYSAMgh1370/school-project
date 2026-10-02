@@ -35,6 +35,7 @@ import java.util.Set;
 public class WardsAssembler {
 
     private static final String PARENT_ROLE = "PARENT";
+    private static final String OWN_GRADES_LABEL = "نمره‌های من";
 
     private final IamFacade iamFacade;
     private final SchoolFacade schoolFacade;
@@ -60,14 +61,23 @@ public class WardsAssembler {
      * {@code MyGradesController} یکی است: آن endpoint فرزندان را مستقل از نقش
      * (listWards) برمی‌گرداند، پس مثلاً معلمِ فعالی که عضویتِ والدش غیرفعال
      * شده هم نامِ فرزندش را می‌بیند و با دانش‌آموزِ خودش اشتباه نمی‌شود. بدون
-     * فراخوانی finance.
+     * فراخوانی finance. خودِ کاربر (اگر دانش‌آموزِ آن مدرسه است) هم با
+     * {@code own = true} می‌آید، حتی بدون نمره.
      */
     public List<WardRef> wardRefsForCurrentUser() {
         UserId userId = iamFacade.currentUserId();
         List<WardRef> refs = new ArrayList<>();
         for (Long schoolId : activeSchoolIds(iamFacade.findMembershipsByUser(userId))) {
+            // خودِ کاربر اگر دانش‌آموزِ این مدرسه است - حتی بدون هیچ نمره‌ای -
+            // تا «نمره‌های من» از روی ردیف‌های نمره حدس زده نشود.
+            Optional<EnrollmentInfo> own = academicFacade.findMyEnrollment(userId.value(), schoolId);
+            own.ifPresent(enrollment -> refs.add(
+                    new WardRef(enrollment.studentId().value(), schoolId, OWN_GRADES_LABEL, true)));
             for (StudentInfo ward : academicFacade.listWards(userId.value(), schoolId)) {
-                refs.add(new WardRef(ward.id().value(), schoolId, wardName(ward)));
+                if (own.isPresent() && own.get().studentId().equals(ward.id())) {
+                    continue;
+                }
+                refs.add(new WardRef(ward.id().value(), schoolId, wardName(ward), false));
             }
         }
         return List.copyOf(refs);

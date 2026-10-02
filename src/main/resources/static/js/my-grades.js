@@ -22,7 +22,8 @@ document.addEventListener('alpine:init', () => {
             this.wardRefs = Array.from(document.querySelectorAll('#my-grades-wards span')).map((node) => ({
                 studentId: parseInt(node.dataset.studentId, 10),
                 schoolId: parseInt(node.dataset.schoolId, 10),
-                name: node.dataset.name
+                name: node.dataset.name,
+                own: node.dataset.own === 'true'
             }));
             const saved = parseInt(localStorage.getItem('selectedSchoolId') || '', 10);
             this.schoolId = Number.isInteger(saved) ? saved : null;
@@ -62,15 +63,16 @@ document.addEventListener('alpine:init', () => {
             }
         },
 
-        // یک گزینه برای هر فرزندِ این مدرسه (حتی بدون نمره) + هر دانش‌آموزی که
-        // در نمره‌ها هست و فرزندِ لینک‌شده نیست (یعنی خودِ کاربر: «نمره‌های من»).
-        // فرزندان بر اساس نام مرتب می‌شوند.
+        // یک گزینه برای هر دانش‌آموزِ شناخته‌شده‌ی این مدرسه از سمت سرور (فرزندان و
+        // خودِ کاربر «نمره‌های من»، حتی بدون نمره) + هر دانش‌آموزِ ناشناخته‌ای که در
+        // نمره‌ها آمده (محافظ: به‌عنوان «نمره‌های من»). فرزندان بر اساس نام مرتب
+        // می‌شوند و گزینه‌ی خودِ کاربر اول می‌آید.
         groups() {
             const byStudent = new Map();
             this.wardRefs
                 .filter((ward) => ward.schoolId === this.schoolId)
                 .forEach((ward) => byStudent.set(ward.studentId,
-                    { studentId: ward.studentId, label: ward.name, own: false, grades: [] }));
+                    { studentId: ward.studentId, label: ward.name, own: ward.own, grades: [] }));
             this.grades.forEach((grade) => {
                 if (!byStudent.has(grade.studentId)) {
                     byStudent.set(grade.studentId,

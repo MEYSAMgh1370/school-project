@@ -81,11 +81,16 @@ class MyPagesPerStudentRenderTest {
     void wardNamesReachThePageAsEscapedAttributesNotAHandBuiltJson() {
         String html = renderGrades(List.of(
                 new WardRef(100L, 5L, "آرین رضایی"),
-                new WardRef(101L, 6L, "نیکا \"کوچولو\" <b>رضایی</b>")));
+                new WardRef(101L, 6L, "نیکا \"کوچولو\" <b>رضایی</b>"),
+                new WardRef(102L, 5L, "نمره‌های من", true)));
 
         assertThat(html).contains("id=\"my-grades-wards\"");
         assertThat(html).contains("data-student-id=\"100\"", "data-school-id=\"5\"", "data-name=\"آرین رضایی\"");
         assertThat(html).contains("data-student-id=\"101\"", "data-school-id=\"6\"");
+        // خودِ کاربر (دانش‌آموزِ بدون نمره) هم با own=true می‌آید
+        // (JTE برای boolean=false خودِ attribute را حذف می‌کند؛ my-grades.js فقط 'true' را own می‌شناسد)
+        assertThat(html).contains("data-student-id=\"102\"", "data-own=\"true\"");
+        assertThat(html.split("data-own=").length - 1).isEqualTo(1);
         // نام با کوتیشن و تگ، escape می‌شود و attribute را نمی‌شکند
         assertThat(html).doesNotContain("<b>رضایی</b>").doesNotContain("data-name=\"نیکا \"کوچولو\"");
     }

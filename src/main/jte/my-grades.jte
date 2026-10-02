@@ -22,7 +22,7 @@
         <div hidden id="my-grades-wards">
             @for(var ward : wards)
                 <span data-student-id="${ward.studentId()}" data-school-id="${ward.schoolId()}"
-                      data-name="${ward.name()}"></span>
+                      data-name="${ward.name()}" data-own="${ward.own()}"></span>
             @endfor
         </div>
 

@@ -155,8 +155,36 @@ class WardsAssemblerTest {
         List<WardRef> refs = assembler.wardRefsForCurrentUser();
 
         assertThat(refs).containsExactly(new WardRef(100L, 5L, "آرین رضایی"), new WardRef(101L, 7L, "سارا کریمی"));
+        assertThat(refs).noneMatch(WardRef::own);
         verify(academic, never()).listWards(PARENT.value(), 6L);
         verify(finance, never()).listInvoicesForStudents(anyLong(), org.mockito.ArgumentMatchers.anyList());
+    }
+
+    @Test
+    void wardRefsIncludeTheUsersOwnStudentEvenWithoutAnyGrade() {
+        when(iam.currentUserId()).thenReturn(PARENT);
+        when(iam.findMembershipsByUser(PARENT)).thenReturn(List.of(
+                membership(5L, "STUDENT", true), membership(6L, "PARENT", true)));
+        when(academic.findMyEnrollment(PARENT.value(), 5L)).thenReturn(Optional.of(
+                new EnrollmentInfo(new StudentId(300L), 5L, new ClassId(3L), "پنجم", "الف")));
+        givenWard(6L, 100L, 200L, "آرین رضایی");
+
+        List<WardRef> refs = assembler.wardRefsForCurrentUser();
+
+        assertThat(refs).containsExactly(
+                new WardRef(300L, 5L, "نمره‌های من", true), new WardRef(100L, 6L, "آرین رضایی", false));
+    }
+
+    @Test
+    void anOwnStudentLinkedAsHisOwnWardAppearsOnlyOnceAsOwn() {
+        when(iam.currentUserId()).thenReturn(PARENT);
+        when(iam.findMembershipsByUser(PARENT)).thenReturn(List.of(membership(5L, "STUDENT", true)));
+        givenWard(5L, 100L, PARENT.value(), "خودم");
+        when(academic.findMyEnrollment(PARENT.value(), 5L)).thenReturn(Optional.of(
+                new EnrollmentInfo(new StudentId(100L), 5L, new ClassId(3L), "پنجم", "الف")));
+
+        assertThat(assembler.wardRefsForCurrentUser())
+                .containsExactly(new WardRef(100L, 5L, "نمره‌های من", true));
     }
 
     @Test

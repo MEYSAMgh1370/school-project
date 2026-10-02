@@ -45,8 +45,9 @@ schoolId)` (used by `MyInvoicesController` and the Bale "فرزندان من" co
   shows only that student's grades in the table below (no student column).
   The list holds one option per linked child of the selected school (also a child
   with no grades; the table then says «نمره‌ای برای این دانش‌آموز ثبت نشده است»),
-  plus «نمره‌های من» for the user's own grades (a student's own grades are not a
-  ward); options are sorted by name, the user's own first. Following a dashboard
+  plus «نمره‌های من» for the user's own student record when they are a student of
+  the school (even with no grades; the server passes it as `own`, not inferred
+  from grade rows); options are sorted by name, the user's own first. Following a dashboard
   card (`?student=<id>`) pre-selects that child; with no or an unknown/invalid
   `student` the first option is selected. With a single student the picker is
   hidden and only the name is shown. The toggle is a real button
