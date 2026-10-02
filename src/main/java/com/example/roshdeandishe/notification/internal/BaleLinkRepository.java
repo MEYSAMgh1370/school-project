@@ -1,4 +1,4 @@
-package com.example.roshdeandishe.bale.internal;
+package com.example.roshdeandishe.notification.internal;
 
 import org.springframework.data.jpa.repository.JpaRepository;
 

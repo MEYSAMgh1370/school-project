@@ -42,7 +42,7 @@ class StudyPlanFacadeImpl implements StudyPlanFacade {
     private final AcademicFacade academicFacade;
     private final IamFacade iamFacade;
     // عمداً مستقل ساخته می‌شود، نه تزریق Spring - همان دلیل مستندشده در
-    // bale.internal.BaleWebhookService: spring-modulith-events-jackson یک
+    // notification.internal.BaleWebhookService: spring-modulith-events-jackson یک
     // Jackson 3 (tools.jackson) دیگر هم روی classpath می‌آورد و auto-configuration
     // دیگر یک Bean واحد و بدون‌ابهام از com.fasterxml.jackson.databind.ObjectMapper نمی‌سازد.
     private final ObjectMapper objectMapper = new ObjectMapper();

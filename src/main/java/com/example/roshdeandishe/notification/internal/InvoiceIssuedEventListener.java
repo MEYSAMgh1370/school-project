@@ -1,8 +1,8 @@
-package com.example.roshdeandishe.bale.internal;
+package com.example.roshdeandishe.notification.internal;
 
 import com.example.roshdeandishe.academic.AcademicFacade;
 import com.example.roshdeandishe.academic.AcademicFacade.StudentInfo;
-import com.example.roshdeandishe.bale.BaleFacade;
+import com.example.roshdeandishe.notification.NotificationFacade;
 import com.example.roshdeandishe.finance.InvoiceIssuedEvent;
 import com.example.roshdeandishe.platform.TenantContext;
 import org.slf4j.Logger;
@@ -18,7 +18,7 @@ import java.util.Optional;
  * اطلاع‌رسانی خروجی، اولین موردِ واقعیِ این ماژول: وقتی فاکتوری صادر
  * می‌شود، هم خودِ دانش‌آموز (اگر حسابش را لینک کرده) و هم همه‌ی ولی‌های
  * لینک‌شده‌اش پیام می‌گیرند. اگر هیچ‌کدام لینک نکرده باشند،
- * BaleFacade.sendMessageToUser فقط false برمی‌گرداند - بدون خطا، بدون اثر.
+ * NotificationFacade.sendMessageToUser فقط false برمی‌گرداند - بدون خطا، بدون اثر.
  * <p>
  * همان الگوی بازیابی TenantContext که در FinanceAuditEventListener/
  * StudentEnrolledEventListener استفاده شده، اینجا هم لازم است - این
@@ -30,11 +30,11 @@ class InvoiceIssuedEventListener {
     private static final Logger log = LoggerFactory.getLogger(InvoiceIssuedEventListener.class);
 
     private final AcademicFacade academicFacade;
-    private final BaleFacade baleFacade;
+    private final NotificationFacade notificationFacade;
 
-    InvoiceIssuedEventListener(AcademicFacade academicFacade, BaleFacade baleFacade) {
+    InvoiceIssuedEventListener(AcademicFacade academicFacade, NotificationFacade notificationFacade) {
         this.academicFacade = academicFacade;
-        this.baleFacade = baleFacade;
+        this.notificationFacade = notificationFacade;
     }
 
     @ApplicationModuleListener
@@ -59,7 +59,7 @@ class InvoiceIssuedEventListener {
             recipients.addAll(academicFacade.listGuardians(student.schoolId(), student.id().value()));
 
             for (Long recipientUserId : recipients) {
-                baleFacade.sendMessageToUser(recipientUserId, text);
+                notificationFacade.sendMessageToUser(recipientUserId, text);
             }
         } finally {
             TenantContext.clear();

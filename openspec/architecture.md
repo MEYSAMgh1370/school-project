@@ -21,7 +21,7 @@ The base package is `com.example.roshdeandishe`. Important top-level modules inc
 - `school` - school records, self-service creation, slugs, status.
 - `academic` - classes, students, guardians, grades.
 - `finance` - tuition fees, invoices, payments, expenses, attachments, audit trail.
-- `bale` - Bale bot linking, webhook handling, invoice notifications.
+- `notification` - outbound notifications and the inbound Bale bot channel (account linking, webhook handling, invoice notifications). Bale is the only channel today; see [`changes/rename-bale-module-to-notification.md`](changes/rename-bale-module-to-notification.md).
 - `curriculum` - topics and question bank.
 - `studyplan` - study plans and generated schedule blocks.
 - `exam` - exams, attempts, tokenized exam-taking.
@@ -45,7 +45,7 @@ Within each domain module, classes are grouped by type:
 
 `config/` exists only in `iam` and `platform`, the only modules with
 `@Configuration` classes, filters, or aspects to hold. `dto/` exists only where
-a controller had nested request/response records to extract; `bale` has no
+a controller had nested request/response records to extract; `notification` has no
 `dto/`. `web` has no `internal/`/`shared/` split — it is a pure
 view-composition module with `controller/`, `dto/`, and `model/` (the shared
 navbar/role-label support classes) only.

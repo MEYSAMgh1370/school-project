@@ -1,4 +1,4 @@
-package com.example.roshdeandishe.bale.internal;
+package com.example.roshdeandishe.notification.internal;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 import org.slf4j.Logger;

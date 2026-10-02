@@ -92,7 +92,7 @@ Known intentional exceptions:
 - public pages and static assets;
 - auth/account endpoints;
 - `/api/me` and related current-user endpoints;
-- Bale webhook endpoints;
+- Bale webhook endpoints (`/api/bale/webhook`, served by the `notification` module);
 - tokenized exam-taking endpoints.
 
 Failure cases:

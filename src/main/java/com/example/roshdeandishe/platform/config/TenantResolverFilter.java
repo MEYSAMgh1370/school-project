@@ -88,7 +88,7 @@ public class TenantResolverFilter extends OncePerRequestFilter {
             "/s/",
             // وب‌هوک بله: فراخوان‌کننده سرور بله است، نه یک مرورگر که بتواند
             // X-School-ID بفرستد - مدرسه‌ی هدف از روی chatId/userId لینک‌شده
-            // در خودِ ماژول bale تشخیص داده می‌شود
+            // در خودِ ماژول notification تشخیص داده می‌شود
             "/api/bale/webhook",
             // جلسه‌ی آزمون‌دهی: مجوز و schoolId هر دو از توکن جلسه‌ی آزمون
             // (query param token) resolve می‌شوند، نه از این هدر - همان

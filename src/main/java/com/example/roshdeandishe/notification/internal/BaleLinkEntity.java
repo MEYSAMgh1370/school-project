@@ -1,4 +1,4 @@
-package com.example.roshdeandishe.bale.internal;
+package com.example.roshdeandishe.notification.internal;
 
 import jakarta.persistence.*;
 import lombok.Getter;
@@ -14,7 +14,7 @@ import java.time.Instant;
  * <p>
  * یک ردیف به‌ازای هر User (نه هر chat) - اگر همان کاربر از یک chatId
  * دیگر دوباره شماره‌اش را به اشتراک بگذارد، همین ردیف به‌روزرسانی
- * می‌شود، نه ردیف تازه (رجوع به BaleFacadeImpl.linkChat).
+ * می‌شود، نه ردیف تازه (رجوع به NotificationFacadeImpl.linkChat).
  */
 @Entity
 @Table(name = "bale_links", schema = "bale")

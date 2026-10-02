@@ -1,8 +1,8 @@
-package com.example.roshdeandishe.bale.internal;
+package com.example.roshdeandishe.notification.internal;
 
 import com.example.roshdeandishe.academic.AcademicFacade;
 import com.example.roshdeandishe.academic.AcademicFacade.StudentInfo;
-import com.example.roshdeandishe.bale.internal.BaleUpdate.BaleMessage;
+import com.example.roshdeandishe.notification.internal.BaleUpdate.BaleMessage;
 import com.example.roshdeandishe.finance.FinanceFacade;
 import com.example.roshdeandishe.iam.IamFacade;
 import com.example.roshdeandishe.iam.IamFacade.MembershipInfo;

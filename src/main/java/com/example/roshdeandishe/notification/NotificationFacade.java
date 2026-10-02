@@ -1,7 +1,7 @@
-package com.example.roshdeandishe.bale;
+package com.example.roshdeandishe.notification;
 
 /**
- * تنها نقطه‌ی ورود عمومی به ماژول Bale.
+ * تنها نقطه‌ی ورود عمومی به ماژول Notification (کانال فعلی: بله).
  * <p>
  * برخلاف بقیه‌ی ماژول‌ها، اینجا عمداً هیچ {@code shared/BaleError} سلطه‌ای
  * ساخته نشده: تنها متد این Facade هیچ حالت خطای دامنه‌محورِ واقعی‌ای ندارد
@@ -11,7 +11,7 @@ package com.example.roshdeandishe.bale;
  * boolean مدل شده، نه با یک ساختار sealed error که چیزی برای exhaustive
  * کردن ندارد.
  */
-public interface BaleFacade {
+public interface NotificationFacade {
 
     /**
      * اگر این کاربر حساب بله‌اش را لینک کرده باشد، پیام برایش ارسال

@@ -7,7 +7,7 @@ import org.springframework.stereotype.Component;
 
 /**
  * ارسال best-effort کد تأیید پیامکی - همان الگوی
- * {@code bale.internal.BaleClient}/{@code InviteEmailSender}: یک کلاس
+ * {@code notification.internal.BaleClient}/{@code InviteEmailSender}: یک کلاس
  * concrete (نه یک interface با چند پیاده‌سازی فرضی - هیچ ارائه‌دهنده‌ی
  * دومی هنوز درخواست نشده، ساختن انتزاع برایش خلاف YAGNI است). در dev/test
  * می‌تواند کد را در لاگ چاپ کند، ولی production باید fail-closed باشد: اگر

@@ -1,6 +1,6 @@
-package com.example.roshdeandishe.bale.controller;
+package com.example.roshdeandishe.notification.controller;
 
-import com.example.roshdeandishe.bale.BaleFacade;
+import com.example.roshdeandishe.notification.NotificationFacade;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -29,14 +29,14 @@ import java.security.MessageDigest;
 @RequestMapping("/api/bale/webhook")
 public class BaleWebhookController {
 
-    private final BaleFacade baleFacade;
+    private final NotificationFacade notificationFacade;
     private final String webhookSecret;
 
     public BaleWebhookController(
-            BaleFacade baleFacade,
+            NotificationFacade notificationFacade,
             @Value("${roshdeandishe.bale.webhook-secret}") String webhookSecret
     ) {
-        this.baleFacade = baleFacade;
+        this.notificationFacade = notificationFacade;
         this.webhookSecret = webhookSecret;
     }
 
@@ -47,7 +47,7 @@ public class BaleWebhookController {
             return ResponseEntity.notFound().build();
         }
 
-        baleFacade.processIncomingUpdate(rawBody);
+        notificationFacade.processIncomingUpdate(rawBody);
         return ResponseEntity.ok().build();
     }
 
