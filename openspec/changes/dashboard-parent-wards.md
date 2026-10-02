@@ -114,6 +114,7 @@ any active `PARENT` membership.
   from a card, list of names, choosing, a child with no grades, the user's own
   grades, unknown ids, outside click, Escape, keyboard, focus return) was verified
   in a browser against the compiled templates; the project has no JS test setup.
-- `WardsAssemblerTest` also covers `wardRefsForCurrentUser` (names only, active
-  every school with an active membership of any role, matching `MyGradesController` which returns wards independent of role; no finance call).
+- `WardsAssemblerTest` also covers `wardRefsForCurrentUser` (names only, for
+  every school with an active membership of any role - matching
+  `MyGradesController`, which returns wards independent of role; no finance call).
 - Existing `*FlowIntegrationTest` assertions on the dashboard run in CI.
