@@ -217,6 +217,43 @@ class TimetableFlowIntegrationTest {
                 .andExpect(jsonPath("$.length()").value(1));
     }
 
+    @Test
+    void periodNumbersStayContiguousInTimeOrderAcrossDeleteAddAndEdit() throws Exception {
+        MockHttpSession admin = loginAsAdmin();
+        long first = createPeriod(admin, "اول", "08:00", "08:45");
+        long second = createPeriod(admin, "دوم", "09:00", "09:45");
+        long third = createPeriod(admin, "سوم", "10:00", "10:45");
+
+        send(admin, delete("/api/admin/schools/1/timetable/periods/" + second), null).andExpect(status().isNoContent());
+        // بعد از حذفِ زنگِ وسط: ۱ و ۲ (بدون حفره)، و زنگِ تازه ۳ می‌شود
+        long fourth = createPeriod(admin, "چهارم", "11:00", "11:45");
+        assertThat(positions(admin)).containsExactly(1, 2, 3);
+        // زنگی که زودتر شروع می‌شود شماره‌ی ۱ می‌گیرد و بقیه جابه‌جا می‌شوند
+        send(admin, post("/api/admin/schools/1/timetable/periods"),
+                "{\"academicYear\":\"" + YEAR + "\",\"label\":\"صبح زود\",\"startTime\":\"07:00\",\"endTime\":\"07:45\"}")
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.position").value(1));
+        assertThat(positions(admin)).containsExactly(1, 2, 3, 4);
+        // ویرایشِ ساعت که ترتیب را عوض می‌کند، شماره‌ها را هم دوباره می‌چیند
+        send(admin, put("/api/admin/schools/1/timetable/periods/" + first),
+                "{\"label\":\"اول (دیر)\",\"startTime\":\"12:00\",\"endTime\":\"12:45\"}")
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.position").value(4));
+        assertThat(positions(admin)).containsExactly(1, 2, 3, 4);
+        mockMvc.perform(get("/api/admin/schools/1/timetable/periods").header("X-School-ID", "1").session(admin)
+                        .param("academicYear", YEAR))
+                .andExpect(jsonPath("$[0].label").value("صبح زود"))
+                .andExpect(jsonPath("$[3].label").value("اول (دیر)"));
+    }
+
+    private java.util.List<Integer> positions(MockHttpSession admin) throws Exception {
+        JsonNode list = json(mockMvc.perform(get("/api/admin/schools/1/timetable/periods")
+                .header("X-School-ID", "1").session(admin).param("academicYear", YEAR)));
+        java.util.List<Integer> result = new java.util.ArrayList<>();
+        list.forEach(node -> result.add(node.get("position").asInt()));
+        return result;
+    }
+
     // ---- فعالیت‌ها ----
 
     @Test

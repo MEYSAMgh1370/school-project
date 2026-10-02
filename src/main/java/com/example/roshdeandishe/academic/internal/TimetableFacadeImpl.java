@@ -28,6 +28,7 @@ class TimetableFacadeImpl implements TimetableFacade {
     private static final int MAX_NAME_LENGTH = 128;
     private static final int PERIOD_LOCK_NAMESPACE = 7401;
     private static final int CELL_LOCK_NAMESPACE = 7402;
+    private static final int PERIOD_POSITION_PARKING = 1_000_000;
     private static final int PERIOD_ROW_LOCK_NAMESPACE = 7403;
     private static final int ACTIVITY_ROW_LOCK_NAMESPACE = 7404;
     private static final String TEACHER_SLOT_INDEX = "timetable_entries_teacher_slot_unique";
@@ -78,8 +79,10 @@ class TimetableFacadeImpl implements TimetableFacade {
         lockPeriods(schoolId, academicYear);
         requireNoOverlap(schoolId, academicYear, startTime, endTime, null);
         int position = periodRepository.maxPosition(schoolId, academicYear) + 1;
-        return toPeriodInfo(periodRepository.save(
-                new TimetablePeriodEntity(schoolId, academicYear, position, cleanLabel, startTime, endTime)));
+        TimetablePeriodEntity saved = periodRepository.save(
+                new TimetablePeriodEntity(schoolId, academicYear, position, cleanLabel, startTime, endTime));
+        renumberPeriods(schoolId, academicYear);
+        return toPeriodInfo(saved);
     }
 
     @Override
@@ -95,7 +98,9 @@ class TimetableFacadeImpl implements TimetableFacade {
         period.setLabel(cleanLabel);
         period.setStartTime(startTime);
         period.setEndTime(endTime);
-        return toPeriodInfo(periodRepository.save(period));
+        TimetablePeriodEntity saved = periodRepository.save(period);
+        renumberPeriods(schoolId, period.getAcademicYear());
+        return toPeriodInfo(saved);
     }
 
     @Override
@@ -108,7 +113,9 @@ class TimetableFacadeImpl implements TimetableFacade {
         if (entryRepository.existsByPeriodId(periodId)) {
             throw new AcademicException(new AcademicError.PeriodHasEntries(periodId));
         }
+        lockPeriods(schoolId, period.getAcademicYear());
         periodRepository.delete(period);
+        renumberPeriods(schoolId, period.getAcademicYear());
     }
 
     // ---- فعالیت‌ها ----
@@ -339,6 +346,29 @@ class TimetableFacadeImpl implements TimetableFacade {
             throw new AcademicException(new AcademicError.InvalidPeriod("ساعت پایان باید بعد از شروع باشد"));
         }
         return clean;
+    }
+
+    // شماره‌ی زنگ‌ها همیشه ۱ تا n به ترتیبِ ساعتِ شروع است (نه ترتیبِ ساخت و بدون حفره بعد از حذف).
+    // ایندکسِ یکتای (مدرسه، سال، شماره) فوری سنجیده می‌شود، پس دو مرحله: اول همه به یک بازه‌ی دورِ
+    // بی‌تصادم، بعد به شماره‌ی نهایی؛ هر مرحله flush می‌شود. زیرِ قفلِ مدرسه/سال اجرا می‌شود.
+    private void renumberPeriods(Long schoolId, String academicYear) {
+        List<TimetablePeriodEntity> ordered = periodRepository
+                .findBySchoolIdAndAcademicYearOrderByStartTimeAscPositionAsc(schoolId, academicYear);
+        boolean contiguous = true;
+        for (int i = 0; i < ordered.size(); i++) {
+            contiguous &= ordered.get(i).getPosition() == i + 1;
+        }
+        if (contiguous) {
+            return;
+        }
+        for (int i = 0; i < ordered.size(); i++) {
+            ordered.get(i).setPosition(PERIOD_POSITION_PARKING + i);
+        }
+        periodRepository.saveAllAndFlush(ordered);
+        for (int i = 0; i < ordered.size(); i++) {
+            ordered.get(i).setPosition(i + 1);
+        }
+        periodRepository.saveAllAndFlush(ordered);
     }
 
     // بعد از گرفتنِ قفل، زنگ‌ها دوباره خوانده می‌شوند (requireNoOverlap) - پس مقدارِ تازه‌ی

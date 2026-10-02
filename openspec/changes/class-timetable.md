@@ -208,6 +208,7 @@ natural follow-up), per-school configurable school days, and the Android client.
 - A race on the teacher unique index (two admins booking the same teacher at once)
   is reported as `409 teacher-double-booked` as well; any other integrity
   violation is not relabeled.
+- `position` of a period is its rank by start time (1..n, no gaps): it is renumbered after every create, update and delete, in two flushed phases because the unique index on `(school, year, position)` is checked immediately.
 - Creating/updating a period takes a transaction-level PostgreSQL advisory lock per
   (school, year) before the overlap check, so two admins moving periods into the same
   free range cannot both pass (no exclusion constraint: it needs the `btree_gist`

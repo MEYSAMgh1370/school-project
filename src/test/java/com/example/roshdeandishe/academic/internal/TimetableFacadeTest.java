@@ -150,6 +150,31 @@ class TimetableFacadeTest {
     }
 
     @Test
+    void deletingAMiddlePeriodRenumbersTheRestContiguouslyInTwoFlushedPhases() {
+        TimetablePeriodEntity first = period(40L, SCHOOL, 1, "08:00", "08:45");
+        TimetablePeriodEntity third = period(42L, SCHOOL, 3, "10:00", "10:45");
+        TimetablePeriodEntity fourth = period(43L, SCHOOL, 4, "11:00", "11:45");
+        when(periods.findBySchoolIdAndAcademicYearOrderByStartTimeAscPositionAsc(SCHOOL, YEAR))
+                .thenReturn(List.of(first, third, fourth));
+
+        facade.deletePeriod(SCHOOL, PERIOD);
+
+        assertThat(List.of(first.getPosition(), third.getPosition(), fourth.getPosition())).containsExactly(1, 2, 3);
+        // دو مرحله، هر کدام flush: اول به بازه‌ی بی‌تصادم، بعد به شماره‌ی نهایی
+        verify(periods, org.mockito.Mockito.times(2)).saveAllAndFlush(any());
+    }
+
+    @Test
+    void aContiguousSequenceIsNotRewritten() {
+        when(periods.findBySchoolIdAndAcademicYearOrderByStartTimeAscPositionAsc(SCHOOL, YEAR)).thenReturn(List.of(
+                period(40L, SCHOOL, 1, "08:00", "08:45"), period(42L, SCHOOL, 2, "10:00", "10:45")));
+
+        facade.deletePeriod(SCHOOL, PERIOD);
+
+        verify(periods, never()).saveAllAndFlush(any());
+    }
+
+    @Test
     void aPeriodGetsTheNextPositionOfItsSchoolAndYear() {
         when(periods.findBySchoolIdAndAcademicYearOrderByStartTimeAscPositionAsc(SCHOOL, YEAR)).thenReturn(List.of());
         when(periods.maxPosition(SCHOOL, YEAR)).thenReturn(3);
