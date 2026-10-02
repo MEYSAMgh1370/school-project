@@ -27,6 +27,22 @@ document.addEventListener('alpine:init', () => {
             if (this.selectedRole) {
                 localStorage.setItem('selectedRole', this.selectedRole);
             }
+            this.markCurrentPage();
+        },
+        // صفحه‌ی جاری در سایدبار: aria-current + is-active (Bulma .menu-list).
+        // سمت سرور مسیر جاری را نمی‌داند، پس از location می‌خوانیم؛ لینک‌ها
+        // همه‌ی صفحه‌های مدیریتی را پوشش می‌دهند و مسیرها تخت‌اند.
+        markCurrentPage() {
+            const path = window.location.pathname;
+            this.$root.querySelectorAll('.app-sidebar .menu-list a[href]').forEach((link) => {
+                const current = link.getAttribute('href') === path;
+                link.classList.toggle('is-active', current);
+                if (current) {
+                    link.setAttribute('aria-current', 'page');
+                } else {
+                    link.removeAttribute('aria-current');
+                }
+            });
         },
         selectSchool(id) {
             this.selectedSchoolId = id;

@@ -409,6 +409,84 @@
   }
 }
 
+/* --- Sidebar layout (layout/navbar.jte) -----------------------------------
+   صفحه‌های مدیریتی: لینک‌ها در سایدبارِ inline-start (راست در RTL) و نوار بالا
+   فقط سوییچر مدرسه/نقش + منوی کاربر. wrapper `.app-shell-nav` با
+   `display: contents` فقط برای اشتراکِ x-data است و در لایوت نقشی ندارد.
+   ≥1024px: سایدبار fixed و تمام‌قد؛ نوار بالا و هر `section`ِ فرزندِ مستقیمِ
+   body به‌اندازه‌ی عرض سایدبار margin-inline-start می‌گیرند (modalها fixed
+   هستند و کل viewport را می‌پوشانند). <1024px: سایدبار داخل جریان و بسته
+   است؛ همبرگر (menuOpen) آن را زیر نوار بالا باز می‌کند. */
+:root {
+  --app-sidebar-width: 15rem;
+}
+
+.app-shell-nav {
+  display: contents;
+}
+
+.app-sidebar {
+  display: none;
+  padding: var(--space-4);
+  background: var(--bulma-scheme-main);
+  border-block-end: 1px solid var(--bulma-border);
+}
+
+.app-sidebar.is-open {
+  display: block;
+}
+
+.app-sidebar-brand {
+  display: none;
+  margin-block-end: var(--space-5);
+  color: var(--bulma-text);
+  font-weight: var(--bulma-weight-bold);
+  text-decoration: none;
+}
+
+/* برچسب گروه اولین فرزندِ div گروه است، پس قاعده‌ی :not(:first-child) بولما
+   فاصله نمی‌دهد. */
+.app-sidebar .menu-label {
+  margin-block: var(--space-4) var(--space-2);
+}
+
+.app-sidebar .menu-list a {
+  min-block-size: 44px;
+  display: flex;
+  align-items: center;
+}
+
+.app-topbar {
+  border-block-end: 1px solid var(--bulma-border);
+}
+
+@media screen and (min-width: 1024px) {
+  .app-sidebar {
+    display: block;
+    position: fixed;
+    inset-block: 0;
+    inset-inline-start: 0;
+    inline-size: var(--app-sidebar-width);
+    overflow-y: auto;
+    z-index: 20;
+    border-block-end: 0;
+    border-inline-end: 1px solid var(--bulma-border);
+  }
+
+  .app-sidebar-brand {
+    display: block;
+  }
+
+  .app-navbar-brand {
+    display: none;
+  }
+
+  .app-topbar,
+  body:has(> .app-shell-nav) > .section {
+    margin-inline-start: var(--app-sidebar-width);
+  }
+}
+
 /* --- Empty state (DESIGN.md §5a) ------------------------------------------
    Used only by layout/empty-state.jte. The art is decorative (aria-hidden)
    and carries the accent in a circular primary-soft well; the text keeps
