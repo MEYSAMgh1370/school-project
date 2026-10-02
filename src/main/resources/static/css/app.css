@@ -444,10 +444,46 @@
   text-decoration: none;
 }
 
-/* برچسب گروه اولین فرزندِ div گروه است، پس قاعده‌ی :not(:first-child) بولما
-   فاصله نمی‌دهد. */
-.app-sidebar .menu-label {
-  margin-block: var(--space-4) var(--space-2);
+/* سرگروهِ آکاردئونی: دکمه‌ای با ظاهر menu-label و chevron بولما (CSS-drawn). */
+.app-sidebar-toggle {
+  appearance: none;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  inline-size: 100%;
+  min-block-size: 44px;
+  margin-block-start: var(--space-2);
+  padding-inline: var(--space-3);
+  background: transparent;
+  border: 0;
+  border-radius: var(--radius-sm);
+  color: var(--bulma-text-weak);
+  cursor: pointer;
+  font: inherit;
+  font-weight: var(--bulma-weight-semibold);
+  text-align: start;
+}
+
+.app-sidebar-toggle:hover {
+  background: var(--bulma-scheme-main-bis);
+  color: var(--bulma-text);
+}
+
+/* chevron با دو border منطقی (block-end + inline-start = گوشه‌ی پایین-راست در
+   RTL). برنامه فقط RTL است، پس چرخش‌ها برای همین جهت تنظیم شده‌اند:
+   بسته به inline-end (چپ) اشاره می‌کند، باز به پایین. */
+.app-sidebar-chevron {
+  inline-size: 0.5em;
+  block-size: 0.5em;
+  border: 2px solid currentColor;
+  border-inline-end: 0;
+  border-block-start: 0;
+  transform: rotate(135deg);
+  transition: transform 0.15s ease;
+}
+
+.app-sidebar-toggle[aria-expanded="true"] .app-sidebar-chevron {
+  transform: rotate(45deg);
 }
 
 .app-sidebar .menu-list a {

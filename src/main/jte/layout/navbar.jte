@@ -16,7 +16,9 @@
      همیشه سمت سرور می‌ماند). نوار بالا فقط سوییچر مدرسه/نقش و منوی کاربر
      را دارد. wrapper با display: contents است تا nav و aside هر دو زیر
      همان x-data (selectedRole) باشند بی‌آنکه لایوت را تغییر دهد؛ چیدمانِ
-     سایدبار در app.css («Sidebar layout»). --%>
+     سایدبار در app.css («Sidebar layout»). هر گروه آکاردئون است: دکمه‌ی
+     سرگروه (aria-expanded) لینک‌هایش را باز/بسته می‌کند؛ وضعیت در
+     localStorage می‌ماند و گروهِ صفحه‌ی جاری همیشه باز است (navbar.js). --%>
 <div class="app-shell-nav"
      x-data="schoolNavbar({@for(var school : navbar.schools())${school.id()}: [@for(var role : school.roles())'${role}',@endfor],@endfor})"
      @keydown.escape.window="schoolOpen = false; personOpen = false; menuOpen = false">
@@ -77,16 +79,22 @@
             <li><a href="/dashboard">داشبورد</a></li>
         </ul>
         @if(!navbar.schools().isEmpty())
-            <div x-cloak x-show="['SCHOOL_ADMIN'].includes(selectedRole)">
-                <p class="menu-label" id="sidebar-group-0">مدرسه</p>
-                <ul class="menu-list" aria-labelledby="sidebar-group-0">
+            <div x-cloak x-show="['SCHOOL_ADMIN'].includes(selectedRole)" data-group="0">
+                <button type="button" class="app-sidebar-toggle" aria-controls="sidebar-group-0-list" :aria-expanded="isGroupOpen(0)" @click="toggleGroup(0)">
+                    <span>مدرسه</span>
+                    <span class="app-sidebar-chevron" aria-hidden="true"></span>
+                </button>
+                <ul class="menu-list" id="sidebar-group-0-list" x-show="isGroupOpen(0)">
                     <li><a href="/people" x-show="selectedRole === 'SCHOOL_ADMIN'">اعضای مدرسه</a></li>
                     <li><a href="/roles" x-show="selectedRole === 'SCHOOL_ADMIN'">نقش‌ها و دسترسی‌ها</a></li>
                 </ul>
             </div>
-            <div x-cloak x-show="['SCHOOL_ADMIN', 'TEACHER', 'STUDENT'].includes(selectedRole)">
-                <p class="menu-label" id="sidebar-group-1">آموزش</p>
-                <ul class="menu-list" aria-labelledby="sidebar-group-1">
+            <div x-cloak x-show="['SCHOOL_ADMIN', 'TEACHER', 'STUDENT'].includes(selectedRole)" data-group="1">
+                <button type="button" class="app-sidebar-toggle" aria-controls="sidebar-group-1-list" :aria-expanded="isGroupOpen(1)" @click="toggleGroup(1)">
+                    <span>آموزش</span>
+                    <span class="app-sidebar-chevron" aria-hidden="true"></span>
+                </button>
+                <ul class="menu-list" id="sidebar-group-1-list" x-show="isGroupOpen(1)">
                     <li><a href="/classes" x-show="selectedRole === 'SCHOOL_ADMIN' || selectedRole === 'TEACHER'">کلاس‌ها</a></li>
                     <li><a href="/curriculum" x-show="selectedRole === 'SCHOOL_ADMIN' || selectedRole === 'TEACHER'">سرفصل‌ها و بانک سؤال</a></li>
                     <li><a href="/study-plans" x-show="selectedRole === 'SCHOOL_ADMIN' || selectedRole === 'TEACHER'">برنامه‌های مطالعه</a></li>
@@ -95,17 +103,23 @@
                     <li><a href="/my-study-plan" x-show="selectedRole === 'STUDENT'">برنامه‌ی مطالعه‌ی من</a></li>
                 </ul>
             </div>
-            <div x-cloak x-show="['SCHOOL_ADMIN', 'TEACHER', 'STUDENT', 'PARENT'].includes(selectedRole)">
-                <p class="menu-label" id="sidebar-group-2">دانش‌آموزان و نمرات</p>
-                <ul class="menu-list" aria-labelledby="sidebar-group-2">
+            <div x-cloak x-show="['SCHOOL_ADMIN', 'TEACHER', 'STUDENT', 'PARENT'].includes(selectedRole)" data-group="2">
+                <button type="button" class="app-sidebar-toggle" aria-controls="sidebar-group-2-list" :aria-expanded="isGroupOpen(2)" @click="toggleGroup(2)">
+                    <span>دانش‌آموزان و نمرات</span>
+                    <span class="app-sidebar-chevron" aria-hidden="true"></span>
+                </button>
+                <ul class="menu-list" id="sidebar-group-2-list" x-show="isGroupOpen(2)">
                     <li><a href="/students" x-show="selectedRole === 'SCHOOL_ADMIN' || selectedRole === 'TEACHER'">دانش‌آموزان</a></li>
                     <li><a href="/grades" x-show="selectedRole === 'SCHOOL_ADMIN' || selectedRole === 'TEACHER'">نمرات</a></li>
                     <li><a href="/my-grades" x-show="selectedRole === 'STUDENT' || selectedRole === 'PARENT'">نمره‌های من</a></li>
                 </ul>
             </div>
-            <div x-cloak x-show="['SCHOOL_ADMIN', 'FINANCE_ADMIN', 'STUDENT', 'PARENT'].includes(selectedRole)">
-                <p class="menu-label" id="sidebar-group-3">مالی</p>
-                <ul class="menu-list" aria-labelledby="sidebar-group-3">
+            <div x-cloak x-show="['SCHOOL_ADMIN', 'FINANCE_ADMIN', 'STUDENT', 'PARENT'].includes(selectedRole)" data-group="3">
+                <button type="button" class="app-sidebar-toggle" aria-controls="sidebar-group-3-list" :aria-expanded="isGroupOpen(3)" @click="toggleGroup(3)">
+                    <span>مالی</span>
+                    <span class="app-sidebar-chevron" aria-hidden="true"></span>
+                </button>
+                <ul class="menu-list" id="sidebar-group-3-list" x-show="isGroupOpen(3)">
                     <li><a href="/finance" x-show="selectedRole === 'SCHOOL_ADMIN' || selectedRole === 'FINANCE_ADMIN'">امور مالی</a></li>
                     <li><a href="/expenses" x-show="selectedRole === 'SCHOOL_ADMIN' || selectedRole === 'FINANCE_ADMIN'">هزینه‌ها</a></li>
                     <li><a href="/my-invoices" x-show="selectedRole === 'STUDENT' || selectedRole === 'PARENT'">فاکتورهای من</a></li>

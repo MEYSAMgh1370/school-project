@@ -9,6 +9,7 @@ document.addEventListener('alpine:init', () => {
         selectedSchoolId: null,
         selectedRole: '',
         schoolRoles,
+        openGroups: {},
         init() {
             const ids = Object.keys(this.schoolRoles).map(Number);
             const savedId = parseInt(localStorage.getItem('selectedSchoolId') || '', 10);
@@ -27,7 +28,23 @@ document.addEventListener('alpine:init', () => {
             if (this.selectedRole) {
                 localStorage.setItem('selectedRole', this.selectedRole);
             }
+            try {
+                this.openGroups = JSON.parse(localStorage.getItem('sidebarOpenGroups') || '{}') || {};
+            } catch (e) {
+                this.openGroups = {};
+            }
             this.markCurrentPage();
+        },
+        isGroupOpen(index) {
+            return this.openGroups[index] === true;
+        },
+        toggleGroup(index) {
+            this.openGroups = { ...this.openGroups, [index]: !this.isGroupOpen(index) };
+            try {
+                localStorage.setItem('sidebarOpenGroups', JSON.stringify(this.openGroups));
+            } catch (e) {
+                // حالت خصوصی/مسدود: فقط حالتِ همین صفحه می‌ماند.
+            }
         },
         // صفحه‌ی جاری در سایدبار: aria-current + is-active (Bulma .menu-list).
         // سمت سرور مسیر جاری را نمی‌داند، پس از location می‌خوانیم؛ لینک‌ها
@@ -39,6 +56,11 @@ document.addEventListener('alpine:init', () => {
                 link.classList.toggle('is-active', current);
                 if (current) {
                     link.setAttribute('aria-current', 'page');
+                    // گروهِ صفحه‌ی جاری باز می‌ماند تا کاربر جایش را گم نکند.
+                    const group = link.closest('[data-group]');
+                    if (group) {
+                        this.openGroups = { ...this.openGroups, [group.dataset.group]: true };
+                    }
                 } else {
                     link.removeAttribute('aria-current');
                 }
