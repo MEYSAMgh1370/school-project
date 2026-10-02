@@ -52,6 +52,11 @@ document.addEventListener('alpine:init', () => {
                 if (type.endsWith('permission-denied')) {
                     return { blocking: true, message: 'نقش انتخاب‌شده‌ی شما اجازه‌ی تعیین سال تحصیلی را ندارد.' };
                 }
+                // سالِ جاری در فاصله‌ی دیدن تا ذخیره عوض شده (درخواستِ کهنه یا مدیرِ دیگر)
+                if (type.endsWith('academic-year-changed')) {
+                    return { blocking: false, reload: true,
+                        message: 'سال تحصیلی جاری در این فاصله عوض شده است؛ اطلاعات تازه بارگذاری شد، دوباره انتخاب کنید.' };
+                }
                 return { blocking: false, message: body.detail || body.title || 'خطایی رخ داد.' };
             } catch (e) {
                 return { blocking: false, message: 'خطایی رخ داد. (' + response.status + ')' };
@@ -124,16 +129,27 @@ document.addEventListener('alpine:init', () => {
                         'X-School-ID': schoolId,
                         'X-XSRF-TOKEN': this.csrfToken()
                     },
-                    body: JSON.stringify({ academicYearId: parseInt(this.selectedId, 10) })
+                    // سالِ جاریِ دیده‌شده هم می‌رود تا سرور فقط وقتی بنویسد که هنوز همان
+                    // است - ذخیره‌ی کهنه (تأخیری یا مدیرِ دیگر) انتخابِ جدیدتر را برنمی‌گرداند
+                    body: JSON.stringify({
+                        academicYearId: parseInt(this.selectedId, 10),
+                        expectedCurrentAcademicYearId: this.current ? this.current.id : null
+                    })
                 });
                 // هر پاسخ (موفق یا خطا) فقط اگر هنوز آخرین ذخیره است نشان داده می‌شود.
                 // saveSeq با هر ذخیره‌ی تازه و با هر عوض‌شدنِ مدرسه بالا می‌رود، پس
                 // هم ذخیره‌ی مدرسه‌ی قبلی و هم ذخیره‌ی کهنه‌ترِ همین مدرسه (A←B←A)
                 // دور ریخته می‌شود - فقط چک‌کردنِ شناسه‌ی مدرسه برای دومی کافی نبود.
                 if (!response.ok) {
-                    const message = (await this.classifyError(response)).message;
+                    const classified = await this.classifyError(response);
                     if (saveSeq === this.saveSeq) {
-                        this.error = message;
+                        if (classified.reload) {
+                            // وضعیتِ تازه را بگیر، بعد پیام را نشان بده (load خطا را پاک می‌کند)
+                            await this.load();
+                        }
+                        if (saveSeq === this.saveSeq) {
+                            this.error = classified.message;
+                        }
                     }
                     return;
                 }

@@ -70,40 +70,53 @@ class AcademicYearFacadeTest {
     }
 
     @Test
-    void choosingAnOpenYearStoresItAsTheCurrentYear() {
+    void choosingAYearWritesItThroughACompareAndSetAgainstTheExpectedCurrentYear() {
         when(years.findById(2L)).thenReturn(Optional.of(year(2L, "1405-1406", 1405)));
+        when(schools.compareAndSetCurrentAcademicYear(5L, 1L, 2L)).thenReturn(1);
 
-        facade.setCurrentAcademicYear(SCHOOL, new AcademicYearId(2L));
+        facade.setCurrentAcademicYear(SCHOOL, new AcademicYearId(2L), new AcademicYearId(1L));
 
-        assertThat(school.getCurrentAcademicYearId()).isEqualTo(2L);
-        verify(schools).save(school);
-        assertThat(facade.findCurrentAcademicYear(SCHOOL)).get()
-                .extracting(AcademicYearInfo::code).isEqualTo("1405-1406");
+        verify(schools).compareAndSetCurrentAcademicYear(5L, 1L, 2L);
     }
 
     @Test
-    void aYearNotInTheListYetIsRejectedAndNothingChanges() {
-        school.setCurrentAcademicYearId(1L);
+    void aSchoolThatHasNotChosenYetIsExpectedAsNull() {
+        when(years.findById(2L)).thenReturn(Optional.of(year(2L, "1405-1406", 1405)));
+        when(schools.compareAndSetCurrentAcademicYear(5L, null, 2L)).thenReturn(1);
+
+        facade.setCurrentAcademicYear(SCHOOL, new AcademicYearId(2L), null);
+
+        verify(schools).compareAndSetCurrentAcademicYear(5L, null, 2L);
+    }
+
+    @Test
+    void aStaleExpectationIsRejectedAsAChangeAndTheOlderChoiceIsNotApplied() {
+        when(years.findById(2L)).thenReturn(Optional.of(year(2L, "1405-1406", 1405)));
+        // سالِ جاری در این فاصله عوض شده: UPDATE هیچ سطری را تغییر نمی‌دهد
+        when(schools.compareAndSetCurrentAcademicYear(5L, 1L, 2L)).thenReturn(0);
+
+        assertThatThrownBy(() -> facade.setCurrentAcademicYear(SCHOOL, new AcademicYearId(2L), new AcademicYearId(1L)))
+                .isInstanceOfSatisfying(SchoolException.class, e ->
+                        assertThat(e.error()).isEqualTo(new SchoolError.AcademicYearChanged(1L)));
+    }
+
+    @Test
+    void aYearNotInTheListYetIsRejectedBeforeAnyWrite() {
         when(years.findById(3L)).thenReturn(Optional.empty());
 
-        assertThatThrownBy(() -> facade.setCurrentAcademicYear(SCHOOL, new AcademicYearId(3L)))
+        assertThatThrownBy(() -> facade.setCurrentAcademicYear(SCHOOL, new AcademicYearId(3L), null))
                 .isInstanceOfSatisfying(SchoolException.class, e ->
                         assertThat(e.error()).isEqualTo(new SchoolError.AcademicYearNotFound(3L)));
-        assertThat(school.getCurrentAcademicYearId()).isEqualTo(1L);
-        verify(schools, never()).save(any());
+        verify(schools, never()).compareAndSetCurrentAcademicYear(any(), any(), any());
     }
 
     @Test
-    void anUnknownYearOrSchoolIsRejected() {
-        when(years.findById(99L)).thenReturn(Optional.empty());
+    void anUnknownSchoolIsRejectedBeforeAnyWrite() {
         when(schools.findById(6L)).thenReturn(Optional.empty());
 
-        assertThatThrownBy(() -> facade.setCurrentAcademicYear(SCHOOL, new AcademicYearId(99L)))
-                .isInstanceOfSatisfying(SchoolException.class, e ->
-                        assertThat(e.error()).isEqualTo(new SchoolError.AcademicYearNotFound(99L)));
-        assertThatThrownBy(() -> facade.setCurrentAcademicYear(new SchoolId(6L), new AcademicYearId(1L)))
+        assertThatThrownBy(() -> facade.setCurrentAcademicYear(new SchoolId(6L), new AcademicYearId(1L), null))
                 .isInstanceOfSatisfying(SchoolException.class, e ->
                         assertThat(e.error()).isEqualTo(new SchoolError.SchoolNotFound(6L)));
-        verify(schools, never()).save(any());
+        verify(schools, never()).compareAndSetCurrentAcademicYear(any(), any(), any());
     }
 }

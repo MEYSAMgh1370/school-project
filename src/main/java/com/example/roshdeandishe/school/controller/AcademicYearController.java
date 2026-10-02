@@ -71,7 +71,10 @@ public class AcademicYearController {
         if (request == null || request.academicYearId() == null) {
             throw new SchoolException(new SchoolError.AcademicYearNotFound(null));
         }
-        schoolFacade.setCurrentAcademicYear(new SchoolId(schoolId), new AcademicYearId(request.academicYearId()));
+        AcademicYearId expected = request.expectedCurrentAcademicYearId() == null
+                ? null : new AcademicYearId(request.expectedCurrentAcademicYearId());
+        schoolFacade.setCurrentAcademicYear(
+                new SchoolId(schoolId), new AcademicYearId(request.academicYearId()), expected);
         return settingsFor(schoolId);
     }
 

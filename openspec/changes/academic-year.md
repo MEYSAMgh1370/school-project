@@ -119,6 +119,15 @@ re-modelling.
   need `ACADEMIC_YEAR_MANAGE`. A year not in the list (including next year's,
   before its start date) is `404 academic-year-not-found`. Choosing changes only
   that one value; nothing is deleted or altered.
+- **Stale choices are rejected by the database, not only hidden in the browser.**
+  `PUT` carries `expectedCurrentAcademicYearId` (the current year the page sees,
+  `null` = not chosen yet; always sent) and the write is one atomic
+  compare-and-set `UPDATE ... WHERE current_academic_year_id IS NOT DISTINCT FROM
+  :expected`. If the school's current year is no longer what the caller saw, the
+  answer is `409 academic-year-changed` and nothing is written, so two requests
+  that finish in the wrong order (the same admin going A→B→A in the browser, or
+  two admins) can never silently put an older choice over a newer one. The page
+  then reloads and says the year changed.
 - The page **«سال تحصیلی»** (`/academic-year`, `SCHOOL_ADMIN`, sidebar group
   «مدرسه» and a dashboard shortcut) shows the current year, a select of the
   years and a save button.
@@ -212,7 +221,9 @@ Phase 0 (met; later phases are refined when scheduled):
   running it again creates nothing; an impossible date fails at startup.
 - A school admin (`ACADEMIC_YEAR_MANAGE`) reads the whole list of years and sets
   the school's current year to a listed year and no other; an unknown year is
-  `404`, with nothing changed.
+  `404`, with nothing changed. A save whose expected current year is stale is
+  `409` and writes nothing; of two concurrent saves with the same expectation
+  exactly one wins.
 - Every active member of the school reads **only** the current year (no list);
   a user without the permission gets `403` on the admin endpoints; a stranger who
   is not a member gets nothing.

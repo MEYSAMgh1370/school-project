@@ -65,8 +65,13 @@ public interface SchoolFacade {
      * مدیرِ مدرسه است (نه تاریخِ ثابت). SchoolError.AcademicYearNotFound اگر سال
      * در فهرست نباشد (مثلاً سالِ آینده‌ای که هنوز ساخته نشده)؛
      * SchoolError.SchoolNotFound اگر مدرسه نباشد.
+     * <p>
+     * {@code expectedCurrent} همان سالِ جاریِ «مورد انتظار» است ({@code null} =
+     * «هنوز انتخاب نشده»): فقط اگر سالِ جاریِ مدرسه هنوز همین باشد عوض می‌شود،
+     * وگرنه SchoolError.AcademicYearChanged - تا درخواستِ کهنه (تأخیری یا از
+     * مدیرِ دیگر) انتخابِ جدیدتر را بی‌صدا برنگرداند. بررسی و نوشتن اتمیک است.
      */
-    void setCurrentAcademicYear(SchoolId schoolId, AcademicYearId academicYearId);
+    void setCurrentAcademicYear(SchoolId schoolId, AcademicYearId academicYearId, AcademicYearId expectedCurrent);
 
     record SchoolId(Long value) {
     }

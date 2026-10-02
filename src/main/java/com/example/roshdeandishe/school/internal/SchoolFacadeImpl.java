@@ -96,13 +96,17 @@ class SchoolFacadeImpl implements SchoolFacade {
 
     @Override
     @Transactional
-    public void setCurrentAcademicYear(SchoolId schoolId, AcademicYearId academicYearId) {
-        SchoolEntity school = schoolRepository.findById(schoolId.value())
+    public void setCurrentAcademicYear(SchoolId schoolId, AcademicYearId academicYearId,
+                                       AcademicYearId expectedCurrent) {
+        schoolRepository.findById(schoolId.value())
                 .orElseThrow(() -> new SchoolException(new SchoolError.SchoolNotFound(schoolId.value())));
         AcademicYearEntity year = academicYearRepository.findById(academicYearId.value())
                 .orElseThrow(() -> new SchoolException(new SchoolError.AcademicYearNotFound(academicYearId.value())));
-        school.setCurrentAcademicYearId(year.getId());
-        schoolRepository.save(school);
+        Long expected = expectedCurrent == null ? null : expectedCurrent.value();
+        int updated = schoolRepository.compareAndSetCurrentAcademicYear(schoolId.value(), expected, year.getId());
+        if (updated == 0) {
+            throw new SchoolException(new SchoolError.AcademicYearChanged(expected));
+        }
     }
 
     private static AcademicYearInfo toYearInfo(AcademicYearEntity entity) {

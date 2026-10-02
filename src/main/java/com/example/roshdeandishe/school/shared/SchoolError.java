@@ -17,6 +17,13 @@ public sealed interface SchoolError {
     record SlugAlreadyTaken(String slug) implements SchoolError {
     }
 
+    /**
+     * سالِ جاریِ مدرسه در فاصله‌ی خواندن تا ذخیره عوض شده (درخواستِ کهنه یا
+     * مدیرِ دیگر)؛ {@code expected} همان بود که کلاینت می‌دید (null = انتخاب‌نشده).
+     */
+    record AcademicYearChanged(Long expected) implements SchoolError {
+    }
+
     /** academicYearId ای که در فهرست سراسری سال‌های تحصیلی نیست. */
     record AcademicYearNotFound(Long academicYearId) implements SchoolError {
     }

@@ -90,13 +90,23 @@ class AcademicYearFlowIntegrationTest {
         return jdbc.queryForObject("select id from school.academic_years where code = ?", Long.class, code);
     }
 
+    /** سالِ جاریِ مدرسه‌ی ۱ در دیتابیس (null = هنوز انتخاب نشده). */
+    private Long currentYearId() {
+        return jdbc.queryForObject("select current_academic_year_id from school.schools where id = 1", Long.class);
+    }
+
+    private String body(long yearId, Long expectedCurrent) {
+        return "{\"academicYearId\":" + yearId + ",\"expectedCurrentAcademicYearId\":" + expectedCurrent + "}";
+    }
+
+    /** انتخابِ سال با «سالِ جاریِ مورد انتظار» = همان چیزی که الان در دیتابیس است. */
     private void selectYear(MockHttpSession session, long yearId, int expectedStatus) throws Exception {
         mockMvc.perform(put("/api/admin/schools/1/academic-year")
                         .with(csrf())
                         .header("X-School-ID", "1")
                         .session(session)
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"academicYearId\":" + yearId + "}"))
+                        .content(body(yearId, currentYearId())))
                 .andExpect(status().is(expectedStatus));
     }
 
@@ -117,7 +127,7 @@ class AcademicYearFlowIntegrationTest {
                         .header("X-School-ID", "1")
                         .session(admin)
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"academicYearId\":" + chosen + "}"))
+                        .content(body(chosen, currentYearId())))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.current.id").value(chosen))
                 .andExpect(jsonPath("$.current.code").value("1405-1406"));
@@ -162,7 +172,7 @@ class AcademicYearFlowIntegrationTest {
                         .header("X-School-ID", "1")
                         .session(admin)
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"academicYearId\":999999999}"))
+                        .content(body(999999999L, currentYearId())))
                 .andExpect(status().isNotFound())
                 .andExpect(jsonPath("$.type").value(org.hamcrest.Matchers.endsWith("academic-year-not-found")));
 
@@ -188,6 +198,88 @@ class AcademicYearFlowIntegrationTest {
         assertThat(jdbc.queryForObject(
                 "select count(*) from school.academic_years where code <> start_year || '-' || (start_year + 1)",
                 Integer.class)).isZero();
+    }
+
+    @Test
+    void aStaleExpectedCurrentYearIsRejectedSoAnOlderChoiceCannotRevertANewerOne() throws Exception {
+        MockHttpSession admin = loginAsAdmin();
+        long first = yearId("1404-1405");
+        long second = yearId("1405-1406");
+        selectYear(admin, first, 200);
+
+        // دو درخواست با همان «سالِ جاریِ مورد انتظار» (first) ولی دو انتخابِ متفاوت، مثل
+        // A←B←A در مرورگر: اولی (انتخابِ second) می‌نویسد؛ دومی که هنوز first را «جاری»
+        // می‌داند باید رد شود، نه اینکه ترتیبِ commit انتخابِ اول را برگرداند
+        mockMvc.perform(put("/api/admin/schools/1/academic-year")
+                        .with(csrf()).header("X-School-ID", "1").session(admin)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(body(second, first)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.current.id").value(second));
+
+        mockMvc.perform(put("/api/admin/schools/1/academic-year")
+                        .with(csrf()).header("X-School-ID", "1").session(admin)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(body(first, first)))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.type").value(org.hamcrest.Matchers.endsWith("academic-year-changed")));
+
+        assertThat(currentYearId()).isEqualTo(second);
+    }
+
+    @Test
+    void aSchoolThatHasNotChosenYetIsChosenWithANullExpectation() throws Exception {
+        MockHttpSession admin = loginAsAdmin();
+        jdbc.update("update school.schools set current_academic_year_id = null where id = 1");
+
+        mockMvc.perform(put("/api/admin/schools/1/academic-year")
+                        .with(csrf()).header("X-School-ID", "1").session(admin)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(body(yearId("1404-1405"), null)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.current.code").value("1404-1405"));
+
+        // «هنوز انتخاب نشده» دیگر درست نیست: همان انتظارِ null حالا کهنه است
+        mockMvc.perform(put("/api/admin/schools/1/academic-year")
+                        .with(csrf()).header("X-School-ID", "1").session(admin)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(body(yearId("1405-1406"), null)))
+                .andExpect(status().isConflict());
+    }
+
+    @Test
+    void twoConcurrentChoicesWithTheSameExpectationLetExactlyOneWin() throws Exception {
+        MockHttpSession admin = loginAsAdmin();
+        long first = yearId("1404-1405");
+        long second = yearId("1405-1406");
+        // هر دو درخواست «هنوز انتخاب نشده» را انتظار دارند و دو سالِ متفاوت می‌خواهند:
+        // هرکدام اول برسد می‌نویسد و دیگری باید ۴۰۹ بگیرد، نه این‌که ترتیبِ commit تعیین کند
+        jdbc.update("update school.schools set current_academic_year_id = null where id = 1");
+
+        java.util.concurrent.ExecutorService pool = java.util.concurrent.Executors.newFixedThreadPool(2);
+        try {
+            java.util.concurrent.CountDownLatch start = new java.util.concurrent.CountDownLatch(1);
+            java.util.List<java.util.concurrent.Future<Integer>> results = new java.util.ArrayList<>();
+            for (long target : new long[]{first, second}) {
+                results.add(pool.submit(() -> {
+                    start.await();
+                    return mockMvc.perform(put("/api/admin/schools/1/academic-year")
+                                    .with(csrf()).header("X-School-ID", "1").session(admin)
+                                    .contentType(MediaType.APPLICATION_JSON)
+                                    .content(body(target, null)))
+                            .andReturn().getResponse().getStatus();
+                }));
+            }
+            start.countDown();
+            java.util.List<Integer> statuses = new java.util.ArrayList<>();
+            for (var result : results) {
+                statuses.add(result.get(30, java.util.concurrent.TimeUnit.SECONDS));
+            }
+            assertThat(statuses).containsExactlyInAnyOrder(200, 409);
+            assertThat(currentYearId()).isIn(first, second);
+        } finally {
+            pool.shutdownNow();
+        }
     }
 
     @Test
