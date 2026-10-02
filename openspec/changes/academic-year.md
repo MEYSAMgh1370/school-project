@@ -108,8 +108,8 @@ re-modelling.
   other reference data, so it reaches already deployed databases.
 - **Two views, by decision 2:** `GET /api/me/schools/{id}/academic-year` returns
   **only the current year** to any active member of the school;
-  `GET /api/admin/schools/{id}/academic-year` returns the **whole list with the
-  `open` flag** and the current year, and `PUT` chooses the current year; both
+  `GET /api/admin/schools/{id}/academic-year` returns the **whole list**
+  and the current year, and `PUT` chooses the current year; both
   need `ACADEMIC_YEAR_MANAGE`. A year not in the list (including next year's,
   before its start date) is `404 academic-year-not-found`. Choosing changes only
   that one value; nothing is deleted or altered.
@@ -273,7 +273,7 @@ classes/enrollments and promotion.
    the school's *current* year is what everyone else sees. May the admin switch
    the current year back to an earlier year (e.g. a mistaken choice), or is a
    past year that already holds data view-only and not selectable as current?
-   Phase 0 allows any open year to be chosen (only grades carry a year so far).
+   Phase 0 allows any listed year to be chosen (only grades carry a year so far).
 7. **The platform-operator actor.** Years need none (the system creates them).
    Course catalog rows still come from data migrations because no platform actor
    or permission exists (`platform-admin-not-assignable.md`); that deferred
