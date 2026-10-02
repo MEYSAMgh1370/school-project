@@ -211,9 +211,26 @@ security design, so it is not recommended here.
 4. **Overall average.** No computed average («معدل») across courses is
    introduced; whether and how one is shown (weighting, rounding, descriptive
    classes) is a separate decision.
-5. **Course retirement.** Whether courses can be deactivated or renamed after
-   grades exist (affects the `active` flag and how historical grades display
-   a renamed course).
+5. **Versioning the course list over time (product input 2026-10-02: a grade
+   level's courses change every few years for schools).** Deferred by the
+   product owner: record it now, build it later. What phase 1 already gives:
+   courses are never deleted (`on delete restrict`), so old grades keep the old
+   course's name; the operator can rename a row or add the new courses with a
+   data migration. What it does **not** give: the «درس» select on `/grades`
+   lists every course of the grade level, old and new mixed, for every academic
+   year, and nothing records which list applies to which year. Options for the
+   later change, none chosen:
+   - an optional validity range per course (from/until the start year of the
+     academic year, e.g. `1404` for `1404-1405`), the select filtered by the
+     chosen year and recording a course outside its range rejected. Smallest;
+     the academic year on a grade is free text, so the start year is read from
+     its leading four digits and an unparsable year shows all courses;
+   - a curriculum edition that groups courses and is attached to academic
+     years: more exact, needs a new table and concept;
+   - an `active` flag only: cannot express «this list applied in 1404».
+   Whether recording a grade outside the validity range should be rejected or
+   only hidden in the picker, and how a renamed course shows on historical
+   grades, are part of that change.
 6. **Scheme per course.** The class's `grading_scheme` applies to all of its
    courses. If some courses in the same class need the other scheme, that is a
    different data model.
