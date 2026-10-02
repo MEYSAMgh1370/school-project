@@ -1,14 +1,16 @@
 # Academic Year (سال تحصیلی) And Year Rollover
 
-Status: proposed 2026-10-02. **Phase 0 is implemented** (migration `V6`, the
-school's current year, the «سال تحصیلی» page); phases 1-3 are not. Several design
-questions were answered by the product owner the same day (below), the rest
-are still open. Foundational change: several
-other proposals depend on it ([`class-timetable.md`](class-timetable.md), and the
-deferred "course list changes over time" question in
-[`grades-by-course.md`](grades-by-course.md)). Nothing in
-[`specs/current-system.md`](../specs/current-system.md) changes until it is built.
-Every item that is a product decision is a question below, not invented here.
+Status: proposed 2026-10-02. **Phase 0 is implemented** (migration `V6`, years
+created by the application, the school's current year, the «سال تحصیلی» page) and
+its behavior is current: it is recorded in
+[`specs/current-system.md`](../specs/current-system.md). **Phases 1-3 are not
+implemented**, and nothing about them changes the current specification until
+they are built. Several design questions were answered by the product owner the
+same day (below), the rest are still open. Foundational change: other proposals
+depend on it ([`class-timetable.md`](class-timetable.md), and the deferred
+"course list changes over time" question in
+[`grades-by-course.md`](grades-by-course.md)). Every item that is a product
+decision is a question below, not invented here.
 
 ## What The Product Owner Said (2026-10-02)
 
@@ -43,11 +45,15 @@ Every item that is a product decision is a question below, not invented here.
    automatic mode can be switched on or off** (a school setting).
 7. **Build order**: phase 0, then the class timetable, then phases 1-3.
 
-## Verified Baseline
+## Verified Baseline (before phase 0)
 
-From code, not from earlier docs:
+From code, not from earlier docs, as it stood when this proposal was written.
+Phase 0 has since added the year list and the school's current year (see
+"The year and the school's current year"); the points below that phase 0 did not
+touch (tuition, enrollments, classes, promotion, the course catalog) are still
+accurate.
 
-- **There is no academic-year concept.** The only trace is the free-text column
+- **There was no academic-year concept.** The only trace is the free-text column
   `academic.grades.academic_year` (e.g. `"1404-1405"`; `/grades` normalizes
   Persian/Arabic digits to ASCII before sending). Nothing validates it, lists
   the valid years, or says which one is current.

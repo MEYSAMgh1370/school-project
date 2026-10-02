@@ -14,6 +14,9 @@ document.addEventListener('alpine:init', () => {
         notice: '',
         // فقط پاسخ آخرین درخواست اثر می‌گذارد (عوض‌کردنِ سریعِ مدرسه پاسخ کهنه را دور می‌ریزد)
         seq: 0,
+        // شمارنده‌ی ذخیره: ذخیره‌ی در جریانِ مدرسه‌ی قبلی نباید دکمه‌ی مدرسه‌ی تازه را
+        // قفل کند، و finally آن نباید ذخیره‌ی جدیدتر را تمام‌شده نشان دهد
+        saveSeq: 0,
 
         init() {
             const saved = parseInt(localStorage.getItem('selectedSchoolId') || '', 10);
@@ -22,6 +25,9 @@ document.addEventListener('alpine:init', () => {
                 this.schoolId = e.detail.id;
                 this.error = '';
                 this.notice = '';
+                // ذخیره‌ی در جریان (مدرسه‌ی قبلی) دیگر به این مدرسه ربطی ندارد
+                this.saveSeq++;
+                this.saving = false;
                 this.load();
             });
             if (this.schoolId) {
@@ -106,6 +112,7 @@ document.addEventListener('alpine:init', () => {
                 return;
             }
             const schoolId = this.schoolId;
+            const saveSeq = ++this.saveSeq;
             this.saving = true;
             this.error = '';
             this.notice = '';
@@ -138,7 +145,9 @@ document.addEventListener('alpine:init', () => {
                     this.error = 'ارتباط با سرور برقرار نشد.';
                 }
             } finally {
-                this.saving = false;
+                if (saveSeq === this.saveSeq) {
+                    this.saving = false;
+                }
             }
         }
     }));

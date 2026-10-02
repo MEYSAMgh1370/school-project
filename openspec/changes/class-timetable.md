@@ -24,10 +24,14 @@ From code and docs, not from memory:
   (`STUDYPLAN_*`) already say «برنامه‌ی درسی».
 - `academic.classes` has `grade_level`, `name`, `section`, `grading_scheme` and
   an optional `teacher_id` (one teacher per class, not per subject). A class is
-  not tied to an academic year; academic years are free text on grades
-  (`"1404-1405"`). **No concept of a "current academic year" exists today**: the
-  product owner says the whole platform has one and each school chooses it; that
-  is designed in [`academic-year.md`](academic-year.md).
+  not tied to an academic year; academic years are still free text on grades
+  (`"1404-1405"`). **A "current academic year" now exists** (phase 0 of
+  [`academic-year.md`](academic-year.md), implemented): a global list of years
+  that the application creates from a Solar date in configuration, and each
+  school's current year chosen by its admin
+  (`SchoolFacade.findCurrentAcademicYear`, `GET /api/me/schools/{id}/academic-year`).
+  What it does not do yet: classes and enrollments are not year-scoped, and grades
+  are not validated against the list (phases 1-3).
 - The global course catalog (`academic.courses`, per grade level, read-only in
   the app, empty until the operator adds rows) is in `master` since
   [`grades-by-course.md`](grades-by-course.md). Every course in it is currently
