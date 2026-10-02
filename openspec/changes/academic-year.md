@@ -180,27 +180,40 @@ systems, and multi-year transcripts.
 - Because years are keys, the digit normalization already done on `/grades`
   becomes a server-side rule (one canonical form) instead of a page habit.
 
-## Acceptance Criteria (phase 0; later phases refined when scheduled)
+## Acceptance Criteria
 
-- The operator-managed list of years is readable by every school; a school admin
-  (new permission, see question 1) can set the school's current year to a listed
-  year and no other.
-- Anyone in the school can read the school's current year; another school's
-  setting is never visible.
-- Recording a grade with a year that is not in the list is rejected; existing
-  grades whose year does not match a listed year remain readable and are
-  reported by the migration, not deleted.
-- Changing the current year changes the default year of the pickers and the
-  dashboard and nothing else; old data is untouched.
+Phase 0 (met; later phases are refined when scheduled):
+
+- A school admin (`ACADEMIC_YEAR_MANAGE`) reads the whole list of years with
+  their `open` flag and sets the school's current year to an **open** year and no
+  other; an unopened year is rejected (`409`) and an unknown one `404`, with
+  nothing changed.
+- Every active member of the school reads **only** the current year (no list);
+  a user without the permission gets `403` on the admin endpoints; a stranger who
+  is not a member gets nothing.
+- A school that has not chosen a year has none (null), not a guessed one.
+- Choosing a year changes only that value; the `/grades` year field is prefilled
+  from it and stays editable; nothing else changes and no data is touched.
 - `ModularityTests.verifyModularStructure()` and `ddl-auto=validate` pass.
+
+Phase 1 and later (not built): grades validated against the list; the
+role-by-year visibility of "Who sees which year"; year-scoped courses, tuition,
+classes/enrollments and promotion.
 
 ## Tests
 
-- Unit (no Docker): year normalization and matching, the current-year rule
-  (selectable years only), grade validation against the list.
-- Integration (CI, Docker): the settings endpoint's permission/tenant
-  negatives, the migration on a database that already holds free-text years, and
-  the default-year behavior of the grade pages' API.
+- Unit (no Docker): `AcademicYearFacadeTest` (only open years selectable,
+  unknown year/school rejected with nothing stored, "not chosen" is empty, the
+  list includes closed years) and `AcademicYearPageRenderTest`.
+- Integration: `AcademicYearFlowIntegrationTest` (list, choose, the two views,
+  permission and stranger negatives, closed/unknown year). Verified locally
+  against PostgreSQL 16 with Flyway `V1`→`V6` on an empty database and
+  `ddl-auto=validate` (the full suite: 275 tests, one error that only needs
+  Docker); CI runs them on Testcontainers `postgres:18`.
+- Browser (compiled templates, mocked APIs): the page (no year, choose and save,
+  save disabled when unchanged, `403` message) and the `/grades` prefill (current
+  year, a typed year is kept, a school switch while the request is pending, no
+  year, API error).
 
 ## Unresolved Questions
 
