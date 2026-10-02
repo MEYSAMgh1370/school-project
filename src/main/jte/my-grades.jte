@@ -36,8 +36,10 @@
                 <%-- انتخابگرِ دانش‌آموز: یک کنترل که باز می‌شود و نامِ فرزندان داخلش است؛
                      با انتخابِ یکی، فقط نمره‌های همان دانش‌آموز زیرش نشان داده می‌شود.
                      با ?student=<id> (از کارت داشبورد) همان فرزند از قبل انتخاب است.
-                     اگر فقط یک دانش‌آموز هست، انتخابگر بی‌معناست و فقط نامش می‌آید. --%>
-                <div x-cloak x-show="!loading && groups().length > 0">
+                     اگر فقط یک دانش‌آموز هست، انتخابگر بی‌معناست و فقط نامش می‌آید.
+                     با خطای بارگذاری پنهان است: groups() از روی نام‌های سمت سرور پر می‌ماند،
+                     و بدون !error شکستِ شبکه «بدون نمره» نشان داده می‌شد. --%>
+                <div x-cloak x-show="!loading && !error && groups().length > 0">
                     <div class="app-picker" x-show="groups().length > 1"
                          @click.outside="pickerOpen = false" @keydown.escape="closePicker(true)">
                         <p class="is-size-7 has-text-grey mb-2" id="grades-picker-label">انتخاب دانش‌آموز</p>

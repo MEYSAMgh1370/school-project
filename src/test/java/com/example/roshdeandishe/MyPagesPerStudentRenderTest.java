@@ -53,6 +53,13 @@ class MyPagesPerStudentRenderTest {
     }
 
     @Test
+    void aLoadFailureDoesNotShowTheGradePanelAsIfNoGradesWereRecorded() {
+        String html = renderGrades(List.of(new WardRef(100L, 5L, "آرین رضایی")));
+
+        assertThat(html).contains("x-show=\"!loading && !error && groups().length > 0\"");
+    }
+
+    @Test
     void thePickerIsHiddenForASingleStudentWhoseNameIsShownInstead() {
         String html = renderGrades(List.of());
 
