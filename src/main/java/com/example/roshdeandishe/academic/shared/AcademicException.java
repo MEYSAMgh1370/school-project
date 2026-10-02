@@ -25,6 +25,9 @@ public final class AcademicException extends RuntimeException {
                     "این کلاس شِمای " + e.expectedScheme() + " دارد.";
             case AcademicError.InvalidGrade e -> e.reason();
             case AcademicError.GradeNotFound e -> "نمره‌ای با شناسه " + e.gradeId() + " یافت نشد.";
+            case AcademicError.CourseNotFound e -> "درسی با شناسه " + e.courseId() + " یافت نشد.";
+            case AcademicError.CourseNotForClass e ->
+                    "درس " + e.courseId() + " برای پایه‌ی کلاس " + e.classId() + " تعریف نشده است.";
             case AcademicError.SchoolNotFound e -> "مدرسه‌ای با شناسه " + e.schoolId() + " یافت نشد.";
             case AcademicError.InvalidGradeLevel e -> "پایه‌ی " + e.gradeLevel() + " در بازه‌ی مقطع تحصیلی این مدرسه ("
                     + e.minGrade() + " تا " + e.maxGrade() + ") نیست.";

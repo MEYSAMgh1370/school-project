@@ -74,6 +74,7 @@
                                 <tr>
                                     <th scope="col">سال تحصیلی</th>
                                     <th scope="col">نوبت</th>
+                                    <th scope="col">درس</th>
                                     <th scope="col">نمره</th>
                                     <th scope="col">نظر</th>
                                     <th scope="col">تاریخ ثبت</th>
@@ -84,6 +85,7 @@
                                     <tr>
                                         <td dir="ltr" x-text="grade.academicYear"></td>
                                         <td x-text="termLabel(grade.term)"></td>
+                                        <td x-text="grade.courseName || 'نمره‌ی کل'" :class="{ 'has-text-grey': !grade.courseName }"></td>
                                         <td x-text="gradeValue(grade)"></td>
                                         <td x-text="grade.comment || '—'"></td>
                                         <td dir="ltr" x-text="new Date(grade.recordedAt).toLocaleDateString('fa-IR')"></td>

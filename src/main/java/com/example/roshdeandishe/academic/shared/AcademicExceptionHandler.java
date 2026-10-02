@@ -65,6 +65,16 @@ public class AcademicExceptionHandler {
                     "نمره یافت نشد",
                     "نمره‌ای با شناسه " + e.gradeId() + " یافت نشد."
             );
+            case AcademicError.CourseNotFound e -> ProblemDetailFactory.problem(
+                    HttpStatus.NOT_FOUND, "course-not-found",
+                    "درس یافت نشد",
+                    "درسی با شناسه " + e.courseId() + " یافت نشد."
+            );
+            case AcademicError.CourseNotForClass e -> ProblemDetailFactory.problem(
+                    HttpStatus.BAD_REQUEST, "course-not-for-class",
+                    "درس مربوط به پایه‌ی این کلاس نیست",
+                    "درس " + e.courseId() + " برای پایه‌ی کلاس " + e.classId() + " تعریف نشده است."
+            );
             case AcademicError.SchoolNotFound e -> ProblemDetailFactory.problem(
                     HttpStatus.NOT_FOUND, "school-not-found",
                     "مدرسه یافت نشد",
