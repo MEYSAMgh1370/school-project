@@ -98,6 +98,17 @@ document.addEventListener('alpine:init', () => {
             this.confirm = null;
         },
 
+        // خطای خواندن: ماژول/مجوزِ پس‌گرفته‌شده (blocking) مثل loadBase و mutate صفحه را می‌بندد و
+        // modalهای باز را هم می‌بندد؛ بقیه فقط پیامِ خطا می‌گذارند
+        failLoad(e) {
+            this.error = e.message;
+            if (e.blocking) {
+                this.blocked = true;
+                this.cell = null;
+                this.confirm = null;
+            }
+        },
+
         csrfToken() {
             const match = document.cookie.match(/(?:^|;\s*)XSRF-TOKEN=([^;]*)/);
             return match ? decodeURIComponent(match[1]) : '';
@@ -225,7 +236,7 @@ document.addEventListener('alpine:init', () => {
                 if (seq === this.periodSeq) {
                     this.periods = [];
                     this.periodsOk = false;
-                    this.error = e.message;
+                    this.failLoad(e);
                 }
             } finally {
                 if (seq === this.periodSeq) {
@@ -257,7 +268,7 @@ document.addEventListener('alpine:init', () => {
                 if (seq === this.entrySeq) {
                     this.entries = [];
                     this.entriesOk = false;
-                    this.error = e.message;
+                    this.failLoad(e);
                 }
             } finally {
                 if (seq === this.entrySeq) {
@@ -291,7 +302,7 @@ document.addEventListener('alpine:init', () => {
             } catch (e) {
                 if (seq === this.courseSeq) {
                     this.courses = [];
-                    this.error = e.message;
+                    this.failLoad(e);
                 }
             }
         },
@@ -305,7 +316,7 @@ document.addEventListener('alpine:init', () => {
                 }
             } catch (e) {
                 if (schoolId === this.schoolId) {
-                    this.error = e.message;
+                    this.failLoad(e);
                 }
             }
         },
