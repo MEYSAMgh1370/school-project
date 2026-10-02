@@ -15,6 +15,7 @@ import com.example.roshdeandishe.iam.IamFacade.UserProfile;
 import com.example.roshdeandishe.school.SchoolFacade;
 import com.example.roshdeandishe.school.SchoolFacade.SchoolId;
 import com.example.roshdeandishe.school.SchoolFacade.SchoolInfo;
+import com.example.roshdeandishe.web.dto.WardRef;
 import com.example.roshdeandishe.web.dto.WardRow;
 import org.junit.jupiter.api.Test;
 
@@ -139,5 +140,28 @@ class WardsAssemblerTest {
         assertThat(ward.schoolName()).isEqualTo("مدرسه #5");
         assertThat(ward.hasClass()).isFalse();
         assertThat(ward.hasNoInvoices()).isTrue();
+    }
+
+    @Test
+    void wardRefsListOnlyNamesForActiveParentSchoolsAndCallNoFinance() {
+        when(iam.currentUserId()).thenReturn(PARENT);
+        when(iam.findMembershipsByUser(PARENT)).thenReturn(List.of(
+                membership(5L, "PARENT", true), membership(6L, "PARENT", false), membership(7L, "TEACHER", true)));
+        givenWard(5L, 100L, 200L, "آرین رضایی");
+
+        List<WardRef> refs = assembler.wardRefsForCurrentUser();
+
+        assertThat(refs).containsExactly(new WardRef(100L, 5L, "آرین رضایی"));
+        verify(academic, never()).listWards(PARENT.value(), 6L);
+        verify(academic, never()).listWards(PARENT.value(), 7L);
+        verify(finance, never()).listInvoicesForStudents(anyLong(), org.mockito.ArgumentMatchers.anyList());
+    }
+
+    @Test
+    void wardRefsAreEmptyForAUserWhoIsNotAParent() {
+        when(iam.currentUserId()).thenReturn(PARENT);
+        when(iam.findMembershipsByUser(PARENT)).thenReturn(List.of(membership(5L, "STUDENT", true)));
+
+        assertThat(assembler.wardRefsForCurrentUser()).isEmpty();
     }
 }

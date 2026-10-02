@@ -37,12 +37,25 @@ schoolId)` (used by `MyInvoicesController` and the Bale "فرزندان من" co
   logs). Before navigating, the link stores the child's school as the selected
   school (`Alpine.store('nav').rememberSchool`), so the destination loads that
   school's data. Buttons keep the normal 44px size.
-- `/my-grades` and `/my-invoices` read `?student=` and show only that child's
-  rows (client-side, over the list the API already returns for the school), with a
-  notice «فقط نمره‌های/فاکتورهای دانش‌آموز #id نمایش داده می‌شود» and a «نمایش همه»
-  link back to the unfiltered page. A non-numeric `student` is ignored (all rows);
-  an id that is not one of the user's wards yields the empty state, because the
-  API never returns it.
+- **`/my-grades` is a student accordion.** One section per linked child of the
+  selected school (also a child with no grades: "بدون نمره", and, when opened, «نمره‌ای
+  برای این دانش‌آموز ثبت نشده است»), plus a section «نمره‌های من» for the user's
+  own grades (a student's own grades are not a ward). The title is the child's
+  name with a grade count; sections are sorted by name, the user's own first. Only
+  one section is open at a time: opening one closes the others, and clicking the
+  open one closes it. Following a dashboard card (`?student=<id>`) opens that
+  child's section; with no or an unknown/invalid `student`, all sections are closed,
+  except that a single section opens by itself. Toggles are real buttons
+  (`aria-expanded`, `aria-controls`, region panels), so the keyboard works.
+- **Names come from the server, not the URL.** `MyGradesPageController` adds
+  `WardsAssembler.wardRefsForCurrentUser()` (names only, no finance call); the page
+  emits them as escaped `data-*` attributes outside the `school-scope` template
+  (its content lives in `<template x-if="schoolId">` and is not in the DOM when
+  the script initialises) and `my-grades.js` reads them.
+- **`/my-invoices` keeps the `?student=` filter:** it shows only that child's
+  rows, with a notice «فقط فاکتورهای دانش‌آموز #id نمایش داده می‌شود» and a «نمایش
+  همه» link. A non-numeric `student` is ignored (all rows); an id that is not one
+  of the user's wards yields the empty state, because the API never returns it.
 - Data is assembled by `web.model.WardsAssembler` and scoped like
   `MyInvoicesController`: only children linked to the signed-in user, no
   `TenantContext`. A new web → academic/finance dependency goes through public
@@ -59,11 +72,12 @@ any active `PARENT` membership.
 
 - The finance state is a count-based summary chosen in this change; whether
   parents also want amounts waits on the monetary-unit decision.
-- The filtered pages still label rows «دانش‌آموز #id» (as before) and the notice
-  shows the same id, because the grades and invoices APIs return no student name.
-  Showing names needs an API change and is a separate decision.
-- The filter is display-only: the APIs still return every linked ward for the
-  school, and authorization is unchanged.
+- `/my-invoices` still labels rows «دانش‌آموز #id» and its filter notice shows the
+  same id; its API returns no student name. The same server-side names could be
+  added there (as `/my-grades` now does) or the page could become an accordion too;
+  that is a separate decision.
+- The accordion and the filter are display-only: the APIs still return every linked
+  ward for the school, and authorization is unchanged.
 - A parent who is also admin or teacher sees the section only after switching the
   role to `PARENT`.
 
@@ -74,8 +88,9 @@ any active `PARENT` membership.
 - The finance state follows the precedence above and counts only that child's
   invoices.
 - Section order and the `x-data` root hold (Alpine does not initialise without it).
-- Each card's links carry only the student id and its school; following one opens
-  the page for that school filtered to that child, and «نمایش همه» restores all.
+- Each card's links carry only the student id and its school; following «نمره‌ها»
+  opens `/my-grades` for that school with that child's section open, and following
+  «فاکتورها» opens `/my-invoices` filtered to that child (with «نمایش همه»).
 
 ## Tests
 
@@ -85,7 +100,12 @@ any active `PARENT` membership.
 - `DashboardWardsRenderTest` (JTE render, no Docker) — cards, four finance
   states, empty text, absence for a non-parent, role gating and `x-data` root,
   section order, `jalali.js` loaded, per-child links with only the id in the URL.
-- `MyPagesStudentFilterRenderTest` (JTE render, no Docker) — both pages iterate
-  and empty-state on the filtered list and offer «نمایش همه». The filtering
-  itself was verified in a browser (the project has no JS test setup).
+- `MyPagesPerStudentRenderTest` (JTE render, no Docker) — the grades accordion's
+  accessible toggles/panels, no leftover filter or student column, ward names as
+  escaped attributes placed before the `school-scope` template, the invoices
+  filter and «نمایش همه». The behavior (open from a card, single-open, closing, a
+  child with no grades, the user's own grades, unknown ids, keyboard) was verified
+  in a browser against the compiled templates; the project has no JS test setup.
+- `WardsAssemblerTest` also covers `wardRefsForCurrentUser` (names only, active
+  parent schools only, no finance call).
 - Existing `*FlowIntegrationTest` assertions on the dashboard run in CI.

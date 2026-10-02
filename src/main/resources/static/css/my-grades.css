@@ -1,0 +1,55 @@
+/* Student accordion on /my-grades: composed from shared tokens and Bulma primitives. */
+.app-accordion-item {
+  padding: 0;
+  border: 1px solid var(--bulma-border);
+  box-shadow: var(--shadow-sm);
+}
+
+.app-accordion-toggle {
+  appearance: none;
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  inline-size: 100%;
+  min-block-size: 44px;
+  padding: var(--space-3) var(--space-5);
+  background: transparent;
+  border: 0;
+  border-radius: var(--radius-md);
+  color: var(--bulma-text);
+  cursor: pointer;
+  font: inherit;
+  font-weight: var(--bulma-weight-semibold);
+  text-align: start;
+}
+
+.app-accordion-toggle:hover {
+  background: var(--bulma-scheme-main-bis);
+}
+
+/* the chevron sits at the inline-end edge, after the grade count */
+.app-accordion-chevron {
+  margin-inline-start: auto;
+  inline-size: 0.5em;
+  block-size: 0.5em;
+  border: 2px solid currentColor;
+  border-inline-end: 0;
+  border-block-start: 0;
+  /* RTL-only app: closed points toward inline-end (left), open points down —
+     same drawing as the sidebar chevron (app.css "Sidebar layout"). */
+  transform: rotate(135deg);
+  transition: transform 0.15s ease;
+}
+
+.app-accordion-toggle[aria-expanded="true"] .app-accordion-chevron {
+  transform: rotate(45deg);
+}
+
+.app-accordion-panel {
+  padding: var(--space-3) var(--space-5) var(--space-5);
+  border-block-start: 1px solid var(--bulma-border);
+}
+
+.app-accordion-panel > p {
+  margin-block-end: 0;
+}

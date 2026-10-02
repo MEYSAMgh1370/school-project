@@ -12,6 +12,7 @@ import com.example.roshdeandishe.iam.IamFacade.UserId;
 import com.example.roshdeandishe.iam.IamFacade.UserProfile;
 import com.example.roshdeandishe.school.SchoolFacade;
 import com.example.roshdeandishe.school.SchoolFacade.SchoolId;
+import com.example.roshdeandishe.web.dto.WardRef;
 import com.example.roshdeandishe.web.dto.WardRow;
 import org.springframework.stereotype.Component;
 
@@ -53,13 +54,40 @@ public class WardsAssembler {
         return memberships.stream().anyMatch(m -> m.active() && PARENT_ROLE.equals(m.roleCode()));
     }
 
-    public List<WardRow> forParent(UserId userId, List<MembershipInfo> memberships) {
+    /**
+     * فقط نامِ فرزندانِ لینک‌شده‌ی کاربرِ فعلی در همه‌ی مدرسه‌هایی که والدِ فعال
+     * است - برای صفحه‌ی «نمره‌های من» (عنوان آکاردئونِ هر دانش‌آموز). بدون
+     * فراخوانی finance؛ کاربری که والد نیست فهرست خالی می‌گیرد.
+     */
+    public List<WardRef> wardRefsForCurrentUser() {
+        UserId userId = iamFacade.currentUserId();
+        List<WardRef> refs = new ArrayList<>();
+        for (Long schoolId : parentSchoolIds(iamFacade.findMembershipsByUser(userId))) {
+            for (StudentInfo ward : academicFacade.listWards(userId.value(), schoolId)) {
+                refs.add(new WardRef(ward.id().value(), schoolId, wardName(ward)));
+            }
+        }
+        return List.copyOf(refs);
+    }
+
+    private static Set<Long> parentSchoolIds(List<MembershipInfo> memberships) {
         Set<Long> schoolIds = new LinkedHashSet<>();
         for (MembershipInfo membership : memberships) {
             if (membership.active() && PARENT_ROLE.equals(membership.roleCode())) {
                 schoolIds.add(membership.schoolId());
             }
         }
+        return schoolIds;
+    }
+
+    private String wardName(StudentInfo ward) {
+        return iamFacade.findUser(new UserId(ward.userId()))
+                .map(UserProfile::fullName)
+                .orElse("دانش‌آموز #" + ward.userId());
+    }
+
+    public List<WardRow> forParent(UserId userId, List<MembershipInfo> memberships) {
+        Set<Long> schoolIds = parentSchoolIds(memberships);
 
         List<WardRow> rows = new ArrayList<>();
         for (Long schoolId : schoolIds) {
@@ -74,9 +102,7 @@ public class WardsAssembler {
                     wards.stream().map(ward -> ward.id().value()).toList());
 
             for (StudentInfo ward : wards) {
-                String name = iamFacade.findUser(new UserId(ward.userId()))
-                        .map(UserProfile::fullName)
-                        .orElse("دانش‌آموز #" + ward.userId());
+                String name = wardName(ward);
                 Optional<EnrollmentInfo> enrollment = academicFacade.findMyEnrollment(ward.userId(), schoolId);
 
                 List<InvoiceInfo> mine = invoices.stream()
