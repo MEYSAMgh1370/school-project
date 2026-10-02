@@ -126,22 +126,24 @@ document.addEventListener('alpine:init', () => {
                     },
                     body: JSON.stringify({ academicYearId: parseInt(this.selectedId, 10) })
                 });
-                // هر پاسخ (موفق یا خطا) فقط اگر هنوز همان مدرسه انتخاب است نشان داده
-                // می‌شود: شکستِ ذخیره‌ی مدرسه‌ی قبلی نباید زیرِ مدرسه‌ی تازه بیاید
+                // هر پاسخ (موفق یا خطا) فقط اگر هنوز آخرین ذخیره است نشان داده می‌شود.
+                // saveSeq با هر ذخیره‌ی تازه و با هر عوض‌شدنِ مدرسه بالا می‌رود، پس
+                // هم ذخیره‌ی مدرسه‌ی قبلی و هم ذخیره‌ی کهنه‌ترِ همین مدرسه (A←B←A)
+                // دور ریخته می‌شود - فقط چک‌کردنِ شناسه‌ی مدرسه برای دومی کافی نبود.
                 if (!response.ok) {
                     const message = (await this.classifyError(response)).message;
-                    if (schoolId === this.schoolId) {
+                    if (saveSeq === this.saveSeq) {
                         this.error = message;
                     }
                     return;
                 }
                 const settings = await response.json();
-                if (schoolId === this.schoolId) {
+                if (saveSeq === this.saveSeq) {
                     this.apply(settings);
                     this.notice = 'سال تحصیلی جاری ثبت شد.';
                 }
             } catch (e) {
-                if (schoolId === this.schoolId) {
+                if (saveSeq === this.saveSeq) {
                     this.error = 'ارتباط با سرور برقرار نشد.';
                 }
             } finally {
