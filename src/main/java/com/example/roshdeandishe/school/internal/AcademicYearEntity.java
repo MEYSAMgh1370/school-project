@@ -9,7 +9,7 @@ import lombok.NoArgsConstructor;
  * همه‌ی مدرسه‌ها (بدون {@code schoolId}) و فقط‌خواندنی در برنامه - ردیف‌ها را
  * اپراتور پلتفرم با مهاجرت داده مدیریت می‌کند، پس عمداً setter و سازنده‌ی
  * عمومی ندارد. {@code code} شکل متداول («1404-1405»، رقم ASCII) و
- * {@code startYear} برای ترتیب‌دهی است.
+ * {@code startYear} برای ترتیب‌دهی است. سال تاریخ شروع/پایان ندارد.
  */
 @Entity
 @Table(name = "academic_years", schema = "school")
@@ -26,4 +26,8 @@ class AcademicYearEntity {
 
     @Column(name = "start_year", nullable = false)
     private int startYear;
+
+    /** اپراتور سال را «برای انتخاب باز» کرده؛ فقط سال باز را مدرسه می‌تواند سال جاری کند. */
+    @Column(name = "is_open", nullable = false)
+    private boolean open;
 }

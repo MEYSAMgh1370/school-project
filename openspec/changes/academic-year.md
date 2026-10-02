@@ -1,7 +1,9 @@
 # Academic Year (سال تحصیلی) And Year Rollover
 
-Status: proposed 2026-10-02, **not implemented**; four design questions answered
-by the product owner the same day (below), the rest still open. Foundational change: several
+Status: proposed 2026-10-02. **Phase 0 is implemented** (migration `V6`, the
+school's current year, the «سال تحصیلی» page); phases 1-3 are not. Several design
+questions were answered by the product owner the same day (below), the rest
+are still open. Foundational change: several
 other proposals depend on it ([`class-timetable.md`](class-timetable.md), and the
 deferred "course list changes over time" question in
 [`grades-by-course.md`](grades-by-course.md)). Nothing in
@@ -18,14 +20,25 @@ Every item that is a product decision is a question below, not invented here.
 
 ## Decisions Taken By The Product Owner (2026-10-02)
 
-1. **Previous years are read-only** when they hold data: once a school moves to
-   a newer year, the older year's data can be viewed but not changed.
-2. **Tuition is per school and year only** (not per grade level), and **the
+1. **Previous years' data stays editable** (corrections are allowed): moving the
+   school to a newer year freezes nothing.
+2. **Who sees which year.** The **school admin (and the platform operator) can
+   pick any year to look at it; everyone else sees only the current year.**
+   Interpretation to confirm (question 6): a past year that holds data is for
+   *viewing* by the admin, not something the school's current year is switched
+   back to.
+3. **The platform operator defines the years and decides when a new year is open
+   for schools to choose**; a school's admin can only choose among the open
+   years. A year has **no start or end date**: when a year starts and ends is the
+   **school admin's choice** (choosing the next year is what ends the previous
+   one), not a fixed calendar and not automatic.
+4. **Tuition is per school and year only** (not per grade level), and **the
    school admin sets it every year**: a new year starts with no tuition until the
    admin sets it.
-3. **Classes are separate per year** (a class belongs to one year).
-4. **Promotion is automatic by default, can also be done by hand, and the
+5. **Classes are separate per year** (a class belongs to one year).
+6. **Promotion is automatic by default, can also be done by hand, and the
    automatic mode can be switched on or off** (a school setting).
+7. **Build order**: phase 0, then the class timetable, then phases 1-3.
 
 ## Verified Baseline
 
@@ -62,20 +75,49 @@ Make the academic year a first-class platform concept, then make year-scoped
 data refer to it, in phases so the foundation can ship before the large
 re-modelling.
 
-### The year and the school's current year
+### The year and the school's current year (phase 0, implemented)
 
-- A **global list of academic years** (platform data, managed by the operator
-  like the course catalog): a code such as `1404-1405`, plus an optional start
-  and end date. Same canonical form as today's grades (ASCII digits).
-- Each **school has a current academic year**, chosen by the school admin from
-  that list (the Ministry-style "school selects the year"). It is the default
-  everywhere a year is needed: grade entry, timetable, tuition, dashboard.
-- Reading the current year is a **facade call** (`SchoolFacade` or a small new
-  facade) so `academic`, `finance` and `web` can use it without depending on
-  each other. Whether the global list lives in `school` or `academic` is decided
-  at implementation, by `ModularityTests` and the module-boundary rules.
-- Switching the current year does not delete or alter anything; older years
-  stay readable.
+- **A global list of academic years** (`school.academic_years`): a `code` such as
+  `1404-1405` (ASCII digits, the same shape grades use today), a `start_year` for
+  ordering, and an **`is_open`** flag. No dates. Read-only in the application: the
+  **platform operator** adds years and opens them by data migration (there is no
+  platform-actor permission model yet; that is the deferred phase-2 platform
+  work). The migration seeds `1404-1405` and `1405-1406`, both open.
+- Each **school has a current academic year** (`school.schools.current_academic_year_id`),
+  **chosen by its admin among the open years**. It is null until chosen: nothing
+  is guessed for existing schools. It is the default year wherever a year is
+  needed; today only `/grades` uses it (the year field is prefilled and stays
+  editable, so earlier years can still be corrected).
+- **New permission `ACADEMIC_YEAR_MANAGE`** (a named right, like `GRADES_EDIT`),
+  granted to `SCHOOL_ADMIN` and assignable to custom roles (e.g. a deputy). It
+  gates reading the full year list and choosing the current year. Seeded with the
+  other reference data, so it reaches already deployed databases.
+- **Two views, by decision 2:** `GET /api/me/schools/{id}/academic-year` returns
+  **only the current year** to any active member of the school;
+  `GET /api/admin/schools/{id}/academic-year` returns the **whole list with the
+  `open` flag** and the current year, and `PUT` chooses the current year; both
+  need `ACADEMIC_YEAR_MANAGE`. Choosing a year that is not open is rejected
+  (`409 academic-year-not-open`), an unknown year `404`. Choosing changes only that
+  one value; nothing is deleted or altered.
+- The page **«سال تحصیلی»** (`/academic-year`, `SCHOOL_ADMIN`, sidebar group
+  «مدرسه» and a dashboard shortcut) shows the current year, a select of the
+  years (closed ones listed as «هنوز باز نشده» and disabled) and a save button.
+- Reading the current year is a facade call (`SchoolFacade.findCurrentAcademicYear`)
+  so other modules can use it without depending on each other; the list lives in
+  `school`, which already owns school settings.
+- **Not in phase 0:** validating the year on grades against the list (existing
+  grades carry free text that must first be matched), and restricting what
+  non-admins see by year. Both come with phase 1, when each kind of data is
+  year-scoped (see "Who sees which year").
+
+### Who sees which year (decisions 1 and 2, applied from phase 1)
+
+As each kind of data becomes year-scoped, the **school admin** can open any year
+to look at it and still correct it (decision 1); **teachers, students and
+parents only see the current year's data**. Concretely this will change
+`/my-grades` (today it shows all years) and `/grades` for teachers (today the
+year is free text). It is not applied in phase 0 and it is flagged in question 5
+because it removes something users have today.
 
 ### What becomes year-scoped (by phase)
 
@@ -99,16 +141,7 @@ re-modelling.
   guardians, past grades and invoices) persists across years. Promotion is a
   year-rollover action that creates the next year's enrollments.
 
-### Read-only previous years (decision 1)
-
-Once a school's current year moves on, writes to older years are rejected with a
-clear error: grades, timetable, enrollments and the year's tuition. Reads stay
-open. Paying an old year's **unpaid invoice** is a different matter (a family
-may still owe last year's tuition): see question 4. Phase 0 can apply the rule
-only to what already carries a validated year (grades), and later phases extend
-it as each kind of data becomes year-scoped.
-
-### Promotion (ارتقای پایه) (decision 4)
+### Promotion (ارتقای پایه) (decision 6)
 
 At the start of a year the school can promote the old year's students into the
 new year's classes. Per student the outcome is one of: **promote** (a class of
@@ -182,24 +215,29 @@ systems, and multi-year transcripts.
    classes for the new year must exist before promoting; are they created by the
    admin, or copied from last year's classes (same name/section, grade level
    kept)? And can an automatic run be undone?
-2. **Who defines years and who selects (phase 0).** Years are defined only by the
-   platform operator (as proposed) and the school admin chooses the school's
-   current year from that list (decision: the school selects). May the admin pick
-   any listed year or only the next one? Which permission: a new one (e.g.
-   `ACADEMIC_YEAR_MANAGE`, held by `SCHOOL_ADMIN`)? Is a year just a code
-   (`1404-1405`) or does it have start/end dates?
-3. **Invoices when tuition is set late.** The admin sets the year's tuition
+2. **Invoices when tuition is set late.** The admin sets the year's tuition
    after students are already enrolled in the year. Are invoices issued at the
    moment the fee is saved (for everyone enrolled that year without one), by a
    separate "issue the year's invoices" action, or only for students enrolled
    afterwards (today's rule)?
-4. **Read-only and money.** Should a family still be able to pay last year's
-   unpaid invoice (recommended: yes, payments are not "editing the year's
-   data")? Are grades/timetable/enrollments the only things frozen? Is there an
-   explicit "close year" step, or does switching the current year freeze it?
-5. **Existing data.** When the feature is enabled, which year do all current
+3. **Paying last year's invoice.** Decision 1 (nothing is frozen) covers
+   payments too; confirm that a family can still pay an earlier year's unpaid
+   invoice.
+4. **Existing data.** When phases 1-3 are enabled, which year do all current
    classes, enrollments, tuition and grades belong to? One year chosen by the
    admin (as proposed), and existing free-text grade years that match no listed
    year are reported, not guessed.
-6. **Order.** Phase 0, then the class timetable, then phases 1-3 (as proposed),
-   or should tuition/classes-per-year come first?
+5. **Hiding past years from non-admins.** Decision 2 means students, parents and
+   teachers would no longer see earlier years' grades (a student today can see
+   all years in `/my-grades`). Confirm that is intended, and whether a student or
+   parent should be able to see their own earlier years' report cards in some
+   other way.
+6. **Admin viewing versus switching back.** The admin can look at any year, and
+   the school's *current* year is what everyone else sees. May the admin switch
+   the current year back to an earlier year (e.g. a mistaken choice), or is a
+   past year that already holds data view-only and not selectable as current?
+   Phase 0 allows any open year to be chosen (only grades carry a year so far).
+7. **The platform-operator actor.** Years are defined and opened by data
+   migration (like the course catalog) because no platform actor or permission
+   exists (`platform-admin-not-assignable.md`). A screen/API for the operator is
+   the deferred platform work.

@@ -101,12 +101,16 @@ class SchoolFacadeImpl implements SchoolFacade {
                 .orElseThrow(() -> new SchoolException(new SchoolError.SchoolNotFound(schoolId.value())));
         AcademicYearEntity year = academicYearRepository.findById(academicYearId.value())
                 .orElseThrow(() -> new SchoolException(new SchoolError.AcademicYearNotFound(academicYearId.value())));
+        if (!year.isOpen()) {
+            throw new SchoolException(new SchoolError.AcademicYearNotOpen(year.getId()));
+        }
         school.setCurrentAcademicYearId(year.getId());
         schoolRepository.save(school);
     }
 
     private static AcademicYearInfo toYearInfo(AcademicYearEntity entity) {
-        return new AcademicYearInfo(new AcademicYearId(entity.getId()), entity.getCode(), entity.getStartYear());
+        return new AcademicYearInfo(new AcademicYearId(entity.getId()), entity.getCode(), entity.getStartYear(),
+                entity.isOpen());
     }
 
     /**

@@ -49,6 +49,11 @@ public class SchoolExceptionHandler {
                     "نشانی اختصاصی قبلاً گرفته شده",
                     "نشانی «" + e.slug() + "» قبلاً توسط مدرسه‌ی دیگری ثبت شده است. نشانی دیگری انتخاب کنید."
             );
+            case SchoolError.AcademicYearNotOpen e -> ProblemDetailFactory.problem(
+                    HttpStatus.CONFLICT, "academic-year-not-open",
+                    "این سال تحصیلی هنوز باز نشده است",
+                    "سال تحصیلی " + e.academicYearId() + " هنوز توسط پلتفرم برای انتخاب باز نشده است."
+            );
             case SchoolError.AcademicYearNotFound e -> ProblemDetailFactory.problem(
                     HttpStatus.NOT_FOUND, "academic-year-not-found",
                     "سال تحصیلی یافت نشد",

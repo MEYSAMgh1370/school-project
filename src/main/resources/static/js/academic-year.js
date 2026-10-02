@@ -55,15 +55,18 @@ document.addEventListener('alpine:init', () => {
             this.selectedId = settings.current ? settings.current.id : '';
         },
 
-        // خواندن از /api/me (هر عضو فعال؛ schoolId از path) و نوشتن از مسیر ادمین
-        // با X-School-ID - مثل بقیه‌ی صفحه‌های مدیریتی
+        // فهرستِ همه‌ی سال‌ها فقط برای مدیر است (ACADEMIC_YEAR_MANAGE)؛ بقیه‌ی
+        // نقش‌ها فقط سال جاری را می‌بینند (GET /api/me/.../academic-year) و این
+        // صفحه را ندارند - 403 اینجا به‌صورت پیام «اجازه ندارید» نشان داده می‌شود
         async load() {
             const seq = ++this.seq;
             this.loading = true;
             this.error = '';
             this.blocked = false;
             try {
-                const response = await fetch(`/api/me/schools/${this.schoolId}/academic-year`);
+                const response = await fetch(`/api/admin/schools/${this.schoolId}/academic-year`, {
+                    headers: { 'X-School-ID': this.schoolId }
+                });
                 if (!response.ok) {
                     const classified = await this.classifyError(response);
                     if (seq === this.seq) {

@@ -34,7 +34,8 @@
                                         <select id="academicYearSelect" x-model="selectedId" required>
                                             <option value="" disabled>یک سال را انتخاب کنید</option>
                                             <template x-for="year in years" :key="year.id">
-                                                <option :value="year.id" x-text="Jalali.toPersianDigits(year.code)"></option>
+                                                <option :value="year.id" :disabled="!year.open"
+                                                        x-text="Jalali.toPersianDigits(year.code) + (year.open ? '' : ' (هنوز باز نشده)')"></option>
                                             </template>
                                         </select>
                                     </div>
@@ -47,7 +48,9 @@
                                 </div>
                             </div>
                             <p class="help">
-                                با تغییرِ سال جاری هیچ داده‌ای حذف یا تغییر نمی‌کند؛ فقط سالِ پیش‌فرضِ صفحه‌ها عوض می‌شود.
+                                شروع و پایانِ هر سال با انتخابِ شما تعیین می‌شود. با تغییرِ سال جاری هیچ داده‌ای
+                                حذف یا تغییر نمی‌کند؛ فقط سالِ پیش‌فرضِ صفحه‌ها عوض می‌شود. سالی که پلتفرم هنوز
+                                باز نکرده قابل انتخاب نیست.
                             </p>
                         </form>
                     </div>

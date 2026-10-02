@@ -226,12 +226,12 @@ natural follow-up), per-school configurable school days, and the Android client.
 1. **Platform-default activities.** Which defaults are registered for all schools
    (the names)? Product input; not invented here. Without it the platform list is
    empty and schools create their own.
-2. **Current academic year - resolved by design, pending its own approval.** The
-   student's dashboard and `/my-timetable` use the school's current academic
-   year from [`academic-year.md`](academic-year.md). That proposal's phase 0
-   (the list of years and the school's current year) must exist first; the
-   timetable is scheduled after it. Until then the timetable cannot know which
-   year to show.
+2. **Current academic year - resolved.** The student's dashboard and
+   `/my-timetable` use the school's current academic year, which exists since
+   phase 0 of [`academic-year.md`](academic-year.md)
+   (`SchoolFacade.findCurrentAcademicYear`). By that proposal's decision 2 the
+   school admin can open any year's timetable to look at it, while students,
+   parents and teachers see only the current year's.
 3. **Who sees what, where.** Decision 10 says the student sees it on the
    dashboard and the teacher sees own hours. Assumed here: a **teacher's own
    hours on `/my-timetable`** (no dashboard section), a **parent's children's
