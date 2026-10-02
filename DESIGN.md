@@ -339,7 +339,9 @@ aspirational list. Current inventory:
   UX_ROADMAP §2).
 - `layout/navbar.jte` — top bar (school/role switcher, user menu) plus the
   grouped page-link sidebar (`aside.app-sidebar`, inline-start, fixed ≥1024px;
-  burger-toggled panel below), fed by `NavbarModelAssembler`. Layout rules live
+  sticky-bar + drawer below), fed by `NavbarModelAssembler`. The page links come
+  from `web.model.NavCatalog`, the same source as the dashboard's «دسترسی سریع»
+  cards (`dashboard.jte`, `app-shortcut` in `dashboard.css`). Layout rules live
   in `app.css` §"Sidebar layout".
 - `layout/page-header.jte` — `title` + optional `subtitle`; renders the
   `title is-4` / `subtitle is-6` pair from §3. Extracted 2026-09-27,

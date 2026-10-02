@@ -1,3 +1,4 @@
+@import com.example.roshdeandishe.web.model.NavCatalog
 @import com.example.roshdeandishe.web.model.NavbarModel
 @import com.example.roshdeandishe.web.model.RoleLabels
 
@@ -9,9 +10,10 @@
      عضویت (فرد B2C آینده) دراپ‌داون مدرسه را اصلاً نمی‌بیند. منطق در
      static/js/navbar.js (قاعده‌ی جانمایی کد ۲۰۲۶-۰۷-۰۵: fetch/regex در
      فایل استاتیک، نه inline).
-     لینک‌های صفحه‌ها در سایدبار (aside.app-sidebar) زندگی می‌کنند، گروه‌بندی‌شده
-     - هر صفحه‌ی مدیریتی جدید باید لینکش را همین‌جا به گروه مناسب اضافه کند
-     (UX_ROADMAP.md §2: هیچ URL یتیمی وجود ندارد). نمایش لینک (و برچسبِ
+     لینک‌های صفحه‌ها در سایدبار (aside.app-sidebar) زندگی می‌کنند و از منبع
+     واحدِ NavCatalog رندر می‌شوند (کارت‌های «دسترسی سریع» داشبورد هم از
+     همان) - هر صفحه‌ی مدیریتی جدید باید لینکش را در NavCatalog به گروه
+     مناسب اضافه کند، نه اینجا (UX_ROADMAP.md §2: هیچ URL یتیمی وجود ندارد). نمایش لینک (و برچسبِ
      گروه) می‌تواند تابع نقشِ انتخاب‌شده باشد (فقط نمایش - کنترل دسترسی
      همیشه سمت سرور می‌ماند). نوار بالا فقط سوییچر مدرسه/نقش و منوی کاربر
      را دارد. wrapper با display: contents است تا nav و aside هر دو زیر
@@ -82,52 +84,20 @@
             <li><a href="/dashboard">داشبورد</a></li>
         </ul>
         @if(!navbar.schools().isEmpty())
-            <div x-cloak x-show="['SCHOOL_ADMIN', 'TEACHER'].includes(selectedRole)" data-group="0">
-                <button type="button" class="app-sidebar-toggle" aria-controls="sidebar-group-0-list" :aria-expanded="isGroupOpen(0)" @click="toggleGroup(0)">
-                    <span>مدرسه</span>
-                    <span class="app-sidebar-chevron" aria-hidden="true"></span>
-                </button>
-                <ul class="menu-list" id="sidebar-group-0-list" x-show="isGroupOpen(0)">
-                    <li><a href="/people" x-show="selectedRole === 'SCHOOL_ADMIN'">اعضای مدرسه</a></li>
-                    <li><a href="/students" x-show="selectedRole === 'SCHOOL_ADMIN' || selectedRole === 'TEACHER'">دانش‌آموزان</a></li>
-                    <li><a href="/roles" x-show="selectedRole === 'SCHOOL_ADMIN'">نقش‌ها و دسترسی‌ها</a></li>
-                </ul>
-            </div>
-            <div x-cloak x-show="['SCHOOL_ADMIN', 'TEACHER', 'STUDENT'].includes(selectedRole)" data-group="1">
-                <button type="button" class="app-sidebar-toggle" aria-controls="sidebar-group-1-list" :aria-expanded="isGroupOpen(1)" @click="toggleGroup(1)">
-                    <span>آموزش</span>
-                    <span class="app-sidebar-chevron" aria-hidden="true"></span>
-                </button>
-                <ul class="menu-list" id="sidebar-group-1-list" x-show="isGroupOpen(1)">
-                    <li><a href="/classes" x-show="selectedRole === 'SCHOOL_ADMIN' || selectedRole === 'TEACHER'">کلاس‌ها</a></li>
-                    <li><a href="/curriculum" x-show="selectedRole === 'SCHOOL_ADMIN' || selectedRole === 'TEACHER'">سرفصل‌ها و بانک سؤال</a></li>
-                    <li><a href="/study-plans" x-show="selectedRole === 'SCHOOL_ADMIN' || selectedRole === 'TEACHER'">برنامه‌های مطالعه</a></li>
-                    <li><a href="/exams" x-show="selectedRole === 'SCHOOL_ADMIN' || selectedRole === 'TEACHER'">آزمون‌ها</a></li>
-                    <li><a href="/my-exams" x-show="selectedRole === 'STUDENT'">آزمون‌های من</a></li>
-                    <li><a href="/my-study-plan" x-show="selectedRole === 'STUDENT'">برنامه‌ی مطالعه‌ی من</a></li>
-                </ul>
-            </div>
-            <div x-cloak x-show="['SCHOOL_ADMIN', 'TEACHER', 'STUDENT', 'PARENT'].includes(selectedRole)" data-group="2">
-                <button type="button" class="app-sidebar-toggle" aria-controls="sidebar-group-2-list" :aria-expanded="isGroupOpen(2)" @click="toggleGroup(2)">
-                    <span>نمرات</span>
-                    <span class="app-sidebar-chevron" aria-hidden="true"></span>
-                </button>
-                <ul class="menu-list" id="sidebar-group-2-list" x-show="isGroupOpen(2)">
-                    <li><a href="/grades" x-show="selectedRole === 'SCHOOL_ADMIN' || selectedRole === 'TEACHER'">دفتر نمرات</a></li>
-                    <li><a href="/my-grades" x-show="selectedRole === 'STUDENT' || selectedRole === 'PARENT'">نمره‌های من</a></li>
-                </ul>
-            </div>
-            <div x-cloak x-show="['SCHOOL_ADMIN', 'FINANCE_ADMIN', 'STUDENT', 'PARENT'].includes(selectedRole)" data-group="3">
-                <button type="button" class="app-sidebar-toggle" aria-controls="sidebar-group-3-list" :aria-expanded="isGroupOpen(3)" @click="toggleGroup(3)">
-                    <span>مالی</span>
-                    <span class="app-sidebar-chevron" aria-hidden="true"></span>
-                </button>
-                <ul class="menu-list" id="sidebar-group-3-list" x-show="isGroupOpen(3)">
-                    <li><a href="/finance" x-show="selectedRole === 'SCHOOL_ADMIN' || selectedRole === 'FINANCE_ADMIN'">امور مالی</a></li>
-                    <li><a href="/expenses" x-show="selectedRole === 'SCHOOL_ADMIN' || selectedRole === 'FINANCE_ADMIN'">هزینه‌ها</a></li>
-                    <li><a href="/my-invoices" x-show="selectedRole === 'STUDENT' || selectedRole === 'PARENT'">فاکتورهای من</a></li>
-                </ul>
-            </div>
+            @for(var group : NavCatalog.groups())
+                <div x-cloak x-show="${group.visibleWhen("selectedRole")}" data-group="${group.id()}">
+                    <button type="button" class="app-sidebar-toggle" aria-controls="sidebar-group-${group.id()}-list"
+                            :aria-expanded="isGroupOpen('${group.id()}')" @click="toggleGroup('${group.id()}')">
+                        <span>${group.label()}</span>
+                        <span class="app-sidebar-chevron" aria-hidden="true"></span>
+                    </button>
+                    <ul class="menu-list" id="sidebar-group-${group.id()}-list" x-show="isGroupOpen('${group.id()}')">
+                        @for(var link : group.links())
+                            <li><a href="${link.href()}" x-show="${link.visibleWhen("selectedRole")}">${link.label()}</a></li>
+                        @endfor
+                    </ul>
+                </div>
+            @endfor
         @endif
         <div class="app-sidebar-account">
             <p class="app-sidebar-account-label">${navbar.fullName()}</p>

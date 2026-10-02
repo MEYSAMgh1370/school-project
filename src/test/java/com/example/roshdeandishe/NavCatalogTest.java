@@ -1,0 +1,78 @@
+package com.example.roshdeandishe;
+
+import com.example.roshdeandishe.web.model.NavCatalog;
+import com.example.roshdeandishe.web.model.NavCatalog.Group;
+import com.example.roshdeandishe.web.model.NavCatalog.Link;
+import org.junit.jupiter.api.Test;
+
+import java.util.HashSet;
+import java.util.List;
+import java.util.Set;
+
+import static org.assertj.core.api.Assertions.assertThat;
+
+/**
+ * منبع واحدِ لینک‌ها (سایدبار + «دسترسی سریع» داشبورد) را بدون Spring و
+ * Docker قفل می‌کند: ثبت لینکِ تکراری یا کارتی برای نقشی که لینکش را
+ * نمی‌بیند، همین‌جا می‌شکند - نه در مرورگر.
+ */
+class NavCatalogTest {
+
+    private static List<Link> allLinks() {
+        return NavCatalog.groups().stream().flatMap(group -> group.links().stream()).toList();
+    }
+
+    @Test
+    void hrefsAndGroupIdsAreUnique() {
+        Set<String> hrefs = new HashSet<>();
+        allLinks().forEach(link -> assertThat(hrefs.add(link.href())).as(link.href()).isTrue());
+
+        Set<String> ids = new HashSet<>();
+        NavCatalog.groups().forEach(group -> assertThat(ids.add(group.id())).as(group.id()).isTrue());
+    }
+
+    @Test
+    void everyLinkHasLabelDescriptionAndAtLeastOneRole() {
+        allLinks().forEach(link -> {
+            assertThat(link.href()).startsWith("/");
+            assertThat(link.label()).isNotBlank();
+            assertThat(link.description()).isNotBlank();
+            assertThat(link.roles()).as(link.href()).isNotEmpty();
+        });
+    }
+
+    @Test
+    void shortcutRolesAreASubsetOfSidebarRoles() {
+        allLinks().forEach(link ->
+                assertThat(link.roles()).as(link.href()).containsAll(link.shortcutRoles()));
+    }
+
+    @Test
+    void shortcutsListsExactlyTheLinksWithShortcutRoles() {
+        assertThat(NavCatalog.shortcuts())
+                .containsExactlyElementsOf(allLinks().stream().filter(l -> !l.shortcutRoles().isEmpty()).toList());
+    }
+
+    @Test
+    void everyRoleThatSeesTheSidebarHasAtLeastOneShortcut() {
+        // وگرنه داشبوردِ آن نقش بخش «دسترسی سریع» خالی نشان می‌دهد
+        Set<String> roles = new HashSet<>();
+        allLinks().forEach(link -> roles.addAll(link.roles()));
+        roles.forEach(role -> assertThat(NavCatalog.shortcuts().stream()
+                .anyMatch(link -> link.shortcutRoles().contains(role))).as(role).isTrue());
+    }
+
+    @Test
+    void groupIsVisibleForTheUnionOfItsLinkRoles() {
+        Group school = NavCatalog.groups().stream().filter(g -> g.id().equals("school")).findFirst().orElseThrow();
+        assertThat(school.visibleWhen("selectedRole"))
+                .isEqualTo("['SCHOOL_ADMIN', 'TEACHER'].includes(selectedRole)");
+    }
+
+    @Test
+    void anyShortcutExpressionCoversEveryShortcutRole() {
+        String expression = NavCatalog.anyShortcutVisibleWhen("$store.nav.selectedRole");
+        assertThat(expression).endsWith("].includes($store.nav.selectedRole)")
+                .contains("'SCHOOL_ADMIN'", "'TEACHER'", "'STUDENT'", "'PARENT'", "'FINANCE_ADMIN'");
+    }
+}
