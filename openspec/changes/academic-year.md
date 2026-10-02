@@ -135,11 +135,13 @@ because it removes something users have today.
 
 ### What becomes year-scoped (by phase)
 
-- **Phase 0 - the year itself.** Global list, the school's current year,
-  a settings screen/endpoint, a validated year on grades (existing free-text
-  values are matched to the list; unmatched ones are reported, not dropped), and
-  the current year shown in the navbar/dashboard. Smallest slice; unblocks the
-  class timetable.
+- **Phase 0 - the year itself (implemented).** The global list created by the
+  application, the school's current year, the settings page and endpoints, and
+  the `/grades` year prefill. Smallest slice; unblocks the class timetable.
+  **Not built yet and moved to phase 1:** validating the year on grades against
+  the list (existing free-text values are matched to it; unmatched ones are
+  reported, not dropped), showing the current year in the navbar and the
+  dashboard, and the role-by-year visibility.
 - **Phase 1 - courses per year.** Courses get a validity range in years
   (from/until), so a grade level's list changes over time without rewriting
   history; pickers show only courses valid for the chosen year. This resolves

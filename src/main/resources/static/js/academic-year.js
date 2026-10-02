@@ -119,18 +119,24 @@ document.addEventListener('alpine:init', () => {
                     },
                     body: JSON.stringify({ academicYearId: parseInt(this.selectedId, 10) })
                 });
+                // هر پاسخ (موفق یا خطا) فقط اگر هنوز همان مدرسه انتخاب است نشان داده
+                // می‌شود: شکستِ ذخیره‌ی مدرسه‌ی قبلی نباید زیرِ مدرسه‌ی تازه بیاید
                 if (!response.ok) {
-                    this.error = (await this.classifyError(response)).message;
+                    const message = (await this.classifyError(response)).message;
+                    if (schoolId === this.schoolId) {
+                        this.error = message;
+                    }
                     return;
                 }
                 const settings = await response.json();
-                // اگر مدرسه در این فاصله عوض شده، پاسخِ مدرسه‌ی قبلی را نشان نده
                 if (schoolId === this.schoolId) {
                     this.apply(settings);
                     this.notice = 'سال تحصیلی جاری ثبت شد.';
                 }
             } catch (e) {
-                this.error = 'ارتباط با سرور برقرار نشد.';
+                if (schoolId === this.schoolId) {
+                    this.error = 'ارتباط با سرور برقرار نشد.';
+                }
             } finally {
                 this.saving = false;
             }
