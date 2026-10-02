@@ -42,6 +42,12 @@ production environment variables, and is not part of this change.
 added afterwards in
 [`notification-channel-abstraction.md`](notification-channel-abstraction.md).
 
+## Relation To Earlier Guidance
+
+`CLAUDE_LEGACY.md` §10 and `MOBILE_ROADMAP.md` described the module as Bale-specific
+"on purpose". This change and the follow-up supersede that wording (both
+documents carry a 2026-10-02 note); the rename carries no behavior risk.
+
 ## Compatibility And Deployment
 
 No REST payload, permission, tenant, schema or configuration change.

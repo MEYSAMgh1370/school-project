@@ -17,6 +17,14 @@ and identity linking is **phone-number-based**, not `InviteToken`-based. §4/§5
 below have been corrected to match reality; treat the corrected text as current,
 not the original proposal.
 
+**Reconciliation note (2026-10-02, notification module):** the "Bale-only, not a
+generic multi-channel abstraction" decision above was superseded at the owner's
+request. The `bale` module is now `notification`, with a package-private
+`NotificationChannel` and Bale as its only channel; see
+`openspec/changes/rename-bale-module-to-notification.md` and
+`openspec/changes/notification-channel-abstraction.md`. No second channel exists
+yet.
+
 **Reconciliation note (2026-07-08, student app technical choices):** the
 STUDENT channel's stack and mobile-auth mechanism, both discussed as open in
 the original draft below, have now been explicitly decided in a planning
