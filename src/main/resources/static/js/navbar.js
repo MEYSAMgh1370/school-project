@@ -34,6 +34,16 @@ document.addEventListener('alpine:init', () => {
                 this.openGroups = {};
             }
             this.markCurrentPage();
+            // موبایل: کشوی منو صفحه را قفل می‌کند (Bulma .is-clipped) و با
+            // رسیدن به عرض دسکتاپ بسته می‌شود تا قفل جا نماند.
+            this.$watch('menuOpen', (open) => {
+                document.documentElement.classList.toggle('is-clipped', open);
+            });
+            window.matchMedia('(min-width: 1024px)').addEventListener('change', (event) => {
+                if (event.matches) {
+                    this.menuOpen = false;
+                }
+            });
         },
         isGroupOpen(index) {
             return this.openGroups[index] === true;

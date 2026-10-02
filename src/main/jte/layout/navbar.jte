@@ -33,7 +33,7 @@
                 <span aria-hidden="true"></span>
             </button>
         </div>
-        <div class="navbar-menu" :class="{ 'is-active': menuOpen }">
+        <div class="navbar-menu">
             <div class="navbar-end">
                 @if(!navbar.schools().isEmpty())
                     <div class="navbar-item has-dropdown" :class="{ 'is-active': schoolOpen }" @click.outside="schoolOpen = false">
@@ -74,7 +74,10 @@
     </nav>
 
     <aside class="app-sidebar menu" id="app-sidebar" :class="{ 'is-open': menuOpen }" aria-label="صفحه‌های مدرسه">
-        <a class="app-sidebar-brand" href="/dashboard">رشدِاندیشه</a>
+        <div class="app-sidebar-header">
+            <a class="app-sidebar-brand" href="/dashboard">رشدِاندیشه</a>
+            <button type="button" class="delete app-sidebar-close" aria-label="بستن منو" @click="menuOpen = false"></button>
+        </div>
         <ul class="menu-list">
             <li><a href="/dashboard">داشبورد</a></li>
         </ul>
@@ -126,5 +129,29 @@
                 </ul>
             </div>
         @endif
+        <div class="app-sidebar-account">
+            <p class="app-sidebar-account-label">${navbar.fullName()}</p>
+            @if(!navbar.schools().isEmpty())
+                <p class="app-sidebar-account-sub">مدرسه</p>
+                @for(var school : navbar.schools())
+                    <button type="button" class="app-sidebar-account-item" @click="selectSchool(${school.id()})">
+                        <span class="app-inline-gap" x-show="selectedSchoolId === ${school.id()}">✓</span>
+                        ${school.name()}
+                    </button>
+                @endfor
+                <p class="app-sidebar-account-sub">نقش</p>
+                @for(var school : navbar.schools())
+                    @for(var role : school.roles())
+                        <button type="button" class="app-sidebar-account-item" x-show="selectedSchoolId === ${school.id()}" @click="selectRole('${role}')">
+                            <span class="app-inline-gap" x-show="selectedRole === '${role}'">✓</span>
+                            ${RoleLabels.persian(role)}
+                        </button>
+                    @endfor
+                @endfor
+                <hr class="navbar-divider">
+            @endif
+            <button type="button" class="app-sidebar-account-item" @click="logout">خروج</button>
+        </div>
     </aside>
+    <div class="app-sidebar-backdrop" x-cloak x-show="menuOpen" @click="menuOpen = false"></div>
 </div>
