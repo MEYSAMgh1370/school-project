@@ -132,7 +132,7 @@ raise it rather than working around it.
 src/main/jte/                      ← page templates (HTML)
 ├── layout/
 │   ├── main.jte                   ← the ONLY <head>. Every page wraps this.
-│   └── navbar.jte                 ← shared school/role switcher + all page links
+│   └── navbar.jte                 ← school/role switcher + sidebar (links come from web.model.NavCatalog)
 ├── landing.jte  login.jte  register.jte  activate.jte  school-entry.jte
 ├── dashboard.jte  school-new.jte
 ├── people.jte  roles.jte  classes.jte  students.jte  grades.jte
@@ -164,7 +164,7 @@ REST.
 ## 5. Page inventory
 
 Every page below is real and reachable. "Visible for" = which selected role shows the
-navbar link (visibility only — the backend enforces access independently).
+sidebar link in `NavCatalog` (visibility only — the backend enforces access independently).
 
 ### Public (no login)
 

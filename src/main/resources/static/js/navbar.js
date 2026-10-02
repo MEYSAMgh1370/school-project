@@ -1,4 +1,9 @@
 document.addEventListener('alpine:init', () => {
+    // نقشِ انتخاب‌شده برای بخش‌هایی خارج از navbar (کارت‌های «دسترسی سریع»
+    // داشبورد) - منبع حقیقت همچنان state خودِ سوییچر است و این store فقط
+    // آینه‌ی آن است.
+    Alpine.store('nav', { selectedRole: '' });
+
     // سوییچر مدرسه/نقش (Open Question 2 - حل‌شده): انتخاب فقط client-side
     // است و در localStorage می‌ماند؛ نقش صرفاً نمایشی است (backend همه‌ی
     // نقش‌های فعال را چک می‌کند - CLAUDE.md بند ۱۱ سؤال ۲).
@@ -33,6 +38,7 @@ document.addEventListener('alpine:init', () => {
             } catch (e) {
                 this.openGroups = {};
             }
+            this.syncStore();
             this.markCurrentPage();
             // موبایل: کشوی منو صفحه را قفل می‌کند (Bulma .is-clipped) و با
             // رسیدن به عرض دسکتاپ بسته می‌شود تا قفل جا نماند.
@@ -44,6 +50,9 @@ document.addEventListener('alpine:init', () => {
                     this.menuOpen = false;
                 }
             });
+        },
+        syncStore() {
+            Alpine.store('nav').selectedRole = this.selectedRole;
         },
         isGroupOpen(index) {
             return this.openGroups[index] === true;
@@ -91,6 +100,7 @@ document.addEventListener('alpine:init', () => {
         selectRole(role) {
             this.selectedRole = role;
             localStorage.setItem('selectedRole', role);
+            this.syncStore();
             this.personOpen = false;
         },
         csrfToken() {

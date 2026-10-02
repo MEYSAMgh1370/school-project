@@ -62,8 +62,12 @@ edited JTE pages unless a current OpenSpec change supersedes them.
   pages (API data) use the matching map in their `Alpine.data` component (see
   `people.js`). Keep the two in sync when roles change.
 - **Navigation.** Every management page is reachable from the grouped sidebar
-  links in `layout/navbar.jte` (`aside.app-sidebar`; the top bar only holds the
-  school/role switcher and user menu) — never ship an orphan URL. Link *visibility* may follow
+  (`aside.app-sidebar` in `layout/navbar.jte`; the top bar only holds the
+  school/role switcher and user menu) — never ship an orphan URL. The links
+  live in one place, `web.model.NavCatalog` (group, label, description, the
+  roles that see it, and the roles that also get a dashboard «دسترسی سریع»
+  card); the sidebar and the dashboard shortcuts both render from it. Add a
+  new page's link there, not in a template. Link *visibility* may follow
   the selected (display-only) role; access is still enforced server-side only.
 - **Role dropdown is display-only.** It may drive which UI elements are shown,
   but never what the backend permits — permission checks always evaluate all of
