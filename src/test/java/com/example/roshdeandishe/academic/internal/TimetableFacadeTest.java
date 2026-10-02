@@ -330,6 +330,17 @@ class TimetableFacadeTest {
     }
 
     @Test
+    void aCellIsLockedBeforeItsExistingRowIsRead() {
+        when(courses.findById(30L)).thenReturn(Optional.of(course(30L, GRADE_LEVEL, true)));
+
+        facade.setEntry(SCHOOL, CLASS_ID, PERIOD, TimetableDay.SAT, 30L, null, null);
+
+        org.mockito.InOrder order = org.mockito.Mockito.inOrder(entries);
+        order.verify(entries).lockCell(org.mockito.ArgumentMatchers.anyInt(), org.mockito.ArgumentMatchers.anyInt());
+        order.verify(entries).findByClassIdAndWeekdayAndPeriodId(CLASS_ID, TimetableDay.SAT, PERIOD);
+    }
+
+    @Test
     void aNonGradedCourseCanBeTimetabled() {
         when(courses.findById(33L)).thenReturn(Optional.of(course(33L, GRADE_LEVEL, false)));
 

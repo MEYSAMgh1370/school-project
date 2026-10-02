@@ -212,6 +212,7 @@ natural follow-up), per-school configurable school days, and the Android client.
   (school, year) before the overlap check, so two admins moving periods into the same
   free range cannot both pass (no exclusion constraint: it needs the `btree_gist`
   extension).
+- Setting a cell takes an advisory lock per (class, weekday, period) before reading the existing row, so two admins filling the same empty cell are serialized (the second replaces the first) instead of one failing on the unique index.
 - `GET /api/me/.../timetable` ties each view to an **active** membership with the
   matching role in that school (`STUDENT` for `OWN`, `PARENT` for `WARD`, `TEACHER` for
   `TEACHING`): enrollments, guardian links and timetable cells survive deactivating a

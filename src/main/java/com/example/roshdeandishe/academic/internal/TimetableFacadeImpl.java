@@ -27,6 +27,7 @@ class TimetableFacadeImpl implements TimetableFacade {
     private static final int MAX_LABEL_LENGTH = 64;
     private static final int MAX_NAME_LENGTH = 128;
     private static final int PERIOD_LOCK_NAMESPACE = 7401;
+    private static final int CELL_LOCK_NAMESPACE = 7402;
     private static final String TEACHER_SLOT_INDEX = "timetable_entries_teacher_slot_unique";
     private static final List<String> ACTIVITY_NAME_INDEXES =
             List.of("activities_school_name_unique", "activities_default_name_unique");
@@ -183,6 +184,8 @@ class TimetableFacadeImpl implements TimetableFacade {
                     .filter(a -> a.getSchoolId() == null || a.getSchoolId().equals(schoolId))
                     .orElseThrow(() -> new AcademicException(new AcademicError.ActivityNotFound(activityId)));
         }
+        // خانه را پیش از خواندنِ ردیفِ موجود قفل می‌کنیم تا نوشتنِ هم‌زمانِ یک خانه سریالی شود
+        entryRepository.lockCell(CELL_LOCK_NAMESPACE, Objects.hash(classId, weekday.name(), periodId));
         TimetableEntryEntity existing = entryRepository
                 .findByClassIdAndWeekdayAndPeriodId(classId, weekday, periodId).orElse(null);
         if (teacherUserId != null) {

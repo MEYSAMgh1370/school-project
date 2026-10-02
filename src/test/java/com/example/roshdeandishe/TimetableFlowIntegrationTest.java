@@ -706,6 +706,36 @@ class TimetableFlowIntegrationTest {
     }
 
     @Test
+    void concurrentWritesToTheSameEmptyCellBothSucceedAndLeaveOneRow() throws Exception {
+        MockHttpSession admin = loginAsAdmin();
+        long classId = createClass(admin, "پایه پنجم - هم‌زمانی خانه", 5);
+        long period = createPeriod(admin, "زنگ اول", "08:00", "08:45");
+        long math = insertCourse(5, "ریاضی", true);
+        long science = insertCourse(5, "علوم", true);
+        java.util.concurrent.ExecutorService pool = java.util.concurrent.Executors.newFixedThreadPool(2);
+        try {
+            for (int round = 0; round < 15; round++) {
+                jdbc.update("delete from academic.timetable_entries");
+                java.util.concurrent.CyclicBarrier barrier = new java.util.concurrent.CyclicBarrier(2);
+                var tasks = new java.util.ArrayList<java.util.concurrent.Future<Integer>>();
+                for (long course : new long[]{math, science}) {
+                    tasks.add(pool.submit(() -> {
+                        barrier.await();
+                        return setEntry(admin, classId, period, "SAT", course, null, null)
+                                .andReturn().getResponse().getStatus();
+                    }));
+                }
+                assertThat(java.util.List.of(tasks.get(0).get(), tasks.get(1).get())).as("round " + round)
+                        .containsExactly(200, 200);
+                assertThat(jdbc.queryForObject("select count(*) from academic.timetable_entries where class_id = ?",
+                        Integer.class, classId)).isEqualTo(1);
+            }
+        } finally {
+            pool.shutdown();
+        }
+    }
+
+    @Test
     void concurrentActivitiesWithTheSameNameLetOneThroughAndTheOtherGetsAConflict() throws Exception {
         MockHttpSession admin = loginAsAdmin();
         java.util.concurrent.ExecutorService pool = java.util.concurrent.Executors.newFixedThreadPool(2);
