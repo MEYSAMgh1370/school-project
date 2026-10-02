@@ -1,8 +1,9 @@
 # Grades By Course (درس)
 
-Status: proposed 2026-10-02, **not implemented**. Nothing in
-[`specs/current-system.md`](../specs/current-system.md) changes until this is
-approved and built. Raised while reviewing `/my-grades`: a grade is one number
+Status: proposed 2026-10-02. **Phase 1 approved by the product owner the same
+day** ("catalog is read-only for now"); the backend (migration `V5`, facade,
+API) is implemented, the two UIs are pending design review. Phase 2 (platform
+actor and course administration) is not started. Raised while reviewing `/my-grades`: a grade is one number
 per student, class, academic year and term, so a parent cannot see how a child
 did in each subject.
 
@@ -65,8 +66,8 @@ From code, not from earlier docs:
   behavior exactly (upsert of the «نمرهٔ کل» row).
 - With `courseId`, `recordGrade` requires the course to exist and
   `course.grade_level == class.grade_level`; otherwise a new `AcademicError`
-  case (`InvalidCourse`/`CourseNotFound`, `400`/`404` via the module's
-  existing handler). Scheme validation and the 0–20 range are unchanged and
+  case through the module's existing handler: `CourseNotFound` (`404`,
+  `course-not-found`) or `CourseNotForClass` (`400`, `course-not-for-class`). Scheme validation and the 0–20 range are unchanged and
   apply per course grade; the class's `grading_scheme` applies to all its
   courses.
 - Permission is unchanged: `GRADES_EDIT` on the existing endpoint. Any holder
@@ -81,11 +82,12 @@ From code, not from earlier docs:
 - `GET /api/admin/schools/{schoolId}/grades` gains optional `courseId`.
   **Omitted = only «نمرهٔ کل» rows** (what it returns today); with a value = only
   that course. This keeps the current page and any client unchanged.
-- New read endpoint for the course picker, gated by `GRADES_EDIT` and the
-  `ACADEMIC` module like the rest:
-  `GET /api/admin/schools/{schoolId}/classes/{classId}/courses` → the global
-  courses whose `grade_level` equals the class's. The class is validated to
-  belong to the school (`TenantContext.requireMatches`).
+- New read endpoint for the course picker, inside `GradeController` so it
+  shares its `ACADEMIC` module gate and `GRADES_EDIT` permission:
+  `GET /api/admin/schools/{schoolId}/grades/courses?classId=` → the global
+  courses whose `grade_level` equals the class's, ordered by name. The school is
+  checked with `TenantContext.requireMatches` and the class must belong to it
+  (`ClassNotFound` otherwise).
 - `MyGradesController` returns the new fields; no other change.
 
 ### UI (design shown before implementation, per `design-page`)
@@ -167,6 +169,19 @@ security design, so it is not recommended here.
 - Authorization: the existing negative scenarios (student/parent cannot call
   the admin endpoints; another school's class is rejected) are repeated for the
   new endpoint.
+
+## Verification (phase 1 backend)
+
+- `V5` was applied by hand to a database created from `V1`–`V4` holding an
+  existing grade: it survives with `course_id` null; a second «نمرهٔ کل» row, a
+  second row for the same course and deleting a referenced course are all
+  rejected; a course row coexists with the overall row. On a table whose unique
+  key has a different generated name (a database created by `ddl-auto=update`),
+  only the matching unique constraint is dropped and an unrelated one is kept.
+- `GradeCourseFacadeTest` (10, no Docker) and `GradeByCourseFlowIntegrationTest`
+  (4) plus the existing `GradeManagementFlowIntegrationTest` (10) pass against a
+  real PostgreSQL 16 with Flyway migrating an empty database from `V1` to `V5`
+  and `ddl-auto=validate`. CI runs them against `postgres:18` in Testcontainers.
 
 ## Unresolved Questions
 

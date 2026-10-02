@@ -8,10 +8,17 @@ import java.util.Optional;
 
 interface GradeRepository extends JpaRepository<GradeEntity, Long> {
 
-    Optional<GradeEntity> findByStudentIdAndClassIdAndAcademicYearAndTerm(
+    Optional<GradeEntity> findByStudentIdAndClassIdAndAcademicYearAndTermAndCourseId(
+            Long studentId, Long classId, String academicYear, GradingTerm term, Long courseId);
+
+    Optional<GradeEntity> findByStudentIdAndClassIdAndAcademicYearAndTermAndCourseIdIsNull(
             Long studentId, Long classId, String academicYear, GradingTerm term);
 
-    List<GradeEntity> findByClassIdAndAcademicYearAndTerm(Long classId, String academicYear, GradingTerm term);
+    List<GradeEntity> findByClassIdAndAcademicYearAndTermAndCourseId(
+            Long classId, String academicYear, GradingTerm term, Long courseId);
+
+    List<GradeEntity> findByClassIdAndAcademicYearAndTermAndCourseIdIsNull(
+            Long classId, String academicYear, GradingTerm term);
 
     List<GradeEntity> findByStudentIdIn(List<Long> studentIds);
 }

@@ -1,0 +1,29 @@
+package com.example.roshdeandishe.academic.internal;
+
+import jakarta.persistence.*;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+
+/**
+ * یک درس در فهرست سراسری درس‌ها (openspec/changes/grades-by-course.md):
+ * مشترک بین همه‌ی مدرسه‌ها (بدون {@code schoolId}) و به‌تفکیک پایه. در این
+ * فاز فقط خواندنی است - برنامه هیچ مسیر نوشتنی ندارد و ردیف‌ها را اپراتور
+ * پلتفرم با مهاجرت داده مدیریت می‌کند؛ پس عمداً setter و سازنده‌ی عمومی
+ * ندارد. نمره‌ی یک درس با {@code GradeEntity.courseId} به آن اشاره می‌کند.
+ */
+@Entity
+@Table(name = "courses", schema = "academic")
+@Getter
+@NoArgsConstructor
+class CourseEntity {
+
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
+
+    @Column(name = "grade_level", nullable = false)
+    private int gradeLevel;
+
+    @Column(nullable = false, length = 128)
+    private String name;
+}

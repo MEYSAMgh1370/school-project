@@ -4,6 +4,7 @@ import com.example.roshdeandishe.academic.AcademicFacade;
 import com.example.roshdeandishe.academic.AcademicFacade.GradeId;
 import com.example.roshdeandishe.academic.AcademicFacade.GradeInfo;
 import com.example.roshdeandishe.academic.GradingTerm;
+import com.example.roshdeandishe.academic.dto.CourseResponse;
 import com.example.roshdeandishe.academic.dto.GradeResponse;
 import com.example.roshdeandishe.academic.dto.RecordGradeRequest;
 import com.example.roshdeandishe.iam.shared.RequiresModule;
@@ -44,7 +45,7 @@ public class GradeController {
 
         GradeId gradeId = academicFacade.recordGrade(
                 schoolId, request.studentId(), request.classId(), request.academicYear(), request.term(),
-                request.descriptiveLevel(), request.numericScore(), request.comment());
+                request.descriptiveLevel(), request.numericScore(), request.comment(), request.courseId());
         return toResponse(academicFacade.getGrade(gradeId.value()));
     }
 
@@ -54,12 +55,28 @@ public class GradeController {
             @PathVariable Long schoolId,
             @RequestParam Long classId,
             @RequestParam String academicYear,
-            @RequestParam GradingTerm term
+            @RequestParam GradingTerm term,
+            @RequestParam(required = false) Long courseId
     ) {
         TenantContext.requireMatches(schoolId);
 
-        return academicFacade.listGradesForClass(schoolId, classId, academicYear, term).stream()
+        // courseId خالی = فقط «نمرهٔ کل» (همان رفتار پیش از نمره‌ی هر درس)
+        return academicFacade.listGradesForClass(schoolId, classId, academicYear, term, courseId).stream()
                 .map(GradeController::toResponse)
+                .toList();
+    }
+
+    /**
+     * درس‌های سراسریِ هم‌پایه‌ی یک کلاس برای انتخابگر درس در دفتر نمرات. فهرست
+     * فقط‌خواندنی است؛ مثل بقیه‌ی این کنترلر با GRADES_EDIT گیت می‌شود.
+     */
+    @GetMapping("/courses")
+    @RequiresPermission("GRADES_EDIT")
+    public List<CourseResponse> listCourses(@PathVariable Long schoolId, @RequestParam Long classId) {
+        TenantContext.requireMatches(schoolId);
+
+        return academicFacade.listCoursesForClass(schoolId, classId).stream()
+                .map(course -> new CourseResponse(course.id().value(), course.gradeLevel(), course.name()))
                 .toList();
     }
 
@@ -67,7 +84,7 @@ public class GradeController {
         return new GradeResponse(
                 info.id().value(), info.studentId().value(), info.classId().value(), info.academicYear(),
                 info.term(), info.scheme(), info.descriptiveLevel(), info.numericScore(), info.comment(),
-                info.recordedByUserId(), info.recordedAt()
+                info.recordedByUserId(), info.recordedAt(), info.courseId(), info.courseName()
         );
     }
 }

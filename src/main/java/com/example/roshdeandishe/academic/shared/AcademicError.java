@@ -47,6 +47,17 @@ public sealed interface AcademicError {
     record GradeNotFound(Long gradeId) implements AcademicError {
     }
 
+    /** courseId ای که در فهرست سراسری درس‌ها وجود ندارد. */
+    record CourseNotFound(Long courseId) implements AcademicError {
+    }
+
+    /**
+     * درس برای پایه‌ی دیگری تعریف شده است: فهرست درس‌ها به‌تفکیک پایه است و
+     * درسِ یک پایه برای کلاسِ پایه‌ی دیگر نمره‌پذیر نیست.
+     */
+    record CourseNotForClass(Long courseId, Long classId) implements AcademicError {
+    }
+
     /**
      * schoolId ای که در createClass داده شده به هیچ SchoolEntity واقعی‌ای
      * اشاره ندارد - عملاً نباید رخ دهد (TenantContext از قبل schoolId را

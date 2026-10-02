@@ -17,13 +17,18 @@ import java.time.Instant;
  * InvoiceEntity.amount که از TuitionFee در لحظه‌ی صدور کپی می‌شود - تا تغییر
  * بعدیِ شِمای یک کلاس، نمره‌های قبلاً ثبت‌شده را دگرگون نکند.
  * <p>
+ * {@code courseId} (اختیاری): درسِ این نمره از فهرست سراسری
+ * ({@code CourseEntity}، هم‌پایه‌ی کلاس)؛ {@code null} یعنی «نمرهٔ کل» (همه‌ی
+ * نمره‌های پیش از این قابلیت). یکتایی (دانش‌آموز، کلاس، سال، نوبت) برای نمرهٔ
+ * کل و (…، درس) برای نمره‌ی هر درس با دو ایندکس جزئیِ V5 در دیتابیس تضمین
+ * می‌شود؛ JPA نمی‌تواند ایندکس جزئی را در {@code @UniqueConstraint} بیان کند.
+ * <p>
  * دقیقاً یکی از {@code descriptiveLevel}/{@code numericScore} پر است، بسته
  * به {@code scheme} - اعتبارسنجی در AcademicFacadeImpl.recordGrade انجام
  * می‌شود، نه در خودِ Entity.
  */
 @Entity
-@Table(name = "grades", schema = "academic",
-        uniqueConstraints = @UniqueConstraint(columnNames = {"student_id", "class_id", "academic_year", "term"}))
+@Table(name = "grades", schema = "academic")
 @Getter
 @Setter
 @NoArgsConstructor
@@ -41,6 +46,9 @@ class GradeEntity {
 
     @Column(name = "class_id", nullable = false)
     private Long classId;
+
+    @Column(name = "course_id")
+    private Long courseId;
 
     @Column(name = "academic_year", nullable = false, length = 16)
     private String academicYear;
