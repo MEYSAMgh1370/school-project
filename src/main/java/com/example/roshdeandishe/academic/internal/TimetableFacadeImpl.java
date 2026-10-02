@@ -172,11 +172,11 @@ class TimetableFacadeImpl implements TimetableFacade {
     @Transactional
     public EntryInfo setEntry(Long schoolId, Long classId, Long periodId, TimetableDay weekday,
                               Long courseId, Long activityId, Long teacherUserId) {
-        // ترتیبِ قفل‌ها همیشه زنگ ← فعالیت ← خانه است (حذفِ زنگ/فعالیت فقط قفلِ خودش را می‌گیرد)، پس
-        // بن‌بست نمی‌شود؛ زنگ بعد از قفل خوانده می‌شود تا حذفِ هم‌زمان دیده شود
-        periodRepository.lockPeriod(PERIOD_ROW_LOCK_NAMESPACE, Objects.hash(periodId));
-        ClassEntity classEntity = requireClassInSchool(schoolId, classId);
-        requirePeriodInSchool(schoolId, periodId);
+        // ورودیِ ناقص پیش از هر قفل و هر دسترسی به repository رد می‌شود (periodId تهی به findById
+        // IllegalArgumentException می‌داد و 500 می‌شد)
+        if (periodId == null) {
+            throw new AcademicException(new AcademicError.InvalidTimetableEntry("شناسه‌ی زنگ الزامی است"));
+        }
         if (weekday == null) {
             throw new AcademicException(new AcademicError.InvalidTimetableEntry("روز هفته الزامی است"));
         }
@@ -184,6 +184,11 @@ class TimetableFacadeImpl implements TimetableFacade {
             throw new AcademicException(new AcademicError.InvalidTimetableEntry(
                     "دقیقاً یکی از درس یا فعالیت باید انتخاب شود"));
         }
+        // ترتیبِ قفل‌ها همیشه زنگ ← فعالیت ← خانه است (حذفِ زنگ/فعالیت فقط قفلِ خودش را می‌گیرد)، پس
+        // بن‌بست نمی‌شود؛ زنگ بعد از قفل خوانده می‌شود تا حذفِ هم‌زمان دیده شود
+        periodRepository.lockPeriod(PERIOD_ROW_LOCK_NAMESPACE, Objects.hash(periodId));
+        ClassEntity classEntity = requireClassInSchool(schoolId, classId);
+        requirePeriodInSchool(schoolId, periodId);
         if (courseId != null) {
             CourseEntity course = courseRepository.findById(courseId)
                     .orElseThrow(() -> new AcademicException(new AcademicError.CourseNotFound(courseId)));
@@ -233,6 +238,9 @@ class TimetableFacadeImpl implements TimetableFacade {
     @Override
     @Transactional
     public void clearEntry(Long schoolId, Long classId, Long periodId, TimetableDay weekday) {
+        if (periodId == null) {
+            throw new AcademicException(new AcademicError.InvalidTimetableEntry("شناسه‌ی زنگ الزامی است"));
+        }
         requireClassInSchool(schoolId, classId);
         requirePeriodInSchool(schoolId, periodId);
         if (weekday == null) {

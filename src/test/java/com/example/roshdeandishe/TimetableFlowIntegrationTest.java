@@ -294,6 +294,14 @@ class TimetableFlowIntegrationTest {
         setEntry(admin, classId, period, "SUN", null, 999999999L, null)
                 .andExpect(status().isNotFound())
                 .andExpect(jsonPath("$.type").value(endsWith("activity-not-found")));
+        // periodId نیامده یا تهی: 400 دامنه، نه 500
+        send(admin, put("/api/admin/schools/1/timetable/classes/" + classId + "/entries"),
+                "{\"weekday\":\"SAT\",\"courseId\":" + math + "}")
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.type").value(endsWith("invalid-timetable-entry")));
+        send(admin, put("/api/admin/schools/1/timetable/classes/" + classId + "/entries"),
+                "{\"periodId\":null,\"weekday\":\"SAT\",\"courseId\":" + math + "}")
+                .andExpect(status().isBadRequest());
         // پنجشنبه جزو روزهای مدرسه نیست
         setEntry(admin, classId, period, "THU", math, null, null)
                 .andExpect(status().isBadRequest())

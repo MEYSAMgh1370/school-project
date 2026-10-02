@@ -305,6 +305,18 @@ class TimetableFacadeTest {
     }
 
     @Test
+    void aMissingPeriodIdIsAValidationErrorBeforeAnyLockOrLookup() {
+        assertThatThrownBy(() -> facade.setEntry(SCHOOL, CLASS_ID, null, TimetableDay.SAT, 30L, null, null))
+                .isInstanceOfSatisfying(AcademicException.class, e ->
+                        assertThat(e.error()).isInstanceOf(AcademicError.InvalidTimetableEntry.class));
+        assertThatThrownBy(() -> facade.clearEntry(SCHOOL, CLASS_ID, null, TimetableDay.SAT))
+                .isInstanceOfSatisfying(AcademicException.class, e ->
+                        assertThat(e.error()).isInstanceOf(AcademicError.InvalidTimetableEntry.class));
+        verify(periods, never()).lockPeriod(org.mockito.ArgumentMatchers.anyInt(), org.mockito.ArgumentMatchers.anyInt());
+        verify(periods, never()).findById(null);
+    }
+
+    @Test
     void aCellNeedsExactlyOneOfCourseOrActivity() {
         assertThatThrownBy(() -> facade.setEntry(SCHOOL, CLASS_ID, PERIOD, TimetableDay.SAT, null, null, null))
                 .isInstanceOfSatisfying(AcademicException.class, e ->
