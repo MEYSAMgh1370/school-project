@@ -2,7 +2,18 @@ document.addEventListener('alpine:init', () => {
     // نقشِ انتخاب‌شده برای بخش‌هایی خارج از navbar (کارت‌های «دسترسی سریع»
     // داشبورد) - منبع حقیقت همچنان state خودِ سوییچر است و این store فقط
     // آینه‌ی آن است.
-    Alpine.store('nav', { selectedRole: '' });
+    Alpine.store('nav', {
+        selectedRole: '',
+        // لینکی که مدرسه‌ی یک فرزند را باز می‌کند، مدرسه‌ی انتخاب‌شده را قبل از
+        // ناوبری ذخیره می‌کند (صفحه‌ی مقصد از همین localStorage می‌خواند).
+        rememberSchool(id) {
+            try {
+                localStorage.setItem('selectedSchoolId', id);
+            } catch (e) {
+                // حالت خصوصی/مسدود: صفحه‌ی مقصد مدرسه‌ی پیش‌فرض را باز می‌کند.
+            }
+        }
+    });
 
     // سوییچر مدرسه/نقش (Open Question 2 - حل‌شده): انتخاب فقط client-side
     // است و در localStorage می‌ماند؛ نقش صرفاً نمایشی است (backend همه‌ی

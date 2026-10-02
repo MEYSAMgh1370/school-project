@@ -36,7 +36,7 @@ class DashboardWardsRenderTest {
     }
 
     private static WardRow ward(String name, int invoices, int overdue, int open) {
-        return new WardRow(name, "مدرسه‌ی نمونه", "پنجم", "الف", invoices, overdue, open);
+        return new WardRow(100L, 5L, name, "مدرسه‌ی نمونه", "پنجم", "الف", invoices, overdue, open);
     }
 
     @Test
@@ -45,6 +45,17 @@ class DashboardWardsRenderTest {
 
         assertThat(html).contains("آرین رضایی", "نیکا رضایی", "مدرسه‌ی نمونه", "کلاس پنجم", "بخش الف");
         assertThat(html).contains("dashboard-wards-title");
+    }
+
+    @Test
+    void eachWardLinksToItsGradesAndInvoicesWithOnlyTheStudentIdInTheUrl() {
+        String html = HtmlUtils.htmlUnescape(render(true, List.of(ward("آرین رضایی", 0, 0, 0))));
+
+        assertThat(html).contains("href=\"/my-grades?student=100\"", "href=\"/my-invoices?student=100\"");
+        assertThat(html).contains("data-school=\"5\"");
+        assertThat(html).contains("$store.nav.rememberSchool($el.dataset.school)");
+        // نام فرزند نباید در URL برود
+        assertThat(html).doesNotContain("student=آرین").doesNotContain("?name=").doesNotContain("&name=");
     }
 
     @Test

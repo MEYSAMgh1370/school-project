@@ -92,6 +92,8 @@ class WardsAssemblerTest {
 
         assertThat(rows).hasSize(1);
         WardRow ward = rows.get(0);
+        assertThat(ward.studentId()).isEqualTo(100L);
+        assertThat(ward.schoolId()).isEqualTo(5L);
         assertThat(ward.name()).isEqualTo("آرین رضایی");
         assertThat(ward.schoolName()).isEqualTo("مدرسه‌ی نمونه");
         assertThat(ward.className()).isEqualTo("پنجم");

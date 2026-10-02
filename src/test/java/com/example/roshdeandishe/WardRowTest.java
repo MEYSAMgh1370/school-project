@@ -9,7 +9,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 class WardRowTest {
 
     private static WardRow ward(int invoices, int overdue, int open) {
-        return new WardRow("آرین", "مدرسه", "پنجم", "الف", invoices, overdue, open);
+        return new WardRow(100L, 5L, "آرین", "مدرسه", "پنجم", "الف", invoices, overdue, open);
     }
 
     @Test
@@ -46,7 +46,7 @@ class WardRowTest {
 
     @Test
     void classAndSectionAreOptional() {
-        assertThat(new WardRow("آرین", "مدرسه", null, " ", 0, 0, 0).hasClass()).isFalse();
-        assertThat(new WardRow("آرین", "مدرسه", "پنجم", null, 0, 0, 0).hasSection()).isFalse();
+        assertThat(new WardRow(100L, 5L, "آرین", "مدرسه", null, " ", 0, 0, 0).hasClass()).isFalse();
+        assertThat(new WardRow(100L, 5L, "آرین", "مدرسه", "پنجم", null, 0, 0, 0).hasSection()).isFalse();
     }
 }

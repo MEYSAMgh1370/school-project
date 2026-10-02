@@ -79,6 +79,18 @@
                                             <span class="tag is-success">همه‌ی فاکتورها تسویه‌شده</span>
                                         @endif
                                     </p>
+                                    <%-- لینک‌های هر فرزند: فقط شناسه‌ی او در URL می‌رود (نه نام - اطلاعات
+                                         کودک نباید در تاریخچه/لاگ نشت کند). مدرسه‌ی همین فرزند قبل از
+                                         رفتن به‌عنوان مدرسه‌ی انتخاب‌شده ذخیره می‌شود تا صفحه‌ی مقصد
+                                         همان مدرسه را بارگذاری کند. کنترل‌ها اندازه‌ی عادی دارند (۴۴px). --%>
+                                    <div class="buttons mt-3 mb-0">
+                                        <a class="button is-light" href="/my-grades?student=${ward.studentId()}"
+                                           data-school="${ward.schoolId()}"
+                                           @click="$store.nav.rememberSchool($el.dataset.school)">نمره‌ها</a>
+                                        <a class="button is-light" href="/my-invoices?student=${ward.studentId()}"
+                                           data-school="${ward.schoolId()}"
+                                           @click="$store.nav.rememberSchool($el.dataset.school)">فاکتورها</a>
+                                    </div>
                                 </article>
                             </div>
                         @endfor

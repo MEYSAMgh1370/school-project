@@ -18,7 +18,13 @@
 
                 <p x-show="loading">در حال بارگذاری...</p>
 
-                <div class="table-container" x-show="!loading && grades.length > 0">
+                <%-- فیلتر یک فرزند (از لینک داشبورد): همیشه دیده می‌شود و راه برگشت دارد. --%>
+                <div class="notification is-light" x-cloak x-show="studentFilter !== null">
+                    فقط نمره‌های دانش‌آموز #<span x-text="studentFilter"></span> نمایش داده می‌شود.
+                    <a href="/my-grades">نمایش همه</a>
+                </div>
+
+                <div class="table-container" x-show="!loading && visibleGrades().length > 0">
                 <table class="table is-fullwidth is-striped">
                     <thead>
                     <tr>
@@ -31,7 +37,7 @@
                     </tr>
                     </thead>
                     <tbody>
-                    <template x-for="grade in grades" :key="grade.id">
+                    <template x-for="grade in visibleGrades()" :key="grade.id">
                         <tr>
                             <td>دانش‌آموز #<span x-text="grade.studentId"></span></td>
                             <td dir="ltr" x-text="grade.academicYear"></td>
@@ -46,7 +52,7 @@
                 </div>
 
                 @template.layout.empty-state(
-                    show = "!loading && !error && grades.length === 0",
+                    show = "!loading && !error && visibleGrades().length === 0",
                     art = "exam",
                     message = @`نمره‌ای برای شما یا فرزندانتان در این مدرسه ثبت نشده است.`)
             `)

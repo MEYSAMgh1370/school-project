@@ -2,10 +2,16 @@ document.addEventListener('alpine:init', () => {
     Alpine.data('myGradesPage', () => ({
         schoolId: null,
         grades: [],
+        // فیلتر یک فرزند از لینک داشبورد (?student=<id>)؛ null یعنی همه. فقط
+        // نمایش است: API همه‌ی فرزندانِ لینک‌شده را می‌دهد و دسترسی سمت سرور
+        // می‌ماند. شناسه‌ی نامعتبر یا ناآشنا فقط فهرستِ خالی می‌دهد.
+        studentFilter: null,
         loading: false,
         error: '',
 
         init() {
+            const requested = parseInt(new URLSearchParams(window.location.search).get('student') || '', 10);
+            this.studentFilter = Number.isInteger(requested) ? requested : null;
             const saved = parseInt(localStorage.getItem('selectedSchoolId') || '', 10);
             this.schoolId = Number.isInteger(saved) ? saved : null;
             window.addEventListener('school-changed', (e) => {
@@ -41,6 +47,12 @@ document.addEventListener('alpine:init', () => {
             } finally {
                 this.loading = false;
             }
+        },
+
+        visibleGrades() {
+            return this.studentFilter === null
+                ? this.grades
+                : this.grades.filter((grade) => grade.studentId === this.studentFilter);
         },
 
         termLabel(term) {

@@ -87,7 +87,7 @@ public class WardsAssembler {
                         .filter(i -> i.status() == InvoiceStatus.UNPAID || i.status() == InvoiceStatus.PARTIAL)
                         .count();
 
-                rows.add(new WardRow(name, schoolName,
+                rows.add(new WardRow(ward.id().value(), schoolId, name, schoolName,
                         enrollment.map(EnrollmentInfo::className).orElse(null),
                         enrollment.map(EnrollmentInfo::section).orElse(null),
                         mine.size(), overdue, open));

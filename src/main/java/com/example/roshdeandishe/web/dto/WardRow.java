@@ -9,11 +9,14 @@ package com.example.roshdeandishe.web.dto;
  * هنوز تصمیم‌نگرفته است (OpenSpec: changes/finance-monetary-unit.md) و
  * شمارش‌ها همان وضعیت‌هایی‌اند که /my-invoices نشان می‌دهد.
  *
+ * @param studentId    شناسه‌ی دانش‌آموز؛ فقط در لینک‌های «نمره‌ها»/«فاکتورها» می‌آید (نام فرزند عمداً در
+ *                     URL نمی‌رود)
+ * @param schoolId     مدرسه‌ی همین فرزند؛ لینک آن را به‌عنوان مدرسه‌ی انتخاب‌شده ذخیره می‌کند
  * @param invoiceCount همه‌ی فاکتورهای این دانش‌آموز
  * @param overdueCount فاکتورهای دیرکرد (OVERDUE)
  * @param openCount    فاکتورهای باز و سررسید‌نگذشته (UNPAID و PARTIAL)
  */
-public record WardRow(String name, String schoolName, String className, String section,
+public record WardRow(Long studentId, Long schoolId, String name, String schoolName, String className, String section,
                       int invoiceCount, int overdueCount, int openCount) {
 
     public boolean hasClass() {
