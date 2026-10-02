@@ -180,7 +180,9 @@ Evidence:
 
 ## Finance And Academic
 
-Academic currently owns classes, students, guardians, and grades. Finance owns tuition fees, invoices, payments, school expenses, expense attachments, and finance audit behavior.
+Academic currently owns classes, students, guardians, grades, and the global course catalog. Finance owns tuition fees, invoices, payments, school expenses, expense attachments, and finance audit behavior.
+
+Grades can be recorded per course (`openspec/changes/grades-by-course.md`): `academic.courses` is a global, per-grade-level catalog (no `school_id`), a grade's `course_id` is optional, and a grade without a course is the overall grade («نمرهٔ کل»; all grades recorded before this feature). Per (student, class, year, term) there is at most one overall grade and one grade per course (two partial unique indexes, migration `V5`). A course must exist and match the class's `grade_level`. `GET /api/admin/schools/{schoolId}/grades` without `courseId` returns only overall grades; `GET .../grades/courses?classId=` lists the class's grade-level courses. `/grades` has a «درس» select (default «نمرهٔ کل»), `/my-grades` a «درس» column. The catalog is read-only in the application: no endpoint or screen creates or edits courses, and none are seeded; rows are managed by the platform operator through data migrations or SQL until a platform actor exists.
 
 Cross-module references are intentionally opaque IDs at module boundaries. When a UI needs names for IDs from another module, the established web pattern is client-side composition through multiple REST calls, unless a backend facade already owns the composition.
 
@@ -193,6 +195,7 @@ Evidence:
 
 These are not bugs unless a change proposal says otherwise:
 
+- the course catalog (see Finance And Academic) has no administration screen or API and ships empty, because the platform-actor permission model it depends on does not exist yet and the list of courses per grade level is a pending product input;
 - no platform-admin actor model or platform permission path — a
   `PLATFORM_ADMIN` role row is seeded, but it is reserved at both boundaries:
   `listRoles` keeps the code out of role pickers, and `createMembership`

@@ -31,6 +31,21 @@
                                             </select>
                                         </div>
                                     </div>
+                                    <%-- درس: «نمرهٔ کل» (پیش‌فرض، رفتار پیشین) یا یکی از درس‌های سراسریِ
+                                         هم‌پایه‌ی کلاس. با تغییرِ درس پس از بارگذاری، جدول همان‌جا دوباره
+                                         بارگذاری می‌شود تا ردیف‌ها همیشه با درسِ نشان‌داده‌شده یکی باشند. --%>
+                                    <div class="control">
+                                        <label class="label" for="gradeCourse">درس</label>
+                                        <div class="select">
+                                            <select id="gradeCourse" x-model="filter.courseId" :disabled="!filter.classId"
+                                                    aria-describedby="gradeCourseHelp" @change="if (loaded) load()">
+                                                <option value="">نمره‌ی کل</option>
+                                                <template x-for="course in courses" :key="course.id">
+                                                    <option :value="course.id" x-text="course.name"></option>
+                                                </template>
+                                            </select>
+                                        </div>
+                                    </div>
                                     <div class="control">
                                         <label class="label" for="gradeYear">سال تحصیلی</label>
                                         <input class="input" dir="ltr" id="gradeYear" type="text"
@@ -51,6 +66,9 @@
                                         </button>
                                     </div>
                                 </div>
+                                <p class="help" id="gradeCourseHelp" x-show="filter.classId && courses.length === 0">
+                                    برای پایه‌ی این کلاس هنوز درسی تعریف نشده است؛ فقط «نمره‌ی کل» قابل ثبت است.
+                                </p>
                             </form>
                         </div>
 
@@ -64,6 +82,10 @@
 
                                 <template x-if="rosterStudents().length > 0">
                                     <div>
+                                        <p class="mb-3">
+                                            <span class="is-size-7 has-text-grey">نمره‌های:</span>
+                                            <span class="tag is-info is-light" id="gradeCourseLabel" x-text="courseLabel()"></span>
+                                        </p>
                                         <div class="field">
                                             <label class="label is-sr-only" for="gradeStudentSearch">جست‌وجوی نام دانش‌آموز</label>
                                             <div class="control has-icons-start">

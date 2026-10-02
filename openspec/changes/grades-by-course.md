@@ -1,9 +1,12 @@
 # Grades By Course (درس)
 
 Status: proposed 2026-10-02. **Phase 1 approved by the product owner the same
-day** ("catalog is read-only for now"); the backend (migration `V5`, facade,
-API) is implemented, the two UIs are pending design review. Phase 2 (platform
-actor and course administration) is not started. Raised while reviewing `/my-grades`: a grade is one number
+day** ("catalog is read-only for now") and is implemented: migration `V5`,
+facade, API, the `/grades` course select and the `/my-grades` course column.
+The current-state statement lives in [`specs/current-system.md`](../specs/current-system.md)
+(Finance And Academic, Current Limitations). Phase 2 (platform actor and course
+administration) is not started; the initial course list is still a pending
+product input. Raised while reviewing `/my-grades`: a grade is one number
 per student, class, academic year and term, so a parent cannot see how a child
 did in each subject.
 
@@ -92,13 +95,17 @@ From code, not from earlier docs:
 
 ### UI (design shown before implementation, per `design-page`)
 
-- `/grades` (teacher/admin): a «درس» select next to term, listing
-  «نمرهٔ کل» plus the class's courses (from the endpoint above); the table
-  loads and saves for the selected course. Empty catalog → only «نمرهٔ کل»
-  with a hint that no courses are defined for this grade level.
+- `/grades` (teacher/admin): a «درس» select between class and academic year,
+  listing «نمره‌ی کل» (default) plus the class's courses (from the endpoint
+  above). It is disabled until a class is chosen, resets to «نمره‌ی کل» when the
+  class changes, and reloads an already loaded table when changed, so the rows
+  always belong to the course shown in the «نمره‌های: …» tag above the table.
+  Saves send that course. Empty catalog → only «نمره‌ی کل» plus a hint that no
+  courses are defined for the class's grade level.
 - `/my-grades` (student/parent): inside the chosen student, rows gain a «درس»
-  column (`—`/«نمرهٔ کل» when null) sorted by year, term, then course name.
-  Whether to group by course instead of a column is decided at design review.
+  column (muted «نمره‌ی کل» when null), sorted by year, term, then «نمره‌ی کل»
+  before the courses by name. Grouping by course instead of a column is not
+  built; revisit if the table gets long.
 
 ### Catalog maintenance (scope split)
 
@@ -178,6 +185,11 @@ security design, so it is not recommended here.
   rejected; a course row coexists with the overall row. On a table whose unique
   key has a different generated name (a database created by `ddl-auto=update`),
   only the matching unique constraint is dropped and an unrelated one is kept.
+- Both pages were driven in a browser against the compiled templates with
+  mocked APIs: course list per class, reset on class change, auto-reload,
+  `courseId` in the request and the POST body (and `null` for overall), the empty
+  catalog hint, and the `/my-grades` column and ordering. Render tests:
+  `GradesCoursePickerRenderTest`.
 - `GradeCourseFacadeTest` (10, no Docker) and `GradeByCourseFlowIntegrationTest`
   (4) plus the existing `GradeManagementFlowIntegrationTest` (10) pass against a
   real PostgreSQL 16 with Flyway migrating an empty database from `V1` to `V5`

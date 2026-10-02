@@ -4,7 +4,9 @@ document.addEventListener('alpine:init', () => {
         classes: [],
         students: [],
         pupils: [],
-        filter: { classId: '', academicYear: '', term: 'FIRST' },
+        // درس‌های سراسریِ هم‌پایه‌ی کلاسِ انتخاب‌شده؛ courseId خالی = «نمره‌ی کل»
+        courses: [],
+        filter: { classId: '', courseId: '', academicYear: '', term: 'FIRST' },
         roster: [],
         filterText: '',
         loading: false,
@@ -22,8 +24,15 @@ document.addEventListener('alpine:init', () => {
                 this.notice = '';
                 this.loaded = false;
                 this.roster = [];
-                this.filter = { classId: '', academicYear: '', term: 'FIRST' };
+                this.courses = [];
+                this.filter = { classId: '', courseId: '', academicYear: '', term: 'FIRST' };
                 this.loadClasses();
+            });
+            // با عوض‌شدنِ کلاس، فهرست درس‌های همان پایه گرفته می‌شود و انتخابِ
+            // درس به «نمره‌ی کل» برمی‌گردد (درسِ پایه‌ی قبلی برای این کلاس معتبر نیست).
+            this.$watch('filter.classId', () => {
+                this.filter.courseId = '';
+                this.loadCourses();
             });
             if (this.schoolId) {
                 this.loadClasses();
@@ -66,6 +75,36 @@ document.addEventListener('alpine:init', () => {
 
         gradesBase() {
             return `/api/admin/schools/${this.schoolId}/grades`;
+        },
+
+        async loadCourses() {
+            this.courses = [];
+            const classId = this.filter.classId ? parseInt(this.filter.classId, 10) : null;
+            if (!classId) {
+                return;
+            }
+            try {
+                const response = await fetch(`${this.gradesBase()}/courses?classId=${classId}`, {
+                    headers: { 'X-School-ID': this.schoolId }
+                });
+                if (!response.ok) {
+                    // بدون فهرست درس‌ها، «نمره‌ی کل» همچنان قابل ثبت است
+                    this.error = (await this.classifyError(response)).message;
+                    return;
+                }
+                // اگر کاربر در این فاصله کلاس را عوض کرده، پاسخِ کلاس قبلی را دور بریز
+                if (parseInt(this.filter.classId, 10) === classId) {
+                    this.courses = await response.json();
+                }
+            } catch (e) {
+                this.error = 'ارتباط با سرور برقرار نشد.';
+            }
+        },
+
+        courseLabel() {
+            const id = this.filter.courseId ? parseInt(this.filter.courseId, 10) : null;
+            const course = this.courses.find(c => c.id === id);
+            return course ? course.name : 'نمره‌ی کل';
         },
 
         // همان تفکیک دولایه‌ی §5 که finance.js/expenses.js دارند - ACADEMIC
@@ -169,6 +208,9 @@ document.addEventListener('alpine:init', () => {
                     academicYear: this.filter.academicYear,
                     term: this.filter.term
                 });
+                if (this.filter.courseId) {
+                    params.set('courseId', this.filter.courseId);
+                }
                 const response = await fetch(`${this.gradesBase()}?${params}`, {
                     headers: { 'X-School-ID': this.schoolId }
                 });
@@ -236,7 +278,8 @@ document.addEventListener('alpine:init', () => {
                         term: this.filter.term,
                         descriptiveLevel: scheme === 'DESCRIPTIVE' ? row.descriptiveLevel : null,
                         numericScore: scheme === 'NUMERIC' ? row.numericScore : null,
-                        comment: row.comment || null
+                        comment: row.comment || null,
+                        courseId: this.filter.courseId ? parseInt(this.filter.courseId, 10) : null
                     })
                 });
                 if (!response.ok) {
@@ -246,7 +289,7 @@ document.addEventListener('alpine:init', () => {
                 }
                 const saved = await response.json();
                 row.recordedAt = saved.recordedAt;
-                this.notice = `نمره‌ی ${row.name} با موفقیت ثبت شد.`;
+                this.notice = `نمره‌ی ${row.name} (${this.courseLabel()}) با موفقیت ثبت شد.`;
             } catch (e) {
                 this.error = 'ارتباط با سرور برقرار نشد.';
             } finally {

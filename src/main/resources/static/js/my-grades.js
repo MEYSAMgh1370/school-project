@@ -80,6 +80,11 @@ document.addEventListener('alpine:init', () => {
                 }
                 byStudent.get(grade.studentId).grades.push(grade);
             });
+            // ردیف‌های هر دانش‌آموز: سال، نوبت، سپس «نمره‌ی کل» و بعد درس‌ها به ترتیب نام
+            byStudent.forEach((group) => group.grades.sort((a, b) =>
+                a.academicYear.localeCompare(b.academicYear)
+                || a.term.localeCompare(b.term)
+                || (a.courseName || '').localeCompare(b.courseName || '', 'fa')));
             return Array.from(byStudent.values()).sort((a, b) =>
                 (a.own === b.own) ? a.label.localeCompare(b.label, 'fa') : (a.own ? -1 : 1));
         },
