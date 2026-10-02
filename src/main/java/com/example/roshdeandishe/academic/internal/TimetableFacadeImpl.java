@@ -86,6 +86,8 @@ class TimetableFacadeImpl implements TimetableFacade {
     @Transactional
     public PeriodInfo updatePeriod(Long schoolId, Long periodId, String label, LocalTime startTime,
                                    LocalTime endTime) {
+        // قفلِ ردیفِ زنگ (مشترک با حذف) پیش از خواندنِ زنگ؛ بعد قفلِ مدرسه/سال - ترتیبِ ثابتِ زنگ ← سال
+        periodRepository.lockPeriod(PERIOD_ROW_LOCK_NAMESPACE, Objects.hash(periodId));
         TimetablePeriodEntity period = requirePeriodInSchool(schoolId, periodId);
         String cleanLabel = requireValidPeriod(label, startTime, endTime);
         lockPeriods(schoolId, period.getAcademicYear());
@@ -128,6 +130,7 @@ class TimetableFacadeImpl implements TimetableFacade {
     @Override
     @Transactional
     public ActivityInfo renameActivity(Long schoolId, Long activityId, String name) {
+        activityRepository.lockActivity(ACTIVITY_ROW_LOCK_NAMESPACE, Objects.hash(activityId));
         ActivityEntity activity = requireOwnActivity(schoolId, activityId);
         String clean = requireActivityName(name);
         if (!clean.equals(activity.getName())) {

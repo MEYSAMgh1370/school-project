@@ -374,6 +374,29 @@ class TimetableFacadeTest {
     }
 
     @Test
+    void updatingAPeriodLocksItsRowBeforeReadingItAndThenTheSchoolYear() {
+        when(periods.findBySchoolIdAndAcademicYearOrderByStartTimeAscPositionAsc(SCHOOL, YEAR)).thenReturn(List.of());
+
+        facade.updatePeriod(SCHOOL, PERIOD, "زنگ", LocalTime.of(8, 0), LocalTime.of(8, 50));
+
+        org.mockito.InOrder order = org.mockito.Mockito.inOrder(periods);
+        order.verify(periods).lockPeriod(org.mockito.ArgumentMatchers.anyInt(), org.mockito.ArgumentMatchers.anyInt());
+        order.verify(periods).findById(PERIOD);
+        order.verify(periods).lockSchoolYear(org.mockito.ArgumentMatchers.anyInt(), org.mockito.ArgumentMatchers.anyInt());
+    }
+
+    @Test
+    void renamingAnActivityLocksItBeforeReadingIt() {
+        when(activities.findById(63L)).thenReturn(Optional.of(activity(63L, SCHOOL, "شطرنج")));
+
+        facade.renameActivity(SCHOOL, 63L, "شطرنج پیشرفته");
+
+        org.mockito.InOrder order = org.mockito.Mockito.inOrder(activities);
+        order.verify(activities).lockActivity(org.mockito.ArgumentMatchers.anyInt(), org.mockito.ArgumentMatchers.anyInt());
+        order.verify(activities).findById(63L);
+    }
+
+    @Test
     void deletingAnActivityLocksItBeforeCheckingForEntries() {
         when(activities.findById(63L)).thenReturn(Optional.of(activity(63L, SCHOOL, "شطرنج")));
 

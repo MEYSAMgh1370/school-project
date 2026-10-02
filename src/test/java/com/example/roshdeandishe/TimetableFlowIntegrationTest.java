@@ -768,6 +768,56 @@ class TimetableFlowIntegrationTest {
     }
 
     @Test
+    void updatingAPeriodWhileItIsBeingDeletedAndRenamingAnActivityWhileItIsBeingDeletedNeverEndInAServerError()
+            throws Exception {
+        MockHttpSession admin = loginAsAdmin();
+        java.util.concurrent.ExecutorService pool = java.util.concurrent.Executors.newFixedThreadPool(4);
+        try {
+            for (int round = 0; round < 15; round++) {
+                jdbc.update("delete from academic.timetable_entries");
+                jdbc.update("delete from academic.timetable_periods");
+                jdbc.update("delete from academic.activities where school_id is not null");
+                long period = createPeriod(admin, "زنگ", "08:00", "08:45");
+                long activity = json(send(admin, post("/api/admin/schools/1/timetable/activities"),
+                        "{\"name\":\"نام " + round + "\"}").andExpect(status().isOk())).get("id").asLong();
+                java.util.concurrent.CyclicBarrier barrier = new java.util.concurrent.CyclicBarrier(4);
+                var results = new java.util.ArrayList<java.util.concurrent.Future<Integer>>();
+                results.add(pool.submit(() -> {
+                    barrier.await();
+                    return send(admin, put("/api/admin/schools/1/timetable/periods/" + period),
+                            "{\"label\":\"جدید\",\"startTime\":\"08:00\",\"endTime\":\"08:50\"}")
+                            .andReturn().getResponse().getStatus();
+                }));
+                results.add(pool.submit(() -> {
+                    barrier.await();
+                    return send(admin, delete("/api/admin/schools/1/timetable/periods/" + period), null)
+                            .andReturn().getResponse().getStatus();
+                }));
+                results.add(pool.submit(() -> {
+                    barrier.await();
+                    return send(admin, put("/api/admin/schools/1/timetable/activities/" + activity),
+                            "{\"name\":\"عوض شد\"}").andReturn().getResponse().getStatus();
+                }));
+                results.add(pool.submit(() -> {
+                    barrier.await();
+                    return send(admin, delete("/api/admin/schools/1/timetable/activities/" + activity), null)
+                            .andReturn().getResponse().getStatus();
+                }));
+                var statuses = new java.util.ArrayList<Integer>();
+                for (var f : results) {
+                    statuses.add(f.get());
+                }
+                // زنگ: (ویرایش 200 | 404) و حذف 204؛ فعالیت: (تغییر نام 200 | 404) و حذف 204 - هرگز 500
+                assertThat(statuses).as("round " + round).doesNotContain(500);
+                assertThat(statuses.get(1)).isEqualTo(204);
+                assertThat(statuses.get(3)).isEqualTo(204);
+            }
+        } finally {
+            pool.shutdown();
+        }
+    }
+
+    @Test
     void concurrentActivitiesWithTheSameNameLetOneThroughAndTheOtherGetsAConflict() throws Exception {
         MockHttpSession admin = loginAsAdmin();
         java.util.concurrent.ExecutorService pool = java.util.concurrent.Executors.newFixedThreadPool(2);
