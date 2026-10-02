@@ -39,6 +39,15 @@ class AcademicYearPageRenderTest {
     }
 
     @Test
+    void theYearBoxIsShownOnlyAfterASuccessfulLoad() {
+        String html = render();
+
+        // با شکست بارگذاری (مثلاً بعد از عوض‌کردن مدرسه) وضعیتِ مدرسه‌ی قبلی یا
+        // «سالی انتخاب نشده» نشان داده نمی‌شود
+        assertThat(html).contains("x-show=\"!loading && loaded\"");
+    }
+
+    @Test
     void closedYearsAreVisibleButNotSelectable() {
         String html = render();
 

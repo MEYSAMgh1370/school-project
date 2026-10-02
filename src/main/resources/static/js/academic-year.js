@@ -5,6 +5,9 @@ document.addEventListener('alpine:init', () => {
         years: [],
         selectedId: '',
         loading: false,
+        // فقط بعد از یک بارگذاریِ موفق true است: با شکست، کادرِ سال/فرم نشان داده
+        // نمی‌شود (وگرنه «هنوز سالی انتخاب نشده» گمراه‌کننده می‌شد)
+        loaded: false,
         saving: false,
         blocked: false,
         error: '',
@@ -50,6 +53,7 @@ document.addEventListener('alpine:init', () => {
         },
 
         apply(settings) {
+            this.loaded = true;
             this.current = settings.current;
             this.years = settings.years;
             this.selectedId = settings.current ? settings.current.id : '';
@@ -63,6 +67,13 @@ document.addEventListener('alpine:init', () => {
             this.loading = true;
             this.error = '';
             this.blocked = false;
+            // وضعیتِ مدرسه‌ی قبلی (سال جاری، فهرست، انتخاب) کنار گذاشته می‌شود: اگر
+            // این بارگذاری شکست بخورد، صفحه نباید سالِ مدرسه‌ی قبلی را زیرِ مدرسه‌ی
+            // تازه نشان دهد (و ذخیره‌ی بر پایه‌ی اطلاعات کهنه ممکن نشود).
+            this.loaded = false;
+            this.current = null;
+            this.years = [];
+            this.selectedId = '';
             try {
                 const response = await fetch(`/api/admin/schools/${this.schoolId}/academic-year`, {
                     headers: { 'X-School-ID': this.schoolId }

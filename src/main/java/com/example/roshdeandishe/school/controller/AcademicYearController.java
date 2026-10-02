@@ -1,7 +1,6 @@
 package com.example.roshdeandishe.school.controller;
 
 import com.example.roshdeandishe.iam.IamFacade;
-import com.example.roshdeandishe.iam.IamFacade.MembershipInfo;
 import com.example.roshdeandishe.iam.shared.RequiresPermission;
 import com.example.roshdeandishe.iam.shared.exception.IamError;
 import com.example.roshdeandishe.iam.shared.exception.IamException;
@@ -44,12 +43,14 @@ public class AcademicYearController {
 
     @GetMapping("/api/me/schools/{schoolId}/academic-year")
     public MyAcademicYearResponse myAcademicYear(@PathVariable Long schoolId) {
-        // مثل SchoolController.getSchool: فقط عضو فعالِ همین مدرسه؛ بیگانه نباید
-        // بتواند تنظیمات مدرسه‌ی دیگری را بخواند
+        // فقط عضو فعالِ همین مدرسه؛ بیگانه نباید بتواند تنظیمات مدرسه‌ی دیگری را
+        // بخواند. findMembership فقط «اولین» عضویتِ کاربر در مدرسه را می‌دهد و هر
+        // نقش عضویتِ جدا و مستقلاً قابل فعال/غیرفعال است - پس همه‌ی عضویت‌ها
+        // بررسی می‌شوند: اگر هر کدام فعال باشد، کاربر عضو فعال است.
         IamFacade.UserId callerId = iamFacade.currentUserId();
-        MembershipInfo membership = iamFacade.findMembership(callerId, schoolId)
-                .orElseThrow(() -> new IamException(new IamError.MembershipNotFound(callerId.value(), schoolId)));
-        if (!membership.active()) {
+        boolean activeMember = iamFacade.findMembershipsByUser(callerId).stream()
+                .anyMatch(membership -> schoolId.equals(membership.schoolId()) && membership.active());
+        if (!activeMember) {
             throw new IamException(new IamError.MembershipNotFound(callerId.value(), schoolId));
         }
         return new MyAcademicYearResponse(current(schoolId));

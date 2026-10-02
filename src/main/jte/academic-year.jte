@@ -18,7 +18,7 @@
                 <p x-show="loading">در حال بارگذاری...</p>
 
                 <template x-if="!blocked">
-                    <div class="box" x-cloak x-show="!loading">
+                    <div class="box" x-cloak x-show="!loading && loaded">
                         <p class="is-size-7 has-text-grey mb-1">سال تحصیلی جاری</p>
                         <p class="title is-3 mb-4" dir="ltr" id="academicYearCurrent" x-show="current"
                            x-text="current ? Jalali.toPersianDigits(current.code) : ''"></p>
