@@ -15,7 +15,9 @@ document.addEventListener('alpine:init', () => {
         error: '',
 
         init() {
-            const requested = parseInt(new URLSearchParams(window.location.search).get('student') || '', 10);
+            // کل مقدار باید عدد باشد؛ پیشوندِ عددی («100junk») نادیده می‌ماند.
+            const raw = new URLSearchParams(window.location.search).get('student') || '';
+            const requested = /^\d+$/.test(raw) ? parseInt(raw, 10) : NaN;
             this.requestedStudentId = Number.isInteger(requested) ? requested : null;
             this.wardRefs = Array.from(document.querySelectorAll('#my-grades-wards span')).map((node) => ({
                 studentId: parseInt(node.dataset.studentId, 10),

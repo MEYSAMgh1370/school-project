@@ -31,12 +31,14 @@ schoolId)` (used by `MyInvoicesController` and the Bale "فرزندان من" co
   rendered ASCII and converted with `Jalali.toPersianDigits` (DESIGN.md §8).
 - A parent with no linked child sees: «هنوز دانش‌آموزی به حساب شما لینک نشده است.
   مدیر مدرسه می‌تواند از صفحه‌ی «دانش‌آموزان» فرزندتان را به حساب شما متصل کند.»
-- Each card has two links, «نمره‌ها» → `/my-grades?student=<studentId>` and
-  «فاکتورها» → `/my-invoices?student=<studentId>`. Only the student id goes in
-  the URL, never the child's name (children's data must not leak into history or
-  logs). Before navigating, the link stores the child's school as the selected
-  school (`Alpine.store('nav').rememberSchool`), so the destination loads that
-  school's data. Buttons keep the normal 44px size.
+- Each card has two links, «نمره‌ها» → `/my-grades?student=<studentId>&school=<schoolId>`
+  and «فاکتورها» → `/my-invoices?student=<studentId>&school=<schoolId>`. Only ids
+  go in the URL, never the child's name (children's data must not leak into
+  history or logs). The destination's navbar accepts `?school=` as the selected
+  school (only if the user is a member; otherwise the saved/first school), so the
+  link works without a click side effect: open-in-new-tab and middle-click load
+  the child's school too. `?student=` / `?school=` must be entirely digits
+  (`100junk` is ignored). Buttons keep the normal 44px size.
 - **`/my-grades` has a student picker.** A control labelled «انتخاب دانش‌آموز»
   shows the selected student's name; opening it reveals a list of the names, each
   with a grade count ("بدون نمره" when none), and choosing one closes the list and
@@ -113,5 +115,5 @@ any active `PARENT` membership.
   grades, unknown ids, outside click, Escape, keyboard, focus return) was verified
   in a browser against the compiled templates; the project has no JS test setup.
 - `WardsAssemblerTest` also covers `wardRefsForCurrentUser` (names only, active
-  parent schools only, no finance call).
+  every school with an active membership of any role, matching `MyGradesController` which returns wards independent of role; no finance call).
 - Existing `*FlowIntegrationTest` assertions on the dashboard run in CI.

@@ -10,7 +10,9 @@ document.addEventListener('alpine:init', () => {
         error: '',
 
         init() {
-            const requested = parseInt(new URLSearchParams(window.location.search).get('student') || '', 10);
+            // کل مقدار باید عدد باشد؛ پیشوندِ عددی («100junk») نادیده می‌ماند.
+            const raw = new URLSearchParams(window.location.search).get('student') || '';
+            const requested = /^\d+$/.test(raw) ? parseInt(raw, 10) : NaN;
             this.studentFilter = Number.isInteger(requested) ? requested : null;
             const saved = parseInt(localStorage.getItem('selectedSchoolId') || '', 10);
             this.schoolId = Number.isInteger(saved) ? saved : null;

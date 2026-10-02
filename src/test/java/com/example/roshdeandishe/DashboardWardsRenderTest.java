@@ -48,12 +48,13 @@ class DashboardWardsRenderTest {
     }
 
     @Test
-    void eachWardLinksToItsGradesAndInvoicesWithOnlyTheStudentIdInTheUrl() {
+    void eachWardLinksCarryStudentAndSchoolIdsInTheUrlNotInAClickHandler() {
         String html = HtmlUtils.htmlUnescape(render(true, List.of(ward("آرین رضایی", 0, 0, 0))));
 
-        assertThat(html).contains("href=\"/my-grades?student=100\"", "href=\"/my-invoices?student=100\"");
-        assertThat(html).contains("data-school=\"5\"");
-        assertThat(html).contains("$store.nav.rememberSchool($el.dataset.school)");
+        // مدرسه در خودِ URL است تا «باز کردن در تب جدید»/کلیک میانی هم درست کار کند
+        assertThat(html).contains("href=\"/my-grades?student=100&school=5\"",
+                "href=\"/my-invoices?student=100&school=5\"");
+        assertThat(html).doesNotContain("rememberSchool");
         // نام فرزند نباید در URL برود
         assertThat(html).doesNotContain("student=آرین").doesNotContain("?name=").doesNotContain("&name=");
     }

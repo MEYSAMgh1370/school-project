@@ -55,19 +55,32 @@ public class WardsAssembler {
     }
 
     /**
-     * فقط نامِ فرزندانِ لینک‌شده‌ی کاربرِ فعلی در همه‌ی مدرسه‌هایی که والدِ فعال
-     * است - برای صفحه‌ی «نمره‌های من» (عنوان آکاردئونِ هر دانش‌آموز). بدون
-     * فراخوانی finance؛ کاربری که والد نیست فهرست خالی می‌گیرد.
+     * فقط نامِ فرزندانِ لینک‌شده‌ی کاربرِ فعلی در همه‌ی مدرسه‌هایی که عضویتِ
+     * فعال (با هر نقشی) دارد - برای صفحه‌ی «نمره‌های من». دامنه عمداً با
+     * {@code MyGradesController} یکی است: آن endpoint فرزندان را مستقل از نقش
+     * (listWards) برمی‌گرداند، پس مثلاً معلمِ فعالی که عضویتِ والدش غیرفعال
+     * شده هم نامِ فرزندش را می‌بیند و با دانش‌آموزِ خودش اشتباه نمی‌شود. بدون
+     * فراخوانی finance.
      */
     public List<WardRef> wardRefsForCurrentUser() {
         UserId userId = iamFacade.currentUserId();
         List<WardRef> refs = new ArrayList<>();
-        for (Long schoolId : parentSchoolIds(iamFacade.findMembershipsByUser(userId))) {
+        for (Long schoolId : activeSchoolIds(iamFacade.findMembershipsByUser(userId))) {
             for (StudentInfo ward : academicFacade.listWards(userId.value(), schoolId)) {
                 refs.add(new WardRef(ward.id().value(), schoolId, wardName(ward)));
             }
         }
         return List.copyOf(refs);
+    }
+
+    private static Set<Long> activeSchoolIds(List<MembershipInfo> memberships) {
+        Set<Long> schoolIds = new LinkedHashSet<>();
+        for (MembershipInfo membership : memberships) {
+            if (membership.active()) {
+                schoolIds.add(membership.schoolId());
+            }
+        }
+        return schoolIds;
     }
 
     private static Set<Long> parentSchoolIds(List<MembershipInfo> memberships) {
