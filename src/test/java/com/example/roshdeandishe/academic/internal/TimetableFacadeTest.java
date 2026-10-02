@@ -85,7 +85,7 @@ class TimetableFacadeTest {
             }
             return e;
         });
-        when(activities.save(any(ActivityEntity.class))).thenAnswer(i -> {
+        when(activities.saveAndFlush(any(ActivityEntity.class))).thenAnswer(i -> {
             ActivityEntity a = i.getArgument(0);
             if (a.getId() == null) {
                 a.setId(60L);
@@ -241,12 +241,28 @@ class TimetableFacadeTest {
     }
 
     @Test
+    void aRaceOnTheActivityNameIndexIsReportedAsANameClashForCreateAndRename() {
+        when(activities.saveAndFlush(any(ActivityEntity.class))).thenThrow(new DataIntegrityViolationException(
+                "x", new RuntimeException("duplicate key value violates unique constraint \"activities_school_name_unique\"")));
+        rejectedWith(() -> facade.createActivity(SCHOOL, "شطرنج"), new AcademicError.ActivityNameTaken("شطرنج"));
+
+        when(activities.findById(63L)).thenReturn(Optional.of(activity(63L, SCHOOL, "نقاشی")));
+        rejectedWith(() -> facade.renameActivity(SCHOOL, 63L, "شطرنج"), new AcademicError.ActivityNameTaken("شطرنج"));
+
+        // خطای یکپارچگیِ دیگر به نامِ تکراری تعبیر نمی‌شود
+        when(activities.saveAndFlush(any(ActivityEntity.class))).thenThrow(
+                new DataIntegrityViolationException("some other constraint"));
+        assertThatThrownBy(() -> facade.createActivity(SCHOOL, "کارگاه"))
+                .isInstanceOf(DataIntegrityViolationException.class);
+    }
+
+    @Test
     void aPlatformDefaultActivityIsVisibleButCannotBeRenamedOrDeleted() {
         when(activities.findById(61L)).thenReturn(Optional.of(activity(61L, null, "ورزش")));
 
         rejectedWith(() -> facade.renameActivity(SCHOOL, 61L, "نام تازه"), new AcademicError.ActivityNotEditable(61L));
         rejectedWith(() -> facade.deleteActivity(SCHOOL, 61L), new AcademicError.ActivityNotEditable(61L));
-        verify(activities, never()).save(any());
+        verify(activities, never()).saveAndFlush(any());
         verify(activities, never()).delete(any());
     }
 

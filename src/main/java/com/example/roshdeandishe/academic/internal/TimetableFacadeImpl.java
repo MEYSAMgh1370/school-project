@@ -28,6 +28,8 @@ class TimetableFacadeImpl implements TimetableFacade {
     private static final int MAX_NAME_LENGTH = 128;
     private static final int PERIOD_LOCK_NAMESPACE = 7401;
     private static final String TEACHER_SLOT_INDEX = "timetable_entries_teacher_slot_unique";
+    private static final List<String> ACTIVITY_NAME_INDEXES =
+            List.of("activities_school_name_unique", "activities_default_name_unique");
 
     private final TimetablePeriodRepository periodRepository;
     private final TimetableEntryRepository entryRepository;
@@ -114,7 +116,7 @@ class TimetableFacadeImpl implements TimetableFacade {
     public ActivityInfo createActivity(Long schoolId, String name) {
         String clean = requireActivityName(name);
         requireNameFree(schoolId, clean);
-        return toActivityInfo(activityRepository.save(new ActivityEntity(schoolId, clean)));
+        return toActivityInfo(saveActivity(new ActivityEntity(schoolId, clean), clean));
     }
 
     @Override
@@ -126,7 +128,7 @@ class TimetableFacadeImpl implements TimetableFacade {
             requireNameFree(schoolId, clean);
         }
         activity.setName(clean);
-        return toActivityInfo(activityRepository.save(activity));
+        return toActivityInfo(saveActivity(activity, clean));
     }
 
     @Override
@@ -351,6 +353,19 @@ class TimetableFacadeImpl implements TimetableFacade {
         return clean;
     }
 
+    // دو ساختِ هم‌زمان با یک نام از requireNameFree رد می‌شوند؛ ایندکس‌های جزئیِ نام آخرین سدند.
+    // flush تا خطا همین‌جا (نه هنگام commit) پدید آید و به همان 409 دامنه ترجمه شود.
+    private ActivityEntity saveActivity(ActivityEntity activity, String name) {
+        try {
+            return activityRepository.saveAndFlush(activity);
+        } catch (DataIntegrityViolationException e) {
+            if (mentionsConstraint(e, ACTIVITY_NAME_INDEXES)) {
+                throw new AcademicException(new AcademicError.ActivityNameTaken(name));
+            }
+            throw e;
+        }
+    }
+
     // نام باید هم در دامنه‌ی مدرسه و هم میان پیش‌فرض‌های پلتفرم یکتا باشد، وگرنه
     // انتخابگر دو گزینه‌ی هم‌نام نشان می‌داد
     private void requireNameFree(Long schoolId, String name) {
@@ -382,8 +397,12 @@ class TimetableFacadeImpl implements TimetableFacade {
     }
 
     private static boolean mentionsTeacherSlotIndex(Throwable e) {
+        return mentionsConstraint(e, List.of(TEACHER_SLOT_INDEX));
+    }
+
+    private static boolean mentionsConstraint(Throwable e, List<String> constraintNames) {
         for (Throwable t = e; t != null; t = t.getCause()) {
-            if (t.getMessage() != null && t.getMessage().contains(TEACHER_SLOT_INDEX)) {
+            if (t.getMessage() != null && constraintNames.stream().anyMatch(t.getMessage()::contains)) {
                 return true;
             }
         }

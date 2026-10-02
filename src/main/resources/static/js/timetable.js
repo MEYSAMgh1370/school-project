@@ -27,6 +27,9 @@ document.addEventListener('alpine:init', () => {
         // تا زنگ‌ها و خانه‌های سالِ تازه نرسیده‌اند، جدولِ سالِ قبل نمایش و قابل‌ویرایش نیست
         periodsLoading: false,
         entriesLoading: false,
+        // false = آخرین خواندن شکست خورده (وضعیتِ سرور نامعلوم است): نه «زنگی نیست» و نه جدولِ قابل‌ویرایش
+        periodsOk: true,
+        entriesOk: true,
 
         // فرم‌ها
         periodForm: { id: null, label: '', start: '', end: '' },
@@ -71,6 +74,8 @@ document.addEventListener('alpine:init', () => {
             this.loaded = false;
             this.periodsLoading = false;
             this.entriesLoading = false;
+            this.periodsOk = true;
+            this.entriesOk = true;
             this.blocked = false;
             this.error = '';
             this.notice = '';
@@ -200,13 +205,18 @@ document.addEventListener('alpine:init', () => {
             this.periodsLoading = false;
             if (!this.year) {
                 this.periods = [];
+                this.periodsOk = true;
                 return;
             }
             this.periodsLoading = !quiet;
+            if (!quiet) {
+                this.periodsOk = false;
+            }
             try {
                 const periods = await this.getJson(`/periods?academicYear=${encodeURIComponent(this.year)}`);
                 if (seq === this.periodSeq) {
                     this.periods = periods;
+                    this.periodsOk = true;
                     if (this.periodForm.id === null) {
                         this.resetPeriodForm();
                     }
@@ -214,6 +224,7 @@ document.addEventListener('alpine:init', () => {
             } catch (e) {
                 if (seq === this.periodSeq) {
                     this.periods = [];
+                    this.periodsOk = false;
                     this.error = e.message;
                 }
             } finally {
@@ -228,18 +239,24 @@ document.addEventListener('alpine:init', () => {
             this.entriesLoading = false;
             if (!this.year || !this.classId) {
                 this.entries = [];
+                this.entriesOk = true;
                 return;
             }
             this.entriesLoading = !quiet;
+            if (!quiet) {
+                this.entriesOk = false;
+            }
             try {
                 const entries = await this.getJson(
                     `/classes/${this.classId}?academicYear=${encodeURIComponent(this.year)}`);
                 if (seq === this.entrySeq) {
                     this.entries = entries;
+                    this.entriesOk = true;
                 }
             } catch (e) {
                 if (seq === this.entrySeq) {
                     this.entries = [];
+                    this.entriesOk = false;
                     this.error = e.message;
                 }
             } finally {
@@ -252,6 +269,12 @@ document.addEventListener('alpine:init', () => {
         // تا زنگ‌ها و خانه‌های سال/کلاسِ انتخاب‌شده نرسیده‌اند، جدول نمایش و قابل‌ویرایش نیست
         busy() {
             return this.periodsLoading || this.entriesLoading;
+        },
+
+        // جدول فقط وقتی نشان داده/ویرایش می‌شود که خواندنِ زنگ‌ها و خانه‌ها موفق بوده باشد:
+        // با شکستِ خواندنِ خانه‌ها، خانه‌ی «خالی» دروغ است و کلیک روی آن خانه‌ی موجود را بازنویسی می‌کرد
+        gridReady() {
+            return this.periods.length > 0 && !this.busy() && this.periodsOk && this.entriesOk;
         },
 
         async loadCourses() {

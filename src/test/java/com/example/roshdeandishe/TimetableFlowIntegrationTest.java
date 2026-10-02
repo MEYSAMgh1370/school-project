@@ -706,6 +706,31 @@ class TimetableFlowIntegrationTest {
     }
 
     @Test
+    void concurrentActivitiesWithTheSameNameLetOneThroughAndTheOtherGetsAConflict() throws Exception {
+        MockHttpSession admin = loginAsAdmin();
+        java.util.concurrent.ExecutorService pool = java.util.concurrent.Executors.newFixedThreadPool(2);
+        try {
+            for (int round = 0; round < 10; round++) {
+                jdbc.update("delete from academic.activities where school_id is not null");
+                java.util.concurrent.CyclicBarrier barrier = new java.util.concurrent.CyclicBarrier(2);
+                String name = "هم‌نام " + round;
+                var tasks = new java.util.ArrayList<java.util.concurrent.Future<Integer>>();
+                for (int i = 0; i < 2; i++) {
+                    tasks.add(pool.submit(() -> {
+                        barrier.await();
+                        return send(admin, post("/api/admin/schools/1/timetable/activities"),
+                                "{\"name\":\"" + name + "\"}").andReturn().getResponse().getStatus();
+                    }));
+                }
+                assertThat(java.util.List.of(tasks.get(0).get(), tasks.get(1).get())).as("round " + round)
+                        .containsExactlyInAnyOrder(200, 409);
+            }
+        } finally {
+            pool.shutdown();
+        }
+    }
+
+    @Test
     void anActiveTeacherWithoutCellsStillGetsAnEmptyTeachingView() throws Exception {
         MockHttpSession admin = loginAsAdmin();
         makeCurrentYear(admin);
