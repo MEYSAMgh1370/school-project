@@ -192,6 +192,13 @@ class TimetableFlowIntegrationTest {
                 "{\"academicYear\":\"" + YEAR + "\",\"label\":\"خراب\",\"startTime\":\"abc\",\"endTime\":\"09:00\"}")
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.type").value(endsWith("invalid-period")));
+        for (String badTime : new String[]{"08:00:30", "08:00:00.5", "8:00", "24:00"}) {
+            send(admin, post("/api/admin/schools/1/timetable/periods"),
+                    "{\"academicYear\":\"" + YEAR + "\",\"label\":\"ثانیه\",\"startTime\":\"" + badTime
+                            + "\",\"endTime\":\"23:00\"}")
+                    .andExpect(status().isBadRequest())
+                    .andExpect(jsonPath("$.type").value(endsWith("invalid-period")));
+        }
         send(admin, post("/api/admin/schools/1/timetable/periods"),
                 "{\"academicYear\":\"1300-1301\",\"label\":\"سال ناموجود\",\"startTime\":\"10:00\",\"endTime\":\"11:00\"}")
                 .andExpect(status().isBadRequest())

@@ -18,7 +18,9 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalTime;
+import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeParseException;
+import java.time.format.ResolverStyle;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -170,7 +172,7 @@ public class TimetableController {
                                        @RequestParam String academicYear) {
         TenantContext.requireMatches(schoolId);
 
-        return withTeacherNames(timetableFacade.listEntriesForClass(schoolId, classId, academicYear), schoolId);
+        return withTeacherNames(timetableFacade.listEntriesForClass(schoolId, classId, academicYear));
     }
 
     @PutMapping("/classes/{classId}/entries")
@@ -180,7 +182,7 @@ public class TimetableController {
 
         TimetableFacade.EntryInfo entry = timetableFacade.setEntry(schoolId, classId, request.periodId(),
                 parseDay(request.weekday()), request.courseId(), request.activityId(), request.teacherUserId());
-        return withTeacherNames(List.of(entry), schoolId).get(0);
+        return withTeacherNames(List.of(entry)).get(0);
     }
 
     @DeleteMapping("/classes/{classId}/entries")
@@ -192,9 +194,12 @@ public class TimetableController {
         return ResponseEntity.noContent().build();
     }
 
-    private List<EntryResponse> withTeacherNames(List<TimetableFacade.EntryInfo> entries, Long schoolId) {
+    // فقط معلم‌هایی که در همین خانه‌ها آمده‌اند (هر شناسه یک بار)، نه همه‌ی عضوهای مدرسه
+    private List<EntryResponse> withTeacherNames(List<TimetableFacade.EntryInfo> entries) {
         Map<Long, String> names = new HashMap<>();
-        iamFacade.findMembershipsBySchool(schoolId).forEach(m -> names.putIfAbsent(m.userId().value(), m.fullName()));
+        entries.stream().map(TimetableFacade.EntryInfo::teacherUserId).filter(java.util.Objects::nonNull).distinct()
+                .forEach(id -> names.put(id, iamFacade.findUser(new IamFacade.UserId(id))
+                        .map(IamFacade.UserProfile::fullName).orElse(null)));
         return entries.stream()
                 .map(e -> EntryResponse.from(e, e.teacherUserId() == null ? null : names.get(e.teacherUserId())))
                 .toList();
@@ -209,9 +214,12 @@ public class TimetableController {
         }
     }
 
+    // دقیقاً HH:mm (مثل «08:00»)؛ LocalTime.parse ثانیه و کسر را هم می‌پذیرد و UI آن را پنهان می‌کرد
+    private static final DateTimeFormatter HH_MM = DateTimeFormatter.ofPattern("HH:mm").withResolverStyle(ResolverStyle.STRICT);
+
     static LocalTime parseTime(String text) {
         try {
-            return text == null ? null : LocalTime.parse(text.strip());
+            return text == null ? null : LocalTime.parse(text.strip(), HH_MM);
         } catch (DateTimeParseException e) {
             throw new AcademicException(new AcademicError.InvalidPeriod("ساعت باید به شکل HH:mm باشد"));
         }

@@ -24,6 +24,9 @@ document.addEventListener('alpine:init', () => {
         courses: [],
         // فقط بعد از بارگذاریِ موفقِ پایه true می‌شود تا شکستِ شبکه «بدون زنگ/کلاس» نشان ندهد
         loaded: false,
+        // تا زنگ‌ها و خانه‌های سالِ تازه نرسیده‌اند، جدولِ سالِ قبل نمایش و قابل‌ویرایش نیست
+        periodsLoading: false,
+        entriesLoading: false,
 
         // فرم‌ها
         periodForm: { id: null, label: '', start: '', end: '' },
@@ -66,6 +69,8 @@ document.addEventListener('alpine:init', () => {
             this.saving = false;
             this.loading = false;
             this.loaded = false;
+            this.periodsLoading = false;
+            this.entriesLoading = false;
             this.blocked = false;
             this.error = '';
             this.notice = '';
@@ -181,16 +186,23 @@ document.addEventListener('alpine:init', () => {
 
         // با عوض‌شدنِ سال: زنگ‌ها و خانه‌های همان سال
         loadYear() {
+            // دادهٔ سالِ قبل همین حالا کنار گذاشته می‌شود: با پاسخِ کند، کلیک روی خانه‌ی قدیمی
+            // شناسه‌ی زنگِ سالِ قبل را می‌فرستاد و خانه در سالِ قبل ذخیره می‌شد
+            this.periods = [];
+            this.entries = [];
             this.loadPeriods();
             this.loadEntries();
         },
 
-        async loadPeriods() {
+        // quiet: بازخوانیِ بعد از یک نوشتن، جدول را پنهان نمی‌کند (فقط عوض‌شدنِ سال/کلاس پنهانش می‌کند)
+        async loadPeriods(quiet) {
             const seq = ++this.periodSeq;
+            this.periodsLoading = false;
             if (!this.year) {
                 this.periods = [];
                 return;
             }
+            this.periodsLoading = !quiet;
             try {
                 const periods = await this.getJson(`/periods?academicYear=${encodeURIComponent(this.year)}`);
                 if (seq === this.periodSeq) {
@@ -204,15 +216,21 @@ document.addEventListener('alpine:init', () => {
                     this.periods = [];
                     this.error = e.message;
                 }
+            } finally {
+                if (seq === this.periodSeq) {
+                    this.periodsLoading = false;
+                }
             }
         },
 
-        async loadEntries() {
+        async loadEntries(quiet) {
             const seq = ++this.entrySeq;
+            this.entriesLoading = false;
             if (!this.year || !this.classId) {
                 this.entries = [];
                 return;
             }
+            this.entriesLoading = !quiet;
             try {
                 const entries = await this.getJson(
                     `/classes/${this.classId}?academicYear=${encodeURIComponent(this.year)}`);
@@ -224,7 +242,16 @@ document.addEventListener('alpine:init', () => {
                     this.entries = [];
                     this.error = e.message;
                 }
+            } finally {
+                if (seq === this.entrySeq) {
+                    this.entriesLoading = false;
+                }
             }
+        },
+
+        // تا زنگ‌ها و خانه‌های سال/کلاسِ انتخاب‌شده نرسیده‌اند، جدول نمایش و قابل‌ویرایش نیست
+        busy() {
+            return this.periodsLoading || this.entriesLoading;
         },
 
         async loadCourses() {
@@ -340,7 +367,7 @@ document.addEventListener('alpine:init', () => {
                 }
             }, editing ? 'زنگ ذخیره شد.' : 'زنگ ایجاد شد.', () => {
                 this.resetPeriodForm();
-                this.loadPeriods();
+                this.loadPeriods(true);
             });
         },
 
@@ -383,7 +410,7 @@ document.addEventListener('alpine:init', () => {
                 this.cancelActivityEdit();
                 this.loadActivities();
                 // نامِ فعالیت در خانه‌ها هم می‌آید
-                this.loadEntries();
+                this.loadEntries(true);
             });
         },
 
@@ -416,7 +443,7 @@ document.addEventListener('alpine:init', () => {
                     if (this.periodForm.id === target.id) {
                         this.resetPeriodForm();
                     }
-                    this.loadPeriods();
+                    this.loadPeriods(true);
                 } else {
                     this.loadActivities();
                 }
@@ -502,7 +529,7 @@ document.addEventListener('alpine:init', () => {
             }, 'خانه‌ی برنامه ذخیره شد.', () => {
                 this.cell = null;
                 this.cellError = '';
-                this.loadEntries();
+                this.loadEntries(true);
             }, (message) => {
                 this.cellError = message;
             });
@@ -519,7 +546,7 @@ document.addEventListener('alpine:init', () => {
             }, 'خانه‌ی برنامه خالی شد.', () => {
                 this.cell = null;
                 this.cellError = '';
-                this.loadEntries();
+                this.loadEntries(true);
             }, (message) => {
                 this.cellError = message;
             });

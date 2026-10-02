@@ -88,14 +88,14 @@
                                 </div>
 
                                 <%-- هنوز زنگی ندارد: اول زنگ‌ها --%>
-                                <div class="notification app-empty" x-show="periods.length === 0" id="ttNoPeriods">
+                                <div class="notification app-empty" x-show="periods.length === 0 && !busy()" id="ttNoPeriods">
                                     <span class="app-empty__text">
                                         برای این سال تحصیلی هنوز زنگی تعریف نشده است. اول از تبِ
                                         <a href="#" @click.prevent="tab = 'periods'">زنگ‌ها</a> زنگ‌ها را بسازید.
                                     </span>
                                 </div>
 
-                                <div class="table-container" x-show="periods.length > 0">
+                                <div class="table-container" x-show="periods.length > 0 && !busy()">
                                     <table class="table app-tt-grid" id="ttGrid">
                                         <caption class="is-sr-only">برنامه‌ی هفتگی کلاس</caption>
                                         <thead>
@@ -140,7 +140,7 @@
                                         </tbody>
                                     </table>
                                 </div>
-                                <p class="help" x-show="periods.length > 0">
+                                <p class="help" x-show="periods.length > 0 && !busy()">
                                     روی هر خانه بزنید تا درس یا فعالیت و معلمِ آن را انتخاب کنید.
                                 </p>
                             </div>
@@ -184,7 +184,7 @@
                             </div>
 
                             @template.layout.empty-state(
-                                show = "periods.length === 0",
+                                show = "periods.length === 0 && !busy()",
                                 art = "calendar",
                                 message = @`برای این سال تحصیلی هنوز زنگی تعریف نشده است. با فرمِ بالا اولین زنگ را بسازید.`)
 
