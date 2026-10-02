@@ -113,7 +113,7 @@
                     <span class="app-sidebar-chevron" aria-hidden="true"></span>
                 </button>
                 <ul class="menu-list" id="sidebar-group-2-list" x-show="isGroupOpen(2)">
-                    <li><a href="/grades" x-show="selectedRole === 'SCHOOL_ADMIN' || selectedRole === 'TEACHER'">نمرات</a></li>
+                    <li><a href="/grades" x-show="selectedRole === 'SCHOOL_ADMIN' || selectedRole === 'TEACHER'">دفتر نمرات</a></li>
                     <li><a href="/my-grades" x-show="selectedRole === 'STUDENT' || selectedRole === 'PARENT'">نمره‌های من</a></li>
                 </ul>
             </div>
