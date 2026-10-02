@@ -409,6 +409,190 @@
   }
 }
 
+/* --- Sidebar layout (layout/navbar.jte) -----------------------------------
+   صفحه‌های مدیریتی: لینک‌ها در سایدبارِ inline-start (راست در RTL) و نوار بالا
+   فقط سوییچر مدرسه/نقش + منوی کاربر. wrapper `.app-shell-nav` با
+   `display: contents` فقط برای اشتراکِ x-data است و در لایوت نقشی ندارد.
+   ≥1024px: سایدبار fixed و تمام‌قد؛ نوار بالا و هر `section`ِ فرزندِ مستقیمِ
+   body به‌اندازه‌ی عرض سایدبار margin-inline-start می‌گیرند (modalها fixed
+   هستند و کل viewport را می‌پوشانند). <1024px: نوار بالا
+   چسبان است (دکمه‌ی همبرگر همیشه در دسترس) و سایدبار کشویی است که از
+   inline-start (راست) روی backdrop باز می‌شود؛ سوییچر مدرسه/نقش و خروج
+   داخل کشو می‌آیند (.app-sidebar-account) چون navbar-menu در موبایل
+   نمایش داده نمی‌شود. */
+:root {
+  --app-sidebar-width: 15rem;
+}
+
+.app-shell-nav {
+  display: contents;
+}
+
+.app-sidebar {
+  position: fixed;
+  inset-block: 0;
+  inset-inline-start: 0;
+  z-index: 40;
+  inline-size: min(20rem, 85vw);
+  overflow-y: auto;
+  padding: var(--space-4);
+  background: var(--bulma-scheme-main);
+  box-shadow: var(--shadow-md);
+  /* RTL-only app: کشو از راست بیرون می‌رود. visibility تا لینک‌های بستهٔ کشو
+     از ترتیب Tab خارج بمانند. */
+  transform: translateX(100%);
+  visibility: hidden;
+  transition: transform 0.2s ease, visibility 0s linear 0.2s;
+}
+
+.app-sidebar.is-open {
+  transform: none;
+  visibility: visible;
+  transition: transform 0.2s ease;
+}
+
+.app-sidebar-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 35;
+  background: hsl(28 25% 20% / 0.4);
+}
+
+.app-sidebar-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-block-end: var(--space-5);
+}
+
+.app-sidebar-brand {
+  color: var(--bulma-text);
+  font-weight: var(--bulma-weight-bold);
+  text-decoration: none;
+}
+
+.app-sidebar-account {
+  margin-block-start: var(--space-5);
+  padding-block-start: var(--space-4);
+  border-block-start: 1px solid var(--bulma-border);
+}
+
+.app-sidebar-account-label {
+  padding-inline: var(--space-3);
+  color: var(--bulma-text-weak);
+  font-weight: var(--bulma-weight-semibold);
+}
+
+.app-sidebar-account-sub {
+  margin-block-start: var(--space-3);
+  padding-inline: var(--space-3);
+  color: var(--bulma-text-weak);
+  font-size: var(--bulma-size-7);
+}
+
+.app-sidebar-account-item {
+  appearance: none;
+  display: flex;
+  align-items: center;
+  inline-size: 100%;
+  min-block-size: 44px;
+  padding-inline: var(--space-3);
+  background: transparent;
+  border: 0;
+  border-radius: var(--radius-sm);
+  color: var(--bulma-text);
+  cursor: pointer;
+  font: inherit;
+  text-align: start;
+}
+
+.app-sidebar-account-item:hover {
+  background: var(--bulma-scheme-main-bis);
+}
+
+/* سرگروهِ آکاردئونی: دکمه‌ای با ظاهر menu-label و chevron بولما (CSS-drawn). */
+.app-sidebar-toggle {
+  appearance: none;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  inline-size: 100%;
+  min-block-size: 44px;
+  margin-block-start: var(--space-2);
+  padding-inline: var(--space-3);
+  background: transparent;
+  border: 0;
+  border-radius: var(--radius-sm);
+  color: var(--bulma-text-weak);
+  cursor: pointer;
+  font: inherit;
+  font-weight: var(--bulma-weight-semibold);
+  text-align: start;
+}
+
+.app-sidebar-toggle:hover {
+  background: var(--bulma-scheme-main-bis);
+  color: var(--bulma-text);
+}
+
+/* chevron با دو border منطقی (block-end + inline-start = گوشه‌ی پایین-راست در
+   RTL). برنامه فقط RTL است، پس چرخش‌ها برای همین جهت تنظیم شده‌اند:
+   بسته به inline-end (چپ) اشاره می‌کند، باز به پایین. */
+.app-sidebar-chevron {
+  inline-size: 0.5em;
+  block-size: 0.5em;
+  border: 2px solid currentColor;
+  border-inline-end: 0;
+  border-block-start: 0;
+  transform: rotate(135deg);
+  transition: transform 0.15s ease;
+}
+
+.app-sidebar-toggle[aria-expanded="true"] .app-sidebar-chevron {
+  transform: rotate(45deg);
+}
+
+.app-sidebar .menu-list a {
+  min-block-size: 44px;
+  display: flex;
+  align-items: center;
+}
+
+.app-topbar {
+  border-block-end: 1px solid var(--bulma-border);
+}
+
+@media screen and (max-width: 1023px) {
+  .app-topbar {
+    position: sticky;
+    inset-block-start: 0;
+    z-index: 30;
+  }
+}
+
+@media screen and (min-width: 1024px) {
+  .app-sidebar {
+    z-index: 20;
+    inline-size: var(--app-sidebar-width);
+    transform: none;
+    visibility: visible;
+    box-shadow: none;
+    border-inline-end: 1px solid var(--bulma-border);
+  }
+
+  .app-sidebar-close,
+  .app-sidebar-account,
+  .app-sidebar-backdrop,
+  .app-navbar-brand {
+    display: none !important;
+  }
+
+  .app-topbar,
+  body:has(> .app-shell-nav) > .section {
+    margin-inline-start: var(--app-sidebar-width);
+  }
+}
+
 /* --- Empty state (DESIGN.md §5a) ------------------------------------------
    Used only by layout/empty-state.jte. The art is decorative (aria-hidden)
    and carries the accent in a circular primary-soft well; the text keeps

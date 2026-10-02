@@ -61,8 +61,9 @@ edited JTE pages unless a current OpenSpec change supersedes them.
   Server-rendered templates use `web.RoleLabels.persian(code)`; client-rendered
   pages (API data) use the matching map in their `Alpine.data` component (see
   `people.js`). Keep the two in sync when roles change.
-- **Navigation.** Every management page is reachable from the shared navbar's
-  `navbar-start` links — never ship an orphan URL. Link *visibility* may follow
+- **Navigation.** Every management page is reachable from the grouped sidebar
+  links in `layout/navbar.jte` (`aside.app-sidebar`; the top bar only holds the
+  school/role switcher and user menu) — never ship an orphan URL. Link *visibility* may follow
   the selected (display-only) role; access is still enforced server-side only.
 - **Role dropdown is display-only.** It may drive which UI elements are shown,
   but never what the backend permits — permission checks always evaluate all of
@@ -86,7 +87,7 @@ edited JTE pages unless a current OpenSpec change supersedes them.
    `iam.MembershipController`.
 2. **Navigation + funnel fixes** — **built.** No new backend; fixes the gaps
    that made slice 1 undiscoverable:
-   - Page links in the shared navbar (`navbar-start`): Dashboard always;
+   - Page links in the shared navbar (now the grouped sidebar since 2026-10-02): Dashboard always;
      People only while the *selected* role is `SCHOOL_ADMIN` (first real
      consumer of the display-only role dropdown — visibility only, backend
      still enforces). New pages MUST add their link here; no orphan URLs.

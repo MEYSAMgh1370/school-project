@@ -9,6 +9,7 @@ document.addEventListener('alpine:init', () => {
         selectedSchoolId: null,
         selectedRole: '',
         schoolRoles,
+        openGroups: {},
         init() {
             const ids = Object.keys(this.schoolRoles).map(Number);
             const savedId = parseInt(localStorage.getItem('selectedSchoolId') || '', 10);
@@ -27,6 +28,53 @@ document.addEventListener('alpine:init', () => {
             if (this.selectedRole) {
                 localStorage.setItem('selectedRole', this.selectedRole);
             }
+            try {
+                this.openGroups = JSON.parse(localStorage.getItem('sidebarOpenGroups') || '{}') || {};
+            } catch (e) {
+                this.openGroups = {};
+            }
+            this.markCurrentPage();
+            // موبایل: کشوی منو صفحه را قفل می‌کند (Bulma .is-clipped) و با
+            // رسیدن به عرض دسکتاپ بسته می‌شود تا قفل جا نماند.
+            this.$watch('menuOpen', (open) => {
+                document.documentElement.classList.toggle('is-clipped', open);
+            });
+            window.matchMedia('(min-width: 1024px)').addEventListener('change', (event) => {
+                if (event.matches) {
+                    this.menuOpen = false;
+                }
+            });
+        },
+        isGroupOpen(index) {
+            return this.openGroups[index] === true;
+        },
+        toggleGroup(index) {
+            this.openGroups = { ...this.openGroups, [index]: !this.isGroupOpen(index) };
+            try {
+                localStorage.setItem('sidebarOpenGroups', JSON.stringify(this.openGroups));
+            } catch (e) {
+                // حالت خصوصی/مسدود: فقط حالتِ همین صفحه می‌ماند.
+            }
+        },
+        // صفحه‌ی جاری در سایدبار: aria-current + is-active (Bulma .menu-list).
+        // سمت سرور مسیر جاری را نمی‌داند، پس از location می‌خوانیم؛ لینک‌ها
+        // همه‌ی صفحه‌های مدیریتی را پوشش می‌دهند و مسیرها تخت‌اند.
+        markCurrentPage() {
+            const path = window.location.pathname;
+            this.$root.querySelectorAll('.app-sidebar .menu-list a[href]').forEach((link) => {
+                const current = link.getAttribute('href') === path;
+                link.classList.toggle('is-active', current);
+                if (current) {
+                    link.setAttribute('aria-current', 'page');
+                    // گروهِ صفحه‌ی جاری باز می‌ماند تا کاربر جایش را گم نکند.
+                    const group = link.closest('[data-group]');
+                    if (group) {
+                        this.openGroups = { ...this.openGroups, [group.dataset.group]: true };
+                    }
+                } else {
+                    link.removeAttribute('aria-current');
+                }
+            });
         },
         selectSchool(id) {
             this.selectedSchoolId = id;
