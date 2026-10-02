@@ -58,17 +58,18 @@ public class MyTimetableController {
                 .map(AcademicYearInfo::code).orElse(null);
         List<EntryInfo> teaching = year == null ? List.of()
                 : timetableFacade.listEntriesForTeacher(schoolId, year, userId);
-        if (year == null || (pending.isEmpty() && teaching.isEmpty())) {
+        if (pending.isEmpty() && teaching.isEmpty()) {
             return new MyTimetableResponse(null, List.of(), List.of());
         }
 
+        // مدرسه هنوز سالِ جاری را انتخاب نکرده: دیدها بدون خانه برمی‌گردند تا صفحه همین را بگوید
         List<Long> classIds = pending.stream().map(Pending::classId).distinct().toList();
-        List<EntryInfo> classEntries = timetableFacade.listEntriesForClasses(schoolId, year, classIds);
+        List<EntryInfo> classEntries = year == null ? List.of()
+                : timetableFacade.listEntriesForClasses(schoolId, year, classIds);
 
         Map<Long, String> classNames = new HashMap<>();
         if (!pending.isEmpty()) {
-            academicFacade.listClasses(schoolId).forEach(c -> classNames.put(c.id().value(),
-                    c.section() == null || c.section().isBlank() ? c.name() : c.name() + " - " + c.section()));
+            academicFacade.listClasses(schoolId).forEach(c -> classNames.put(c.id().value(), c.name()));
         }
         Map<Long, String> names = new HashMap<>();
         List<MyTimetableView> views = new ArrayList<>();
@@ -83,8 +84,8 @@ public class MyTimetableController {
             views.add(new MyTimetableView("TEACHING", null, null, null, null,
                     teaching.stream().map(e -> toResponse(e, names)).toList()));
         }
-        List<PeriodResponse> periods = timetableFacade.listPeriods(schoolId, year).stream()
-                .map(PeriodResponse::from).toList();
+        List<PeriodResponse> periods = year == null ? List.<PeriodResponse>of()
+                : timetableFacade.listPeriods(schoolId, year).stream().map(PeriodResponse::from).toList();
         return new MyTimetableResponse(year, periods, views);
     }
 

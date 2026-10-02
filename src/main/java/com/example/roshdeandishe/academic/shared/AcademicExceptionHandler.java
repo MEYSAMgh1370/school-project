@@ -138,7 +138,7 @@ public class AcademicExceptionHandler {
             case AcademicError.TeacherDoubleBooked e -> ProblemDetailFactory.problem(
                     HttpStatus.CONFLICT, "teacher-double-booked",
                     "معلم در همین زمان کلاس دیگری دارد",
-                    "معلم " + e.teacherUserId() + " در روز " + e.weekday() + " و همین زنگ در کلاس دیگری هست."
+                    "این معلم در همین روز و زنگ در کلاس دیگری حضور دارد."
             );
             case AcademicError.SchoolNotFound e -> ProblemDetailFactory.problem(
                     HttpStatus.NOT_FOUND, "school-not-found",

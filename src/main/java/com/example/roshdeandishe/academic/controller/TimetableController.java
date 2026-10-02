@@ -3,6 +3,7 @@ package com.example.roshdeandishe.academic.controller;
 import com.example.roshdeandishe.academic.AcademicFacade;
 import com.example.roshdeandishe.academic.TimetableDay;
 import com.example.roshdeandishe.academic.TimetableFacade;
+import com.example.roshdeandishe.academic.dto.ClassResponse;
 import com.example.roshdeandishe.academic.dto.CourseResponse;
 import com.example.roshdeandishe.academic.dto.TimetableDtos.*;
 import com.example.roshdeandishe.academic.shared.AcademicError;
@@ -128,6 +129,17 @@ public class TimetableController {
     }
 
     // ---- انتخابگرها ----
+
+    /** کلاس‌های مدرسه برای انتخابگرِ کلاس (بدون نیاز به CLASS_VIEW). */
+    @GetMapping("/classes")
+    public List<ClassResponse> classes(@PathVariable Long schoolId) {
+        TenantContext.requireMatches(schoolId);
+
+        return academicFacade.listClasses(schoolId).stream()
+                .map(c -> new ClassResponse(c.id().value(), c.schoolId(), c.name(), c.teacherId(), c.section(),
+                        c.gradeLevel(), c.gradingScheme()))
+                .toList();
+    }
 
     /** معلم‌های فعالِ مدرسه برای انتخابگرِ معلمِ هر خانه. */
     @GetMapping("/teachers")

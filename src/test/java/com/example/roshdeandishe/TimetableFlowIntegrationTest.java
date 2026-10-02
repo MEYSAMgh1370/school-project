@@ -404,7 +404,7 @@ class TimetableFlowIntegrationTest {
         membership(admin, teacherEmail, "معلم بی‌مجوز برنامه", "TEACHER");
 
         // معلم TIMETABLE_MANAGE ندارد: نه خواندن، نه نوشتن
-        for (String path : new String[]{"/years", "/periods?academicYear=" + YEAR, "/activities", "/teachers",
+        for (String path : new String[]{"/years", "/periods?academicYear=" + YEAR, "/activities", "/teachers", "/classes",
                 "/classes/" + classId + "?academicYear=" + YEAR, "/classes/" + classId + "/courses"}) {
             mockMvc.perform(get("/api/admin/schools/1/timetable" + path).header("X-School-ID", "1").session(teacher))
                     .andExpect(status().isForbidden())
@@ -572,5 +572,29 @@ class TimetableFlowIntegrationTest {
         String name = jdbc.queryForObject("select name from academic.activities where id = ?", String.class, activity);
         assertThatThrownBy(() -> jdbc.update("insert into academic.activities (school_id, name) values (null, ?)", name))
                 .isInstanceOf(DataIntegrityViolationException.class);
+    }
+
+    // ---- صفحه‌ها ----
+
+    @Test
+    void thePagesAreReachableWithoutATenantHeaderAndNeedLogin() throws Exception {
+        mockMvc.perform(get("/timetable"))
+                .andExpect(status().is3xxRedirection());
+        mockMvc.perform(get("/my-timetable"))
+                .andExpect(status().is3xxRedirection());
+
+        MockHttpSession admin = loginAsAdmin();
+        // بدون X-School-ID: مسیرِ صفحه از TenantResolverFilter مستثناست (داده را fetch می‌آورد)
+        mockMvc.perform(get("/timetable").session(admin))
+                .andExpect(status().isOk())
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("x-data=\"timetablePage()\"")));
+        mockMvc.perform(get("/my-timetable").session(admin))
+                .andExpect(status().isOk())
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("x-data=\"myTimetablePage()\"")));
+        // لینک‌های سایدبار/داشبورد
+        mockMvc.perform(get("/dashboard").session(admin))
+                .andExpect(status().isOk())
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("href=\"/timetable\"")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("id=\"dashboardTimetable\"")));
     }
 }

@@ -455,7 +455,7 @@ class TimetableFacadeTest {
         assertThat(result).extracting(EntryInfo::courseName, EntryInfo::activityName)
                 .containsExactly(org.assertj.core.groups.Tuple.tuple("درس 30", null),
                         org.assertj.core.groups.Tuple.tuple(null, "ورزش"));
-        assertThat(result).extracting(EntryInfo::className).containsOnly("پنجم - الف");
+        assertThat(result).extracting(EntryInfo::className).containsOnly("پنجم");
     }
 
     @Test

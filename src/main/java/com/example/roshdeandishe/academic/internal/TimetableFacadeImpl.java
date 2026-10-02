@@ -276,7 +276,7 @@ class TimetableFacadeImpl implements TimetableFacade {
         List<Long> classIds = entries.stream().map(TimetableEntryEntity::getClassId).distinct().toList();
         courseRepository.findAllById(courseIds).forEach(c -> courseNames.put(c.getId(), c.getName()));
         activityRepository.findAllById(activityIds).forEach(a -> activityNames.put(a.getId(), a.getName()));
-        classRepository.findAllById(classIds).forEach(c -> classNames.put(c.getId(), classLabel(c)));
+        classRepository.findAllById(classIds).forEach(c -> classNames.put(c.getId(), c.getName()));
         return entries.stream()
                 .map(e -> new EntryInfo(e.getId(), e.getClassId(), classNames.get(e.getClassId()), e.getPeriodId(),
                         e.getWeekday(), e.getCourseId(),
@@ -285,10 +285,6 @@ class TimetableFacadeImpl implements TimetableFacade {
                         e.getActivityId() == null ? null : activityNames.get(e.getActivityId()),
                         e.getTeacherUserId()))
                 .toList();
-    }
-
-    private static String classLabel(ClassEntity c) {
-        return c.getSection() == null || c.getSection().isBlank() ? c.getName() : c.getName() + " - " + c.getSection();
     }
 
     private void requireKnownYear(String academicYear) {
