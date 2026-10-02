@@ -13,7 +13,7 @@ import java.util.Map;
 import static org.assertj.core.api.Assertions.assertThat;
 
 /**
- * «نمره‌های من» (آکاردئونِ دانش‌آموز) و «فاکتورهای من» (فیلترِ ?student=) را
+ * «نمره‌های من» (انتخابگرِ دانش‌آموز) و «فاکتورهای من» (فیلترِ ?student=) را
  * مستقیم و بدون Spring/Docker رندر می‌کند تا قرارداد قفل شود. رفتارِ خودِ JS در
  * مرورگر راستی‌آزمایی شد، نه اینجا (پروژه تست JS ندارد).
  */
@@ -35,25 +35,40 @@ class MyPagesPerStudentRenderTest {
     }
 
     @Test
-    void gradesPageIsAnAccordionWithAnAccessibleToggleAndPanelPerStudent() {
+    void gradesPageHasAnAccessibleStudentPickerWithAListOfOptions() {
         String html = renderGrades(List.of());
 
-        assertThat(html).contains("x-for=\"group in groups()\"");
-        assertThat(html).contains(":aria-expanded=\"isOpen(group.studentId)\"")
-                .contains(":aria-controls=\"'grades-panel-' + group.studentId\"")
-                .contains("role=\"region\"")
-                .contains(":aria-labelledby=\"'grades-toggle-' + group.studentId\"");
-        assertThat(html).contains("@click=\"toggle(group.studentId)\"");
+        assertThat(html).contains("class=\"app-picker-toggle\"")
+                .contains("aria-controls=\"grades-picker-list\"")
+                .contains(":aria-expanded=\"pickerOpen\"")
+                .contains("aria-labelledby=\"grades-picker-label grades-picker-current\"");
+        assertThat(html).contains("id=\"grades-picker-list\"").contains("x-show=\"pickerOpen\"");
+        assertThat(html).contains("x-for=\"group in groups()\"")
+                .contains("@click=\"select(group.studentId)\"")
+                .contains(":aria-current=\"isSelected(group.studentId) ? 'true' : null\"");
+        // بستن با کلیکِ بیرون و Escape (Escape فوکوس را به دکمه برمی‌گرداند)
+        assertThat(html).contains("@click.outside=\"pickerOpen = false\"").contains("@keydown.escape=\"closePicker(true)\"")
+                .contains("x-ref=\"pickerToggle\"");
         assertThat(html).contains("/css/my-grades.css");
     }
 
     @Test
-    void gradesPageNoLongerFiltersAndHasNoStudentColumn() {
+    void thePickerIsHiddenForASingleStudentWhoseNameIsShownInstead() {
         String html = renderGrades(List.of());
 
-        assertThat(html).doesNotContain("studentFilter").doesNotContain("visibleGrades");
+        assertThat(html).contains("x-show=\"groups().length > 1\"");
+        assertThat(html).contains("x-show=\"groups().length === 1\"");
+    }
+
+    @Test
+    void gradesPageShowsOnlyTheSelectedStudentsGradesAndHasNoLeftoverFilterOrAccordion() {
+        String html = renderGrades(List.of());
+
+        assertThat(html).contains("selectedGroup().grades");
+        assertThat(html).doesNotContain("studentFilter").doesNotContain("visibleGrades")
+                .doesNotContain("app-accordion").doesNotContain("toggle(group.studentId)");
         assertThat(html).doesNotContain("<th scope=\"col\">دانش‌آموز</th>");
-        // ستون‌های هر بخش
+        // ستون‌های جدول
         assertThat(html).contains("سال تحصیلی", "نوبت", "نمره", "تاریخ ثبت");
     }
 

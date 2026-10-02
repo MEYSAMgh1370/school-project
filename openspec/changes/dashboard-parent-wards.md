@@ -37,16 +37,20 @@ schoolId)` (used by `MyInvoicesController` and the Bale "فرزندان من" co
   logs). Before navigating, the link stores the child's school as the selected
   school (`Alpine.store('nav').rememberSchool`), so the destination loads that
   school's data. Buttons keep the normal 44px size.
-- **`/my-grades` is a student accordion.** One section per linked child of the
-  selected school (also a child with no grades: "بدون نمره", and, when opened, «نمره‌ای
-  برای این دانش‌آموز ثبت نشده است»), plus a section «نمره‌های من» for the user's
-  own grades (a student's own grades are not a ward). The title is the child's
-  name with a grade count; sections are sorted by name, the user's own first. Only
-  one section is open at a time: opening one closes the others, and clicking the
-  open one closes it. Following a dashboard card (`?student=<id>`) opens that
-  child's section; with no or an unknown/invalid `student`, all sections are closed,
-  except that a single section opens by itself. Toggles are real buttons
-  (`aria-expanded`, `aria-controls`, region panels), so the keyboard works.
+- **`/my-grades` has a student picker.** A control labelled «انتخاب دانش‌آموز»
+  shows the selected student's name; opening it reveals a list of the names, each
+  with a grade count ("بدون نمره" when none), and choosing one closes the list and
+  shows only that student's grades in the table below (no student column).
+  The list holds one option per linked child of the selected school (also a child
+  with no grades; the table then says «نمره‌ای برای این دانش‌آموز ثبت نشده است»),
+  plus «نمره‌های من» for the user's own grades (a student's own grades are not a
+  ward); options are sorted by name, the user's own first. Following a dashboard
+  card (`?student=<id>`) pre-selects that child; with no or an unknown/invalid
+  `student` the first option is selected. With a single student the picker is
+  hidden and only the name is shown. The toggle is a real button
+  (`aria-expanded`, `aria-controls`, label via `aria-labelledby`), the selected
+  option has `aria-current`; the list closes on selection, Escape or a click
+  outside, and selecting or Escape returns focus to the button.
 - **Names come from the server, not the URL.** `MyGradesPageController` adds
   `WardsAssembler.wardRefsForCurrentUser()` (names only, no finance call); the page
   emits them as escaped `data-*` attributes outside the `school-scope` template
@@ -74,9 +78,9 @@ any active `PARENT` membership.
   parents also want amounts waits on the monetary-unit decision.
 - `/my-invoices` still labels rows «دانش‌آموز #id» and its filter notice shows the
   same id; its API returns no student name. The same server-side names could be
-  added there (as `/my-grades` now does) or the page could become an accordion too;
+  added there (as `/my-grades` now does) or the page could get the same picker;
   that is a separate decision.
-- The accordion and the filter are display-only: the APIs still return every linked
+- The picker and the filter are display-only: the APIs still return every linked
   ward for the school, and authorization is unchanged.
 - A parent who is also admin or teacher sees the section only after switching the
   role to `PARENT`.
@@ -89,7 +93,7 @@ any active `PARENT` membership.
   invoices.
 - Section order and the `x-data` root hold (Alpine does not initialise without it).
 - Each card's links carry only the student id and its school; following «نمره‌ها»
-  opens `/my-grades` for that school with that child's section open, and following
+  opens `/my-grades` for that school with that child selected, and following
   «فاکتورها» opens `/my-invoices` filtered to that child (with «نمایش همه»).
 
 ## Tests
@@ -100,11 +104,13 @@ any active `PARENT` membership.
 - `DashboardWardsRenderTest` (JTE render, no Docker) — cards, four finance
   states, empty text, absence for a non-parent, role gating and `x-data` root,
   section order, `jalali.js` loaded, per-child links with only the id in the URL.
-- `MyPagesPerStudentRenderTest` (JTE render, no Docker) — the grades accordion's
-  accessible toggles/panels, no leftover filter or student column, ward names as
-  escaped attributes placed before the `school-scope` template, the invoices
-  filter and «نمایش همه». The behavior (open from a card, single-open, closing, a
-  child with no grades, the user's own grades, unknown ids, keyboard) was verified
+- `MyPagesPerStudentRenderTest` (JTE render, no Docker) — the grades picker's
+  accessible toggle, list and options, close on Escape/outside click with focus
+  return, hidden for a single student, only the selected student's grades and no
+  leftover filter or accordion, ward names as escaped attributes placed before the
+  `school-scope` template, the invoices filter and «نمایش همه». The behavior (open
+  from a card, list of names, choosing, a child with no grades, the user's own
+  grades, unknown ids, outside click, Escape, keyboard, focus return) was verified
   in a browser against the compiled templates; the project has no JS test setup.
 - `WardsAssemblerTest` also covers `wardRefsForCurrentUser` (names only, active
   parent schools only, no finance call).

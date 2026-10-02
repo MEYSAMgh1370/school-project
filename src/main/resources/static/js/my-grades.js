@@ -5,10 +5,12 @@ document.addEventListener('alpine:init', () => {
         // نام فرزندان از سمت سرور (DOM) می‌آید؛ API نمره‌ها نام نمی‌دهد.
         wardRefs: [],
         // دانش‌آموزی که از لینک داشبورد (?student=<id>) خواسته شده؛ null یعنی هیچ.
-        // فقط تعیین می‌کند کدام بخش باز شود: API همه‌ی فرزندانِ لینک‌شده را
-        // می‌دهد و دسترسی سمت سرور می‌ماند. شناسه‌ی نامعتبر/ناآشنا نادیده می‌ماند.
+        // فقط تعیین می‌کند کدام دانش‌آموز از قبل انتخاب باشد: API همه‌ی فرزندانِ
+        // لینک‌شده را می‌دهد و دسترسی سمت سرور می‌ماند. شناسه‌ی نامعتبر یا
+        // ناآشنا نادیده می‌ماند.
         requestedStudentId: null,
-        openStudentId: null,
+        selectedStudentId: null,
+        pickerOpen: false,
         loading: false,
         error: '',
 
@@ -50,7 +52,7 @@ document.addEventListener('alpine:init', () => {
                     return;
                 }
                 this.grades = await response.json();
-                this.resolveOpenSection();
+                this.resolveSelection();
             } catch (e) {
                 this.error = 'ارتباط با سرور برقرار نشد.';
             } finally {
@@ -58,7 +60,7 @@ document.addEventListener('alpine:init', () => {
             }
         },
 
-        // یک بخش برای هر فرزندِ این مدرسه (حتی بدون نمره) + هر دانش‌آموزی که
+        // یک گزینه برای هر فرزندِ این مدرسه (حتی بدون نمره) + هر دانش‌آموزی که
         // در نمره‌ها هست و فرزندِ لینک‌شده نیست (یعنی خودِ کاربر: «نمره‌های من»).
         // فرزندان بر اساس نام مرتب می‌شوند.
         groups() {
@@ -78,28 +80,39 @@ document.addEventListener('alpine:init', () => {
                 (a.own === b.own) ? a.label.localeCompare(b.label, 'fa') : (a.own ? -1 : 1));
         },
 
-        // بخشِ بازِ اولیه: دانش‌آموزِ خواسته‌شده از لینک اگر در این مدرسه هست، وگرنه
-        // اگر فقط یک بخش هست همان؛ وگرنه همه بسته‌اند. با عوض‌شدنِ مدرسه دوباره
-        // حساب می‌شود (بخشِ بازِ قبلی ممکن است دیگر وجود نداشته باشد).
-        resolveOpenSection() {
+        // دانش‌آموزِ انتخاب‌شده: همان که از لینک خواسته شده اگر در این مدرسه هست؛
+        // وگرنه انتخابِ قبلی اگر هنوز وجود دارد؛ وگرنه اولین گزینه‌ی فهرست. با
+        // عوض‌شدنِ مدرسه دوباره حساب می‌شود (گزینه‌ی قبلی ممکن است دیگر نباشد).
+        resolveSelection() {
             const ids = this.groups().map((group) => group.studentId);
-            if (this.openStudentId !== null && !ids.includes(this.openStudentId)) {
-                this.openStudentId = null;
+            if (this.selectedStudentId === null || !ids.includes(this.selectedStudentId)) {
+                this.selectedStudentId = ids.includes(this.requestedStudentId)
+                    ? this.requestedStudentId
+                    : (ids.length > 0 ? ids[0] : null);
             }
-            if (this.openStudentId === null && ids.includes(this.requestedStudentId)) {
-                this.openStudentId = this.requestedStudentId;
-            } else if (this.openStudentId === null && ids.length === 1) {
-                this.openStudentId = ids[0];
-            }
+            this.pickerOpen = false;
         },
 
-        isOpen(studentId) {
-            return this.openStudentId === studentId;
+        selectedGroup() {
+            return this.groups().find((group) => group.studentId === this.selectedStudentId) || null;
         },
 
-        // آکاردئون: باز کردنِ یک بخش بقیه را می‌بندد؛ کلیک روی بخشِ باز آن را می‌بندد.
-        toggle(studentId) {
-            this.openStudentId = this.isOpen(studentId) ? null : studentId;
+        isSelected(studentId) {
+            return this.selectedStudentId === studentId;
+        },
+
+        select(studentId) {
+            this.selectedStudentId = studentId;
+            this.closePicker(true);
+        },
+
+        // بستنِ فهرست؛ با Escape یا انتخاب، فوکوس به دکمه برمی‌گردد (گزینه‌ی
+        // فوکوس‌شده با بسته‌شدن پنهان می‌شود و کاربر کیبورد جای خود را گم می‌کرد).
+        closePicker(returnFocus) {
+            this.pickerOpen = false;
+            if (returnFocus && this.$refs.pickerToggle) {
+                this.$refs.pickerToggle.focus();
+            }
         },
 
         countLabel(count) {

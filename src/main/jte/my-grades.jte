@@ -33,54 +33,64 @@
 
                 <p x-show="loading">در حال بارگذاری...</p>
 
-                <%-- آکاردئونِ دانش‌آموز: هر فرزند یک بخش دارد و فقط یک بخش باز است.
-                     با ?student=<id> (از کارت داشبورد) بخشِ همان فرزند باز می‌شود. --%>
-                <div class="app-accordion" x-cloak x-show="!loading && groups().length > 0">
-                    <template x-for="group in groups()" :key="group.studentId">
-                        <article class="box app-accordion-item">
-                            <h2 class="title is-6 mb-0">
-                                <button type="button" class="app-accordion-toggle"
-                                        :id="'grades-toggle-' + group.studentId"
-                                        :aria-expanded="isOpen(group.studentId)"
-                                        :aria-controls="'grades-panel-' + group.studentId"
-                                        @click="toggle(group.studentId)">
-                                    <span x-text="group.label"></span>
-                                    <span class="tag is-light" x-text="countLabel(group.grades.length)"></span>
-                                    <span class="app-accordion-chevron" aria-hidden="true"></span>
-                                </button>
-                            </h2>
-                            <div class="app-accordion-panel" role="region"
-                                 :id="'grades-panel-' + group.studentId"
-                                 :aria-labelledby="'grades-toggle-' + group.studentId"
-                                 x-show="isOpen(group.studentId)">
-                                <p x-show="group.grades.length === 0">نمره‌ای برای این دانش‌آموز ثبت نشده است.</p>
-                                <div class="table-container" x-show="group.grades.length > 0">
-                                    <table class="table is-fullwidth is-striped">
-                                        <thead>
-                                        <tr>
-                                            <th scope="col">سال تحصیلی</th>
-                                            <th scope="col">نوبت</th>
-                                            <th scope="col">نمره</th>
-                                            <th scope="col">نظر</th>
-                                            <th scope="col">تاریخ ثبت</th>
-                                        </tr>
-                                        </thead>
-                                        <tbody>
-                                        <template x-for="grade in group.grades" :key="grade.id">
-                                            <tr>
-                                                <td dir="ltr" x-text="grade.academicYear"></td>
-                                                <td x-text="termLabel(grade.term)"></td>
-                                                <td x-text="gradeValue(grade)"></td>
-                                                <td x-text="grade.comment || '—'"></td>
-                                                <td dir="ltr" x-text="new Date(grade.recordedAt).toLocaleDateString('fa-IR')"></td>
-                                            </tr>
-                                        </template>
-                                        </tbody>
-                                    </table>
-                                </div>
-                            </div>
-                        </article>
-                    </template>
+                <%-- انتخابگرِ دانش‌آموز: یک کنترل که باز می‌شود و نامِ فرزندان داخلش است؛
+                     با انتخابِ یکی، فقط نمره‌های همان دانش‌آموز زیرش نشان داده می‌شود.
+                     با ?student=<id> (از کارت داشبورد) همان فرزند از قبل انتخاب است.
+                     اگر فقط یک دانش‌آموز هست، انتخابگر بی‌معناست و فقط نامش می‌آید. --%>
+                <div x-cloak x-show="!loading && groups().length > 0">
+                    <div class="app-picker" x-show="groups().length > 1"
+                         @click.outside="pickerOpen = false" @keydown.escape="closePicker(true)">
+                        <p class="is-size-7 has-text-grey mb-2" id="grades-picker-label">انتخاب دانش‌آموز</p>
+                        <button type="button" class="app-picker-toggle" x-ref="pickerToggle" aria-controls="grades-picker-list"
+                                aria-labelledby="grades-picker-label grades-picker-current"
+                                :aria-expanded="pickerOpen" @click="pickerOpen = !pickerOpen">
+                            <span id="grades-picker-current" x-text="selectedGroup() ? selectedGroup().label : ''"></span>
+                            <span class="app-picker-chevron" aria-hidden="true"></span>
+                        </button>
+                        <ul class="app-picker-list" id="grades-picker-list" x-show="pickerOpen">
+                            <template x-for="group in groups()" :key="group.studentId">
+                                <li>
+                                    <button type="button" class="app-picker-option"
+                                            :class="{ 'is-selected': isSelected(group.studentId) }"
+                                            :aria-current="isSelected(group.studentId) ? 'true' : null"
+                                            @click="select(group.studentId)">
+                                        <span x-text="group.label"></span>
+                                        <span class="tag is-light" x-text="countLabel(group.grades.length)"></span>
+                                    </button>
+                                </li>
+                            </template>
+                        </ul>
+                    </div>
+                    <h2 class="title is-5 mb-4" x-show="groups().length === 1"
+                        x-text="selectedGroup() ? selectedGroup().label : ''"></h2>
+
+                    <div class="box app-picker-panel" x-show="selectedGroup()">
+                        <p x-show="selectedGroup() && selectedGroup().grades.length === 0">نمره‌ای برای این دانش‌آموز ثبت نشده است.</p>
+                        <div class="table-container" x-show="selectedGroup() && selectedGroup().grades.length > 0">
+                            <table class="table is-fullwidth is-striped">
+                                <thead>
+                                <tr>
+                                    <th scope="col">سال تحصیلی</th>
+                                    <th scope="col">نوبت</th>
+                                    <th scope="col">نمره</th>
+                                    <th scope="col">نظر</th>
+                                    <th scope="col">تاریخ ثبت</th>
+                                </tr>
+                                </thead>
+                                <tbody>
+                                <template x-for="grade in (selectedGroup() ? selectedGroup().grades : [])" :key="grade.id">
+                                    <tr>
+                                        <td dir="ltr" x-text="grade.academicYear"></td>
+                                        <td x-text="termLabel(grade.term)"></td>
+                                        <td x-text="gradeValue(grade)"></td>
+                                        <td x-text="grade.comment || '—'"></td>
+                                        <td dir="ltr" x-text="new Date(grade.recordedAt).toLocaleDateString('fa-IR')"></td>
+                                    </tr>
+                                </template>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
                 </div>
 
                 @template.layout.empty-state(
