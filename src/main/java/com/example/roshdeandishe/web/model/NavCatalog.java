@@ -32,7 +32,9 @@ public final class NavCatalog {
                     new Link("/students", "دانش‌آموزان", "فهرست دانش‌آموزان مدرسه",
                             List.of(ADMIN, TEACHER), List.of(ADMIN, TEACHER)),
                     new Link("/roles", "نقش‌ها و دسترسی‌ها", "تعریف نقش‌ها و دسترسی‌هایشان",
-                            List.of(ADMIN), List.of()))),
+                            List.of(ADMIN), List.of()),
+                    new Link("/academic-year", "سال تحصیلی", "انتخاب سال تحصیلی جاریِ مدرسه",
+                            List.of(ADMIN), List.of(ADMIN)))),
             new Group("education", "آموزش", List.of(
                     new Link("/classes", "کلاس‌ها", "کلاس‌ها و ثبت‌نام دانش‌آموزان",
                             List.of(ADMIN, TEACHER), List.of(ADMIN, TEACHER)),

@@ -46,7 +46,40 @@ public interface SchoolFacade {
      */
     void setSchoolStatus(SchoolId schoolId, SchoolStatus status);
 
+    /**
+     * فهرست سراسریِ سال‌های تحصیلی (مشترک بین همه‌ی مدرسه‌ها، فقط‌خواندنی برای
+     * مدرسه‌ها) از قدیم به جدید - openspec/changes/academic-year.md. هر سال را خودِ
+     * برنامه در تاریخِ شمسیِ کانفیگ می‌سازد؛ سالِ آینده تا آن تاریخ در فهرست نیست.
+     */
+    List<AcademicYearInfo> listAcademicYears();
+
+    /**
+     * «سال تحصیلی جاریِ» یک مدرسه؛ خالی یعنی هنوز انتخاب نشده (هیچ سالی حدس
+     * زده نمی‌شود). SchoolError.SchoolNotFound اگر مدرسه وجود نداشته باشد.
+     */
+    Optional<AcademicYearInfo> findCurrentAcademicYear(SchoolId schoolId);
+
+    /**
+     * انتخاب سال تحصیلی جاریِ مدرسه از فهرست سراسری. فقط همین یک مقدار عوض
+     * می‌شود - هیچ داده‌ای حذف یا تغییر نمی‌کند، و شروع/پایانِ سال همین انتخابِ
+     * مدیرِ مدرسه است (نه تاریخِ ثابت). SchoolError.AcademicYearNotFound اگر سال
+     * در فهرست نباشد (مثلاً سالِ آینده‌ای که هنوز ساخته نشده)؛
+     * SchoolError.SchoolNotFound اگر مدرسه نباشد.
+     * <p>
+     * {@code expectedCurrent} همان سالِ جاریِ «مورد انتظار» است ({@code null} =
+     * «هنوز انتخاب نشده»): فقط اگر سالِ جاریِ مدرسه هنوز همین باشد عوض می‌شود،
+     * وگرنه SchoolError.AcademicYearChanged - تا درخواستِ کهنه (تأخیری یا از
+     * مدیرِ دیگر) انتخابِ جدیدتر را بی‌صدا برنگرداند. بررسی و نوشتن اتمیک است.
+     */
+    void setCurrentAcademicYear(SchoolId schoolId, AcademicYearId academicYearId, AcademicYearId expectedCurrent);
+
     record SchoolId(Long value) {
+    }
+
+    record AcademicYearId(Long value) {
+    }
+
+    record AcademicYearInfo(AcademicYearId id, String code, int startYear) {
     }
 
     record SchoolInfo(SchoolId id, String name, SchoolStatus status, String timezone, String locale, SchoolLevel level,

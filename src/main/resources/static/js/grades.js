@@ -18,6 +18,7 @@ document.addEventListener('alpine:init', () => {
         // (و فقط برای همان مدرسه/کلاس) اثر می‌گذارد.
         courseSeq: 0,
         schoolSeq: 0,
+        yearSeq: 0,
         loaded: false,
         blocked: false,
         error: '',
@@ -38,6 +39,7 @@ document.addEventListener('alpine:init', () => {
                 this.courses = [];
                 this.filter = { classId: '', courseId: '', academicYear: '', term: 'FIRST' };
                 this.loadClasses();
+                this.loadCurrentYear();
             });
             // با عوض‌شدنِ کلاس، فهرست درس‌های همان پایه گرفته می‌شود و انتخابِ
             // درس به «نمره‌ی کل» برمی‌گردد (درسِ پایه‌ی قبلی برای این کلاس معتبر نیست).
@@ -53,6 +55,7 @@ document.addEventListener('alpine:init', () => {
             });
             if (this.schoolId) {
                 this.loadClasses();
+                this.loadCurrentYear();
             }
         },
 
@@ -148,6 +151,28 @@ document.addEventListener('alpine:init', () => {
                 return { blocking: false, message: body.detail || body.title || 'خطایی رخ داد.' };
             } catch (e) {
                 return { blocking: false, message: 'خطایی رخ داد. (' + response.status + ')' };
+            }
+        },
+
+        // سال تحصیلیِ جاریِ مدرسه (openspec/changes/academic-year.md) به‌عنوان
+        // مقدار پیش‌فرضِ فیلدِ «سال تحصیلی» می‌آید؛ فیلد همچنان قابل ویرایش است
+        // (سال‌های قبل هم قابل اصلاح‌اند). فقط وقتی پر می‌شود که خالی باشد و
+        // مدرسه عوض نشده باشد؛ بدون سال جاری یا با خطا، فیلد دست‌نخورده می‌ماند.
+        async loadCurrentYear() {
+            const seq = ++this.yearSeq;
+            const schoolId = this.schoolId;
+            try {
+                const response = await fetch(`/api/me/schools/${schoolId}/academic-year`);
+                if (!response.ok) {
+                    return;
+                }
+                const settings = await response.json();
+                if (seq === this.yearSeq && schoolId === this.schoolId
+                    && settings.current && !this.filter.academicYear) {
+                    this.filter.academicYear = settings.current.code;
+                }
+            } catch (e) {
+                // پیش‌فرض اختیاری است؛ نبودنش مانع کار نیست
             }
         },
 

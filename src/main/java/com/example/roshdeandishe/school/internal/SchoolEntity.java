@@ -47,6 +47,14 @@ class SchoolEntity {
     @Column(unique = true, length = 63)
     private String slug;
 
+    /**
+     * «سال تحصیلی جاریِ» مدرسه (openspec/changes/academic-year.md): مدیرِ همین
+     * مدرسه از فهرست سراسریِ {@code AcademicYearEntity} انتخاب می‌کند. null =
+     * هنوز انتخاب نشده (مدرسه‌های موجود)؛ هیچ سالی حدس زده نمی‌شود.
+     */
+    @Column(name = "current_academic_year_id")
+    private Long currentAcademicYearId;
+
     SchoolEntity(String name, String timezone, String locale, SchoolLevel schoolLevel, String slug) {
         this.name = name;
         this.timezone = timezone;
