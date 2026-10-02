@@ -68,9 +68,12 @@ public class MyTimetableController {
 
         String year = schoolFacade.findCurrentAcademicYear(new SchoolFacade.SchoolId(schoolId))
                 .map(AcademicYearInfo::code).orElse(null);
-        List<EntryInfo> teaching = year == null || !activeRoles.contains("TEACHER") ? List.of()
+        // معلمِ فعال همیشه دیدِ «تدریس» دارد، حتی بدونِ خانه یا بدونِ سالِ جاری، تا صفحه حالتِ خالیِ
+        // درست را نشان دهد؛ پاسخِ «بیگانه» فقط برای کسی است که هیچ دیدی ندارد.
+        boolean activeTeacher = activeRoles.contains("TEACHER");
+        List<EntryInfo> teaching = year == null || !activeTeacher ? List.of()
                 : timetableFacade.listEntriesForTeacher(schoolId, year, userId);
-        if (pending.isEmpty() && teaching.isEmpty()) {
+        if (pending.isEmpty() && !activeTeacher) {
             return new MyTimetableResponse(null, List.of(), List.of());
         }
 
@@ -92,7 +95,7 @@ public class MyTimetableController {
                     classNames.get(p.classId()),
                     entries.stream().map(e -> toResponse(e, names)).toList()));
         }
-        if (!teaching.isEmpty()) {
+        if (activeTeacher) {
             views.add(new MyTimetableView("TEACHING", null, null, null, null,
                     teaching.stream().map(e -> toResponse(e, names)).toList()));
         }

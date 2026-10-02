@@ -699,6 +699,24 @@ class TimetableFlowIntegrationTest {
     }
 
     @Test
+    void anActiveTeacherWithoutCellsStillGetsAnEmptyTeachingView() throws Exception {
+        MockHttpSession admin = loginAsAdmin();
+        makeCurrentYear(admin);
+        createPeriod(admin, "زنگ اول", "08:00", "08:45");
+        String email = unique("tt.idle.teacher") + "@roshdeandishe.test";
+        MockHttpSession teacher = registerAndLogin(email, "معلم بدون ساعت");
+        membership(admin, email, "معلم بدون ساعت", "TEACHER");
+
+        mockMvc.perform(get("/api/me/schools/1/timetable").session(teacher))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.academicYear").value(YEAR))
+                .andExpect(jsonPath("$.periods.length()").value(1))
+                .andExpect(jsonPath("$.views.length()").value(1))
+                .andExpect(jsonPath("$.views[0].kind").value("TEACHING"))
+                .andExpect(jsonPath("$.views[0].entries").isEmpty());
+    }
+
+    @Test
     void gradesOfACourseThatBecameNonGradedDisappearFromMyGradesButOverallGradesStay() throws Exception {
         MockHttpSession admin = loginAsAdmin();
         long classId = createClass(admin, "پایه پنجم - درس بازنشسته", 5);

@@ -198,7 +198,7 @@ natural follow-up), per-school configurable school days, and the Android client.
   current year; the admin opens other years on `/timetable`). The response is
   `{academicYear, periods, views[]}` where each view is `OWN` (the user's own
   class), `WARD` (a linked child, with the child's name and class) or `TEACHING`
-  (the user's own slots, each entry carrying the class name); entries carry the
+  (the user's own slots, each entry carrying the class name; an active teacher always gets this view, empty when there are no cells or no current year); entries carry the
   teacher's name. A stranger gets `{academicYear: null, periods: [], views: []}` -
   not an error, and not the school's current year. A member with no current year
   chosen gets views without entries (the page says the year is not chosen).
@@ -234,6 +234,10 @@ natural follow-up), per-school configurable school days, and the Android client.
   grid with the same picker as `/my-grades` when there is more than one view.
   Dashboard: «برنامهٔ امروز» for the `STUDENT` role only (Thursday/Friday say there
   is no class), with a link to the week.
+- Known, not changed here: sidebar and dashboard links come from `NavCatalog`, which
+  decides visibility by built-in role codes (as for every other page); a custom role that
+  holds `TIMETABLE_MANAGE` can call the API but gets no link until navigation becomes
+  permission-aware (a separate change).
 - Known, not changed here: a malformed JSON body (for example an unknown enum value in
   a body field) is answered with `500` by the platform's exception handling on every
   endpoint; the timetable avoids it for `weekday` by taking a string.
