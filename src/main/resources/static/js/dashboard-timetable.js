@@ -27,6 +27,8 @@ document.addEventListener('alpine:init', () => {
             this.schoolId = Number.isInteger(saved) ? saved : null;
             window.addEventListener('school-changed', (e) => {
                 this.schoolId = e.detail.id;
+                // روزهای درسیِ مدرسه‌ی تازه (W9)
+                this.todayCode = window.TimetableGrid.todayCode();
                 this.refresh();
             });
             this.$watch('$store.nav.selectedRole', () => this.refresh());
@@ -90,6 +92,11 @@ document.addEventListener('alpine:init', () => {
 
         isSchoolDay() {
             return this.todayCode !== null;
+        },
+
+        // «شنبه تا چهارشنبه» یا «دوشنبه تا جمعه»، بر اساس مدرسه‌ی انتخاب‌شده
+        schoolDaysLabel() {
+            return window.TimetableGrid.schoolDaysLabel();
         },
 
         // درس‌های امروز به ترتیبِ زنگ

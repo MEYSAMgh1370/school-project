@@ -2,7 +2,7 @@
 
 @param NavbarModel navbar
 
-@template.layout.main(title = "فاکتورهای من", scripts = java.util.List.of("/js/navbar.js", "/js/money.js", "/js/my-invoices.js"), content = @`
+@template.layout.main(title = "فاکتورهای من", scripts = java.util.List.of("/js/navbar.js", "/js/jalali.js", "/js/calendar.js", "/js/money.js", "/js/my-invoices.js"), content = @`
 @template.layout.navbar(navbar = navbar)
 
 <section class="section" id="main-content" role="main" tabindex="-1" x-data="myInvoicesPage()">
@@ -48,8 +48,8 @@
                                 <span class="tag" :class="statusClass(invoice.status)"
                                       x-text="statusLabel(invoice.status)"></span>
                             </td>
-                            <td dir="ltr" x-text="new Date(invoice.issuedAt).toLocaleDateString('fa-IR')"></td>
-                            <td dir="ltr" x-text="invoice.dueDate ? new Date(invoice.dueDate).toLocaleDateString('fa-IR') : '—'"></td>
+                            <td dir="ltr" x-text="Calendar.formatDate(invoice.issuedAt)"></td>
+                            <td dir="ltr" x-text="invoice.dueDate ? Calendar.formatDate(invoice.dueDate) : '—'"></td>
                         </tr>
                     </template>
                     </tbody>

@@ -31,15 +31,12 @@ document.addEventListener('alpine:init', () => {
         copyResults: [],
 
         selectedStudentId: '',
-        weekdays: [
-            { code: 'SAT', label: 'شنبه' },
-            { code: 'SUN', label: 'یکشنبه' },
-            { code: 'MON', label: 'دوشنبه' },
-            { code: 'TUE', label: 'سه‌شنبه' },
-            { code: 'WED', label: 'چهارشنبه' },
-            { code: 'THU', label: 'پنجشنبه' },
-            { code: 'FRI', label: 'جمعه' }
-        ],
+        // هفته‌ی مدرسه‌ی انتخاب‌شده ('SAT' | 'MON'، W9): از navbar، با تغییر مدرسه به‌روز می‌شود
+        week: 'SAT',
+        // هر کد یک «روز واقعی» است (کلیدهای JSON برنامه‌ی زمانی)؛ ترتیب نمایش را `weekdays` می‌دهد
+        weekdayLabels: {
+            SAT: 'شنبه', SUN: 'یکشنبه', MON: 'دوشنبه', TUE: 'سه‌شنبه', WED: 'چهارشنبه', THU: 'پنجشنبه', FRI: 'جمعه'
+        },
         scheduleForm: {},
         currentActive: false,
         savingSchedule: false,
@@ -64,10 +61,12 @@ document.addEventListener('alpine:init', () => {
         init() {
             const saved = parseInt(localStorage.getItem('selectedSchoolId') || '', 10);
             this.schoolId = Number.isInteger(saved) ? saved : null;
+            this.week = Calendar.weekStart();
             this.resetScheduleForm();
             this.weekDate = this.formatLocalDate(new Date());
             window.addEventListener('school-changed', (e) => {
                 this.schoolId = e.detail.id;
+                this.week = Calendar.weekStart();
                 this.error = '';
                 this.notice = '';
                 this.blocked = false;
@@ -121,6 +120,11 @@ document.addEventListener('alpine:init', () => {
             return result;
         },
 
+        // هفت روز به ترتیب هفته‌ی مدرسه: شنبه تا جمعه، یا دوشنبه تا یکشنبه
+        get weekdays() {
+            return Calendar.weekCodes(this.week).map(code => ({ code, label: this.weekdayLabels[code] }));
+        },
+
         resetScheduleForm() {
             const form = {};
             for (const day of this.weekdays) {
@@ -160,15 +164,12 @@ document.addEventListener('alpine:init', () => {
             return `${year}-${month}-${day}`;
         },
 
-        // شنبه‌ی همان هفته یا پیش از تاریخ داده‌شده - کاربر هر روزی از هفته را
-        // انتخاب می‌کند، این تابع محاسبه‌ی «weekStart باید شنبه باشد» را از او
-        // پنهان می‌کند (پیشنهاد خودکار/خالی‌کردن هفته هر دو weekStart دقیق
-        // می‌خواهند).
-        mostRecentSaturday(dateStr) {
-            const date = new Date(dateStr + 'T00:00:00');
-            const daysSinceSaturday = (date.getDay() - 6 + 7) % 7;
-            date.setDate(date.getDate() - daysSinceSaturday);
-            return this.formatLocalDate(date);
+        // روز شروع هفته‌ی مدرسه (شنبه یا دوشنبه، W9) در همان هفته یا پیش از تاریخ
+        // داده‌شده - کاربر هر روزی از هفته را انتخاب می‌کند، این تابع محاسبه‌ی
+        // «weekStart باید روز شروع هفته باشد» را از او پنهان می‌کند (پیشنهاد
+        // خودکار/خالی‌کردن هفته هر دو weekStart دقیق می‌خواهند).
+        weekStartOf(dateStr) {
+            return this.formatLocalDate(Calendar.weekStartOf(new Date(dateStr + 'T00:00:00'), this.week));
         },
 
         addWeightRow() {
@@ -340,7 +341,7 @@ document.addEventListener('alpine:init', () => {
             this.error = '';
             this.notice = '';
             try {
-                const weekStart = this.mostRecentSaturday(this.weekCourseForm.weekStart);
+                const weekStart = this.weekStartOf(this.weekCourseForm.weekStart);
                 const response = await fetch(`${this.plansBase()}/${planId}/week-courses`, {
                     method: 'POST',
                     headers: {
@@ -385,7 +386,7 @@ document.addEventListener('alpine:init', () => {
             this.notice = '';
             this.copyResults = [];
             try {
-                const weekStart = this.mostRecentSaturday(this.weekDate);
+                const weekStart = this.weekStartOf(this.weekDate);
                 const response = await fetch(`${this.intervalsBase(this.selectedStudentId)}/copy`, {
                     method: 'POST',
                     headers: {
@@ -536,7 +537,7 @@ document.addEventListener('alpine:init', () => {
         // -------------------------------------------------------- گرید هفتگی
 
         get weekDays() {
-            const start = new Date(this.mostRecentSaturday(this.weekDate) + 'T00:00:00');
+            const start = new Date(this.weekStartOf(this.weekDate) + 'T00:00:00');
             const todayIso = this.formatLocalDate(new Date());
             const days = [];
             for (let i = 0; i < 7; i++) {
@@ -652,7 +653,7 @@ document.addEventListener('alpine:init', () => {
             this.error = '';
             this.notice = '';
             try {
-                const weekStart = this.mostRecentSaturday(this.weekDate);
+                const weekStart = this.weekStartOf(this.weekDate);
                 const response = await fetch(`${this.intervalsBase(this.selectedStudentId)}/suggest?weekStart=${weekStart}`, {
                     method: 'POST',
                     headers: { 'X-School-ID': this.schoolId, 'X-XSRF-TOKEN': this.csrfToken() }
@@ -677,7 +678,7 @@ document.addEventListener('alpine:init', () => {
             this.error = '';
             this.notice = '';
             try {
-                const weekStart = this.mostRecentSaturday(this.weekDate);
+                const weekStart = this.weekStartOf(this.weekDate);
                 const response = await fetch(`${this.intervalsBase(this.selectedStudentId)}/clear?weekStart=${weekStart}`, {
                     method: 'POST',
                     headers: { 'X-School-ID': this.schoolId, 'X-XSRF-TOKEN': this.csrfToken() }

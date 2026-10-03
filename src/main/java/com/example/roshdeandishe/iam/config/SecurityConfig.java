@@ -110,6 +110,10 @@ public class SecurityConfig {
                                 "/api/bale/webhook/**", "/api/exam-take/**", "/exam-take",
                                 "/activate", "/login", "/register", "/webjars/**",
                                 "/css/**", "/js/**",
+                                // فونت وب (Vazirmatn) - دارایی استاتیک عمومی، با
+                                // همان در معرض‌بودنِ /css/**؛ صفحه‌های ناشناس
+                                // (landing، login، register) هم به آن نیاز دارند.
+                                "/fonts/**",
                                 // درِ ورودی برنددار مدرسه (/s/{slug}) - صفحه‌ی عمومی
                                 // مثل /، فقط نام عمومی مدرسه را نشان می‌دهد
                                 // (SchoolEntryPageController).

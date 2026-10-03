@@ -48,13 +48,15 @@ document.addEventListener('alpine:init', () => {
         courseSeq: 0,
         mutateSeq: 0,
 
-        days: window.TimetableGrid.DAYS,
+        days: window.TimetableGrid.days(),
 
         init() {
             const saved = parseInt(localStorage.getItem('selectedSchoolId') || '', 10);
             this.schoolId = Number.isInteger(saved) ? saved : null;
             window.addEventListener('school-changed', (e) => {
                 this.schoolId = e.detail.id;
+                // روزهای درسیِ مدرسه‌ی تازه (W9)
+                this.days = window.TimetableGrid.days();
                 this.reset();
                 this.loadBase();
             });
@@ -348,7 +350,7 @@ document.addEventListener('alpine:init', () => {
 
         nextPeriodLabel() {
             const n = this.periods.length;
-            return 'زنگ ' + (n < ORDINALS.length ? ORDINALS[n] : Jalali.toPersianDigits(n + 1));
+            return 'زنگ ' + (n < ORDINALS.length ? ORDINALS[n] : Calendar.digits(n + 1));
         },
 
         resetPeriodForm() {

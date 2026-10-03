@@ -125,7 +125,7 @@ document.addEventListener('alpine:init', () => {
         },
 
         countLabel(count) {
-            return count === 0 ? 'بدون نمره' : Jalali.toPersianDigits(count) + ' نمره';
+            return count === 0 ? 'بدون نمره' : Calendar.digits(count) + ' نمره';
         },
 
         termLabel(term) {
@@ -142,7 +142,7 @@ document.addEventListener('alpine:init', () => {
                 }[grade.descriptiveLevel] || '—';
             }
             return grade.numericScore !== null && grade.numericScore !== undefined
-                ? Jalali.toPersianDigits(grade.numericScore) : '—';
+                ? Calendar.digits(grade.numericScore) : '—';
         }
     }));
 });

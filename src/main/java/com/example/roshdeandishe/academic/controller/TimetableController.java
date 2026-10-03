@@ -210,7 +210,7 @@ public class TimetableController {
             return TimetableDay.valueOf(text == null ? "" : text.strip());
         } catch (IllegalArgumentException e) {
             throw new AcademicException(new AcademicError.InvalidTimetableEntry(
-                    "روز هفته باید یکی از SAT، SUN، MON، TUE یا WED باشد"));
+                    "روز هفته باید یکی از SAT، SUN، MON، TUE، WED، THU یا FRI باشد"));
         }
     }
 

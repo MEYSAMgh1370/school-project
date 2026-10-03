@@ -147,6 +147,7 @@ src/main/resources/static/
 └── js/
     ├── navbar.js                  ← school/role switcher logic (loaded by every page)
     ├── jalali.js                  ← Jalali ↔ Gregorian date helper (no dependencies)
+    ├── calendar.js                ← the date seam pages use: Jalali for `fa`, Gregorian otherwise (load after jalali.js)
     └── <page>.js                  ← one Alpine.data component per page
 
 src/main/java/com/example/roshdeandishe/web/
@@ -606,12 +607,20 @@ CSS uses **logical properties only** — `margin-inline-end`, not `margin-left`.
   headers. The wire and the database are **ISO-8601 Gregorian only** — Jalali never
   crosses the wire. Conversion is client-side via `static/js/jalali.js` (see
   `expenses.js` for the working precedent).
+- **Go through `Calendar`, not `Jalali` or `toLocaleDateString('fa-IR')`.**
+  `static/js/calendar.js` picks Jalali or Gregorian from `<html lang>` and gives
+  `formatDate`, `formatRange`, `fromDate`, `toDate`, `daysInMonth`, `periodRange`,
+  and the month and weekday names. Load it after `jalali.js` in the page's
+  `scripts` list. A directional glyph gets `class="app-dir-glyph"` so it mirrors
+  in an LTR page. The week start is per school, not per locale: read it with
+  `Calendar.weekStart()` and use `Calendar.weekStartOf(date)`, `weekdayIndex`,
+  `weekdayNamesFor` and `schoolDayCodes` instead of hard-coding Saturday.
 - **Persian digits (۰–۹) for displayed numbers.** Underlying data and anything
   sorted or compared stays ASCII.
 - **Every input normalizes Persian/Arabic-Indic digits to ASCII before validating and
   sending** — a parent typing ۰۹۱۲… must not fail validation. See `normalizeDigits()`
   in `grades.js`.
-- Week starts **Saturday**; the weekend is Friday.
+- The week starts on the **school's** week start (Saturday for the Iranian week, Monday for a `MON` school); see DESIGN.md §8.
 
 **Accessibility floor** — enforced globally in `app.css`, not by per-page diligence:
 ≥44px touch targets, visible `:focus-visible` outline (never removed without a

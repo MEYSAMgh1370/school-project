@@ -2,7 +2,7 @@
 
 @param NavbarModel navbar
 
-@template.layout.main(title = "نمرات", scripts = java.util.List.of("/js/navbar.js", "/js/jalali.js", "/js/member-names.js", "/js/grades.js"), content = @`
+@template.layout.main(title = "نمرات", scripts = java.util.List.of("/js/navbar.js", "/js/jalali.js", "/js/calendar.js", "/js/member-names.js", "/js/grades.js"), content = @`
 @template.layout.navbar(navbar = navbar)
 
 <section class="section" id="main-content" role="main" tabindex="-1" x-data="gradesPage()">
@@ -135,7 +135,7 @@
                                                         <input class="input is-small" type="text" x-model="row.comment"
                                                                :aria-label="'نظر برای ' + row.name">
                                                     </td>
-                                                    <td dir="ltr" x-text="row.recordedAt ? new Date(row.recordedAt).toLocaleDateString('fa-IR') : '—'"></td>
+                                                    <td dir="ltr" x-text="row.recordedAt ? Calendar.formatDate(row.recordedAt) : '—'"></td>
                                                     <td>
                                                         <button class="button is-small is-link" type="button" @click="saveGrade(row)"
                                                                 :class="{ 'is-loading': row.saving }">

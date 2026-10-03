@@ -1,5 +1,9 @@
 package com.example.roshdeandishe.school;
 
+import java.time.DayOfWeek;
+import java.time.LocalDate;
+import java.time.temporal.TemporalAdjusters;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 
@@ -23,6 +27,14 @@ public interface SchoolFacade {
      * ساب‌دامین مدرسه شود - تصمیم Tier 1، CLAUDE.md §11.
      */
     SchoolId createSchool(String name, String timezone, String locale, SchoolLevel level, String slug);
+
+    /**
+     * مثل {@link #createSchool(String, String, String, SchoolLevel, String)} با روز شروع
+     * هفته‌ی صریح. نسخه‌ی بدون آن همیشه {@link WeekStart#SATURDAY} (هفته‌ی ایرانی) می‌سازد؛
+     * مدرسه‌ی غیرایرانی {@link WeekStart#MONDAY} را در لحظه‌ی ساخت انتخاب می‌کند.
+     */
+    SchoolId createSchool(String name, String timezone, String locale, SchoolLevel level, String slug,
+                          WeekStart weekStart);
 
     Optional<SchoolInfo> findSchool(SchoolId schoolId);
 
@@ -83,7 +95,65 @@ public interface SchoolFacade {
     }
 
     record SchoolInfo(SchoolId id, String name, SchoolStatus status, String timezone, String locale, SchoolLevel level,
-                      String slug) {
+                      String slug, WeekStart weekStart) {
+    }
+
+    /**
+     * روز شروع هفته‌ی یک مدرسه و روزهای درسیِ برآمده از آن - تنها مالکِ این قاعده
+     * (openspec/changes/eu-market-readiness.md، W9). studyplan، exam و academic روز شروع را
+     * از اینجا می‌خوانند و خودشان «شنبه» یا «دوشنبه» را ثابت نمی‌کنند.
+     * <p>
+     * {@link #code()} همان مقدارِ ذخیره‌شده در school.schools.week_start_day است.
+     */
+    enum WeekStart {
+        SATURDAY("SAT", DayOfWeek.SATURDAY, DayOfWeek.WEDNESDAY),
+        MONDAY("MON", DayOfWeek.MONDAY, DayOfWeek.FRIDAY);
+
+        private final String code;
+        private final DayOfWeek firstDay;
+        private final DayOfWeek lastSchoolDay;
+
+        WeekStart(String code, DayOfWeek firstDay, DayOfWeek lastSchoolDay) {
+            this.code = code;
+            this.firstDay = firstDay;
+            this.lastSchoolDay = lastSchoolDay;
+        }
+
+        public String code() {
+            return code;
+        }
+
+        /** روزِ اولِ هفته؛ هفته‌های ذخیره‌شده (week_start) همیشه روی همین روزند. */
+        public DayOfWeek firstDay() {
+            return firstDay;
+        }
+
+        /** روزهای درسیِ هفته به ترتیب: شنبه تا چهارشنبه، یا دوشنبه تا جمعه. */
+        public List<DayOfWeek> schoolDays() {
+            List<DayOfWeek> days = new ArrayList<>();
+            DayOfWeek day = firstDay;
+            while (true) {
+                days.add(day);
+                if (day == lastSchoolDay) {
+                    return List.copyOf(days);
+                }
+                day = day.plus(1);
+            }
+        }
+
+        /** آغازِ هفته‌ای که {@code date} در آن است. */
+        public LocalDate weekStartOf(LocalDate date) {
+            return date.with(TemporalAdjusters.previousOrSame(firstDay));
+        }
+
+        public static WeekStart fromCode(String code) {
+            for (WeekStart value : values()) {
+                if (value.code.equals(code)) {
+                    return value;
+                }
+            }
+            throw new IllegalArgumentException("Unknown week start code: " + code);
+        }
     }
 
     enum SchoolStatus {

@@ -2,6 +2,7 @@ package com.example.roshdeandishe.school.internal;
 
 import com.example.roshdeandishe.school.SchoolFacade.SchoolLevel;
 import com.example.roshdeandishe.school.SchoolFacade.SchoolStatus;
+import com.example.roshdeandishe.school.SchoolFacade.WeekStart;
 import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -54,6 +55,10 @@ class SchoolEntity {
      */
     @Column(name = "current_academic_year_id")
     private Long currentAcademicYearId;
+
+    /** کد ذخیره‌شده‌ی {@link WeekStart#code()}؛ ستون default 'SAT' دارد (V8). */
+    @Column(name = "week_start_day", nullable = false, length = 3)
+    private String weekStartDay = WeekStart.SATURDAY.code();
 
     SchoolEntity(String name, String timezone, String locale, SchoolLevel schoolLevel, String slug) {
         this.name = name;

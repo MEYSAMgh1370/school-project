@@ -56,6 +56,16 @@ class PlatformExceptionHandlerFlowIntegrationTest {
                 .andExpect(status().isOk());
     }
 
+    @Test
+    void webFontServesWithoutSchoolHeaderOrAuthentication() throws Exception {
+        // رگرسیون: app.css فونت را به‌عنوان زیرمنبع CSS می‌گیرد و مرورگر برای آن
+        // X-School-ID نمی‌فرستد؛ پیش از اضافه‌شدن /fonts به EXCLUDED_PATHS
+        // فیلتر tenant با ۴۰۰ جوابش می‌داد (و Security هم لاگین می‌خواست).
+        mockMvc.perform(get("/fonts/Vazirmatn-Variable.woff2"))
+                .andExpect(status().isOk())
+                .andExpect(result -> assertThat(result.getResponse().getContentAsByteArray()).isNotEmpty());
+    }
+
     // ---- خطاهای کلاینتِ Spring MVC باید ۴xx باشند، نه ۵۰۰ ----
 
     private MockHttpSession loginAsAdmin() throws Exception {

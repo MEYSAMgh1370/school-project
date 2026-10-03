@@ -535,14 +535,37 @@ UX_ROADMAP §2 remains binding and is not repeated here. Additions:
   wire and is never stored; conversion is client-side via
   `static/js/jalali.js` (the `/expenses` precedent). The server has no
   Jalali library; a server-side Jalali-boundary need (e.g. a scheduled
-  Jalali-month job) would be a new explicit decision, not an import.
-- **The week starts Saturday (شنبه); the weekend is Friday.** Any server-
-  side "week" concept (e.g. `studyplan`'s week-start, MOSHAVERE_PORT_SPEC
-  §6) anchors to `DayOfWeek.SATURDAY` — plain date arithmetic, no calendar
-  library.
+  Jalali-month job) would be a new explicit decision, not an import. That
+  decision has since been made once, for academic years:
+  `school.internal.SolarCalendar` is a small port used by
+  `AcademicYearProvisioner` (`openspec/changes/academic-year.md`), and it does
+  store a Jalali-derived code such as `1405-1406`. Read "never stored" above
+  as true for dates and times, and not for that one code.
+- **Which calendar a page shows follows its locale** (2026-10-03,
+  [`decisions/2026-10-03-multi-market-not-migration.md`](openspec/decisions/2026-10-03-multi-market-not-migration.md)).
+  The Jalali bullet above describes the `fa` locale. `<html lang>` selects the
+  calendar: `fa` is Jalali, any other language is Gregorian with names from
+  `Intl`. Pages do not call `Jalali` or `toLocaleDateString('fa-IR')` for
+  dates; they go through `Calendar` (`static/js/calendar.js`: `formatDate`,
+  `formatRange`, `fromDate`, `toDate`, `daysInMonth`, `periodRange`,
+  `monthNames`, `weekdayNames`). A directional glyph (`‹` `›`) is written in
+  the RTL convention and given `.app-dir-glyph`, which mirrors it under
+  `dir="ltr"`. The week start is not a locale choice: it belongs to the school
+  (next bullet), and `Calendar` only reads it.
+- **The week start belongs to the school** (W9,
+  [`openspec/changes/eu-market-readiness.md`](openspec/changes/eu-market-readiness.md)).
+  Each school has `week_start_day`: `SAT` (the Iranian week: Saturday to
+  Wednesday are school days, the weekend is Thursday and Friday; the default,
+  and every school that existed before W9) or `MON` (Monday to Friday),
+  chosen when the school is created. `SchoolFacade.WeekStart` is the only
+  place that maps it to the first day and the school days; `studyplan`,
+  `exam` and `academic` read it from there — plain date arithmetic, no
+  calendar library — and never hard-code a weekday. The client reads it from
+  the navbar's `data-week-starts` through `Calendar.weekStart()`.
 - **Persian digits (۰–۹) for displayed numbers** — dates, counts, and
   amounts — applied at render time by the relevant shared client utility
-  (`Jalali.toPersianDigits()` or `Money.formatAmount()`); underlying data, DOM
+  (`Calendar.digits()`, which follows the page locale, or `Money.formatAmount()`);
+  underlying data, DOM
   state, and anything sorted/compared stays ASCII. The Latin-data rule
   (UX_ROADMAP §2) is unchanged and includes **phone numbers**: emails,
   tokens, IDs, and phones stay Latin digits with their `dir="ltr"` island.

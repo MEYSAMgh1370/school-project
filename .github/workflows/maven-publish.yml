@@ -26,5 +26,18 @@ jobs:
           distribution: temurin
           java-version: 25
 
+      # تست‌های JavaScript (src/test/js) تا امروز در هیچ‌جا اجرا نمی‌شدند: نه این
+      # workflow و نه pom.xml هیچ‌کدام node را صدا نمی‌زدند، پس money.test.js،
+      # member-names.test.js و calendar.test.js فقط وقتی کسی دستی اجرایشان می‌کرد
+      # کار می‌کردند. یک ثانیه طول می‌کشد و پیش از Maven می‌آید تا شکستش زود برسد.
+      # گلاب صریح است (نه پوشه): Node 22 یک پوشه را به‌عنوان فایل اجرا می‌کند و
+      # fail می‌دهد. نسخه‌ی ۲۲ همان نسخه‌ای است که تست‌ها با آن نوشته شده‌اند.
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: JavaScript tests
+        run: node --test src/test/js/*.test.js
+
       - name: Build
         run: ./mvnw clean verify

@@ -41,7 +41,8 @@ public class SchoolController {
     @Transactional
     public SchoolResponse createSchool(@RequestBody CreateSchoolRequest request) {
         SchoolId schoolId = schoolFacade.createSchool(
-                request.name(), request.timezone(), request.locale(), request.level(), request.slug());
+                request.name(), request.timezone(), request.locale(), request.level(), request.slug(),
+                request.weekStart());
 
         // سازنده‌ی مدرسه بلافاصله SCHOOL_ADMIN همان مدرسه می‌شود
         IamFacade.UserId callerId = iamFacade.currentUserId();
