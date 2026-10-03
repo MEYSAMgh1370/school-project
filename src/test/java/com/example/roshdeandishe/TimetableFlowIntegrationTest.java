@@ -598,7 +598,7 @@ class TimetableFlowIntegrationTest {
                 + "(school_id, class_id, period_id, weekday, course_id, activity_id, teacher_user_id) values (1, ?, ?, ?, ?, ?, ?)";
 
         jdbc.update(insert, classA, period, "SAT", math, null, 777L);
-        // دو موضوع در یک خانه، معلمِ دو کلاس در یک خانه، هر دو/هیچ‌کدام از درس و فعالیت، و روزِ بیرون از هفته
+        // دو موضوع در یک خانه، معلمِ دو کلاس در یک خانه، هر دو/هیچ‌کدام از درس و فعالیت، و نامی که یکی از هفت روز نیست
         assertThatThrownBy(() -> jdbc.update(insert, classA, period, "SAT", math, null, null))
                 .isInstanceOf(DataIntegrityViolationException.class);
         assertThatThrownBy(() -> jdbc.update(insert, classB, period, "SAT", math, null, 777L))
@@ -607,8 +607,11 @@ class TimetableFlowIntegrationTest {
                 .isInstanceOf(DataIntegrityViolationException.class);
         assertThatThrownBy(() -> jdbc.update(insert, classB, period, "SUN", null, null, null))
                 .isInstanceOf(DataIntegrityViolationException.class);
-        assertThatThrownBy(() -> jdbc.update(insert, classB, period, "THU", math, null, null))
+        // V8: پنجشنبه و جمعه برای مدرسه‌ی دوشنبه‌محور مجازند؛ فقط نامی که روزِ هفته نیست رد می‌شود
+        assertThatThrownBy(() -> jdbc.update(insert, classB, period, "XYZ", math, null, null))
                 .isInstanceOf(DataIntegrityViolationException.class);
+        jdbc.update(insert, classB, period, "THU", math, null, null);
+        jdbc.update(insert, classB, period, "FRI", math, null, null);
         // معلمِ خالی در چند کلاسِ همان خانه مجاز است (ایندکس جزئی)
         jdbc.update(insert, classA, period, "MON", math, null, null);
         jdbc.update(insert, classB, period, "MON", math, null, null);
