@@ -212,7 +212,7 @@ report cards come from the school admin).
 At the start of a year the school can promote the old year's students into the
 new year's classes. Per student the outcome is one of: **promote** (a class of
 the next grade level in the new year), **repeat the grade** (a class of the same
-level), **graduate** (the school's last grade, `SchoolLevel.maxGrade`), or
+level), **graduate** (the last grade the school offers), or
 **leave** (transfer/withdraw; removed from the next year's list, data kept).
 
 - A **school setting turns automatic promotion on or off.**
@@ -226,10 +226,9 @@ level), **graduate** (the school's last grade, `SchoolLevel.maxGrade`), or
   grades (no pass mark). A promoted student is recorded with the next grade level and a
   **pending class**, which the admin fills in once the new year's classes exist, and
   the run can be undone (question 8, answered 2026-10-03). The last grade of the school's
-  level graduates automatically; **leave** is a deliberate per-student choice for a
-  student moving to another school - removed from the next year's list, never deleted.
-- A graduate's or leaver's identity data stays in the system for a later school
-  (question 10, open).
+  school's last grade graduates automatically (question 10: the grades a school offers
+  are not modelled yet); **leave** is a deliberate per-student choice - removed from the
+  next year's list, never deleted.
 - Guardian links stay; last year's grades stay on the old enrollment; new-year
   invoices follow the tuition rule (question 3).
 
@@ -327,31 +326,37 @@ classes/enrollments and promotion.
    promoted to the next *grade level* with the class still **pending**; once the
    admin has created the new year's classes, the admin places the pending students
    (a "pending placement" list). **An automatic run can be undone** (answered
-   2026-10-03: yes). **Graduation answered 2026-10-03:** a student in the last grade
-   of the school's level (6, 9 or 12) becomes "graduated" in the automatic run: no
-   new-year enrollment or invoice, history, grades and invoices kept, reversible by the
-   same undo; the admin can mark a student as repeating instead before or after.
-   **Leaving the school (answered 2026-10-03):** a student who moves to another school
-   is marked as **leaving** (the fourth outcome); they are removed from the school's
-   list for the next year only - nothing is deleted - and the school membership is
-   deactivated through the existing mechanism. A graduate or a leaver keeps their
-   data in the system (see question 10).
-10. **Identity data that outlives one school.** The product owner wants a graduate's
-   or leaver's identity ("شناسنامه‌ای") data to stay in the system, so that when the
-   student joins another school it does not have to be entered again.
-   *Baseline from code:* the system stores only name, email and phone on the user;
-   there are **no identity fields** (national code, birth date, father's name,
-   birth-certificate number, and so on), and a student's school record
-   (`academic.students`) is per school. Open: (a) which fields make up the identity
-   data; (b) the key that says two records are the same person (a national code is the
-   usual one - is it mandatory?); (c) how the new school gets the data without
-   breaking tenant isolation - the old school must not browse another school's
-   students: options are an explicit transfer request approved by the guardian or the
-   old school, or the new school entering the national code and the system offering
-   the stored identity data for confirmation; (d) who may see and correct it; (e) what
-   a school sees of the old school's grades and invoices (proposed: nothing, they stay
-   with the old school). Nothing in phases 1-3 needs this to be built first; the
-   promotion work only has to *keep* the user record and not delete it.
+   2026-10-03: yes). **Graduation answered 2026-10-03:** a student in the **last grade
+   the school offers** becomes "graduated" in the automatic run: no new-year enrollment
+   or invoice, history, grades and invoices kept, reversible by the same undo; the admin
+   can mark a student as repeating instead before or after. (Revised the same day: a
+   school may have several levels and a student moves up from a lower grade of the same
+   school, so "last grade" is the school's own last grade, not the end of one level -
+   see question 10.)
+   **Leaving the school (answered 2026-10-03):** a student who leaves is marked as
+   **leaving** (the fourth outcome); they are removed from the school's list for the
+   next year only - nothing is deleted - and the school membership is deactivated
+   through the existing mechanism.
+10. **Which grades does a school offer?** *Code and documentation conflict with the
+   product owner's statement (2026-10-03):* a school may have different grades, and a
+   student moves up from a lower grade of the same school (for example 9 to 10 in a
+   school with grades 7-12). Today a school has **exactly one level**
+   (`school_level`, a single value with a database check: `ELEMENTARY` 1-6,
+   `LOWER_SECONDARY` 7-9, `UPPER_SECONDARY` 10-12), classes are validated against it
+   (`InvalidGradeLevel`), and the registration page picks one level, so such a school
+   cannot exist yet. Promotion needs the school's last grade to decide who graduates.
+   Options: (a) a school offers **one or more levels** (a set; its grades are the union
+   and the last grade is the highest); (b) a school declares a **grade range** (first
+   and last grade) directly; (c) the offered grades are **derived from the classes** the
+   school has in the year (no declaration, but a new year with no classes yet has no
+   last grade). Also: who may change it (the registering admin, or the platform), and
+   what happens to existing schools (keep their one level). Recommended: (a), because
+   it reuses the three levels everyone already knows and keeps existing schools valid.
+   It is a small change of its own and should be done before the promotion phase.
+11. **Dropped 2026-10-03: identity data that outlives one school, and transfer between
+   schools.** The product owner withdrew it. For the record, the system stores only
+   name, email and phone on the user and has no identity fields; promotion still must
+   not delete a graduate's or leaver's user record.
 9. **Closed: a version column for the school's current year ("ABA").** The expected
    current year is compared by value in the write itself; a revision counter would
    only reject requests that are not wrong. Revisit only if an audit trail of
