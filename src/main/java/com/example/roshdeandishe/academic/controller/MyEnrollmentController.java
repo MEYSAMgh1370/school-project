@@ -48,6 +48,10 @@ public class MyEnrollmentController {
     @GetMapping("/api/me/enrollment")
     public ResponseEntity<MyEnrollmentResponse> myEnrollment(@RequestParam Long schoolId) {
         Long userId = iamFacade.currentUserId().value();
+        // عضوِ سابق: «ثبت‌نامی نیست» (204)، نه اطلاعاتِ مدرسه‌ای که دیگر عضوش نیست
+        if (!iamFacade.hasActiveMembership(new IamFacade.UserId(userId), schoolId)) {
+            return ResponseEntity.noContent().build();
+        }
         return academicFacade.findMyEnrollment(userId, schoolId)
                 .map(info -> ResponseEntity.ok(MyEnrollmentResponse.from(info)))
                 .orElseGet(() -> ResponseEntity.noContent().build());
