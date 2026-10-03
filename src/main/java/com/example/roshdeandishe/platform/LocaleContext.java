@@ -64,6 +64,17 @@ public final class LocaleContext {
     }
 
     /**
+     * جهت نوشتار زبان فعلی برای صفت {@code dir} در {@code <html>}: {@code "rtl"}
+     * برای فارسی و {@code "ltr"} برای انگلیسی. JDK جدول ساده‌ای برای جهت هر
+     * {@link Locale} ندارد و زبان پشتیبانی‌شده فقط دو تاست، پس نگاشت عمداً صریح
+     * نوشته شده است. در نبود مقدار، {@link #getOrDefault()} فارسی می‌دهد و نتیجه
+     * {@code "rtl"} است؛ این متد هرگز خطا نمی‌دهد.
+     */
+    public static String textDirection() {
+        return ENGLISH.getLanguage().equals(getOrDefault().getLanguage()) ? "ltr" : "rtl";
+    }
+
+    /**
      * پاک‌سازی Context. حتماً باید در finally block فیلتر یا انتهای پردازش Async صدا زده شود.
      */
     public static void clear() {
