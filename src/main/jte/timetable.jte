@@ -3,7 +3,7 @@
 @param NavbarModel navbar
 
 @template.layout.main(title = "برنامه‌ی کلاسی",
-        scripts = java.util.List.of("/js/navbar.js", "/js/jalali.js", "/js/modal-focus.js", "/js/timetable-grid.js", "/js/timetable.js"),
+        scripts = java.util.List.of("/js/navbar.js", "/js/jalali.js", "/js/calendar.js", "/js/modal-focus.js", "/js/timetable-grid.js", "/js/timetable.js"),
         styles = java.util.List.of("/css/timetable.css"), content = @`
 @template.layout.navbar(navbar = navbar)
 
@@ -30,7 +30,7 @@
                                     <div class="select">
                                         <select id="ttYear" x-model="year" @change="onYearChange()">
                                             <template x-for="code in years" :key="code">
-                                                <option :value="code" :selected="code === year" x-text="Jalali.toPersianDigits(code)"></option>
+                                                <option :value="code" :selected="code === year" x-text="Calendar.digits(code)"></option>
                                             </template>
                                         </select>
                                     </div>
@@ -202,7 +202,7 @@
                                     <tbody>
                                     <template x-for="period in periods" :key="period.id">
                                         <tr>
-                                            <td x-text="Jalali.toPersianDigits(period.position)"></td>
+                                            <td x-text="Calendar.digits(period.position)"></td>
                                             <td x-text="period.label"></td>
                                             <td dir="ltr" x-text="TimetableGrid.timeLabel(period.startTime)"></td>
                                             <td dir="ltr" x-text="TimetableGrid.timeLabel(period.endTime)"></td>

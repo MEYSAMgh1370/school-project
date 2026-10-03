@@ -54,7 +54,7 @@ window.TimetableGrid = {
 
     // "08:00" (or "08:00:00") -> Persian digits "۰۸:۰۰"
     timeLabel(time) {
-        return window.Jalali ? window.Jalali.toPersianDigits(String(time).slice(0, 5)) : String(time).slice(0, 5);
+        return window.Calendar ? window.Calendar.digits(String(time).slice(0, 5)) : String(time).slice(0, 5);
     },
 
     rangeLabel(period) {

@@ -3,7 +3,7 @@
 @param NavbarModel navbar
 
 @template.layout.main(title = "برنامه‌ی کلاسی من",
-        scripts = java.util.List.of("/js/navbar.js", "/js/jalali.js", "/js/timetable-grid.js", "/js/my-timetable.js"),
+        scripts = java.util.List.of("/js/navbar.js", "/js/jalali.js", "/js/calendar.js", "/js/timetable-grid.js", "/js/my-timetable.js"),
         styles = java.util.List.of("/css/my-grades.css", "/css/timetable.css"), content = @`
 @template.layout.navbar(navbar = navbar)
 
@@ -51,7 +51,7 @@
                     <p class="mb-4">
                         <span class="is-size-7 has-text-grey">سال تحصیلی:</span>
                         <span class="tag is-light" dir="ltr" id="myTtYear" x-show="academicYear"
-                              x-text="academicYear ? Jalali.toPersianDigits(academicYear) : ''"></span>
+                              x-text="academicYear ? Calendar.digits(academicYear) : ''"></span>
                         <span class="tag is-light" x-show="selectedView() && selectedView().kind !== 'TEACHING' && selectedView().className"
                               x-text="selectedView() ? 'کلاس ' + selectedView().className : ''"></span>
                     </p>

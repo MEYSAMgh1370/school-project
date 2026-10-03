@@ -256,38 +256,52 @@ Found and fixed along the way:
 
 Deliberately not done:
 
-- **Digit formatting for numbers that are not dates.** `Jalali.toPersianDigits`
-  is still called directly at 11 sites in 7 files — `timetable.jte` (2),
-  `dashboard.jte` (2), `academic-year.jte` (2), `my-timetable.jte` (1),
-  `timetable-grid.js` (1), `timetable.js` (1), `my-grades.js` (2) — so an English
-  page still shows Persian digits there. That is number formatting, not
-  calendar. `Calendar.digits` exists and is used by the pages converted here;
-  moving the rest is mechanical but touches pages whose client-side behaviour CI
-  does not exercise. Tracked as W2b below.
+- **Digit formatting for numbers that are not dates** was not part of W2 itself and
+  is done in W2b below.
 - **The week start.** Both calendars stay Saturday-first. See the open question.
 
-Limitation worth knowing: **CI does not run the JavaScript tests.** Neither
-`maven-publish.yml` nor `pom.xml` invokes `node`, so `calendar.test.js` — like the
-existing `money.test.js` and `member-names.test.js` — runs only when someone
-executes `node --test src/test/js/*.test.js`. Note the explicit glob: Node 22
-treats a bare directory argument as a file and fails.
+The JavaScript tests were not run by CI when W2 was written: neither
+`maven-publish.yml` nor `pom.xml` invoked `node`, so `calendar.test.js` — like the
+existing `money.test.js` and `member-names.test.js` — ran only when someone executed
+them by hand. That is fixed alongside W2b: the workflow now installs Node 22 and runs
+`node --test src/test/js/*.test.js` before Maven, in the same job so the check keeps
+its name `build`. Note the explicit glob — Node 22 treats a bare directory argument as
+a file and fails. The suite was also run under nine time zones before being handed to
+CI, which found two assumptions in the tests (a fixed UTC instant, and a civil day
+that Kiribati skipped in 1994) and no bug in the code.
 
-### W2b — Route the remaining digit formatting through the seam (size: S)
+### W2b — Route the remaining digit formatting through the seam (size: S) — **implemented 2026-10-03**
 
-Current: 11 direct `Jalali.toPersianDigits` call sites in 7 files (listed under
-W2), plus `Intl.NumberFormat('fa-IR-u-nu-arabext')` in `money.js`, which belongs
-to W4 because the currency question governs it.
+Eleven `Jalali.toPersianDigits` call sites in seven files now go through
+`Calendar.digits`: `timetable.jte` (2), `dashboard.jte` (2), `academic-year.jte` (2),
+`my-timetable.jte` (1), `timetable-grid.js` (1), `timetable.js` (1) and `my-grades.js`
+(2), plus a comment. `calendar.js` was added to the four pages that did not load it
+(`timetable`, `dashboard`, `academic-year`, `my-timetable`). `money.js`'s
+`Intl.NumberFormat('fa-IR-u-nu-arabext')` is left alone: it belongs to W4, because the
+currency question governs it.
 
-Target: number display follows the page locale, so an English page shows ASCII
-digits throughout.
+Acceptance criteria, with how each was checked:
 
-Acceptance criteria:
+- No page calls `Jalali.toPersianDigits` directly — `page-scripts.test.js` fails if any
+  page template or its listed scripts call a `Jalali.*` member.
+- Every converted page loads `calendar.js` after `jalali.js` — the same test checks,
+  for every page, that anything using `Calendar` lists `calendar.js`, that
+  `jalali.js` precedes it, that anything using `Jalali` lists `jalali.js`, and that
+  every listed script exists. This is the guard the criterion asked for: a missed
+  `<script>` tag fails silently in the browser and no server-side test can see it.
+  It runs in CI now, and six deliberate mutations of the templates (a forgotten tag,
+  the wrong order, a dropped dependency, a typo, a reintroduced direct call) were each
+  caught with a message naming the page.
+- Persian output is unchanged — in `fa`, `Calendar.digits` is the same function object
+  as `Jalali.toPersianDigits` (asserted), so the output of all eleven call sites is
+  identical by construction rather than by comparison.
+- In a real browser, under both locales: every touched page loads with no client
+  error. With data injected into the timetable component, `fa` renders `۱۴۰۵-۱۴۰۶`,
+  `۳`, `۱۲` and the grid time `۰۸:۰۰`; `en` renders `1405-1406`, `3`, `12` and `08:00`.
 
-- No page calls `Jalali.toPersianDigits` directly.
-- Every converted page loads `calendar.js` after `jalali.js`; a missed script tag
-  fails silently in the browser and CI cannot see it, so each converted page must
-  be loaded in a real browser with the console watched.
-- Persian output is unchanged.
+Visible once the digits are right, and part of W8 rather than this item: the English
+academic-year page lists `1404-1405` and `1405-1406`. The digits are ASCII, but the
+numbers are still Jalali years, so an English user reading them as years gets 1405.
 
 ### W3 — Make direction and typography locale-driven (size: S)
 
@@ -424,6 +438,10 @@ that Jalali "is never stored" ([`DESIGN.md`](../../DESIGN.md) §8). The decision
 add it was made explicitly on master in
 [`academic-year.md`](academic-year.md); what was not asked there is what it means
 for a second market.
+
+The effect is already visible in the English UI: the academic-year page shows
+`1404-1405` and `1405-1406` to an English user, for what they would read as 2025-26
+and 2026-27.
 
 This is a domain rule, not a presentation seam, so W2 does not touch it. Nothing
 is proposed here beyond recording it, because every real choice is a product

@@ -348,7 +348,7 @@ document.addEventListener('alpine:init', () => {
 
         nextPeriodLabel() {
             const n = this.periods.length;
-            return 'زنگ ' + (n < ORDINALS.length ? ORDINALS[n] : Jalali.toPersianDigits(n + 1));
+            return 'زنگ ' + (n < ORDINALS.length ? ORDINALS[n] : Calendar.digits(n + 1));
         },
 
         resetPeriodForm() {

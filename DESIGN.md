@@ -558,8 +558,8 @@ UX_ROADMAP §2 remains binding and is not repeated here. Additions:
   library.
 - **Persian digits (۰–۹) for displayed numbers** — dates, counts, and
   amounts — applied at render time by the relevant shared client utility
-  (`Calendar.digits()` on pages that load `calendar.js`, otherwise
-  `Jalali.toPersianDigits()`, or `Money.formatAmount()`); underlying data, DOM
+  (`Calendar.digits()`, which follows the page locale, or `Money.formatAmount()`);
+  underlying data, DOM
   state, and anything sorted/compared stays ASCII. The Latin-data rule
   (UX_ROADMAP §2) is unchanged and includes **phone numbers**: emails,
   tokens, IDs, and phones stay Latin digits with their `dir="ltr"` island.
