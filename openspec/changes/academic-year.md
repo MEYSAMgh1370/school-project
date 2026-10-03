@@ -66,6 +66,21 @@ Answers to the first unresolved questions (numbering is the one the questions ha
   `/my-grades`). **Report cards of earlier years are obtained through the school
   admin**; no student/parent self-service view of them is built.
 
+- **Q8 - placing promoted students (decided 2026-10-03, option a).** The automatic run
+  records each student as promoted to the next *grade level* with the class still
+  **pending**; the admin places pending students once the new year's classes exist.
+  **An automatic run can be undone.**
+- **Graduation (decided 2026-10-03).** A student in the last grade the school offers
+  graduates in the automatic run (history, grades and invoices kept, no new-year
+  enrollment or invoice, undone by the same undo); the admin can mark a student as
+  repeating instead.
+- **Leaving (decided 2026-10-03).** A student who moves to another school is marked as
+  *leaving*: removed from the school's list for the next year, membership deactivated,
+  nothing deleted.
+- **Withdrawn / deferred (2026-10-03).** Identity data that outlives one school and
+  transfers between schools were withdrawn. A school offering several levels was
+  deferred: promotion uses today's single level per school (question 10).
+
 Proposed defaults, **not yet confirmed** (they stand unless the product owner
 objects): Q4 existing data is attributed to one year chosen by the admin when the
 feature is enabled, unmatched free-text grade years are reported not guessed; Q6 the
@@ -398,7 +413,7 @@ Phases 2-3 (not built): year-scoped tuition and invoices, classes/enrollments an
    or permission exists (`platform-admin-not-assignable.md`); that deferred
    platform work is unchanged.
 8. **Placing promoted students when the new year's classes do not exist.**
-   **Answered 2026-10-03:** option (a). The automatic run records each student as
+   **Answered 2026-10-03 (recorded under "Decisions Taken ... 2026-10-03"):** option (a). The automatic run records each student as
    promoted to the next *grade level* with the class still **pending**; once the
    admin has created the new year's classes, the admin places the pending students
    (a "pending placement" list). **An automatic run can be undone** (answered
