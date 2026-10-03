@@ -97,10 +97,11 @@ From code and tests, not from memory:
 ## Out Of Scope
 
 - Role display names for custom roles in the role switcher (it still shows the role
-  code; `RoleLabels` knows only the system roles).
-- Dashboard shortcut cards for custom roles.
+  code; `RoleLabels` knows only the system roles). *Done in
+  [`custom-role-ui-and-timetable-gate.md`](custom-role-ui-and-timetable-gate.md).*
+- Dashboard shortcut cards for custom roles. *Done in the same change.*
 - Revoking an exam session token when a membership is deactivated.
-- Making the class timetable's per-role gate match this one.
+- Making the class timetable's per-role gate match this one. *Done in the same change.*
 - Other Spring MVC exceptions (not-acceptable, request-body size, ...).
 
 ## Acceptance Criteria

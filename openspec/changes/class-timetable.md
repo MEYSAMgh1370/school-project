@@ -198,8 +198,8 @@ natural follow-up), per-school configurable school days, and the Android client.
   current year; the admin opens other years on `/timetable`). The response is
   `{academicYear, periods, views[]}` where each view is `OWN` (the user's own
   class), `WARD` (a linked child, with the child's name and class) or `TEACHING`
-  (the user's own slots, each entry carrying the class name; an active teacher always gets this view, empty when there are no cells or no current year); entries carry the
-  teacher's name. A stranger gets `{academicYear: null, periods: [], views: []}` -
+  (the user's own slots, each entry carrying the class name; present only when the user has at least one cell); entries carry the
+  teacher's name. A user with no view at all (not a member, an inactive member, or a member who is neither enrolled, nor a linked guardian, nor a teacher with cells) gets `{academicYear: null, periods: [], views: []}` -
   not an error, and not the school's current year. A member with no current year
   chosen gets views without entries (the page says the year is not chosen).
 - An activity name must be free in the school **and** among platform defaults, so a
@@ -215,10 +215,14 @@ natural follow-up), per-school configurable school days, and the Android client.
   extension).
 - Setting a cell takes an advisory lock per (class, weekday, period) before reading the existing row, so two admins filling the same empty cell are serialized (the second replaces the first) instead of one failing on the unique index.
 - Deleting a period or an activity and writing a cell for it are serialized with row-level advisory locks (lock order is always period, then activity, then cell; clearing a cell takes the cell lock), so a concurrent delete and set end as `period-has-entries`/`period-not-found` (or `activity-in-use`/`activity-not-found`), never as a foreign-key `500`.
-- `GET /api/me/.../timetable` ties each view to an **active** membership with the
-  matching role in that school (`STUDENT` for `OWN`, `PARENT` for `WARD`, `TEACHER` for
-  `TEACHING`): enrollments, guardian links and timetable cells survive deactivating a
-  membership, so without this a former member kept receiving the timetable.
+- `GET /api/me/.../timetable` is gated like the other `/api/me/**` endpoints
+  (`IamFacade.hasActiveMembership`): an *active* membership in that school, any role.
+  Enrollments, guardian links and timetable cells survive deactivating a membership, so
+  without this a former member kept receiving the timetable. The views are decided by
+  the data (own enrollment, guardian links, cells as teacher), not by the role: an
+  earlier revision required the matching role per view; it was dropped to keep one
+  self-service rule. A teacher with no cells therefore sees the generic empty message,
+  not a dedicated "no hours" state.
 - If the operator later sets `graded = false` on a course that already has grades, those
   grade rows are kept but hidden from `/api/me/.../grades` (student/parent reads); the
   admin list that asks for that `courseId` explicitly still returns them, and they come

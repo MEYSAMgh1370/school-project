@@ -888,7 +888,8 @@ class TimetableFlowIntegrationTest {
     }
 
     @Test
-    void anActiveTeacherWithoutCellsStillGetsAnEmptyTeachingView() throws Exception {
+    void aMemberWithNoEnrollmentGuardianLinkOrTeachingCellsGetsTheEmptyResult() throws Exception {
+        // دروازه‌ی عضویتِ فعال است و دیدها را داده تعیین می‌کند، نه نقش: معلمِ بدونِ ساعت دیدی ندارد
         MockHttpSession admin = loginAsAdmin();
         makeCurrentYear(admin);
         createPeriod(admin, "زنگ اول", "08:00", "08:45");
@@ -898,11 +899,31 @@ class TimetableFlowIntegrationTest {
 
         mockMvc.perform(get("/api/me/schools/1/timetable").session(teacher))
                 .andExpect(status().isOk())
+                .andExpect(jsonPath("$.academicYear").doesNotExist())
+                .andExpect(jsonPath("$.views").isEmpty());
+    }
+
+    @Test
+    void theViewsComeFromTheDataNotFromTheMembershipRole() throws Exception {
+        // عضوِ فعال با هر نقش، دیدِ مربوط به دادهٔ خودش را می‌گیرد: معلمی که ساعت دارد TEACHING می‌بیند
+        // حتی اگر نقشِ دیگری (مثلاً مدیر مالی) هم داشته باشد
+        MockHttpSession admin = loginAsAdmin();
+        makeCurrentYear(admin);
+        long classId = createClass(admin, "پایه پنجم - داده‌محور", 5);
+        long period = createPeriod(admin, "زنگ اول", "08:00", "08:45");
+        long math = insertCourse(5, "ریاضی", true);
+        String email = unique("tt.data.driven") + "@roshdeandishe.test";
+        MockHttpSession member = registerAndLogin(email, "معلم مالی");
+        long userId = membership(admin, email, "معلم مالی", "TEACHER");
+        membership(admin, email, "معلم مالی", "FINANCE_ADMIN");
+        setEntry(admin, classId, period, "SAT", math, null, userId).andExpect(status().isOk());
+
+        mockMvc.perform(get("/api/me/schools/1/timetable").session(member))
+                .andExpect(status().isOk())
                 .andExpect(jsonPath("$.academicYear").value(YEAR))
-                .andExpect(jsonPath("$.periods.length()").value(1))
                 .andExpect(jsonPath("$.views.length()").value(1))
                 .andExpect(jsonPath("$.views[0].kind").value("TEACHING"))
-                .andExpect(jsonPath("$.views[0].entries").isEmpty());
+                .andExpect(jsonPath("$.views[0].entries.length()").value(1));
     }
 
     @Test
