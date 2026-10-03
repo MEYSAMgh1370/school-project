@@ -50,14 +50,31 @@ Audited on 2026-09-29 against `src/`, `openspec/`, and the Flyway migrations.
 
 ### Calendar
 
-- Jalali conversion is client-side only and contained:
+Corrected on 2026-10-03, while implementing W2. The original text here was
+wrong in three ways, and one of them undermined the item's premise.
+
+- Jalali *conversion for display* is client-side and was contained:
   [`jalali.js`](../../src/main/resources/static/js/jalali.js) is 160 lines and
-  exposes `window.Jalali`.
-- It is consumed by four scripts (`expenses.js`, `my-grades.js`,
-  `my-study-plan.js`, and itself) and referenced by four templates
-  (`expenses.jte`, `grades.jte`, `my-grades.jte`, `my-study-plan.jte`).
-- No Jalali or Persian-calendar logic was found in `src/main/java` or in the
-  migrations; persisted dates are calendar-neutral.
+  exposes `window.Jalali`. At audit time it was consumed by `expenses.js`,
+  `my-grades.js` and `my-study-plan.js`; master has since added more pages that
+  load it, so the "four scripts and four templates" figure no longer holds.
+- **Missed entirely:** seven `toLocaleDateString('fa-IR')` calls sit directly in
+  templates — `finance.jte` (3), `my-invoices.jte` (2), `grades.jte` (1),
+  `my-grades.jte` (1). They never touch `jalali.js`, and they are the main path
+  by which dates reach the screen. The browser's `fa-IR` locale quietly selects
+  the Persian calendar, which is why nothing looked Jalali-specific there.
+- **The server does have Jalali logic**, contrary to the original claim that none
+  was found. `school.internal.SolarCalendar` and `AcademicYearProvisioner`
+  (added on master in `5599d34`, after the commit this audit was taken from)
+  create academic years in the database from a configured *Jalali* start date,
+  with codes such as `1405-1406`. That makes the academic year a stored, Jalali-
+  derived domain value — not a presentation concern, and outside W2. See W8.
+- The week starts on Saturday as a **server domain rule**, not a display
+  preference: `requireSaturday` in `StudyPlanFacadeImpl` and `ExamFacadeImpl`
+  rejects any other week start with `InvalidWeekStart`, and
+  [`DESIGN.md`](../../DESIGN.md) records it. A calendar seam therefore must not
+  move the week boundary.
+- Persisted and wire dates otherwise remain ISO-8601 Gregorian.
 
 ### Document Direction And Typography
 
@@ -182,20 +199,95 @@ Acceptance criteria:
 - The Persian rendering of every existing page is byte-identical to today's
   output when the locale is Persian.
 
-### W2 — Abstract the calendar (size: S)
+### W2 — Abstract the calendar (size: S) — **implemented 2026-10-03**
 
-Current: `jalali.js` is the only calendar layer; four scripts and four
-templates call it directly.
+Implemented in [`calendar.js`](../../src/main/resources/static/js/calendar.js),
+which exposes `window.Calendar`. The `<html lang>` that W3 sets selects the
+calendar: `fa` gives Jalali, any other language gives Gregorian, and a missing
+`lang` follows the server default (Persian). It wraps `jalali.js` rather than
+replacing it — that algorithm was checked against the ICU Persian calendar on
+every day from 1950 to 2100 with zero mismatches before anything was changed.
 
-Target: a calendar-formatting seam so a locale selects Jalali or Gregorian
-presentation. Persistence stays calendar-neutral and is not touched.
+Members: `kind`, `fromDate`, `toDate`, `daysInMonth`, `periodRange`,
+`monthNames`, `weekdayNames`, `weekdayShort`, `weekdayIndex`, `formatDate`,
+`formatRange`, `digits`. Gregorian names come from `Intl`, not a hand-written
+table, so a further language needs no new code.
+
+Callers converted: `my-study-plan.js` and its template, `expenses.js`, and the
+seven `fa-IR` date sites in four templates. After the change no page reaches a
+calendar member of `Jalali` directly.
+
+Acceptance criteria, with how each was checked:
+
+- Callers format dates through one seam, not through `window.Jalali` directly —
+  a search of `src/main/jte` and `static/js` finds no remaining use of
+  `toJalali`, `toGregorian`, `periodRange`, `monthNames`, `weekdayNames`,
+  `weekdayShort` or `weekdayIndex` outside `calendar.js` and `jalali.js`.
+- Jalali output is unchanged for the Persian locale — `calendar.test.js`
+  compares the new week-range label with a verbatim copy of the old
+  `weekRangeLabel` over 417 consecutive weeks covering every branch of its
+  logic, and `formatDate` with `toLocaleDateString('fa-IR')`. In a real browser
+  the study-plan page gives `۱۱ تا ۱۷ مهر ۱۴۰۵`, a 34-cell picker with day 1 in
+  column 4, and `۶:۰۰` hour labels.
+- A Gregorian locale renders the same data without Jalali conversion — the
+  tests wrap the Jalali functions and assert zero calls across the Gregorian
+  operations; in a real browser the same page gives `Oct 3 – 9, 2026`, a
+  36-cell October with day 1 in column 5, and ASCII digits.
+- Existing date-handling tests still pass unchanged — with the honest caveat that
+  there were none: `jalali.js` had no test at all. The 17 tests added in
+  `calendar.test.js` are the first, and the pre-existing JS and Java suites that
+  can run without Docker still pass.
+
+Found and fixed along the way:
+
+- `expenses.js` defaulted the report year to a literal `1405`. That is
+  meaningless in a Gregorian calendar and would have gone stale for Persian
+  users on 21 March 2027. It now defaults to the current year in the active
+  calendar.
+- The previous/next arrows in `my-study-plan.jte` were hard-coded for RTL, so
+  in an LTR page the "previous" button sat on the left pointing right. The
+  CSS audit under W3 could not see this because the glyphs live in a template.
+  A shared `.app-dir-glyph` class in `app.css` mirrors them under
+  `html[dir="ltr"]`; the Persian rendering is untouched.
+- The hour label carried a literal `۰۰`; it now goes through `digits`.
+- `weekdayShort` uses `Intl`'s `short`, not `narrow`: narrow repeats letters
+  (S, S, T, T) and would break the page's `x-for` key, which is now the index
+  anyway.
+
+Deliberately not done:
+
+- **Digit formatting for numbers that are not dates.** `Jalali.toPersianDigits`
+  is still called directly at 11 sites in 7 files — `timetable.jte` (2),
+  `dashboard.jte` (2), `academic-year.jte` (2), `my-timetable.jte` (1),
+  `timetable-grid.js` (1), `timetable.js` (1), `my-grades.js` (2) — so an English
+  page still shows Persian digits there. That is number formatting, not
+  calendar. `Calendar.digits` exists and is used by the pages converted here;
+  moving the rest is mechanical but touches pages whose client-side behaviour CI
+  does not exercise. Tracked as W2b below.
+- **The week start.** Both calendars stay Saturday-first. See the open question.
+
+Limitation worth knowing: **CI does not run the JavaScript tests.** Neither
+`maven-publish.yml` nor `pom.xml` invokes `node`, so `calendar.test.js` — like the
+existing `money.test.js` and `member-names.test.js` — runs only when someone
+executes `node --test src/test/js/*.test.js`. Note the explicit glob: Node 22
+treats a bare directory argument as a file and fails.
+
+### W2b — Route the remaining digit formatting through the seam (size: S)
+
+Current: 11 direct `Jalali.toPersianDigits` call sites in 7 files (listed under
+W2), plus `Intl.NumberFormat('fa-IR-u-nu-arabext')` in `money.js`, which belongs
+to W4 because the currency question governs it.
+
+Target: number display follows the page locale, so an English page shows ASCII
+digits throughout.
 
 Acceptance criteria:
 
-- Callers format dates through one seam, not through `window.Jalali` directly.
-- Jalali output is unchanged for the Persian locale.
-- A Gregorian locale renders the same data without Jalali conversion.
-- Existing date-handling tests still pass unchanged.
+- No page calls `Jalali.toPersianDigits` directly.
+- Every converted page loads `calendar.js` after `jalali.js`; a missed script tag
+  fails silently in the browser and CI cannot see it, so each converted page must
+  be loaded in a real browser with the console watched.
+- Persian output is unchanged.
 
 ### W3 — Make direction and typography locale-driven (size: S)
 
@@ -317,14 +409,36 @@ Acceptance criteria:
   its current behavior is unchanged for existing schools.
 - Granting a paid entitlement has an authorized path that is not facade-only.
 
+### W8 — Academic-year provisioning is Jalali-bound domain logic (size: M, undecided)
+
+Found while scoping W2, and not part of it. `AcademicYearProvisioner` creates
+academic years in the database on a schedule, from a Jalali date in
+configuration (`roshdeandishe.academic-year.start-month` / `start-day`, for
+example 1 Mordad), using `SolarCalendar`. The result is a stored code such as
+`1405-1406`, which then crosses the API (the grades endpoints take
+`academicYear=1405-1406`) and is displayed on the timetable and academic-year
+pages.
+
+That contradicts the earlier claims that persisted dates are calendar-neutral and
+that Jalali "is never stored" ([`DESIGN.md`](../../DESIGN.md) §8). The decision to
+add it was made explicitly on master in
+[`academic-year.md`](academic-year.md); what was not asked there is what it means
+for a second market.
+
+This is a domain rule, not a presentation seam, so W2 does not touch it. Nothing
+is proposed here beyond recording it, because every real choice is a product
+decision this document must not invent: when a non-Iranian school's year starts,
+what its code looks like, and whether the provisioner runs per tenant or per
+deployment. Those are in the open questions below.
+
 ## Suggested Order
 
-W0 is a bug fix and comes first; W3 depends on it to be meaningful. W2 then
-depends on W3, since the calendar seam reads the locale that W3 establishes.
-W5 is already done on master, so it is not in the order at all. W2 and W3 are
-small and unblock a credible non-Persian demo. W1 is the long pole and should start early because it touches every
-template. W6 and W7 are product-heavy and should not start until the open
-questions below are answered. W4 stays blocked.
+W0, W3 and W2 are done. W2b is mechanical and next. W5 was already done on
+master. W1 is the long pole and should start early because it touches every
+template; the English locale is not demonstrable beyond the page shell until it
+lands, since the page text is still Persian. W6 and W7 are product-heavy and
+should not start until the questions below are answered. W4 stays blocked, and
+W8 is only a finding until its questions are answered.
 
 ## Unresolved Questions
 
@@ -353,6 +467,15 @@ These are product decisions. This document does not answer them.
    repository decision.
 6. What is the pricing model — per school, per seat, per module, or a
    combination? W7 cannot be specified without it.
+
+7. Should the week start differ for a non-Iranian school? Today it is Saturday
+   everywhere, enforced by the server for study plans and exams. A Monday-first
+   grid in a European market would be a domain change across `studyplan`, `exam`
+   and `DESIGN.md`, not a display setting — which is why the calendar seam
+   deliberately keeps it fixed.
+8. When does a non-Iranian school's academic year start, and what is its code
+   (for example `2026-2027`)? Does the provisioner run per tenant or per
+   deployment? W8 cannot be specified without these.
 
 ## Out Of Scope
 

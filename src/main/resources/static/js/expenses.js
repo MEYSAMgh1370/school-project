@@ -23,8 +23,9 @@ document.addEventListener('alpine:init', () => {
         attachments: [],
         attachmentsLoading: false,
 
-        // انتخابگر بازه‌ی گزارش - جلالی، تبدیل با jalali.js (بدون هیچ کتابخانه‌ی خارجی)
-        summaryYear: 1405,
+        // انتخابگر بازه‌ی گزارش - سال/ماه/فصل در تقویم فعالِ صفحه (calendar.js)؛ سالِ
+        // پیش‌فرض همیشه «سال جاری» است، نه یک عدد ثابت که فقط در یک تقویم معنا دارد
+        summaryYear: Calendar.fromDate(new Date()).y,
         summaryPeriodKind: 'month',
         summaryPeriodIndex: 1,
         summaryGroupBy: 'category',
@@ -363,7 +364,7 @@ document.addEventListener('alpine:init', () => {
             this.summaryLoading = true;
             this.error = '';
             try {
-                const range = window.Jalali.periodRange(
+                const range = Calendar.periodRange(
                     Number(this.summaryYear), this.summaryPeriodKind, Number(this.summaryPeriodIndex));
 
                 const [summaryResponse, financeResponse] = await Promise.all([

@@ -2,7 +2,7 @@
 
 @param NavbarModel navbar
 
-@template.layout.main(title = "امور مالی مدرسه", scripts = java.util.List.of("/js/navbar.js", "/js/member-names.js", "/js/money.js", "/js/finance.js"), content = @`
+@template.layout.main(title = "امور مالی مدرسه", scripts = java.util.List.of("/js/navbar.js", "/js/jalali.js", "/js/calendar.js", "/js/member-names.js", "/js/money.js", "/js/finance.js"), content = @`
 @template.layout.navbar(navbar = navbar)
 
 <section class="section" id="main-content" role="main" tabindex="-1" x-data="financePage()">
@@ -74,8 +74,8 @@
                                         <span class="tag" :class="statusClass(invoice.status)"
                                               x-text="statusLabel(invoice.status)"></span>
                                     </td>
-                                    <td dir="ltr" x-text="new Date(invoice.issuedAt).toLocaleDateString('fa-IR')"></td>
-                                    <td dir="ltr" x-text="invoice.dueDate ? new Date(invoice.dueDate).toLocaleDateString('fa-IR') : '—'"></td>
+                                    <td dir="ltr" x-text="Calendar.formatDate(invoice.issuedAt)"></td>
+                                    <td dir="ltr" x-text="invoice.dueDate ? Calendar.formatDate(invoice.dueDate) : '—'"></td>
                                     <td>
                                         <button class="button is-small"
                                                 :class="{ 'is-link': expandedInvoiceId === invoice.id }"
@@ -113,7 +113,7 @@
                                             <td x-text="Money.formatAmount(payment.amount)"></td>
                                             <td x-text="methodLabel(payment.method)"></td>
                                             <td x-text="payment.note || '—'"></td>
-                                            <td dir="ltr" x-text="new Date(payment.paidAt).toLocaleDateString('fa-IR')"></td>
+                                            <td dir="ltr" x-text="Calendar.formatDate(payment.paidAt)"></td>
                                         </tr>
                                     </template>
                                     </tbody>

@@ -535,14 +535,31 @@ UX_ROADMAP §2 remains binding and is not repeated here. Additions:
   wire and is never stored; conversion is client-side via
   `static/js/jalali.js` (the `/expenses` precedent). The server has no
   Jalali library; a server-side Jalali-boundary need (e.g. a scheduled
-  Jalali-month job) would be a new explicit decision, not an import.
+  Jalali-month job) would be a new explicit decision, not an import. That
+  decision has since been made once, for academic years:
+  `school.internal.SolarCalendar` is a small port used by
+  `AcademicYearProvisioner` (`openspec/changes/academic-year.md`), and it does
+  store a Jalali-derived code such as `1405-1406`. Read "never stored" above
+  as true for dates and times, and not for that one code.
+- **Which calendar a page shows follows its locale** (2026-10-03,
+  [`decisions/2026-10-03-multi-market-not-migration.md`](openspec/decisions/2026-10-03-multi-market-not-migration.md)).
+  The Jalali bullet above describes the `fa` locale. `<html lang>` selects the
+  calendar: `fa` is Jalali, any other language is Gregorian with names from
+  `Intl`. Pages do not call `Jalali` or `toLocaleDateString('fa-IR')` for
+  dates; they go through `Calendar` (`static/js/calendar.js`: `formatDate`,
+  `formatRange`, `fromDate`, `toDate`, `daysInMonth`, `periodRange`,
+  `monthNames`, `weekdayNames`). A directional glyph (`‹` `›`) is written in
+  the RTL convention and given `.app-dir-glyph`, which mirrors it under
+  `dir="ltr"`. The week still starts Saturday in every locale: that is a
+  server rule, so the calendar seam does not move it.
 - **The week starts Saturday (شنبه); the weekend is Friday.** Any server-
   side "week" concept (e.g. `studyplan`'s week-start, MOSHAVERE_PORT_SPEC
   §6) anchors to `DayOfWeek.SATURDAY` — plain date arithmetic, no calendar
   library.
 - **Persian digits (۰–۹) for displayed numbers** — dates, counts, and
   amounts — applied at render time by the relevant shared client utility
-  (`Jalali.toPersianDigits()` or `Money.formatAmount()`); underlying data, DOM
+  (`Calendar.digits()` on pages that load `calendar.js`, otherwise
+  `Jalali.toPersianDigits()`, or `Money.formatAmount()`); underlying data, DOM
   state, and anything sorted/compared stays ASCII. The Latin-data rule
   (UX_ROADMAP §2) is unchanged and includes **phone numbers**: emails,
   tokens, IDs, and phones stay Latin digits with their `dir="ltr"` island.

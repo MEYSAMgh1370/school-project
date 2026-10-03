@@ -15,7 +15,7 @@ document.addEventListener('alpine:init', () => {
         intervals: [],
 
         pickerOpen: false,
-        pickerMonth: { jy: 1404, jm: 1 },
+        pickerMonth: { y: 0, m: 1 },
 
         dialog: null,
         dialogOpener: null,
@@ -55,8 +55,8 @@ document.addEventListener('alpine:init', () => {
             return `${year}-${month}-${day}`;
         },
 
-        // Jalali.toGregorian یک Date در نیمه‌شبِ UTC برمی‌گرداند (jalali.js:
-        // «تبدیل تاریخ جلالی به Date میلادی UTC»)؛ برای اینکه بتوان با
+        // Calendar.toDate یک Date در نیمه‌شبِ UTC برمی‌گرداند (calendar.js؛
+        // همان قرارداد jalali.js)؛ برای اینکه بتوان با
         // متدهای محلی (getDate/setDate/...) رویش حساب کرد، باید اول به
         // نیمه‌شبِ محلیِ همان روز تبدیل شود - وگرنه در timezoneهای منفی
         // (غرب UTC) یک روز عقب می‌افتد.
@@ -72,7 +72,7 @@ document.addEventListener('alpine:init', () => {
         },
 
         faDigits(value) {
-            return Jalali.toPersianDigits(value);
+            return Calendar.digits(value);
         },
 
         timeLabel(date) {
@@ -161,22 +161,14 @@ document.addEventListener('alpine:init', () => {
         },
 
         syncPickerMonth() {
-            this.pickerMonth = Jalali.toJalali(this.weekStart.getFullYear(), this.weekStart.getMonth() + 1, this.weekStart.getDate());
+            const { y, m } = Calendar.fromDate(this.weekStart);
+            this.pickerMonth = { y, m };
         },
 
         get weekRangeLabel() {
-            const start = Jalali.toJalali(this.weekStart.getFullYear(), this.weekStart.getMonth() + 1, this.weekStart.getDate());
             const endDate = new Date(this.weekStart);
             endDate.setDate(endDate.getDate() + 6);
-            const end = Jalali.toJalali(endDate.getFullYear(), endDate.getMonth() + 1, endDate.getDate());
-            const startLabel = this.faDigits(start.jd) + ' ' + Jalali.monthNames[start.jm - 1];
-            if (start.jy === end.jy && start.jm === end.jm) {
-                return this.faDigits(start.jd) + ' تا ' + this.faDigits(end.jd) + ' ' + Jalali.monthNames[start.jm - 1] + ' ' + this.faDigits(start.jy);
-            }
-            if (start.jy === end.jy) {
-                return startLabel + ' تا ' + this.faDigits(end.jd) + ' ' + Jalali.monthNames[end.jm - 1] + ' ' + this.faDigits(start.jy);
-            }
-            return startLabel + ' ' + this.faDigits(start.jy) + ' تا ' + this.faDigits(end.jd) + ' ' + Jalali.monthNames[end.jm - 1] + ' ' + this.faDigits(end.jy);
+            return Calendar.formatRange(this.weekStart, endDate);
         },
 
         get weekDays() {
@@ -186,11 +178,11 @@ document.addEventListener('alpine:init', () => {
                 const d = new Date(this.weekStart);
                 d.setDate(d.getDate() + i);
                 const iso = this.formatLocalDate(d);
-                const jal = Jalali.toJalali(d.getFullYear(), d.getMonth() + 1, d.getDate());
+                const civil = Calendar.fromDate(d);
                 days.push({
                     iso,
-                    name: Jalali.weekdayNames[i],
-                    dateNum: this.faDigits(jal.jd),
+                    name: Calendar.weekdayNames[i],
+                    dateNum: this.faDigits(civil.d),
                     isToday: iso === todayIso,
                     blocks: this.blocksForDay(iso)
                 });
@@ -243,7 +235,7 @@ document.addEventListener('alpine:init', () => {
         },
 
         hourMarkLabel(h) {
-            return this.faDigits(h) + ':۰۰';
+            return this.faDigits(h) + ':' + this.faDigits('00');
         },
 
         // ------------------------------------------------------- ماه‌نما
@@ -253,42 +245,34 @@ document.addEventListener('alpine:init', () => {
         },
 
         pickerPrevMonth() {
-            let { jy, jm } = this.pickerMonth;
-            jm -= 1;
-            if (jm < 1) {
-                jm = 12;
-                jy -= 1;
+            let { y, m } = this.pickerMonth;
+            m -= 1;
+            if (m < 1) {
+                m = 12;
+                y -= 1;
             }
-            this.pickerMonth = { jy, jm };
+            this.pickerMonth = { y, m };
         },
 
         pickerNextMonth() {
-            let { jy, jm } = this.pickerMonth;
-            jm += 1;
-            if (jm > 12) {
-                jm = 1;
-                jy += 1;
+            let { y, m } = this.pickerMonth;
+            m += 1;
+            if (m > 12) {
+                m = 1;
+                y += 1;
             }
-            this.pickerMonth = { jy, jm };
+            this.pickerMonth = { y, m };
         },
 
         get pickerMonthLabel() {
-            return Jalali.monthNames[this.pickerMonth.jm - 1] + ' ' + this.faDigits(this.pickerMonth.jy);
-        },
-
-        daysInJalaliMonth(jy, jm) {
-            const start = Jalali.toGregorian(jy, jm, 1);
-            const nextJy = jm === 12 ? jy + 1 : jy;
-            const nextJm = jm === 12 ? 1 : jm + 1;
-            const end = Jalali.toGregorian(nextJy, nextJm, 1);
-            return Math.round((end - start) / 86400000);
+            return Calendar.monthNames[this.pickerMonth.m - 1] + ' ' + this.faDigits(this.pickerMonth.y);
         },
 
         get pickerCells() {
-            const { jy, jm } = this.pickerMonth;
-            const firstLocal = this.toLocalMidnight(Jalali.toGregorian(jy, jm, 1));
-            const firstCol = Jalali.weekdayIndex(firstLocal);
-            const daysCount = this.daysInJalaliMonth(jy, jm);
+            const { y, m } = this.pickerMonth;
+            const firstLocal = this.toLocalMidnight(Calendar.toDate(y, m, 1));
+            const firstCol = Calendar.weekdayIndex(firstLocal);
+            const daysCount = Calendar.daysInMonth(y, m);
             const weekStartIso = this.formatLocalDate(this.weekStart);
             const weekEndDate = new Date(this.weekStart);
             weekEndDate.setDate(weekEndDate.getDate() + 6);
@@ -300,7 +284,7 @@ document.addEventListener('alpine:init', () => {
                 cells.push({ key: 'b' + i, blank: true });
             }
             for (let day = 1; day <= daysCount; day += 1) {
-                const localDate = this.toLocalMidnight(Jalali.toGregorian(jy, jm, day));
+                const localDate = this.toLocalMidnight(Calendar.toDate(y, m, day));
                 const iso = this.formatLocalDate(localDate);
                 cells.push({
                     key: 'd' + day,
