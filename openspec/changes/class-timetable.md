@@ -237,13 +237,8 @@ natural follow-up), per-school configurable school days, and the Android client.
   grid with the same picker as `/my-grades` when there is more than one view.
   Dashboard: «برنامهٔ امروز» for the `STUDENT` role only (Thursday/Friday say there
   is no class), with a link to the week.
-- Known, not changed here: sidebar and dashboard links come from `NavCatalog`, which
-  decides visibility by built-in role codes (as for every other page); a custom role that
-  holds `TIMETABLE_MANAGE` can call the API but gets no link until navigation becomes
-  permission-aware (a separate change).
-- Known, not changed here: a malformed JSON body (for example an unknown enum value in
-  a body field) is answered with `500` by the platform's exception handling on every
-  endpoint; the timetable avoids it for `weekday` by taking a string.
+- Navigation: the sidebar link also shows for a custom role holding `TIMETABLE_MANAGE` (see [`self-service-gate-nav-permissions-bad-requests.md`](self-service-gate-nav-permissions-bad-requests.md)); the dashboard card stays role-based.
+- A malformed JSON body used to answer `500` on every endpoint; since 2026-10-03 it is `400` (see the same document). `weekday` is still taken as a string so an unknown day answers the domain error.
 
 ## Compatibility And Risk
 

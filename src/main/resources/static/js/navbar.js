@@ -3,19 +3,24 @@ document.addEventListener('alpine:init', () => {
     // داشبورد) - منبع حقیقت همچنان state خودِ سوییچر است و این store فقط
     // آینه‌ی آن است.
     Alpine.store('nav', {
-        selectedRole: ''
+        selectedRole: '',
+        // Permissionهای نقشِ انتخاب‌شده در مدرسه‌ی انتخاب‌شده (برای نمایشِ لینک به نقش‌های سفارشی)
+        permissions: []
     });
 
     // سوییچر مدرسه/نقش (Open Question 2 - حل‌شده): انتخاب فقط client-side
     // است و در localStorage می‌ماند؛ نقش صرفاً نمایشی است (backend همه‌ی
     // نقش‌های فعال را چک می‌کند - CLAUDE.md بند ۱۱ سؤال ۲).
-    Alpine.data('schoolNavbar', (schoolRoles) => ({
+    Alpine.data('schoolNavbar', (schoolRoles, rolePermissions) => ({
         menuOpen: false,
         schoolOpen: false,
         personOpen: false,
         selectedSchoolId: null,
         selectedRole: '',
         schoolRoles,
+        rolePermissions: rolePermissions || {},
+        // Permissionهای نقشِ انتخاب‌شده؛ سایدبار با آن لینکِ مدیریتی را به نقشِ سفارشی هم نشان می‌دهد
+        permissions: [],
         openGroups: {},
         init() {
             const ids = Object.keys(this.schoolRoles).map(Number);
@@ -60,7 +65,10 @@ document.addEventListener('alpine:init', () => {
             });
         },
         syncStore() {
+            const schoolPermissions = this.rolePermissions[this.selectedSchoolId] || {};
+            this.permissions = schoolPermissions[this.selectedRole] || [];
             Alpine.store('nav').selectedRole = this.selectedRole;
+            Alpine.store('nav').permissions = this.permissions;
         },
         isGroupOpen(index) {
             return this.openGroups[index] === true;
@@ -100,6 +108,8 @@ document.addEventListener('alpine:init', () => {
             if (!roles.includes(this.selectedRole)) {
                 this.selectRole(roles.length ? roles[0] : '');
             }
+            // نقشِ همنامِ مدرسه‌ی دیگر (نقش سفارشی) Permissionهای دیگری دارد
+            this.syncStore();
             this.schoolOpen = false;
             // صفحه‌های مدیریتی (مثلاً /people) با گوش‌دادن به این رویداد
             // داده‌ی خودشان را برای مدرسه‌ی تازه‌انتخاب‌شده دوباره می‌گیرند.

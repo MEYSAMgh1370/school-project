@@ -74,9 +74,33 @@ class NavSharedSourceRenderTest {
         // `'` و `&&` ممکن است escape شوند؛ مرورگر قبل از Alpine دوباره decode می‌کند
         String decoded = HtmlUtils.htmlUnescape(html);
         assertThat(decoded).contains(
-                "href=\"/people\" x-show=\"['SCHOOL_ADMIN'].includes(selectedRole)\"",
-                "href=\"/students\" x-show=\"['SCHOOL_ADMIN', 'TEACHER'].includes(selectedRole)\"",
+                "href=\"/people\" x-show=\"['SCHOOL_ADMIN'].includes(selectedRole) "
+                        + "|| ['MEMBERSHIP_MANAGE'].some(p => permissions.includes(p))\"",
+                "href=\"/students\" x-show=\"['SCHOOL_ADMIN', 'TEACHER'].includes(selectedRole) "
+                        + "|| ['STUDENT_ENROLL'].some(p => permissions.includes(p))\"",
+                // صفحه‌های «من» فقط بر اساس نقش‌اند (Permissionِ خودسرویس مثل GRADES_VIEW معیار نیست)
                 "href=\"/my-grades\" x-show=\"['STUDENT', 'PARENT'].includes(selectedRole)\"");
+    }
+
+    @Test
+    void theNavbarCarriesTheSelectedRolesPermissionsForCustomRoles() {
+        NavbarModel navbar = new NavbarModel("معاون", List.of(new NavbarModel.SchoolOption(
+                7L, "مدرسه‌ی نمونه", List.of("DEPUTY"),
+                Map.of("DEPUTY", List.of("TIMETABLE_MANAGE", "CLASS_VIEW")))));
+
+        String html = HtmlUtils.htmlUnescape(render("layout/navbar.jte", Map.of("navbar", navbar)));
+
+        // schoolNavbar(roles، Permissionهای هر نقش) و لینکی که با Permission نشان داده می‌شود
+        assertThat(html).contains("schoolNavbar({7: ['DEPUTY',],}, {7: {'DEPUTY': ['TIMETABLE_MANAGE','CLASS_VIEW',],},})");
+        assertThat(html).contains("href=\"/timetable\" x-show=\"['SCHOOL_ADMIN'].includes(selectedRole) "
+                + "|| ['TIMETABLE_MANAGE'].some(p => permissions.includes(p))\"");
+    }
+
+    @Test
+    void permissionsAreEmptyForSystemRolesRenderedWithoutThem() {
+        String html = HtmlUtils.htmlUnescape(render("layout/navbar.jte", Map.of("navbar", NAVBAR)));
+
+        assertThat(html).contains("schoolNavbar({1: ['SCHOOL_ADMIN','TEACHER',],}, {1: {'SCHOOL_ADMIN': [],'TEACHER': [],},})");
     }
 
     @Test

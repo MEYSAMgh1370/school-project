@@ -93,3 +93,9 @@ server-side. Accordion state saved under the previous index keys is ignored once
   the sidebar, role-gating expressions, the `x-data` root, section order, mobile
   columns.
 - Existing `*FlowIntegrationTest` assertions on `href="/…"` keep passing in CI.
+
+## Update 2026-10-03
+
+Sidebar links and group headers are now also shown to a custom role that holds the page's
+management permission (`NavCatalog.Link.permissions`); dashboard shortcut cards stay by
+built-in role. See [`self-service-gate-nav-permissions-bad-requests.md`](self-service-gate-nav-permissions-bad-requests.md).

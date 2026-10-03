@@ -75,4 +75,40 @@ class NavCatalogTest {
         assertThat(expression).endsWith("].includes($store.nav.selectedRole)")
                 .contains("'SCHOOL_ADMIN'", "'TEACHER'", "'STUDENT'", "'PARENT'", "'FINANCE_ADMIN'");
     }
+
+    @Test
+    void selfServiceLinksAreRoleOnlyAndManagementLinksNameTheirManagePermission() {
+        allLinks().forEach(link -> {
+            if (link.href().startsWith("/my-")) {
+                // «من»: بدونِ Permission - GRADES_VIEW/FINANCE_VIEW را نقش‌های دیگر هم دارند
+                assertThat(link.permissions()).as(link.href()).isEmpty();
+            } else {
+                assertThat(link.permissions()).as(link.href()).isNotEmpty();
+            }
+        });
+        assertThat(allLinks().stream().filter(l -> l.href().equals("/timetable")).findFirst().orElseThrow()
+                .permissions()).containsExactly("TIMETABLE_MANAGE");
+    }
+
+    @Test
+    void visibleWhenWithPermissionsAddsAnOrBranchAndWithoutThemIsUnchanged() {
+        NavCatalog.Link timetable = allLinks().stream().filter(l -> l.href().equals("/timetable")).findFirst().orElseThrow();
+        NavCatalog.Link mine = allLinks().stream().filter(l -> l.href().equals("/my-timetable")).findFirst().orElseThrow();
+
+        assertThat(timetable.visibleWhen("role", "perms"))
+                .isEqualTo("['SCHOOL_ADMIN'].includes(role) || ['TIMETABLE_MANAGE'].some(p => perms.includes(p))");
+        assertThat(timetable.visibleWhen("role")).isEqualTo("['SCHOOL_ADMIN'].includes(role)");
+        // لینکِ «من» حتی با عبارتِ Permission همان شرطِ نقش را می‌دهد
+        assertThat(mine.visibleWhen("role", "perms")).isEqualTo(mine.visibleWhen("role"));
+    }
+
+    @Test
+    void aGroupIsAlsoVisibleForTheUnionOfItsLinksPermissions() {
+        Group school = NavCatalog.groups().stream().filter(g -> g.id().equals("school")).findFirst().orElseThrow();
+
+        assertThat(school.visibleWhen("role", "perms"))
+                .startsWith("['SCHOOL_ADMIN', 'TEACHER'].includes(role) || [")
+                .contains("'MEMBERSHIP_MANAGE'", "'ACADEMIC_YEAR_MANAGE'", "'ROLE_MANAGE'")
+                .endsWith(".some(p => perms.includes(p))");
+    }
 }
