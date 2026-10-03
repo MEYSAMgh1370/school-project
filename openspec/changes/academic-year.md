@@ -2,8 +2,9 @@
 
 Status: proposed 2026-10-02. **Phase 0 is implemented** (migration `V6`, years
 created by the application, the school's current year, the «سال تحصیلی» page) and
-its behavior is current: it is recorded in
-[`specs/current-system.md`](../specs/current-system.md). **Phases 1-3 are not
+**phase 1 is implemented 2026-10-03** (migration `V9`, see "Phase 1 design"); their
+behavior is current and recorded in
+[`specs/current-system.md`](../specs/current-system.md). **Phases 2-3 are not
 implemented**, and nothing about them changes the current specification until
 they are built. Several design questions were answered by the product owner on
 2026-10-02 and more on 2026-10-03 (below); the rest are still open. Foundational change: other proposals
@@ -252,10 +253,10 @@ systems, and multi-year transcripts.
 - Because years are keys, the digit normalization already done on `/grades`
   becomes a server-side rule (one canonical form) instead of a page habit.
 
-### Phase 1 design (2026-10-03)
+### Phase 1 design (2026-10-03) - implemented
 
 Built on the decisions above; the assumptions are listed so they can be overturned.
-Five slices, each with its own tests:
+Five slices, each with its own tests (all five are built; "As built" below):
 
 1. **The year on a grade is validated.** `recordGrade` canonicalizes the year (Persian
    and Arabic digits to ASCII, trimmed) and rejects any year that is not in
@@ -289,6 +290,26 @@ Five slices, each with its own tests:
 5. **Nothing else changes in phase 1:** classes, enrollments, tuition and promotion are
    phases 2-3; the timetable already stores its year.
 
+**As built.** `AcademicYearCodes` (public, `academic.shared`) is the canonical form;
+`AcademicFacadeImpl.requireListedYear` returns the year's start year for the range check;
+`GradeYearAudit` logs a WARNING at startup per (school, unlisted year) with the row count
+and touches nothing. `CourseEntity.isOfferedIn(startYear)` is the range rule (both ends
+inclusive). Course rules apply in `recordGrade`, `listCoursesForClass(…, year)`,
+`listCoursesForTimetable(…, year)` and `setEntry` (the range is checked against the
+period's own year); a course outside its range is `400 course-not-valid-for-year`, an
+unlisted year `400 invalid-academic-year`. `AcademicYearVisibility` (controller layer)
+decides "any year or only the current one" from `ACADEMIC_YEAR_MANAGE`; a non-holder
+asking for another year gets `403 academic-year-not-allowed` on the grade-book endpoints,
+and `/api/me/schools/{id}/grades` returns only the current year's rows (legacy free-text
+years are hidden from non-admins once the school has a current year). The `/grades` page
+shows a select of the listed years for the admin, the current year alone for others, and
+the old text field only when there is neither; its course picker and the timetable's
+follow the chosen year. The navbar tags the selected school with its current year and the
+dashboard says «سال تحصیلی جاری: …» (Persian digits, rendered on the server because the
+navbar is on pages without `calendar.js`). Verified: unit and real-database tests (see
+Tests), and the `/grades` page in a browser against mocked APIs in three modes (admin,
+teacher, school without a current year).
+
 ## Acceptance Criteria
 
 Phase 0 (met; later phases are refined when scheduled):
@@ -310,9 +331,22 @@ Phase 0 (met; later phases are refined when scheduled):
   from it and stays editable; nothing else changes and no data is touched.
 - `ModularityTests.verifyModularStructure()` and `ddl-auto=validate` pass.
 
-Phase 1 and later (not built): grades validated against the list; the
-role-by-year visibility of "Who sees which year"; year-scoped courses, tuition,
-classes/enrollments and promotion.
+Phase 1 (met 2026-10-03):
+
+- A grade is recorded only for a listed year, in canonical form (`400 invalid-academic-year`
+  otherwise, nothing saved); reading by year canonicalizes the digits; existing rows are
+  never changed and unmatched ones are logged at startup.
+- A course outside its validity range is absent from the year's pickers (grade book and
+  timetable) and rejected for grades and timetable cells (`400 course-not-valid-for-year`);
+  rows that already exist are untouched; both ends are inclusive, null means unbounded, and
+  the database rejects `from > until`.
+- A holder of `ACADEMIC_YEAR_MANAGE` reads and writes any year; others get only the current
+  year (`403 academic-year-not-allowed`; `/my-grades` shows only the current year); a school
+  with no current year is unrestricted.
+- The navbar and the dashboard show the selected school's current year, and show nothing
+  when there is none.
+
+Phases 2-3 (not built): year-scoped tuition and invoices, classes/enrollments and promotion.
 
 ## Tests
 
@@ -323,6 +357,11 @@ classes/enrollments and promotion.
   configuration, invalid dates), `AcademicYearFacadeTest`,
   `AcademicYearControllerTest` (any active membership counts) and
   `AcademicYearPageRenderTest`.
+- Phase 1: `GradeCourseFacadeTest`, `TimetableFacadeTest`, `GradeYearAuditTest`,
+  `AcademicYearVisibilityTest` (unit); `GradeByCourseFlowIntegrationTest` (range, picker,
+  invalid year, the database check), `AcademicYearVisibilityFlowIntegrationTest`
+  (teacher/admin/student, the unrestricted school, the dashboard year),
+  `GradesCoursePickerRenderTest`, `NavSharedSourceRenderTest`.
 - Integration: `AcademicYearFlowIntegrationTest` (list, choose, the two views,
   permission and stranger negatives, an unknown year, and that the application
   created the years itself without gaps or duplicates). Verified locally against

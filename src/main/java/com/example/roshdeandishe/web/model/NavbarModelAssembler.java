@@ -65,7 +65,9 @@ public class NavbarModelAssembler {
             options.add(new NavbarModel.SchoolOption(
                     schoolId, schoolName(school, schoolId), roles, iamFacade.findPermissionCodesByRole(schoolId, roles),
                     // مدرسه‌ی نیافته فقط یک گزینه‌ی نمایشی است؛ اجرای قاعده‌ی هفته با سرور است
-                    school.map(SchoolFacade.SchoolInfo::weekStart).orElse(SchoolFacade.WeekStart.SATURDAY)));
+                    school.map(SchoolFacade.SchoolInfo::weekStart).orElse(SchoolFacade.WeekStart.SATURDAY),
+                    schoolFacade.findCurrentAcademicYear(new SchoolId(schoolId))
+                            .map(SchoolFacade.AcademicYearInfo::code).orElse(null)));
         });
         Map<Long, Map<String, String>> roleNames = new LinkedHashMap<>();
         allRolesBySchool.forEach((schoolId, roles) -> {

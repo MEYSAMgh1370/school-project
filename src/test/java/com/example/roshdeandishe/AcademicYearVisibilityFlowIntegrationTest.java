@@ -158,4 +158,22 @@ class AcademicYearVisibilityFlowIntegrationTest {
         mockMvc.perform(get("/api/me/schools/1/grades").session(student))
                 .andExpect(status().isOk()).andExpect(jsonPath("$.length()").value(2));
     }
+
+    @Test
+    void theDashboardShowsTheCurrentYearOnlyWhenTheSchoolHasChosenOne() throws Exception {
+        MockHttpSession admin = login("admin@roshdeandishe.test", "password");
+        clearCurrentYear();
+        try {
+            String without = mockMvc.perform(get("/dashboard").session(admin)).andExpect(status().isOk())
+                    .andReturn().getResponse().getContentAsString();
+            assertThat(without).doesNotContain("app-year-tag").doesNotContain("سال تحصیلی جاری:");
+
+            setCurrentYear(CURRENT);
+            String with = mockMvc.perform(get("/dashboard").session(admin)).andExpect(status().isOk())
+                    .andReturn().getResponse().getContentAsString();
+            assertThat(with).contains("app-year-tag").contains("سال تحصیلی جاری:").contains("۱۴۰۵-۱۴۰۶");
+        } finally {
+            clearCurrentYear();
+        }
+    }
 }

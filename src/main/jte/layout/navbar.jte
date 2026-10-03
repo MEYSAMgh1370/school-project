@@ -40,7 +40,8 @@
                     <div class="navbar-item has-dropdown" :class="{ 'is-active': schoolOpen }" @click.outside="schoolOpen = false">
                         <button type="button" class="navbar-link" aria-haspopup="true" :aria-expanded="schoolOpen" @click="schoolOpen = !schoolOpen; personOpen = false">
                             @for(var school : navbar.schools())
-                                <span x-show="selectedSchoolId === ${school.id()}">${school.name()}</span>
+                                <span x-show="selectedSchoolId === ${school.id()}">${school.name()}@if(school.currentYear() != null)
+                                    <span class="tag is-light app-year-tag" dir="ltr" title="سال تحصیلی جاری">${school.currentYearDisplay()}</span>@endif</span>
                             @endfor
                         </button>
                         <div class="navbar-dropdown">

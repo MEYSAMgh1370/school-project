@@ -14,6 +14,15 @@
         <h1 class="title is-4">عضویت‌های من</h1>
         <p class="subtitle is-6" dir="ltr">${model.email()}</p>
 
+        <%-- سالِ تحصیلیِ جاریِ مدرسه‌ی انتخاب‌شده (academic-year.md فاز ۱)؛ مدرسه‌ی بدونِ سالِ جاری چیزی نشان نمی‌دهد --%>
+        @for(var school : navbar.schools())
+            @if(school.currentYear() != null)
+                <p class="is-size-7 has-text-grey mb-4" x-data x-cloak x-show="$store.nav.selectedSchoolId === ${school.id()}">
+                    سال تحصیلی جاری: <span dir="ltr">${school.currentYearDisplay()}</span>
+                </p>
+            @endif
+        @endfor
+
         <%-- «دسترسی سریع»: همان لینک‌های سایدبار، از منبع واحد NavCatalog (فقط
              نمایش - کنترل دسترسی سمت سرور می‌ماند). نقشِ انتخاب‌شده از
              $store.nav (آینه‌ی سوییچر navbar.js) می‌آید؛ کاربر بدون عضویت نقشی

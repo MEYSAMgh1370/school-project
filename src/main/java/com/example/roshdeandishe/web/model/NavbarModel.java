@@ -52,18 +52,41 @@ public record NavbarModel(String fullName, List<SchoolOption> schools, Map<Long,
      *                        لینکِ مدیریتی برای نقشِ سفارشیِ دارای Permission هم نمایش داده می‌شود
      *                        (فقط نمایش؛ کنترل دسترسی همیشه سمت سرور است).
      * @param weekStart       روز شروع هفته‌ی همین مدرسه (W9)؛ صفحه‌ها هفته را از آن می‌چرخانند.
+     * @param currentYear     کدِ سال تحصیلیِ جاریِ مدرسه («1405-1406») یا تهی اگر مدرسه هنوز انتخاب نکرده
+     *                        (academic-year.md فاز ۱)؛ ناوبار و داشبورد آن را نشان می‌دهند.
      */
     public record SchoolOption(Long id, String name, List<String> roles, Map<String, List<String>> rolePermissions,
-                               WeekStart weekStart) {
+                               WeekStart weekStart, String currentYear) {
 
-        /** بدون Permission و با هفته‌ی شنبه‌محور (صفحه‌هایی که فقط نقش‌های سیستمی دارند و در تست‌ها). */
+        /** بدون Permission، هفته‌ی شنبه‌محور و بدونِ سالِ جاری (صفحه‌هایی که فقط نقش‌های سیستمی دارند و در تست‌ها). */
         public SchoolOption(Long id, String name, List<String> roles) {
-            this(id, name, roles, Map.of(), WeekStart.SATURDAY);
+            this(id, name, roles, Map.of(), WeekStart.SATURDAY, null);
         }
 
-        /** هفته‌ی شنبه‌محور (تست‌ها). */
+        /** هفته‌ی شنبه‌محور و بدونِ سالِ جاری (تست‌ها). */
         public SchoolOption(Long id, String name, List<String> roles, Map<String, List<String>> rolePermissions) {
-            this(id, name, roles, rolePermissions, WeekStart.SATURDAY);
+            this(id, name, roles, rolePermissions, WeekStart.SATURDAY, null);
+        }
+
+        /** بدونِ سالِ جاری. */
+        public SchoolOption(Long id, String name, List<String> roles, Map<String, List<String>> rolePermissions,
+                            WeekStart weekStart) {
+            this(id, name, roles, rolePermissions, weekStart, null);
+        }
+
+        /**
+         * سالِ جاری با رقم فارسی برای نمایش (DESIGN.md §8)؛ ناوبار روی صفحه‌هایی هم می‌آید که calendar.js
+         * ندارند، پس تبدیل سمت سرور است. تهی اگر سالِ جاری ندارد.
+         */
+        public String currentYearDisplay() {
+            if (currentYear == null) {
+                return null;
+            }
+            StringBuilder display = new StringBuilder(currentYear.length());
+            for (char character : currentYear.toCharArray()) {
+                display.append(character >= '0' && character <= '9' ? (char) ('۰' + character - '0') : character);
+            }
+            return display.toString();
         }
     }
 }
