@@ -1,15 +1,40 @@
 name: Claude code review
 
-# Runs the official code-review plugin on every pull request and posts the
-# findings as inline comments on the lines they concern. Claude skips drafts,
-# closed PRs, and PRs it judges too trivial to review, so the job is cheap on
-# small changes. The check never blocks a merge.
+# DISABLED for now. Codex already reviews every pull request here - it is set up
+# outside the repository, at chatgpt.com/codex/cloud/settings/general - so a
+# second reviewer on every PR is redundant. The `pull_request` triggers below are
+# commented out, so nothing runs and no check appears on a pull request.
 #
-# The action refuses to run unless this file is byte-identical to the copy on
-# the default branch, which is how it stops a PR from rewriting its own
-# reviewer. So it does nothing on the PR that adds or edits it - the job still
-# reports success - and starts reviewing only once that PR is merged. A `review`
-# job that passes in seconds having reviewed nothing is this check, not a bug.
+# To re-enable: uncomment those two lines. Nothing else needs changing; both
+# findings from the review of #95 are already fixed here.
+#
+# `workflow_dispatch` is kept only so this file stays a valid workflow. A manual
+# run does nothing useful: the prompt needs a pull request's number and head
+# commit, and a dispatch carries neither.
+#
+# What it does when enabled: runs the official code-review plugin and posts
+# findings as inline comments on the lines they concern. The check never blocks
+# a merge.
+#
+# Three constraints that are easy to lose track of:
+#
+#  - The action refuses to run unless this file is byte-identical to the copy on
+#    the default branch, which is how it stops a pull request from rewriting its
+#    own reviewer. So it does nothing on the PR that adds or edits it - the job
+#    still reports success - and begins reviewing only once that PR is merged. A
+#    `review` job that passes in seconds having reviewed nothing is this check,
+#    not a bug.
+#  - The plugin skips a pull request that already carries a comment from Claude,
+#    and it looks for one across the whole PR rather than on the current commit.
+#    Left alone, that means the first push is reviewed and every later push gets
+#    a silent green no-op. The `--append-system-prompt` line below is what asks
+#    for the current head to be reviewed regardless. It countermands the skill's
+#    own first step, so treat it as UNVERIFIED: it is only proven once one pull
+#    request receives reviews on two separate pushes.
+#  - A fork pull request, and a Dependabot one treated as a fork, is served no
+#    repository secrets, so the token is empty and the job fails on
+#    authentication instead of reviewing. The job's `if` below skips those
+#    rather than leaving a red check nobody can act on.
 #
 # Authentication: this expects a CLAUDE_CODE_OAUTH_TOKEN repository secret
 # (generated with `claude setup-token`, billed to the Claude subscription).
@@ -17,8 +42,10 @@ name: Claude code review
 #   anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
 
 on:
-  pull_request:
-    types: [opened, synchronize, ready_for_review, reopened]
+  workflow_dispatch:
+
+  # pull_request:
+  #   types: [opened, synchronize, ready_for_review, reopened]
 
 # A new push supersedes the review still running on the old commit.
 concurrency:
@@ -29,6 +56,12 @@ jobs:
   review:
     runs-on: ubuntu-latest
     timeout-minutes: 30
+
+    # Skip the pull requests that are served no secrets; see the header.
+    if: >-
+      github.event_name != 'pull_request' ||
+      (github.event.pull_request.head.repo.full_name == github.repository &&
+       github.actor != 'dependabot[bot]')
 
     permissions:
       contents: read
@@ -47,6 +80,9 @@ jobs:
           plugin_marketplaces: "https://github.com/anthropics/claude-code.git"
           plugins: "code-review@claude-code-plugins"
           prompt: "/code-review:code-review --comment ${{ github.repository }}/pull/${{ github.event.pull_request.number }}"
-          # The action starts the inline-comment MCP server only when
-          # --allowedTools names it, even though the skill's own frontmatter does.
-          claude_args: '--allowedTools "mcp__github_inline_comment__create_inline_comment"'
+          # --allowedTools: the action starts the inline-comment MCP server only
+          #   when this names it, even though the skill's frontmatter does too.
+          # --append-system-prompt: the re-review override; see the header.
+          claude_args: |
+            --allowedTools "mcp__github_inline_comment__create_inline_comment"
+            --append-system-prompt "Review this pull request's current head commit ${{ github.event.pull_request.head.sha }}. Any earlier comment from Claude on this pull request describes an earlier commit, so it is not a reason to skip reviewing the current one."
