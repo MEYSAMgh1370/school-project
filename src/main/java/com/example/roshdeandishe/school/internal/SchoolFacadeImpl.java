@@ -44,9 +44,17 @@ class SchoolFacadeImpl implements SchoolFacade {
     @Override
     @Transactional
     public SchoolId createSchool(String name, String timezone, String locale, SchoolLevel level, String slug) {
+        return createSchool(name, timezone, locale, level, slug, WeekStart.SATURDAY);
+    }
+
+    @Override
+    @Transactional
+    public SchoolId createSchool(String name, String timezone, String locale, SchoolLevel level, String slug,
+                                 WeekStart weekStart) {
         String normalizedSlug = normalizeAndValidateSlug(slug);
-        SchoolEntity entity = schoolRepository.save(new SchoolEntity(name, timezone, locale, level, normalizedSlug));
-        return new SchoolId(entity.getId());
+        SchoolEntity entity = new SchoolEntity(name, timezone, locale, level, normalizedSlug);
+        entity.setWeekStartDay((weekStart == null ? WeekStart.SATURDAY : weekStart).code());
+        return new SchoolId(schoolRepository.save(entity).getId());
     }
 
     @Override
@@ -140,7 +148,8 @@ class SchoolFacadeImpl implements SchoolFacade {
                 entity.getTimezone(),
                 entity.getLocale(),
                 entity.getSchoolLevel(),
-                entity.getSlug()
+                entity.getSlug(),
+                WeekStart.fromCode(entity.getWeekStartDay())
         );
     }
 }
