@@ -252,6 +252,43 @@ systems, and multi-year transcripts.
 - Because years are keys, the digit normalization already done on `/grades`
   becomes a server-side rule (one canonical form) instead of a page habit.
 
+### Phase 1 design (2026-10-03)
+
+Built on the decisions above; the assumptions are listed so they can be overturned.
+Five slices, each with its own tests:
+
+1. **The year on a grade is validated.** `recordGrade` canonicalizes the year (Persian
+   and Arabic digits to ASCII, trimmed) and rejects any year that is not in
+   `SchoolFacade.listAcademicYears()` with `400 invalid-academic-year`. Reads only
+   canonicalize the digits. Existing grades are never rewritten or dropped; a startup
+   audit logs a WARNING with the count per school of grade rows whose year matches no
+   listed year (reported, not guessed - the admin still sees them).
+2. **Courses have a validity range.** `academic.courses` gets `valid_from_year` and
+   `valid_until_year` (nullable integers, the *start year* of an academic year, inclusive,
+   `from <= until`); both null means "always" (every existing course). A course is
+   offered for the year `Y-(Y+1)` iff `from <= Y` (or null) and `Y <= until` (or null).
+   The ranges are data, managed by migrations like the rest of the catalog. Used by:
+   the grade-book course picker (`GET .../grades/courses?classId=&academicYear=`; without
+   the year parameter the whole grade-level list, as before), `recordGrade` and the
+   timetable (`setEntry` and the timetable course picker take the timetable's year).
+   A course outside its range is `400 course-not-valid-for-year`. Rows that already
+   exist (grades, timetable cells) are not touched when a course is closed.
+3. **Who sees which year (decisions 1, 2 and 5).** Whoever holds
+   `ACADEMIC_YEAR_MANAGE` (the school admin by default) sees and may correct any year;
+   everyone else sees only the school's current year: `/api/me/schools/{id}/grades`
+   returns only the current year's grades, and the grade-book endpoints
+   (`GRADES_EDIT`, used by teachers) read and write only the current year, otherwise
+   `403 academic-year-not-allowed`. **Assumption:** a school that has not chosen a
+   current year yet is not restricted, because restricting would hide every existing
+   school's grades until the admin picks a year; the restriction starts the day a year
+   is chosen.
+4. **The current year is visible.** The navbar and the dashboard show the selected
+   school's current year (or nothing if none is chosen). The `/grades` year field
+   becomes a select of the listed years for the admin and a fixed current year for
+   others.
+5. **Nothing else changes in phase 1:** classes, enrollments, tuition and promotion are
+   phases 2-3; the timetable already stores its year.
+
 ## Acceptance Criteria
 
 Phase 0 (met; later phases are refined when scheduled):
