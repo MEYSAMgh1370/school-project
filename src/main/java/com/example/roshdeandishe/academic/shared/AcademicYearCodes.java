@@ -1,17 +1,17 @@
-package com.example.roshdeandishe.academic.internal;
+package com.example.roshdeandishe.academic.shared;
 
 /**
  * شکلِ canonical کدِ سال تحصیلی («1404-1405»، رقم ASCII): سال کلید است، پس یک شکل در سرور
  * (openspec/changes/academic-year.md، فاز ۱). صفحه‌ی نمره‌ها پیش‌تر ارقام را خودش نرمال می‌کرد؛ این
  * قاعده حالا سمت سرور است تا هر مشتری (موبایل، اسکریپت) همان کلید را بسازد.
  */
-final class AcademicYearCodes {
+public final class AcademicYearCodes {
 
     private AcademicYearCodes() {
     }
 
     /** ارقام فارسی/عربی به ASCII و حذف فاصله‌ی ابتدا/انتها؛ تهی تهی می‌ماند. */
-    static String canonical(String value) {
+    public static String canonical(String value) {
         if (value == null) {
             return null;
         }

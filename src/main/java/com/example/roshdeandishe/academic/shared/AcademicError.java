@@ -66,6 +66,10 @@ public sealed interface AcademicError {
     record CourseNotValidForYear(Long courseId, String academicYear) implements AcademicError {
     }
 
+    /** کاربر فقط سالِ جاریِ مدرسه را می‌بیند (بدونِ ACADEMIC_YEAR_MANAGE) و سالِ دیگری خواسته است. */
+    record AcademicYearNotAllowed(String academicYear) implements AcademicError {
+    }
+
     /** کدِ سال تحصیلی در فهرستِ سراسریِ سال‌ها نیست. */
     record InvalidAcademicYear(String academicYear) implements AcademicError {
     }

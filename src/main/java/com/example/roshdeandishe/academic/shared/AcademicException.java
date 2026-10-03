@@ -28,6 +28,8 @@ public final class AcademicException extends RuntimeException {
             case AcademicError.CourseNotFound e -> "درسی با شناسه " + e.courseId() + " یافت نشد.";
             case AcademicError.CourseNotForClass e ->
                     "درس " + e.courseId() + " برای پایه‌ی کلاس " + e.classId() + " تعریف نشده است.";
+            case AcademicError.AcademicYearNotAllowed e ->
+                    "سالِ «" + e.academicYear() + "» جاری نیست و فقط مدیر مدرسه آن را می‌بیند.";
             case AcademicError.CourseNotValidForYear e ->
                     "درس " + e.courseId() + " برای سال «" + e.academicYear() + "» معتبر نیست.";
             case AcademicError.CourseNotGradable e -> "درس " + e.courseId() + " در کارنامه نمی‌آید و نمره‌پذیر نیست.";

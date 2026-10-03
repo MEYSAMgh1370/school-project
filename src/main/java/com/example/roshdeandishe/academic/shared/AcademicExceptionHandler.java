@@ -75,6 +75,11 @@ public class AcademicExceptionHandler {
                     "درس مربوط به پایه‌ی این کلاس نیست",
                     "درس " + e.courseId() + " برای پایه‌ی کلاس " + e.classId() + " تعریف نشده است."
             );
+            case AcademicError.AcademicYearNotAllowed e -> ProblemDetailFactory.problem(
+                    HttpStatus.FORBIDDEN, "academic-year-not-allowed",
+                    "دسترسی به این سال تحصیلی مجاز نیست",
+                    "فقط مدیر مدرسه سال‌های غیرجاری را می‌بیند؛ سالِ «" + e.academicYear() + "» جاری نیست."
+            );
             case AcademicError.CourseNotValidForYear e -> ProblemDetailFactory.problem(
                     HttpStatus.BAD_REQUEST, "course-not-valid-for-year",
                     "این درس در این سال تحصیلی ارائه نمی‌شود",
