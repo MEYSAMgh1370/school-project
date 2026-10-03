@@ -550,12 +550,18 @@ UX_ROADMAP §2 remains binding and is not repeated here. Additions:
   `formatRange`, `fromDate`, `toDate`, `daysInMonth`, `periodRange`,
   `monthNames`, `weekdayNames`). A directional glyph (`‹` `›`) is written in
   the RTL convention and given `.app-dir-glyph`, which mirrors it under
-  `dir="ltr"`. The week still starts Saturday in every locale: that is a
-  server rule, so the calendar seam does not move it.
-- **The week starts Saturday (شنبه); the weekend is Friday.** Any server-
-  side "week" concept (e.g. `studyplan`'s week-start, MOSHAVERE_PORT_SPEC
-  §6) anchors to `DayOfWeek.SATURDAY` — plain date arithmetic, no calendar
-  library.
+  `dir="ltr"`. The week start is not a locale choice: it belongs to the school
+  (next bullet), and `Calendar` only reads it.
+- **The week start belongs to the school** (W9,
+  [`openspec/changes/eu-market-readiness.md`](openspec/changes/eu-market-readiness.md)).
+  Each school has `week_start_day`: `SAT` (the Iranian week: Saturday to
+  Wednesday are school days, the weekend is Thursday and Friday; the default,
+  and every school that existed before W9) or `MON` (Monday to Friday),
+  chosen when the school is created. `SchoolFacade.WeekStart` is the only
+  place that maps it to the first day and the school days; `studyplan`,
+  `exam` and `academic` read it from there — plain date arithmetic, no
+  calendar library — and never hard-code a weekday. The client reads it from
+  the navbar's `data-week-starts` through `Calendar.weekStart()`.
 - **Persian digits (۰–۹) for displayed numbers** — dates, counts, and
   amounts — applied at render time by the relevant shared client utility
   (`Calendar.digits()`, which follows the page locale, or `Money.formatAmount()`);

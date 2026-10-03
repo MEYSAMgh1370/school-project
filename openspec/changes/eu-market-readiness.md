@@ -449,7 +449,7 @@ decision this document must not invent: when a non-Iranian school's year starts,
 what its code looks like, and whether the provisioner runs per tenant or per
 deployment. Those are in the open questions below.
 
-### W9 — A per-school week start (size: L, decided 2026-10-03, in progress)
+### W9 — A per-school week start (size: L, decided and implemented 2026-10-03)
 
 Decisions, from the product owner on 2026-10-03:
 
@@ -512,6 +512,40 @@ is no school-edit screen today, so the field is set once. If a school ever switc
 stored study-plan and exam weeks (anchored on Saturdays) would no longer match; that
 needs its own decision about what happens to history.
 
+What was built, and where it differs from the design above:
+
+- **Names.** The stored column is `school.schools.week_start_day` (`'SAT'` or `'MON'`,
+  migration `V8__school_week_start.sql`, which also widens the timetable check to
+  `THU`/`FRI`). The API and the Java type are `WeekStart` (`SATURDAY` or `MONDAY`) in
+  `SchoolFacade`, exposed as `weekStart` on the school response and the optional
+  creation request field (omitted means `SATURDAY`). `WeekStart` owns `firstDay()`,
+  `schoolDays()` and `weekStartOf(date)`; `studyplan`, `exam` and `academic` read it
+  through `SchoolFacade.findSchool` and hard-code no weekday.
+- **Study-plan schedule keys stay real days.** `Weekday` keys (`SAT`...`FRI`) in the
+  stored schedule JSON name real weekdays, so an Iranian school's stored schedules keep
+  their meaning. What changed is the order the suggester walks them in, which now
+  starts at the school's week start, and the date each day lands on.
+- **Navbar and Calendar.** `NavbarModel.weekStartsJson()` renders `data-week-starts` on
+  the navbar root (`{"<schoolId>":"SAT"|"MON"}`, ids and codes only). `Calendar` reads
+  it for the selected school (`weekStart()`, using the same `localStorage` choice the
+  pages already read) and adds `weekdayIndex(date, week)`, `weekStartOf(date, week)`,
+  `weekCodes`, `schoolDayCodes`, `weekdayNamesFor` and `weekdayShortFor`. The old
+  `mostRecentSaturday` copies are gone. With no navbar the week is Saturday.
+- **Pages.** `my-study-plan`, `study-plans`, `exams`, the timetable pages, the dashboard
+  timetable section and `school-new` follow the school; each re-reads the week on the
+  `school-changed` event. The two fixed sentences "Saturday to Wednesday" (timetable
+  subtitle, dashboard) are now derived or dropped.
+
+Verified on 2026-10-03: unit tests for `WeekStart`, the suggester (a Saturday and a
+Monday week, with a mutation that ignores the school's week order caught), the
+timetable facade (both day sets) and `Calendar` (every day 2023-2026 against the old
+Saturday formula, four mutations caught, four time zones); `SchoolWeekStartFlowIntegrationTest`
+(school creation, a Monday school's study-plan week and timetable days); the full Java
+suite against PostgreSQL 16 (420 tests; the only error is the one test that starts its
+own Docker container); and 59 checks in headless Chromium in both locales, including
+creating a Monday school through the real form, a live school switch on three pages, and
+suggesting a study week end to end (the `MON` schedule landed on the Monday column).
+
 Acceptance criteria:
 
 - An existing school behaves exactly as before: Saturday weeks, Saturday-to-Wednesday
@@ -527,7 +561,7 @@ Acceptance criteria:
 
 ## Suggested Order
 
-W0, W3, W2 and W2b are done. W9 has a decision but not yet a design. W5 was already done on
+W0, W3, W2, W2b and W9 are done. W5 was already done on
 master. W1 is the long pole and should start early because it touches every
 template; the English locale is not demonstrable beyond the page shell until it
 lands, since the page text is still Persian. W6 and W7 are product-heavy and
