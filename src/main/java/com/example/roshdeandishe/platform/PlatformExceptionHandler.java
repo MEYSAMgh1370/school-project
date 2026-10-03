@@ -3,6 +3,7 @@ package com.example.roshdeandishe.platform;
 import org.springframework.core.annotation.Order;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ProblemDetail;
+import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.web.HttpMediaTypeNotSupportedException;
 import org.springframework.web.HttpRequestMethodNotSupportedException;
@@ -80,20 +81,22 @@ public class PlatformExceptionHandler {
         );
     }
 
+    // هدرهای خودِ exception (Allow برای 405، Accept برای 415) باید همراه پاسخ بروند - RFC 9110 آن‌ها را
+    // الزامی می‌داند و کلاینت‌های عمومی از همین‌ها متدها/نوع‌های مجاز را می‌فهمند
     @ExceptionHandler(HttpRequestMethodNotSupportedException.class)
-    public ProblemDetail handleMethodNotAllowed(HttpRequestMethodNotSupportedException ex) {
-        return ProblemDetailFactory.problem(
-                HttpStatus.METHOD_NOT_ALLOWED, "method-not-allowed",
-                "متد درخواست مجاز نیست", "این مسیر متد " + ex.getMethod() + " را نمی‌پذیرد."
-        );
+    public ResponseEntity<ProblemDetail> handleMethodNotAllowed(HttpRequestMethodNotSupportedException ex) {
+        return ResponseEntity.status(HttpStatus.METHOD_NOT_ALLOWED).headers(ex.getHeaders()).body(
+                ProblemDetailFactory.problem(
+                        HttpStatus.METHOD_NOT_ALLOWED, "method-not-allowed",
+                        "متد درخواست مجاز نیست", "این مسیر متد " + ex.getMethod() + " را نمی‌پذیرد."));
     }
 
     @ExceptionHandler(HttpMediaTypeNotSupportedException.class)
-    public ProblemDetail handleUnsupportedMediaType(HttpMediaTypeNotSupportedException ex) {
-        return ProblemDetailFactory.problem(
-                HttpStatus.UNSUPPORTED_MEDIA_TYPE, "unsupported-media-type",
-                "نوع محتوا پشتیبانی نمی‌شود", "Content-Type این درخواست پذیرفته نمی‌شود."
-        );
+    public ResponseEntity<ProblemDetail> handleUnsupportedMediaType(HttpMediaTypeNotSupportedException ex) {
+        return ResponseEntity.status(HttpStatus.UNSUPPORTED_MEDIA_TYPE).headers(ex.getHeaders()).body(
+                ProblemDetailFactory.problem(
+                        HttpStatus.UNSUPPORTED_MEDIA_TYPE, "unsupported-media-type",
+                        "نوع محتوا پشتیبانی نمی‌شود", "Content-Type این درخواست پذیرفته نمی‌شود."));
     }
 
     @ExceptionHandler(Exception.class)

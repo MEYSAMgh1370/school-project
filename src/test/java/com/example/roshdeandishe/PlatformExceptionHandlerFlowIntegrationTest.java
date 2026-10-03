@@ -118,9 +118,13 @@ class PlatformExceptionHandlerFlowIntegrationTest {
 
         mockMvc.perform(delete("/api/admin/schools/1/classes").with(csrf()).header("X-School-ID", "1").session(admin))
                 .andExpect(status().isMethodNotAllowed())
+                // Allow همراه پاسخ است و متدهای واقعیِ این مسیر را می‌گوید
+                .andExpect(header().string("Allow", org.hamcrest.Matchers.allOf(
+                        org.hamcrest.Matchers.containsString("GET"), org.hamcrest.Matchers.containsString("POST"))))
                 .andExpect(jsonPath("$.type").value(endsWith("method-not-allowed")));
         classesPost(admin, MediaType.TEXT_PLAIN, "name=x")
                 .andExpect(status().isUnsupportedMediaType())
+                .andExpect(header().exists("Accept"))
                 .andExpect(jsonPath("$.type").value(endsWith("unsupported-media-type")));
     }
 }
