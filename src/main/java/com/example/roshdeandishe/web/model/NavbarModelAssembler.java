@@ -13,6 +13,7 @@ import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 
 /**
@@ -59,8 +60,13 @@ public class NavbarModelAssembler {
                     .add(membership.roleCode());
         }
         List<NavbarModel.SchoolOption> options = new ArrayList<>();
-        rolesBySchool.forEach((schoolId, roles) -> options.add(new NavbarModel.SchoolOption(
-                schoolId, schoolName(schoolId), roles, iamFacade.findPermissionCodesByRole(schoolId, roles))));
+        rolesBySchool.forEach((schoolId, roles) -> {
+            Optional<SchoolFacade.SchoolInfo> school = schoolFacade.findSchool(new SchoolId(schoolId));
+            options.add(new NavbarModel.SchoolOption(
+                    schoolId, schoolName(school, schoolId), roles, iamFacade.findPermissionCodesByRole(schoolId, roles),
+                    // مدرسه‌ی نیافته فقط یک گزینه‌ی نمایشی است؛ اجرای قاعده‌ی هفته با سرور است
+                    school.map(SchoolFacade.SchoolInfo::weekStart).orElse(SchoolFacade.WeekStart.SATURDAY)));
+        });
         Map<Long, Map<String, String>> roleNames = new LinkedHashMap<>();
         allRolesBySchool.forEach((schoolId, roles) -> {
             Map<String, String> names = iamFacade.findCustomRoleDisplayNames(schoolId, roles);
@@ -75,9 +81,7 @@ public class NavbarModelAssembler {
      * اگر مدرسه‌ای پیدا نشد (نباید رخ دهد، ولی iam فقط یک Long مات نگه
      * می‌دارد) به جای شکستن صفحه، شناسه را نمایش می‌دهیم.
      */
-    String schoolName(Long schoolId) {
-        return schoolFacade.findSchool(new SchoolId(schoolId))
-                .map(SchoolFacade.SchoolInfo::name)
-                .orElse("مدرسه #" + schoolId);
+    private static String schoolName(Optional<SchoolFacade.SchoolInfo> school, Long schoolId) {
+        return school.map(SchoolFacade.SchoolInfo::name).orElse("مدرسه #" + schoolId);
     }
 }

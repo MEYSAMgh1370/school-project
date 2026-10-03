@@ -19,6 +19,7 @@ These OpenSpec documents are the curated entry point for current behavior, propo
 - [`diagrams/iam-c4.md`](diagrams/iam-c4.md) - C4-style IAM context, container, component, and flow diagrams, with PlantUML sources.
 - [`conventions.md`](conventions.md) - development, testing, documentation, and frontend conventions.
 - [`changes/proposed-work.md`](changes/proposed-work.md) - planned or unresolved work that is not current behavior.
+- [`changes/eu-market-readiness.md`](changes/eu-market-readiness.md) - audit of the market-specific coupling in the current build (localization, calendar, currency, messaging, data protection, commercial surface) and the work items it implies; proposed 2026-10-03, **partly implemented**: W0 (`/fonts` served), W3 (`lang`/`dir`/font from the resolved locale), W2/W2b (the `Calendar` client seam and digits) and W9 (a per-school week start) are done and their current behavior is in `specs/current-system.md`; W1 (strings), W4 (currency), W6/W7 (data protection, commercial surface) and W8 (academic year) are not implemented; W5 was already done on master.
 - [`changes/finance-monetary-unit.md`](changes/finance-monetary-unit.md) - proposed finance monetary-unit contract; no implementation has occurred.
 - [`changes/post-authentication-school-registration.md`](changes/post-authentication-school-registration.md) - post-authentication school-registration handoff contract; implemented 2026-09-27, current behavior is in `specs/current-system.md`.
 - [`changes/package-by-type-within-modules.md`](changes/package-by-type-within-modules.md) - by-type package layout within each module (`controller/`, `dto/`, `config/`); implemented 2026-09-28, current behavior is in `conventions.md` and `architecture.md`.
@@ -36,6 +37,7 @@ These OpenSpec documents are the curated entry point for current behavior, propo
 - [`changes/production-memory-footprint.md`](changes/production-memory-footprint.md) - production memory-footprint reduction, with the measurements behind it; Tier 1 implemented 2026-09-29, current behavior is in `architecture.md`. Tier 2 was implemented and reverted the same day; the proposal records why.
 - [`decisions/2026-07-20-free-tier-entitlements.md`](decisions/2026-07-20-free-tier-entitlements.md) - school creation grants free Academic and Finance entitlements.
 - [`decisions/2026-07-30-flyway-schema-ownership.md`](decisions/2026-07-30-flyway-schema-ownership.md) - Flyway owns schema creation and migrations.
+- [`decisions/2026-10-03-multi-market-not-migration.md`](decisions/2026-10-03-multi-market-not-migration.md) - Iranian schools remain a segment, so market-specific coupling becomes a per-tenant configurable dimension rather than something removed.
 - [`archive/documentation-audit-2026-08-06.md`](archive/documentation-audit-2026-08-06.md) - inventory, conflicts, and classification from the audit that introduced OpenSpec.
 
 ## Legacy Documentation Classification

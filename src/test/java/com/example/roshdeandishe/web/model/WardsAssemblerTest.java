@@ -56,7 +56,7 @@ class WardsAssemblerTest {
         when(academic.listWards(PARENT.value(), schoolId))
                 .thenReturn(List.of(new StudentInfo(new StudentId(studentId), wardUserId, schoolId, new ClassId(3L))));
         when(school.findSchool(new SchoolId(schoolId)))
-                .thenReturn(Optional.of(new SchoolInfo(new SchoolId(schoolId), "مدرسه‌ی نمونه", null, null, null, null, null)));
+                .thenReturn(Optional.of(new SchoolInfo(new SchoolId(schoolId), "مدرسه‌ی نمونه", null, null, null, null, null, null)));
         when(iam.findUser(new UserId(wardUserId)))
                 .thenReturn(Optional.of(new UserProfile(new UserId(wardUserId), "w@example.com", name, null)));
         when(academic.findMyEnrollment(wardUserId, schoolId))

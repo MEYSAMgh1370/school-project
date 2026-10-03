@@ -12,7 +12,7 @@ document.addEventListener('alpine:init', () => {
         error: '',
         // فقط پاسخ آخرین درخواست اثر می‌گذارد (عوض‌کردنِ سریعِ مدرسه پاسخ کهنه را دور می‌ریزد)
         seq: 0,
-        days: window.TimetableGrid.DAYS,
+        days: window.TimetableGrid.days(),
         todayCode: window.TimetableGrid.todayCode(),
 
         init() {
@@ -23,6 +23,9 @@ document.addEventListener('alpine:init', () => {
             this.schoolId = Number.isInteger(saved) ? saved : null;
             window.addEventListener('school-changed', (e) => {
                 this.schoolId = e.detail.id;
+                // روزهای درسیِ مدرسه‌ی تازه (W9)
+                this.days = window.TimetableGrid.days();
+                this.todayCode = window.TimetableGrid.todayCode();
                 this.error = '';
                 this.load();
             });

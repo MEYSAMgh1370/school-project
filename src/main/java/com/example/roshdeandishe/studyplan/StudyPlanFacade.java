@@ -143,12 +143,45 @@ public interface StudyPlanFacade {
     List<RecentTopic> getRecentTopics(Long studentId);
 
     /**
-     * روزهای هفته‌ی درسی، از شنبه. کلیدهای JSON برنامه‌های زمانی و ترتیب
-     * برش/تخصیص الگوریتم پیشنهاد هر دو همین ترتیب‌اند - ترتیب fri-اول
-     * موshavere فقط عارضه‌ی مرتب‌سازی کلیدهای jsonb پستگرس بود، نه تصمیم.
+     * روزهای هفته. هر کلید یک «روز واقعی» است (SAT همیشه شنبه)، نه جایگاه در هفته؛
+     * کلیدهای JSON برنامه‌های زمانی همین‌اند، پس برنامه‌ی ذخیره‌شده‌ی مدرسه‌ی شنبه‌محور
+     * با آمدن مدرسه‌ی دوشنبه‌محور (W9) معنایش عوض نمی‌شود. ترتیبِ برش/تخصیص الگوریتم
+     * پیشنهاد از روز شروع هفته‌ی مدرسه می‌آید ({@link #weekStartingOn}): برای مدرسه‌ی
+     * شنبه‌محور همان ترتیب قدیمی شنبه تا جمعه - ترتیب fri-اول موshavere فقط عارضه‌ی
+     * مرتب‌سازی کلیدهای jsonb پستگرس بود، نه تصمیم.
      */
     enum Weekday {
-        SAT, SUN, MON, TUE, WED, THU, FRI
+        SAT(java.time.DayOfWeek.SATURDAY), SUN(java.time.DayOfWeek.SUNDAY), MON(java.time.DayOfWeek.MONDAY),
+        TUE(java.time.DayOfWeek.TUESDAY), WED(java.time.DayOfWeek.WEDNESDAY), THU(java.time.DayOfWeek.THURSDAY),
+        FRI(java.time.DayOfWeek.FRIDAY);
+
+        private final java.time.DayOfWeek dayOfWeek;
+
+        Weekday(java.time.DayOfWeek dayOfWeek) {
+            this.dayOfWeek = dayOfWeek;
+        }
+
+        public java.time.DayOfWeek dayOfWeek() {
+            return dayOfWeek;
+        }
+
+        /** هر ۷ روز به ترتیبِ هفته‌ای که از {@code first} شروع می‌شود. */
+        public static java.util.List<Weekday> weekStartingOn(java.time.DayOfWeek first) {
+            java.util.List<Weekday> days = new java.util.ArrayList<>(7);
+            for (int i = 0; i < 7; i++) {
+                days.add(of(first.plus(i)));
+            }
+            return java.util.List.copyOf(days);
+        }
+
+        public static Weekday of(java.time.DayOfWeek dayOfWeek) {
+            for (Weekday day : values()) {
+                if (day.dayOfWeek == dayOfWeek) {
+                    return day;
+                }
+            }
+            throw new IllegalArgumentException("Unknown day: " + dayOfWeek);
+        }
     }
 
     record PlanId(Long value) {

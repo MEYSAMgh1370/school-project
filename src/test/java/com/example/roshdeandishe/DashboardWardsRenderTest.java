@@ -63,11 +63,11 @@ class DashboardWardsRenderTest {
     void financeStateIsOverdueOpenSettledOrNoInvoices() {
         String overdue = render(true, List.of(ward("الف", 4, 2, 1)));
         assertThat(overdue).contains("tag is-danger").contains("فاکتور دیرکرد");
-        assertThat(overdue).contains("Jalali.toPersianDigits('2')");
+        assertThat(overdue).contains("Calendar.digits('2')");
 
         String open = render(true, List.of(ward("الف", 3, 0, 2)));
         assertThat(open).contains("tag is-warning").contains("فاکتور در انتظار پرداخت");
-        assertThat(open).contains("Jalali.toPersianDigits('2')").doesNotContain("فاکتور دیرکرد");
+        assertThat(open).contains("Calendar.digits('2')").doesNotContain("فاکتور دیرکرد");
 
         String settled = render(true, List.of(ward("الف", 3, 0, 0)));
         assertThat(settled).contains("tag is-success").contains("همه‌ی فاکتورها تسویه‌شده");

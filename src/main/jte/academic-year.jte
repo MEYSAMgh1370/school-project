@@ -2,7 +2,7 @@
 
 @param NavbarModel navbar
 
-@template.layout.main(title = "سال تحصیلی", scripts = java.util.List.of("/js/navbar.js", "/js/jalali.js", "/js/academic-year.js"), content = @`
+@template.layout.main(title = "سال تحصیلی", scripts = java.util.List.of("/js/navbar.js", "/js/jalali.js", "/js/calendar.js", "/js/academic-year.js"), content = @`
 @template.layout.navbar(navbar = navbar)
 
 <section class="section" id="main-content" role="main" tabindex="-1" x-data="academicYearPage()">
@@ -21,7 +21,7 @@
                     <div class="box" x-cloak x-show="!loading && loaded">
                         <p class="is-size-7 has-text-grey mb-1">سال تحصیلی جاری</p>
                         <p class="title is-3 mb-4" dir="ltr" id="academicYearCurrent" x-show="current"
-                           x-text="current ? Jalali.toPersianDigits(current.code) : ''"></p>
+                           x-text="current ? Calendar.digits(current.code) : ''"></p>
                         <p class="mb-4" id="academicYearNone" x-show="!current">
                             هنوز سال تحصیلی‌ای برای این مدرسه انتخاب نشده است.
                         </p>
@@ -34,7 +34,7 @@
                                         <select id="academicYearSelect" x-model="selectedId" required>
                                             <option value="" disabled>یک سال را انتخاب کنید</option>
                                             <template x-for="year in years" :key="year.id">
-                                                <option :value="year.id" x-text="Jalali.toPersianDigits(year.code)"></option>
+                                                <option :value="year.id" x-text="Calendar.digits(year.code)"></option>
                                             </template>
                                         </select>
                                     </div>

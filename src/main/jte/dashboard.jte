@@ -5,7 +5,7 @@
 @param DashboardModel model
 @param NavbarModel navbar
 
-@template.layout.main(title = "داشبورد", scripts = java.util.List.of("/js/navbar.js", "/js/jalali.js", "/js/timetable-grid.js", "/js/dashboard.js", "/js/dashboard-timetable.js"),
+@template.layout.main(title = "داشبورد", scripts = java.util.List.of("/js/navbar.js", "/js/jalali.js", "/js/calendar.js", "/js/timetable-grid.js", "/js/dashboard.js", "/js/dashboard-timetable.js"),
         styles = java.util.List.of("/css/dashboard.css", "/css/timetable.css"), content = @`
 @template.layout.navbar(navbar = navbar)
 
@@ -59,7 +59,7 @@
                         مدیر مدرسه هنوز سال تحصیلیِ جاری را انتخاب نکرده است.
                     </p>
                     <p id="dashboardTimetableHoliday" x-show="enrolled && academicYear !== null && !isSchoolDay()">
-                        امروز روز کلاسی نیست (روزهای کلاسی شنبه تا چهارشنبه است).
+                        امروز روز کلاسی نیست (روزهای کلاسی <span x-text="schoolDaysLabel()"></span> است).
                     </p>
                     <p id="dashboardTimetableNone"
                        x-show="enrolled && academicYear !== null && isSchoolDay() && todayRows().length === 0">
@@ -87,7 +87,7 @@
              $store.nav). داده فقط فرزندانِ واقعاً لینک‌شده به همین کاربر است
              (WardsAssembler). وضعیت مالی فقط شمارش فاکتورها بر اساس وضعیتشان است،
              نه مبلغ (واحد پولی هنوز تصمیم‌نگرفته). عددها اینجا ASCII رندر می‌شوند و
-             با Jalali.toPersianDigits به رقم فارسی درمی‌آیند (DESIGN.md §8).
+             با Calendar.digits به رقم فارسی درمی‌آیند (DESIGN.md §8).
              x-data خالی لازم است: Alpine بدون ریشه‌ی x-data x-show را اجرا نمی‌کند. --%>
         @if(model.parent())
             <section class="mb-5" aria-labelledby="dashboard-wards-title" x-data
@@ -118,9 +118,9 @@
                                         @if(ward.hasNoInvoices())
                                             <span class="tag is-light">فاکتوری صادر نشده</span>
                                         @elseif(ward.isOverdue())
-                                            <span class="tag is-danger"><span x-text="Jalali.toPersianDigits('${ward.overdueCount()}')">${ward.overdueCount()}</span>&nbsp;فاکتور دیرکرد</span>
+                                            <span class="tag is-danger"><span x-text="Calendar.digits('${ward.overdueCount()}')">${ward.overdueCount()}</span>&nbsp;فاکتور دیرکرد</span>
                                         @elseif(ward.isOpen())
-                                            <span class="tag is-warning"><span x-text="Jalali.toPersianDigits('${ward.openCount()}')">${ward.openCount()}</span>&nbsp;فاکتور در انتظار پرداخت</span>
+                                            <span class="tag is-warning"><span x-text="Calendar.digits('${ward.openCount()}')">${ward.openCount()}</span>&nbsp;فاکتور در انتظار پرداخت</span>
                                         @else
                                             <span class="tag is-success">همه‌ی فاکتورها تسویه‌شده</span>
                                         @endif

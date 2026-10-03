@@ -4,7 +4,7 @@
 @param NavbarModel navbar
 @param java.util.List<WardRef> wards
 
-@template.layout.main(title = "نمره‌های من", scripts = java.util.List.of("/js/navbar.js", "/js/jalali.js", "/js/my-grades.js"),
+@template.layout.main(title = "نمره‌های من", scripts = java.util.List.of("/js/navbar.js", "/js/jalali.js", "/js/calendar.js", "/js/my-grades.js"),
         styles = java.util.List.of("/css/my-grades.css"), content = @`
 @template.layout.navbar(navbar = navbar)
 
@@ -88,7 +88,7 @@
                                         <td x-text="grade.courseName || 'نمره‌ی کل'" :class="{ 'has-text-grey': !grade.courseName }"></td>
                                         <td x-text="gradeValue(grade)"></td>
                                         <td x-text="grade.comment || '—'"></td>
-                                        <td dir="ltr" x-text="new Date(grade.recordedAt).toLocaleDateString('fa-IR')"></td>
+                                        <td dir="ltr" x-text="Calendar.formatDate(grade.recordedAt)"></td>
                                     </tr>
                                 </template>
                                 </tbody>

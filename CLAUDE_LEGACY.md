@@ -2404,6 +2404,21 @@ The full phase-by-phase build history (Phases A through O) has moved to
   `platform`. A second channel is added inside the `notification` module, not as
   a separate module. See `openspec/changes/rename-bale-module-to-notification.md`
   and `openspec/changes/notification-channel-abstraction.md`.
+  <p>
+  Why a second channel will eventually be requested, for whoever reads this
+  next: the product serves more than one market
+  (`openspec/decisions/2026-10-03-multi-market-not-migration.md`) and Bale does
+  not reach schools outside Iran, so one channel cannot carry every tenant
+  indefinitely. That is a reason to expect the second channel, not a licence to
+  build it before it is asked for.
+  <p>
+  Two carve-outs from the original entry survive the supersession and are not
+  channels: `InviteEmailSender` stays in `iam/internal`, because activation
+  email is addressed by email address with a token-specific template and its
+  `emailSent` result is part of the `InviteIssued` contract; and `SmsDriver`
+  stays in `iam/internal`, because OTP delivery is fail-closed and
+  security-critical while the channel contract is best-effort. Neither may be
+  folded into the port.
 - ~~Do not build a grades data model or UI~~ — **resolved 2026-07-18, §11
   Q8.** The grades data model and REST layer are built (§4's Grade
   subsection, §7 Done) — the four decisions that unblocked it (per-class

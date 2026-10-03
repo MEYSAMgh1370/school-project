@@ -17,7 +17,7 @@ import java.util.Map;
  * هماهنگ‌کننده‌ی پیشنهاد خودکار جدول مطالعه‌ی یک هفته - پورت Suggestor
  * موshavere (table_suggester.py): برش برنامه‌ی زمانی
  * ({@link SliceScheduleInterval})، تخصیص وزنی سرفصل‌ها
- * ({@link FillSlices})، سپس ساخت بازه‌های تاریخ‌دار شنبه تا جمعه.
+ * ({@link FillSlices})، سپس ساخت بازه‌های تاریخ‌دار از روز شروع هفته‌ی مدرسه.
  * زیرسرفصل‌های هر بازه از WeekCourseهای «فعال» برنامه می‌آیند: آن‌هایی که
  * تاریخشان در بازه‌ی (weekStart-۷، weekStart] است - همان فیلتر
  * {@code 0 <= dt < 7} مبدأ.
@@ -36,11 +36,16 @@ final class Suggestor {
     record ProposedInterval(Long topicId, List<Long> subTopicIds, LocalDateTime start, LocalDateTime end) {
     }
 
+    /**
+     * @param weekOrder روزها به ترتیبِ هفته‌ی مدرسه؛ روز i‌ام به {@code weekStart + i}
+     *                  می‌رسد، پس {@code weekStart} باید همان روزِ اولِ {@code weekOrder} باشد
+     */
     static List<ProposedInterval> suggest(LocalDate weekStart,
+                                          List<Weekday> weekOrder,
                                           Map<Weekday, List<TimeRange>> schedule,
                                           List<CourseWeight> priorities,
                                           List<WeekCourseData> weekCourses) {
-        SliceScheduleInterval slicer = new SliceScheduleInterval(schedule);
+        SliceScheduleInterval slicer = new SliceScheduleInterval(schedule, weekOrder);
         LinkedHashMap<Weekday, List<StudyBlock>> blocksByDay = slicer.sliceSchedule();
         new FillSlices(blocksByDay, slicer.intervalsInfo(), priorities).fill();
 

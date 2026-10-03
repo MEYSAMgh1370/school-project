@@ -8,12 +8,13 @@
      همیشه فایل خارجی، هرگز <style> این‌لاین - app.css تنها توکن‌ها/کف
      دسترسی‌پذیری است، نه لایوت اختصاصی یک صفحه مثل گرید تقویمی). بعد از
      app.css می‌آید تا بتواند از توکن‌های آن استفاده کند. --%>
+@import com.example.roshdeandishe.platform.LocaleContext
 @param String title
 @param gg.jte.Content content
 @param java.util.List<String> scripts = java.util.List.of()
 @param java.util.List<String> styles = java.util.List.of()
 <!DOCTYPE html>
-<html lang="fa" dir="rtl">
+<html lang="${LocaleContext.getOrDefault().getLanguage()}" dir="${LocaleContext.textDirection()}">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
