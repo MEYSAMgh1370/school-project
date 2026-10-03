@@ -1,4 +1,4 @@
-# Custom Roles In The Role Switcher And Shortcut Cards; Timetable Gate Aligned
+# Custom Roles In The Role Switcher And Shortcut Cards; Self-Service Gates Made Per-Role
 
 Status: proposed and **implemented 2026-10-03**. Follow-up to
 [`self-service-gate-nav-permissions-bad-requests.md`](self-service-gate-nav-permissions-bad-requests.md),
@@ -13,9 +13,10 @@ product owner on 2026-10-03.
   `/people` page already resolves custom role titles from `/roles`.
 - Dashboard shortcut cards were gated by `Link.shortcutRoles` only. A custom role that
   holds a page's permissions saw the sidebar link (previous change) but no card.
-- `MyTimetableController` required, per view, an active membership with the matching
+- `MyTimetableController` requires, per view, an active membership with the matching
   role (`STUDENT` for `OWN`, `PARENT` for `WARD`, `TEACHER` for `TEACHING`), while the
-  other `/api/me/**` endpoints require only an active membership in the school.
+  other `/api/me/**` endpoints (since the previous change) required only an active
+  membership in the school, with any role.
 
 ## Decisions
 
@@ -32,20 +33,28 @@ product owner on 2026-10-03.
    is deliberately for the finance role only, so the permission branch applies only to a
    role that is not one of the five system roles. Self-service cards (`/my-*`) have no
    permissions and stay role-based.
-3. **The class timetable uses the shared self-service gate** (`hasActiveMembership`,
-   any role). The views are decided by the data: `OWN` if the user has an enrollment,
-   `WARD` per linked child, `TEACHING` if the user has cells as a teacher in the current
-   year. A user with none of these gets the empty result.
+3. **Every `/api/me/**` endpoint requires the active role that fits it** (the class
+   timetable's rule becomes the common one; confirmed by the product owner, who chose
+   this over relaxing the timetable). `IamFacade.findActiveRoleCodes(userId, schoolId)`
+   replaces `hasActiveMembership`:
+   - grades and invoices: the user's own data needs an active `STUDENT` membership,
+     the linked children's data an active `PARENT` membership; the union of the two is
+     returned;
+   - enrollment, exams and study intervals: active `STUDENT`;
+   - class timetable: unchanged (`STUDENT` → `OWN`, `PARENT` → `WARD`, `TEACHER` →
+     `TEACHING`).
+   The dashboard's grade-picker names (`WardsAssembler.wardRefsForCurrentUser`) follow
+   the same rule so the picker and the grades endpoint agree.
 
 ## Consequences To Know
 
-- A teacher with no timetable cells no longer gets an empty `TEACHING` view; the page
-  shows its generic "no timetable recorded" message instead of a dedicated "no hours"
-  state.
-- A member whose student role is deactivated but who holds another active role in the
-  same school still sees their own enrollment's timetable, as with grades and invoices
-  (documented union behavior).
-- A custom role holding many permissions gets many cards; there is no cap.
+- Reverses the "union, any role" decision of the previous change: a user whose student
+  membership is deactivated but who is an active teacher no longer sees their own grades,
+  invoices, enrollment, exams or study intervals; a teacher whose parent membership is
+  inactive no longer sees a linked child's grades or invoices.
+- Data of a role is bound to that role's membership; enrollments and guardian links are
+  still kept when a membership is deactivated and come back on reactivation.
+- A custom role holding many permissions gets many shortcut cards; there is no cap.
 
 ## Out Of Scope
 
@@ -58,11 +67,12 @@ product owner on 2026-10-03.
   with the same code and different titles, never the raw code.
 - A custom role sees the shortcut cards whose permissions it holds and no others; the
   five system roles see exactly the cards they saw before.
-- `/api/me/schools/{id}/timetable`: non-member and inactive member get the empty
-  result; an active member gets the views their data supports regardless of role.
+- Each `/api/me/**` endpoint returns nothing (empty list, `204`, or the existing domain
+  error) to a user without the matching active role in that school, and the data returns
+  on reactivation.
 
 ## Tests
 
 - `NavSharedSourceRenderTest`, `NavCatalogTest`, `NavPermissionsFlowIntegrationTest`
-  (title through the real dashboard, facade scoping), `TimetableFlowIntegrationTest`
-  (idle teacher, data-driven views, deactivated memberships).
+  (title through the real dashboard, facade scoping), `SelfServiceMembershipGateTest` and
+  `SelfServiceMembershipFlowIntegrationTest` (role-specific gate), `WardsAssemblerTest`.

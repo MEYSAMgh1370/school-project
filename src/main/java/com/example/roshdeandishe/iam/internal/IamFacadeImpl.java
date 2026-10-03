@@ -264,8 +264,14 @@ class IamFacadeImpl implements IamFacade {
     }
 
     @Override
-    public boolean hasActiveMembership(UserId userId, Long schoolId) {
-        return !schoolMembershipRepository.findByUserIdAndSchoolIdAndActiveTrue(userId.value(), schoolId).isEmpty();
+    public java.util.Set<String> findActiveRoleCodes(UserId userId, Long schoolId) {
+        List<Long> roleIds = schoolMembershipRepository.findByUserIdAndSchoolIdAndActiveTrue(userId.value(), schoolId)
+                .stream().map(SchoolMembershipEntity::getRoleId).distinct().toList();
+        if (roleIds.isEmpty()) {
+            return java.util.Set.of();
+        }
+        return roleRepository.findAllById(roleIds).stream().map(RoleEntity::getCode)
+                .collect(java.util.stream.Collectors.toUnmodifiableSet());
     }
 
     @Override

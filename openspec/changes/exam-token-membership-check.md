@@ -16,16 +16,16 @@ which left this out of scope.
   token expired (at most the attempt window, bounded by the exam's end).
 - There is no way to cancel or delete an exam, and attempts are never deleted; a
   membership being deactivated is the only event that should end a running session.
-  Starting an attempt is already gated on an active membership
-  (`self-service-gate-nav-permissions-bad-requests.md`).
+  Starting an attempt is already gated on an active `STUDENT` membership.
 
 ## Decision
 
 On every `/api/exam-take/**` call, after the token decodes, the facade also checks:
 
 1. the academic student named by the token still exists and belongs to the exam's school;
-2. the student's user has an **active membership in the exam's school**
-   (`IamFacade.hasActiveMembership`, any role, the same rule as `/api/me/**`).
+2. the student's user has an **active `STUDENT` membership in the exam's school**
+   (`IamFacade.findActiveRoleCodes`, the same per-role rule as `/api/me/**`, see
+   [`custom-role-ui-and-timetable-gate.md`](custom-role-ui-and-timetable-gate.md)).
 
 If either fails the call is answered exactly like a bad token:
 `401 invalid-exam-token`. No new error type, no new column, no token table; the token
@@ -38,12 +38,12 @@ state with no trigger.
 
 ## Cost
 
-Two extra lookups per take request (student row, active membership). The take
+Two extra lookups per take request (student row, active roles). The take
 endpoints are small, one student at a time; no caching.
 
 ## Acceptance Criteria
 
-- With an active membership the take flow is unchanged.
+- With an active `STUDENT` membership the take flow is unchanged.
 - After the membership is deactivated, `GET /api/exam-take/exam`, the section questions
   and `POST /api/exam-take/submit` answer `401 invalid-exam-token`, and no answer is
   stored by the rejected submit.

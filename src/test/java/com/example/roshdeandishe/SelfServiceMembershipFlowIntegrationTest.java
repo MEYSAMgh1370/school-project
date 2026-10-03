@@ -22,8 +22,8 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 /**
  * endpointهای خودسرویس ({@code /api/me/**}) روی Postgres واقعی: با غیرفعال‌شدنِ همه‌ی
  * عضویت‌های کاربر در مدرسه، ثبت‌نام و لینکِ ولی می‌مانند ولی داده دیگر برنمی‌گردد؛ با فعال
- * شدنِ دوباره برمی‌گردد. شرطِ نقش نیست (قراردادِ اجتماعِ دانش‌آموز و ولی): کاربری که فقط عضویتِ
- * دانش‌آموزی‌اش غیرفعال شده ولی معلمِ فعال است همچنان داده‌ی خودش را می‌بیند.
+ * شدنِ دوباره برمی‌گردد. هر endpoint نقشِ فعالِ مناسبِ خودش را می‌خواهد: کاربری که فقط عضویتِ
+ * دانش‌آموزی‌اش غیرفعال شده ولی معلمِ فعال است، داده‌ی دانش‌آموزی‌اش را نمی‌بیند.
  */
 @SpringBootTest
 @AutoConfigureMockMvc
@@ -163,7 +163,7 @@ class SelfServiceMembershipFlowIntegrationTest {
     }
 
     @Test
-    void theGateIsNotRoleBasedAnotherActiveMembershipKeepsTheUsersOwnData() throws Exception {
+    void theGateIsRoleSpecificAnotherActiveRoleDoesNotKeepTheStudentData() throws Exception {
         MockHttpSession admin = login("admin@roshdeandishe.test", "password");
         long classId = createClass(admin, "پایه پنجم - چندنقشی");
         String email = unique("me.both");
@@ -171,12 +171,17 @@ class SelfServiceMembershipFlowIntegrationTest {
         long studentId = enroll(admin, email, "معلمِ دانش‌آموزِ سابق", classId);
         membership(admin, email, "معلمِ دانش‌آموزِ سابق", "TEACHER");
         recordGrade(admin, studentId, classId);
-
-        // فقط عضویتِ دانش‌آموزی غیرفعال می‌شود؛ عضویتِ معلم فعال می‌ماند: همان قراردادِ بدونِ شرطِ نقش
-        setMembershipsActive(false, "STUDENT", email);
         expectGradeCount(user, 1);
-        // با غیرفعال‌شدنِ همه‌ی عضویت‌ها چیزی نمی‌ماند
-        setMembershipsActive(false, "TEACHER", email);
+
+        // فقط عضویتِ دانش‌آموزی غیرفعال می‌شود؛ معلمِ فعال بودن داده‌ی دانش‌آموزی را برنمی‌گرداند
+        setMembershipsActive(false, "STUDENT", email);
         expectGradeCount(user, 0);
+        mockMvc.perform(get("/api/me/enrollment").param("schoolId", "1").session(user))
+                .andExpect(status().isNoContent());
+        mockMvc.perform(get("/api/me/schools/1/invoices").session(user))
+                .andExpect(status().isOk()).andExpect(jsonPath("$").isEmpty());
+
+        setMembershipsActive(true, "STUDENT", email);
+        expectGradeCount(user, 1);
     }
 }

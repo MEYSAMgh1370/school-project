@@ -21,8 +21,7 @@ import java.util.Map;
  * {@code @RequiresPermission}/{@code @RequiresModule}، چون فقط داده‌ی خودِ کاربر
  * برمی‌گردد. اجتماعِ سه دید (یک کاربر می‌تواند هم‌زمان چند نقش داشته باشد):
  * کلاسِ خودِ دانش‌آموز، کلاسِ هر فرزندِ واقعاً لینک‌شده، و ساعت‌هایی که کاربر معلمِ
- * آن‌هاست. دروازه همان عضویتِ فعال در مدرسه است (مثل بقیه‌ی /api/me/**) و دیدها را داده تعیین می‌کند،
- * نه نقش. بیگانه (عضوِ غیرفعال/غیرعضو، یا عضوی که هیچ دیدی ندارد) نتیجه‌ی خالی می‌گیرد، نه خطا و نه دادهٔ دیگران.
+ * آن‌هاست. بیگانه نتیجه‌ی خالی می‌گیرد، نه خطا و نه دادهٔ دیگران.
  * <p>
  * فقط سالِ جاریِ مدرسه (تصمیمِ academic-year.md: غیرِ مدیر فقط سالِ جاری را
  * می‌بیند)؛ پارامترِ سال ندارد. نام معلم برای دانش‌آموز/ولی هم می‌آید.
@@ -47,26 +46,34 @@ public class MyTimetableController {
     public MyTimetableResponse myTimetable(@PathVariable Long schoolId) {
         Long userId = iamFacade.currentUserId().value();
 
-        // همان دروازه‌ی بقیه‌ی /api/me/**: عضویتِ *فعال* در همین مدرسه (نقش‌محور نیست). ثبت‌نام، لینکِ ولی و
-        // خانه‌ی معلم با غیرفعال‌شدنِ عضویت پاک نمی‌شوند، پس بدونِ این بررسی عضوِ سابق همچنان برنامه‌ی
-        // مدرسه را می‌گرفت. دیدها را خودِ داده تعیین می‌کند (ثبت‌نام، لینکِ ولی، خانه‌های معلم)، نه نقش.
-        if (!iamFacade.hasActiveMembership(new IamFacade.UserId(userId), schoolId)) {
-            return new MyTimetableResponse(null, List.of(), List.of());
-        }
+        // هر دید به یک عضویتِ *فعال* با نقشِ متناظر در همین مدرسه بسته است: ثبت‌نام، لینکِ ولی و
+        // خانه‌ی معلم با غیرفعال‌شدنِ عضویت پاک نمی‌شوند، پس بدونِ این بررسی عضوِ سابق همچنان
+        // برنامه‌ی مدرسه را می‌گرفت. هر نقش عضویتِ جدا دارد، پس نقش‌ها جدا بررسی می‌شوند.
+        java.util.Set<String> activeRoles = new java.util.HashSet<>();
+        iamFacade.findMembershipsByUser(new IamFacade.UserId(userId)).stream()
+                .filter(m -> schoolId.equals(m.schoolId()) && m.active())
+                .forEach(m -> activeRoles.add(m.roleCode()));
 
+        // اول هویت: بدونِ هیچ دیدی، حتی سالِ جاریِ مدرسه هم برای بیگانه برنگردد
         List<Pending> pending = new ArrayList<>();
-        academicFacade.findMyEnrollment(userId, schoolId).ifPresent(e -> pending.add(new Pending(
-                "OWN", e.studentId().value(), null, e.classId().value())));
-        for (AcademicFacade.StudentInfo ward : academicFacade.listWards(userId, schoolId)) {
-            pending.add(new Pending("WARD", ward.id().value(), ward.userId(), ward.classId().value()));
+        if (activeRoles.contains("STUDENT")) {
+            academicFacade.findMyEnrollment(userId, schoolId).ifPresent(e -> pending.add(new Pending(
+                    "OWN", e.studentId().value(), null, e.classId().value())));
+        }
+        if (activeRoles.contains("PARENT")) {
+            for (AcademicFacade.StudentInfo ward : academicFacade.listWards(userId, schoolId)) {
+                pending.add(new Pending("WARD", ward.id().value(), ward.userId(), ward.classId().value()));
+            }
         }
 
         String year = schoolFacade.findCurrentAcademicYear(new SchoolFacade.SchoolId(schoolId))
                 .map(AcademicYearInfo::code).orElse(null);
-        List<EntryInfo> teaching = year == null ? List.of()
+        // معلمِ فعال همیشه دیدِ «تدریس» دارد، حتی بدونِ خانه یا بدونِ سالِ جاری، تا صفحه حالتِ خالیِ
+        // درست را نشان دهد؛ پاسخِ «بیگانه» فقط برای کسی است که هیچ دیدی ندارد.
+        boolean activeTeacher = activeRoles.contains("TEACHER");
+        List<EntryInfo> teaching = year == null || !activeTeacher ? List.of()
                 : timetableFacade.listEntriesForTeacher(schoolId, year, userId);
-        // بدونِ هیچ دیدی (نه دانش‌آموز، نه ولیِ لینک‌شده، نه معلمِ دارای ساعت) نتیجه‌ی خالی می‌آید
-        if (pending.isEmpty() && teaching.isEmpty()) {
+        if (pending.isEmpty() && !activeTeacher) {
             return new MyTimetableResponse(null, List.of(), List.of());
         }
 
@@ -88,7 +95,7 @@ public class MyTimetableController {
                     classNames.get(p.classId()),
                     entries.stream().map(e -> toResponse(e, names)).toList()));
         }
-        if (!teaching.isEmpty()) {
+        if (activeTeacher) {
             views.add(new MyTimetableView("TEACHING", null, null, null, null,
                     teaching.stream().map(e -> toResponse(e, names)).toList()));
         }

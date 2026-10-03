@@ -449,15 +449,16 @@ class ExamFacadeImpl implements ExamFacade {
     }
 
     /**
-     * آزمونِ توکن، به‌شرطِ این‌که دانش‌آموزِ توکن هنوز عضوِ فعالِ مدرسه‌ی آزمون باشد: توکن امضاشده است و
-     * پس از صدور از پایگاه داده باطل‌شدنی نبود، پس عضویتِ غیرفعال‌شده تا انقضای توکن همچنان جلسه را
-     * باز نگه می‌داشت. پاسخ همان «توکن نامعتبر» است (نوع و وضعیتِ جدید ندارد).
+     * آزمونِ توکن، به‌شرطِ این‌که دانش‌آموزِ توکن هنوز نقشِ فعالِ دانش‌آموز در مدرسه‌ی آزمون داشته باشد: توکن
+     * امضاشده است و پس از صدور از پایگاه داده باطل‌شدنی نبود، پس عضویتِ غیرفعال‌شده تا انقضای توکن همچنان
+     * جلسه را باز نگه می‌داشت. پاسخ همان «توکن نامعتبر» است (نوع و وضعیتِ جدید ندارد).
      */
     private ExamEntity requireExamForToken(ExamTokenService.TokenData data) {
         ExamEntity exam = requireExamById(data.examId());
         boolean activeMember = academicFacade.findStudentInfo(data.studentId())
                 .filter(student -> exam.getSchoolId().equals(student.schoolId()))
-                .map(student -> iamFacade.hasActiveMembership(new IamFacade.UserId(student.userId()), exam.getSchoolId()))
+                .map(student -> iamFacade.findActiveRoleCodes(new IamFacade.UserId(student.userId()), exam.getSchoolId())
+                        .contains("STUDENT"))
                 .orElse(false);
         if (!activeMember) {
             throw new ExamException(new ExamError.InvalidExamToken("توکن جلسه‌ی آزمون نامعتبر یا منقضی شده است."));
