@@ -155,7 +155,7 @@ wrong in three ways, and one of them undermined the item's premise.
 Each item states current state, target, and acceptance criteria. Sizes are a
 rough order of magnitude for planning only, not a commitment.
 
-### W0 — Serve the web font at all (size: XS, a bug fix)
+### W0 — Serve the web font at all (size: XS, a bug fix) — **implemented 2026-10-03**
 
 Current: the Vazirmatn font has never loaded. `/fonts/**` is absent from
 `EXCLUDED_PATHS` in
@@ -303,7 +303,7 @@ Visible once the digits are right, and part of W8 rather than this item: the Eng
 academic-year page lists `1404-1405` and `1405-1406`. The digits are ASCII, but the
 numbers are still Jalali years, so an English user reading them as years gets 1405.
 
-### W3 — Make direction and typography locale-driven (size: S)
+### W3 — Make direction and typography locale-driven (size: S) — **implemented 2026-10-03**
 
 Current: `layout/main.jte` hardcodes `lang="fa" dir="rtl"`; Vazirmatn is the
 unconditional primary family.

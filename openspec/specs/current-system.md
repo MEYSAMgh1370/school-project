@@ -54,6 +54,8 @@ On creation, a school receives free entitlements for:
 - `ACADEMIC`
 - `FINANCE`
 
+A school also has a week start (`school.schools.week_start_day`, `SAT` or `MON`; `openspec/changes/eu-market-readiness.md` W9). `POST /api/admin/schools` accepts an optional `weekStart` (`SATURDAY`, the default, or `MONDAY`) and the school response returns it; it is chosen at creation (`/schools/new` has the select) and there is no way to change it afterwards. `SchoolFacade.WeekStart` is the single owner of what it means: `SAT` is the Iranian week (school days Saturday to Wednesday), `MON` is Monday to Friday. Every school created before this existed is `SAT`.
+
 The following modules are catalogued but not granted automatically:
 
 - `CURRICULUM`
@@ -140,6 +142,23 @@ Current invariants:
   from `app.css`, and owns its own dark colour scheme. This replaced the
   system font stack and the ink-blue primary on 2026-09-27; `DESIGN.md` is
   authoritative for the visual layer.
+- The document language and direction follow the request: `LocaleResolverFilter`
+  resolves `Accept-Language` against `fa` (the default) and `en` into
+  `LocaleContext`, and `layout/main.jte` writes `<html lang dir>` from it
+  (`app.css` has an English font override). Page text is still Persian in both;
+  externalizing it (W1) is not done.
+- Pages go through `window.Calendar` (`static/js/calendar.js`), not `Jalali` or
+  `toLocaleDateString('fa-IR')`: `<html lang>` selects Jalali (`fa`) or Gregorian
+  with `Intl` names (anything else), and `Calendar.digits()` formats displayed
+  digits. `Calendar` also reads the selected school's week start from the
+  navbar's `data-week-starts` (`weekStart()`, `weekStartOf`, `weekdayIndex`,
+  `weekdayNamesFor`, `schoolDayCodes`); the study-plan, exam and timetable pages
+  follow it and re-read it on `school-changed`. The academic-year code
+  (`1405-1406`) is still Jalali-derived on the server (W8, undecided).
+- Study plans and exams anchor their weeks on the school's week start: the server
+  rejects a `weekStart` that is not that weekday with `invalid-week-start`
+  (`SchoolFacade.WeekStart.firstDay()`), and the schedule's `Weekday` keys are
+  real days, so the suggester walks the school's week order.
 - Read-only finance amounts use neutral Persian digits and thousands grouping,
   without a Rial/Toman suffix or numeric conversion because the canonical
   financial unit is unresolved.
@@ -187,7 +206,7 @@ Grades can be recorded per course (`openspec/changes/grades-by-course.md`): `aca
 
 Academic years (`openspec/changes/academic-year.md`, phase 0): `school.academic_years` is a global list (code such as `1404-1405`, no dates) that the application creates itself: configuration (`roshdeandishe.academic-year.start-month`/`start-day`, default 1 Mordad, `timezone` default `Asia/Tehran`) sets the Solar date the academic year starts, and from that date each Solar year `Y-(Y+1)` is created at startup and nightly (idempotent, gap-filling); the migration seeds only `1404-1405`. Each school has a current academic year chosen by its admin from the list (`school.schools.current_academic_year_id`, null until chosen). `GET /api/me/schools/{id}/academic-year` returns only the current year to any active member; `GET/PUT /api/admin/schools/{id}/academic-year` need the `ACADEMIC_YEAR_MANAGE` permission (granted to `SCHOOL_ADMIN`) and give the whole list and the choice. `/academic-year` is the admin page; `/grades` prefills its year field from the current year (still editable). Grades are not yet validated against the list, and non-admins are not yet restricted by year.
 
-Class timetable (`openspec/changes/class-timetable.md`): the school admin defines, per school and academic year, the periods (`academic.timetable_periods`, no overlaps, a period with entries cannot be deleted) and fills a Saturday–Wednesday grid per class (`academic.timetable_entries`: exactly one of a catalog course of the class's grade level or an activity, plus an optional teacher who must be an active `TEACHER` of the school and cannot be in two classes in the same weekday and period, `409 teacher-double-booked`, also enforced by a partial unique index). Activities (`academic.activities`) are only ever timetabled, never graded: a school owns and manages its own, and platform defaults (`school_id` null, read-only in the app, none shipped yet) are visible to all. A catalog course with `graded = false` can be timetabled but is hidden from `/grades` and rejected for grading (`400 course-not-gradable`), and grades already recorded for it are hidden from `/api/me/.../grades` (kept in the database). Admin endpoints under `/api/admin/schools/{id}/timetable/**` need the ACADEMIC module and the new `TIMETABLE_MANAGE` permission (granted to `SCHOOL_ADMIN`); `GET /api/me/schools/{id}/timetable` (no permission, own data only) returns the school's current year for the user's own class (active `STUDENT` membership), linked children's classes (active `PARENT`) and own teaching slots (active `TEACHER`). Pages: `/timetable` (admin) and `/my-timetable`; the student dashboard shows «برنامهٔ امروز». Copying a timetable to the next year, substitutions, rooms, attendance and per-school school days are not implemented.
+Class timetable (`openspec/changes/class-timetable.md`): the school admin defines, per school and academic year, the periods (`academic.timetable_periods`, no overlaps, a period with entries cannot be deleted) and fills a grid of the school's school days per class (Saturday–Wednesday for a `SAT` school, Monday–Friday for a `MON` school; `setEntry` rejects any other day with `400 invalid-timetable-entry`; V8 widened the weekday check with `THU`/`FRI`) (`academic.timetable_entries`: exactly one of a catalog course of the class's grade level or an activity, plus an optional teacher who must be an active `TEACHER` of the school and cannot be in two classes in the same weekday and period, `409 teacher-double-booked`, also enforced by a partial unique index). Activities (`academic.activities`) are only ever timetabled, never graded: a school owns and manages its own, and platform defaults (`school_id` null, read-only in the app, none shipped yet) are visible to all. A catalog course with `graded = false` can be timetabled but is hidden from `/grades` and rejected for grading (`400 course-not-gradable`), and grades already recorded for it are hidden from `/api/me/.../grades` (kept in the database). Admin endpoints under `/api/admin/schools/{id}/timetable/**` need the ACADEMIC module and the new `TIMETABLE_MANAGE` permission (granted to `SCHOOL_ADMIN`); `GET /api/me/schools/{id}/timetable` (no permission, own data only) returns the school's current year for the user's own class (active `STUDENT` membership), linked children's classes (active `PARENT`) and own teaching slots (active `TEACHER`). Pages: `/timetable` (admin) and `/my-timetable`; the student dashboard shows «برنامهٔ امروز». Copying a timetable to the next year, substitutions, rooms, and attendance are not implemented.
 
 Cross-module references are intentionally opaque IDs at module boundaries. When a UI needs names for IDs from another module, the established web pattern is client-side composition through multiple REST calls, unless a backend facade already owns the composition.
 
