@@ -26,6 +26,7 @@ These OpenSpec documents are the curated entry point for current behavior, propo
 - [`changes/platform-admin-not-assignable.md`](changes/platform-admin-not-assignable.md) - `PLATFORM_ADMIN` is rejected at the membership-assignment boundary; implemented 2026-09-29, current behavior is in `specs/current-system.md`.
 - [`decisions/2026-07-20-free-tier-entitlements.md`](decisions/2026-07-20-free-tier-entitlements.md) - school creation grants free Academic and Finance entitlements.
 - [`decisions/2026-07-30-flyway-schema-ownership.md`](decisions/2026-07-30-flyway-schema-ownership.md) - Flyway owns schema creation and migrations.
+- [`decisions/2026-10-03-multi-market-not-migration.md`](decisions/2026-10-03-multi-market-not-migration.md) - Iranian schools remain a segment, so market-specific coupling becomes a per-tenant configurable dimension rather than something removed.
 - [`archive/documentation-audit-2026-08-06.md`](archive/documentation-audit-2026-08-06.md) - inventory, conflicts, and classification from the audit that introduced OpenSpec.
 
 ## Legacy Documentation Classification

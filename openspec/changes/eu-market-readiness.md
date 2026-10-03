@@ -4,6 +4,12 @@ Status: proposed on 2026-09-29 from a repository audit. This is a
 documentation-only change. It authorizes no code, schema, test, or
 current-system specification change by itself.
 
+Open question 1 was answered on 2026-10-03 and is now recorded in
+[`decisions/2026-10-03-multi-market-not-migration.md`](../decisions/2026-10-03-multi-market-not-migration.md):
+Iranian schools remain a segment, so a second market is additive. Every work
+item below is read under that decision — each coupling becomes a configurable
+dimension resolved per tenant, not something removed.
+
 ## Why This Document Exists
 
 The product owner is pursuing a European startup-visa route, whose evaluators
@@ -181,9 +187,13 @@ unresolved canonical unit.
 Target: money is persisted and exposed with an explicit currency, and the
 `numeric(12,2)` range is re-checked against whichever unit is chosen.
 
-This item is blocked on the open question below and on
-[`finance-monetary-unit.md`](finance-monetary-unit.md). It must not proceed as
-a blanket migration — that proposal's legacy-data policy already forbids one.
+This item is blocked on [`finance-monetary-unit.md`](finance-monetary-unit.md),
+which proposes a single canonical unit and therefore cannot stand unchanged:
+two segments mean at least two currencies, so that proposal must be revised or
+superseded first. See
+[`decisions/2026-10-03-multi-market-not-migration.md`](../decisions/2026-10-03-multi-market-not-migration.md).
+It must not proceed as a blanket migration either — that proposal's legacy-data
+policy already forbids one.
 
 Acceptance criteria (once unblocked):
 
@@ -199,8 +209,12 @@ Current: `bale` is a well-isolated module that listens to a finance event; no
 outward coupling exists to undo.
 
 Target: an explicit outbound notification abstraction with Bale as one
-implementation alongside at least one non-Bale channel, so deployments choose
-channels by configuration.
+implementation alongside at least one non-Bale channel, so a deployment can
+serve tenants on different channels.
+
+Bale is not removed or replaced. Per
+[`decisions/2026-10-03-multi-market-not-migration.md`](../decisions/2026-10-03-multi-market-not-migration.md)
+it stays a supported channel, and the Iranian segment keeps using it.
 
 Acceptance criteria:
 
@@ -261,10 +275,16 @@ questions below are answered. W4 stays blocked.
 
 These are product decisions. This document does not answer them.
 
-1. Which market is the target, and does the product keep Iranian schools as a
-   segment or migrate away from them entirely? Every item below depends on the
-   answer.
-2. Which locales must ship, and is Persian the default or one of several?
+1. ~~Does the product keep Iranian schools as a segment, or migrate away from
+   them?~~ **Answered 2026-10-03: Iranian schools remain a segment.** See
+   [`decisions/2026-10-03-multi-market-not-migration.md`](../decisions/2026-10-03-multi-market-not-migration.md).
+   Which *second* market is targeted is still open, but no work item below
+   depends on which one it is.
+2. Which locales must ship beyond Persian? Persian stays a first-class locale
+   and the Iranian-tenant default per the decision above, so this question is
+   now only about what is added. Work on the locale-driven items proceeds under
+   a stated working assumption of one additional locale, `en`, which commits to
+   no particular country and does not preclude adding others.
 3. Does the canonical monetary unit decision in
    [`finance-monetary-unit.md`](finance-monetary-unit.md) still stand if the
    product serves a second currency? W4 cannot start until this is settled.
