@@ -23,9 +23,9 @@ import org.springframework.web.bind.annotation.RestController;
  * چرا این کنترلر در ماژول iam (کنار MeController) نیست: iam نمی‌تواند به
  * academic وابسته شود (academic از قبل به iam وابسته است - وابستگی برعکس
  * یعنی یک چرخه که ModularityTests.verifyModularStructure() آن را رد
- * می‌کند). این دقیقاً همان الگویی است که ماژول bale برای «به این کاربرِ
+ * می‌کند). این دقیقاً همان الگویی است که ماژول notification برای «به این کاربرِ
  * مشخص، درباره‌ی داده‌ی خودش چه می‌توان گفت» استفاده می‌کند (ترکیب IamFacade
- * + AcademicFacade، بدون اینکه هیچ‌کدام به bale وابسته شوند).
+ * + AcademicFacade، بدون اینکه هیچ‌کدام به notification وابسته شوند).
  * <p>
  * {@code schoolId} به‌عنوان query param، نه X-School-ID/path variable: یک
  * کاربر می‌تواند هم‌زمان STUDENT یک مدرسه و چیز دیگری در مدرسه‌ی دیگر باشد،
@@ -48,6 +48,10 @@ public class MyEnrollmentController {
     @GetMapping("/api/me/enrollment")
     public ResponseEntity<MyEnrollmentResponse> myEnrollment(@RequestParam Long schoolId) {
         Long userId = iamFacade.currentUserId().value();
+        // عضوِ سابق: «ثبت‌نامی نیست» (204)، نه اطلاعاتِ مدرسه‌ای که دیگر عضوش نیست
+        if (!iamFacade.hasActiveMembership(new IamFacade.UserId(userId), schoolId)) {
+            return ResponseEntity.noContent().build();
+        }
         return academicFacade.findMyEnrollment(userId, schoolId)
                 .map(info -> ResponseEntity.ok(MyEnrollmentResponse.from(info)))
                 .orElseGet(() -> ResponseEntity.noContent().build());

@@ -1,19 +1,32 @@
 package com.example.roshdeandishe.notification;
 
 /**
- * تنها نقطه‌ی ورود عمومی به ماژول Notification.
+ * تنها نقطه‌ی ورود عمومی به ماژول Notification (کانال فعلی: بله).
  * <p>
- * مثل {@code BaleFacade}، عمداً هیچ Exception/{@code NotificationError} ای
- * ندارد: ارسال best-effort است و «کاربر برای هیچ کانالی قابل‌دسترس نیست»
- * یک حالت عادی است، نه خطا.
+ * برخلاف بقیه‌ی ماژول‌ها، اینجا عمداً هیچ {@code shared/BaleError} سلطه‌ای
+ * ساخته نشده: تنها متد این Facade هیچ حالت خطای دامنه‌محورِ واقعی‌ای ندارد
+ * که نیاز به پرتاب Exception داشته باشد - «کاربر لینک نشده» یک حالت
+ * عادی/منتظره است (دقیقاً مثل IamFacade.issueInviteToken که برای حالت
+ * no-op idempotent، Optional.empty برمی‌گرداند نه Exception)، پس با یک
+ * boolean مدل شده، نه با یک ساختار sealed error که چیزی برای exhaustive
+ * کردن ندارد.
  */
 public interface NotificationFacade {
 
     /**
-     * پیام را از طریق همه‌ی کانال‌های فعال برای این کاربر می‌فرستد. Best-effort
-     * است و هرگز Exception پرتاب نمی‌کند: false یعنی هیچ کانالی پیام را
-     * تحویل نداد (کاربر در دسترس نبود یا ارسال شکست خورد) - تشخیص این دو برای
-     * فراخوان‌کننده اهمیتی ندارد، چون در هر دو حالت کاری از دستش برنمی‌آید.
+     * اگر این کاربر حساب بله‌اش را لینک کرده باشد، پیام برایش ارسال
+     * می‌شود. Best-effort است: false یعنی یا لینک نشده یا ارسال شکست
+     * خورده - تشخیص این دو برای فراخوان‌کننده (مثلاً یک event listener)
+     * اهمیتی ندارد، چون در هر دو حالت کاری از دستش برنمی‌آید.
      */
-    boolean sendToUser(Long userId, String text);
+    boolean sendMessageToUser(Long userId, String text);
+
+    /**
+     * پردازش یک Update خام (بدنه‌ی JSON) از وب‌هوک بله. عمداً یک
+     * {@code String} خام می‌گیرد، نه یک نوع ساختاریافته - شکل دقیق Update
+     * (BaleUpdate) کاملاً داخلی همین ماژول است تا BaleWebhookController
+     * (که طبق قرارداد پروژه در ریشه‌ی ماژول است، نه internal/) هرگز نیازی
+     * به وارد کردن یک نوع internal نداشته باشد.
+     */
+    void processIncomingUpdate(String rawJson);
 }

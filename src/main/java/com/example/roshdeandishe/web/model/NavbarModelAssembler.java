@@ -44,16 +44,18 @@ public class NavbarModelAssembler {
     public NavbarModel assemble(UserProfile profile, List<MembershipInfo> memberships) {
         // گزینه‌های سوییچر: فقط عضویت‌های فعال، گروه‌شده per-school با
         // فهرست نقش‌های فعالِ همان مدرسه (برای دراپ‌داون نقش).
-        Map<Long, NavbarModel.SchoolOption> options = new LinkedHashMap<>();
+        Map<Long, List<String>> rolesBySchool = new LinkedHashMap<>();
         for (MembershipInfo membership : memberships) {
             if (!membership.active()) {
                 continue;
             }
-            options.computeIfAbsent(membership.schoolId(), id ->
-                            new NavbarModel.SchoolOption(id, schoolName(id), new ArrayList<>()))
-                    .roles().add(membership.roleCode());
+            rolesBySchool.computeIfAbsent(membership.schoolId(), id -> new ArrayList<>())
+                    .add(membership.roleCode());
         }
-        return new NavbarModel(profile.fullName(), List.copyOf(options.values()));
+        List<NavbarModel.SchoolOption> options = new ArrayList<>();
+        rolesBySchool.forEach((schoolId, roles) -> options.add(new NavbarModel.SchoolOption(
+                schoolId, schoolName(schoolId), roles, iamFacade.findPermissionCodesByRole(schoolId, roles))));
+        return new NavbarModel(profile.fullName(), List.copyOf(options));
     }
 
     /**

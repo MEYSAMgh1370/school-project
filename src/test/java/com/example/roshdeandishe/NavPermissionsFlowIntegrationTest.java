@@ -1,0 +1,115 @@
+package com.example.roshdeandishe;
+
+import com.example.roshdeandishe.iam.IamFacade;
+import com.example.roshdeandishe.web.model.NavCatalog;
+import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
+import org.springframework.context.annotation.Import;
+import org.springframework.http.MediaType;
+import org.springframework.mock.web.MockHttpSession;
+import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.test.web.servlet.MvcResult;
+import org.springframework.web.util.HtmlUtils;
+
+import java.util.List;
+import java.util.Map;
+import java.util.UUID;
+
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
+
+/**
+ * سایدبار برای نقش سفارشی (مثلاً معاون با TIMETABLE_MANAGE) روی داده‌ی واقعی:
+ * (۱) نگهبانِ بی‌تغییری: برای هر نقشِ سیستمیِ seed، «Permissionِ لینک» دقیقاً همان نتیجه‌ی
+ * «نقشِ لینک» را می‌دهد - یعنی افزودنِ شرطِ Permission به NavCatalog هیچ لینکی را برای
+ * مدیر/معلم/دانش‌آموز/ولی/مدیر مالی کم یا زیاد نمی‌کند؛ (۲) ناوبارِ صفحه‌ی داشبورد Permissionهای
+ * نقشِ سفارشی را به Alpine می‌دهد.
+ */
+@SpringBootTest
+@AutoConfigureMockMvc
+@Import(TestcontainersConfiguration.class)
+class NavPermissionsFlowIntegrationTest {
+
+    private static final List<String> SYSTEM_ROLES =
+            List.of("SCHOOL_ADMIN", "TEACHER", "STUDENT", "PARENT", "FINANCE_ADMIN");
+
+    @Autowired
+    private MockMvc mockMvc;
+
+    @Autowired
+    private IamFacade iamFacade;
+
+    @Test
+    void permissionVisibilityMatchesRoleVisibilityForEverySystemRole() {
+        Map<String, List<String>> permissionsByRole = iamFacade.findPermissionCodesByRole(1L, SYSTEM_ROLES);
+        assertThat(permissionsByRole.keySet()).containsExactlyInAnyOrderElementsOf(SYSTEM_ROLES);
+
+        for (NavCatalog.Group group : NavCatalog.groups()) {
+            for (NavCatalog.Link link : group.links()) {
+                if (link.permissions().isEmpty()) {
+                    continue;
+                }
+                for (String role : SYSTEM_ROLES) {
+                    boolean byPermission = permissionsByRole.get(role).containsAll(link.permissions());
+                    assertThat(byPermission)
+                            .as("%s for %s: link roles %s, link permissions %s, role permissions %s",
+                                    link.href(), role, link.roles(), link.permissions(), permissionsByRole.get(role))
+                            .isEqualTo(link.roles().contains(role));
+                }
+            }
+        }
+    }
+
+    @Test
+    void unknownAndPlatformRolesAreNotReturned() {
+        assertThat(iamFacade.findPermissionCodesByRole(1L, List.of("NO_SUCH_ROLE", "PLATFORM_ADMIN"))).isEmpty();
+    }
+
+    @Test
+    void aCustomRolesPermissionsReachTheNavbarOfItsHolder() throws Exception {
+        MockHttpSession admin = login("admin@roshdeandishe.test", "password");
+        String code = "DEPUTY_" + UUID.randomUUID().toString().substring(0, 6).toUpperCase().replace("-", "");
+        mockMvc.perform(post("/api/admin/schools/1/roles").with(csrf()).header("X-School-ID", "1").session(admin)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"code\":\"" + code + "\",\"displayName\":\"معاون\","
+                                + "\"permissionCodes\":[\"TIMETABLE_MANAGE\",\"CLASS_VIEW\"]}"))
+                .andExpect(status().isOk());
+        String email = "nav.deputy." + UUID.randomUUID().toString().substring(0, 8) + "@roshdeandishe.test";
+        MockHttpSession deputy = registerAndLogin(email, "معاون من");
+        mockMvc.perform(post("/api/admin/schools/1/memberships").with(csrf()).header("X-School-ID", "1").session(admin)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"email\":\"" + email + "\",\"fullName\":\"معاون من\",\"roleCode\":\"" + code + "\"}"))
+                .andExpect(status().isOk());
+
+        MvcResult result = mockMvc.perform(get("/dashboard").session(deputy)).andExpect(status().isOk()).andReturn();
+        String html = HtmlUtils.htmlUnescape(result.getResponse().getContentAsString());
+
+        assertThat(html).contains("'" + code + "': ['CLASS_VIEW','TIMETABLE_MANAGE',]");
+        assertThat(html).contains("href=\"/timetable\" x-show=\"['SCHOOL_ADMIN'].includes(selectedRole) "
+                + "|| ['TIMETABLE_MANAGE'].every(p => permissions.includes(p))\"");
+        // و API همان Permission را واقعاً می‌دهد: لینک فقط نمایشِ همین دسترسی است
+        mockMvc.perform(get("/api/admin/schools/1/timetable/years").header("X-School-ID", "1").session(deputy))
+                .andExpect(status().isOk());
+    }
+
+    private MockHttpSession login(String email, String password) throws Exception {
+        MvcResult result = mockMvc.perform(post("/api/auth/login").with(csrf())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"email\":\"" + email + "\",\"password\":\"" + password + "\"}"))
+                .andExpect(status().isOk()).andReturn();
+        MockHttpSession session = (MockHttpSession) result.getRequest().getSession(false);
+        assertThat(session).isNotNull();
+        return session;
+    }
+
+    private MockHttpSession registerAndLogin(String email, String fullName) throws Exception {
+        mockMvc.perform(post("/api/auth/register").with(csrf()).contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"email\":\"" + email + "\",\"fullName\":\"" + fullName + "\",\"password\":\"password123\"}"))
+                .andExpect(status().isOk());
+        return login(email, "password123");
+    }
+}

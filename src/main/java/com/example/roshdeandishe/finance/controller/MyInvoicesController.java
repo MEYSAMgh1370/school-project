@@ -48,6 +48,10 @@ public class MyInvoicesController {
     @GetMapping("/api/me/schools/{schoolId}/invoices")
     public List<MyInvoiceResponse> myInvoices(@PathVariable Long schoolId) {
         Long userId = iamFacade.currentUserId().value();
+        // عضوِ سابق (هیچ عضویتِ فعالی در این مدرسه) چیزی نمی‌گیرد؛ نقش مهم نیست
+        if (!iamFacade.hasActiveMembership(new IamFacade.UserId(userId), schoolId)) {
+            return List.of();
+        }
 
         List<Long> studentIds = new ArrayList<>();
         academicFacade.findMyEnrollment(userId, schoolId)

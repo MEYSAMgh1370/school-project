@@ -16,7 +16,7 @@ import java.util.List;
  * عمداً هیچ {@code @RequiresPermission}/{@code @RequiresModule} ندارد، چون
  * داده فقط درباره‌ی خودِ کاربر احراز هویت‌شده است - دانش‌آموزیِ خودش
  * (findMyEnrollment) به‌علاوه‌ی فرزندانِ واقعاً لینک‌شده‌اش (listWards).
- * عمداً روی نقش شرط نمی‌گذارد و اجتماع هر دو را برمی‌گرداند - یک کاربر
+ * عمداً روی نقش شرط نمی‌گذارد و اجتماع هر دو را برمی‌گرداند (فقط یک عضویتِ فعال در همین مدرسه لازم است) - یک کاربر
  * می‌تواند هم‌زمان STUDENT و PARENT باشد.
  * <p>
  * مسیر با پیشوند /api/me است، پس مثل بقیه‌ی /api/me/** در
@@ -36,6 +36,11 @@ public class MyGradesController {
     @GetMapping("/api/me/schools/{schoolId}/grades")
     public List<MyGradeResponse> myGrades(@PathVariable Long schoolId) {
         Long userId = iamFacade.currentUserId().value();
+        // عضوِ سابق (هیچ عضویتِ فعالی در این مدرسه) چیزی نمی‌گیرد؛ نقش مهم نیست (اجتماعِ
+        // دانش‌آموز و ولی همچنان بدون شرطِ نقش است)
+        if (!iamFacade.hasActiveMembership(new IamFacade.UserId(userId), schoolId)) {
+            return List.of();
+        }
 
         List<Long> studentIds = new ArrayList<>();
         academicFacade.findMyEnrollment(userId, schoolId)

@@ -2392,21 +2392,33 @@ The full phase-by-phase build history (Phases A through O) has moved to
   mutation exists — see §3's audit pattern.
 - **Do not assume a `@RequiresPermission`-annotated controller's `schoolId` path
   variable is trustworthy without checking it against `TenantContext`** — see §5.
-- ~~Do not build a generic `Notification`/messaging abstraction.~~ —
-  **superseded 2026-10-03.** A second channel is now actually requested, which
-  is exactly the condition the original entry named. The product serves more
-  than one market (`openspec/decisions/2026-10-03-multi-market-not-migration.md`),
-  and Bale does not reach schools outside Iran, so one channel can no longer
-  carry every tenant. The W5 item in `openspec/changes/eu-market-readiness.md`
-  introduces a `notification` module holding the port, with Bale and email as
-  two channels behind it. The original YAGNI reasoning was sound and held for
-  as long as there was one channel — the premise changed, not the principle.
-  Two carve-outs from the original entry still stand: `InviteEmailSender` stays
-  in `iam/internal`, because activation email is addressed by email address
-  with a token-specific template and its `emailSent` result is part of the
-  `InviteIssued` contract, and `SmsDriver` stays in `iam/internal`, because OTP
-  delivery is fail-closed and security-critical while the port is best-effort.
-  Neither is a notification channel; neither may be folded into the port.
+- ~~**Do not build a generic `Notification`/messaging abstraction.** The `bale`
+  module is Bale-specific on purpose (§3, §4's BaleLink note) — the same YAGNI
+  reasoning that keeps `InviteEmailSender` inside `iam/internal` instead of a
+  shared `platform` abstraction. Build a second channel's own module when a
+  second channel is actually requested, not before.~~ — **superseded
+  2026-10-02.** The module was renamed `notification` (PR #87) and gained a
+  package-private `NotificationChannel` with Bale as its only channel (PR #88),
+  both at the owner's explicit request. The YAGNI concern still stands for what
+  is *not* built: no second channel, no multi-channel policy, and nothing in
+  `platform`. A second channel is added inside the `notification` module, not as
+  a separate module. See `openspec/changes/rename-bale-module-to-notification.md`
+  and `openspec/changes/notification-channel-abstraction.md`.
+  <p>
+  Why a second channel will eventually be requested, for whoever reads this
+  next: the product serves more than one market
+  (`openspec/decisions/2026-10-03-multi-market-not-migration.md`) and Bale does
+  not reach schools outside Iran, so one channel cannot carry every tenant
+  indefinitely. That is a reason to expect the second channel, not a licence to
+  build it before it is asked for.
+  <p>
+  Two carve-outs from the original entry survive the supersession and are not
+  channels: `InviteEmailSender` stays in `iam/internal`, because activation
+  email is addressed by email address with a token-specific template and its
+  `emailSent` result is part of the `InviteIssued` contract; and `SmsDriver`
+  stays in `iam/internal`, because OTP delivery is fail-closed and
+  security-critical while the channel contract is best-effort. Neither may be
+  folded into the port.
 - ~~Do not build a grades data model or UI~~ — **resolved 2026-07-18, §11
   Q8.** The grades data model and REST layer are built (§4's Grade
   subsection, §7 Done) — the four decisions that unblocked it (per-class

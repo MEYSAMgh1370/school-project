@@ -91,12 +91,13 @@ Known intentional exceptions:
 
 - public pages and static assets;
 - auth/account endpoints;
-- `/api/me` and related current-user endpoints;
-- Bale webhook endpoints;
+- `/api/me` and related current-user endpoints (no permission; they return the caller's own data and, for `/api/me/schools/{id}/**` and `/api/me/enrollment`, only while the caller has at least one **active** membership in that school);
+- Bale webhook endpoints (`/api/bale/webhook`, served by the `notification` module);
 - tokenized exam-taking endpoints.
 
 Failure cases:
 
+- a malformed request body, an invalid or missing parameter, an unsupported method or content type answer `400`/`405`/`415` problem details (`malformed-request-body`, `invalid-parameter`, `missing-parameter`, `method-not-allowed`, `unsupported-media-type`), not `500`;
 - missing required tenant header returns an error before controller logic;
 - tenant/path mismatch is rejected by controllers that accept both;
 - missing module entitlement and missing permission are separate authorization failures.
@@ -114,7 +115,7 @@ The current web UI is server-rendered JTE with page-level Alpine.js components a
 Built page areas include:
 
 - public landing (with login, account-registration, and school-registration entry paths that preserve the approved post-authentication destination), login, registration, account activation, school entry, and exam-take; direct anonymous `/schools/new` entry preserves the same approved destination;
-- dashboard and shared navbar;
+- dashboard (role-gated «دسترسی سریع» shortcut cards, «فرزندان من» for parents, memberships, school-entry box for admins, phone box) and shared navbar with a grouped sidebar;
 - people, roles, classes, students, and grades;
 - curriculum, study plans, and exams;
 - finance, expenses, invoices, and payments;
@@ -123,7 +124,11 @@ Built page areas include:
 Current invariants:
 
 - `layout/main.jte` owns shared head assets.
-- `layout/navbar.jte` is reused by authenticated management pages.
+- `layout/navbar.jte` is reused by authenticated management pages: a top bar
+  (school/role switcher, user menu) plus a grouped, collapsible sidebar (a
+  drawer below 1024px). Page links come from `web.model.NavCatalog`, which also
+  drives the dashboard shortcut cards (cards by built-in role; sidebar links also by the page's management permission, so a custom role that holds it sees the link); see
+  [`changes/navigation-sidebar-and-dashboard-shortcuts.md`](../changes/navigation-sidebar-and-dashboard-shortcuts.md).
 - `layout/page-header.jte`, `layout/school-scope.jte`, and
   `layout/empty-state.jte` are shared partials extracted on 2026-09-27;
   `school-scope.jte` owns the "no school selected" warning plus the error and
@@ -176,7 +181,13 @@ Evidence:
 
 ## Finance And Academic
 
-Academic currently owns classes, students, guardians, and grades. Finance owns tuition fees, invoices, payments, school expenses, expense attachments, and finance audit behavior.
+Academic currently owns classes, students, guardians, grades, the global course catalog, and the class timetable. Finance owns tuition fees, invoices, payments, school expenses, expense attachments, and finance audit behavior.
+
+Grades can be recorded per course (`openspec/changes/grades-by-course.md`): `academic.courses` is a global, per-grade-level catalog (no `school_id`), a grade's `course_id` is optional, and a grade without a course is the overall grade («نمرهٔ کل»; all grades recorded before this feature). Per (student, class, year, term) there is at most one overall grade and one grade per course (two partial unique indexes, migration `V5`). A course must exist and match the class's `grade_level`. `GET /api/admin/schools/{schoolId}/grades` without `courseId` returns only overall grades; `GET .../grades/courses?classId=` lists the class's grade-level courses. `/grades` has a «درس» select (default «نمرهٔ کل»), `/my-grades` a «درس» column. The catalog is read-only in the application: no endpoint or screen creates or edits courses, and none are seeded; rows are managed by the platform operator through data migrations or SQL until a platform actor exists.
+
+Academic years (`openspec/changes/academic-year.md`, phase 0): `school.academic_years` is a global list (code such as `1404-1405`, no dates) that the application creates itself: configuration (`roshdeandishe.academic-year.start-month`/`start-day`, default 1 Mordad, `timezone` default `Asia/Tehran`) sets the Solar date the academic year starts, and from that date each Solar year `Y-(Y+1)` is created at startup and nightly (idempotent, gap-filling); the migration seeds only `1404-1405`. Each school has a current academic year chosen by its admin from the list (`school.schools.current_academic_year_id`, null until chosen). `GET /api/me/schools/{id}/academic-year` returns only the current year to any active member; `GET/PUT /api/admin/schools/{id}/academic-year` need the `ACADEMIC_YEAR_MANAGE` permission (granted to `SCHOOL_ADMIN`) and give the whole list and the choice. `/academic-year` is the admin page; `/grades` prefills its year field from the current year (still editable). Grades are not yet validated against the list, and non-admins are not yet restricted by year.
+
+Class timetable (`openspec/changes/class-timetable.md`): the school admin defines, per school and academic year, the periods (`academic.timetable_periods`, no overlaps, a period with entries cannot be deleted) and fills a Saturday–Wednesday grid per class (`academic.timetable_entries`: exactly one of a catalog course of the class's grade level or an activity, plus an optional teacher who must be an active `TEACHER` of the school and cannot be in two classes in the same weekday and period, `409 teacher-double-booked`, also enforced by a partial unique index). Activities (`academic.activities`) are only ever timetabled, never graded: a school owns and manages its own, and platform defaults (`school_id` null, read-only in the app, none shipped yet) are visible to all. A catalog course with `graded = false` can be timetabled but is hidden from `/grades` and rejected for grading (`400 course-not-gradable`), and grades already recorded for it are hidden from `/api/me/.../grades` (kept in the database). Admin endpoints under `/api/admin/schools/{id}/timetable/**` need the ACADEMIC module and the new `TIMETABLE_MANAGE` permission (granted to `SCHOOL_ADMIN`); `GET /api/me/schools/{id}/timetable` (no permission, own data only) returns the school's current year for the user's own class (active `STUDENT` membership), linked children's classes (active `PARENT`) and own teaching slots (active `TEACHER`). Pages: `/timetable` (admin) and `/my-timetable`; the student dashboard shows «برنامهٔ امروز». Copying a timetable to the next year, substitutions, rooms, attendance and per-school school days are not implemented.
 
 Cross-module references are intentionally opaque IDs at module boundaries. When a UI needs names for IDs from another module, the established web pattern is client-side composition through multiple REST calls, unless a backend facade already owns the composition.
 
@@ -189,6 +200,7 @@ Evidence:
 
 These are not bugs unless a change proposal says otherwise:
 
+- the course catalog (see Finance And Academic) has no administration screen or API and ships empty, because the platform-actor permission model it depends on does not exist yet and the list of courses per grade level is a pending product input;
 - no platform-admin actor model or platform permission path — a
   `PLATFORM_ADMIN` role row is seeded, but it is reserved at both boundaries:
   `listRoles` keeps the code out of role pickers, and `createMembership`

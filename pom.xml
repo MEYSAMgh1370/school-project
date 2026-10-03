@@ -133,6 +133,28 @@
             <scope>runtime</scope>
         </dependency>
 
+        <!-- Jackson 2، صریح و مستقیم. چهار کلاس تولیدی مستقیماً از آن import
+             می‌کنند: notification/internal/BaleClient، BaleUpdate، BaleWebhookService و
+             studyplan/internal/StudyPlanFacadeImpl. علتش در کامنت داخل
+             StudyPlanFacadeImpl آمده - با حضور Jackson 3 روی classpath، اسپرینگ
+             بوت ۴ دیگر یک Bean واحد از com.fasterxml.jackson.databind.ObjectMapper
+             نمی‌سازد، پس آن کلاس‌ها ObjectMapper خودشان را می‌سازند.
+
+             تا پیش از این، این وابستگی فقط ترنزیتیو می‌آمد و تنها مسیرِ
+             compile اش springdoc بود؛ jjwt-jackson هم آن را می‌آورد ولی با
+             scope=runtime، که برای کامپایل به کار نمی‌آید. یعنی حذف springdoc
+             (که یک بار آزموده شد) کامپایل را با «package com.fasterxml.jackson.databind
+             does not exist» می‌شکست - شکستی که هیچ ربطی به چهار کلاس بالا
+             نداشت و هیچ هشداری هم از قبل نمی‌داد.
+
+             نسخه عمداً pin نشده: spring-boot-dependencies همین حالا هم آن را
+             مدیریت می‌کند (۲.۲۱.۴)، و pin کردن دستی یعنی جا ماندن از ارتقای
+             بوت. -->
+        <dependency>
+            <groupId>com.fasterxml.jackson.core</groupId>
+            <artifactId>jackson-databind</artifactId>
+        </dependency>
+
         <!-- Mail (ارسال ایمیل لینک فعال‌سازی حساب - iam/internal/InviteEmailSender) -->
         <dependency>
             <groupId>org.springframework.boot</groupId>

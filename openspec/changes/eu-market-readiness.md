@@ -85,13 +85,20 @@ Audited on 2026-09-29 against `src/`, `openspec/`, and the Flyway migrations.
 
 ### Messaging Integration
 
-- The [`bale`](../../src/main/java/com/example/roshdeandishe/bale/) module is
-  already well isolated. Every reference to `Bale` from outside the module is
-  a comment or Javadoc citing it as a pattern; no production code outside
-  `bale` calls into it.
-- Coupling runs inward only:
-  [`InvoiceIssuedNotificationListener.java`](../../src/main/java/com/example/roshdeandishe/notification/internal/InvoiceIssuedNotificationListener.java)
-  consumes a finance event. Finance does not know Bale exists.
+- Audited on 2026-09-29, when a standalone `bale` module held the integration
+  and was already well isolated: every reference to it from outside was a
+  comment, and coupling ran inward only through a finance event listener.
+- **Superseded on master before this branch merged.** PR #87 renamed the module
+  `notification` and PR #88 put a package-private `NotificationChannel` behind
+  it, with Bale as the only channel — so the port this audit proposed under W5
+  already exists, built independently. See
+  [`rename-bale-module-to-notification.md`](rename-bale-module-to-notification.md)
+  and [`notification-channel-abstraction.md`](notification-channel-abstraction.md).
+  The former `bale` package is gone; its classes now live under
+  [`notification/`](../../src/main/java/com/example/roshdeandishe/notification/),
+  and the listener is
+  [`InvoiceIssuedEventListener.java`](../../src/main/java/com/example/roshdeandishe/notification/internal/InvoiceIssuedEventListener.java).
+  Finance still does not know any channel exists.
 - `BaleWebhookController` is one of the documented tenant-filter exemptions in
   [`SecurityConfig.java`](../../src/main/java/com/example/roshdeandishe/iam/config/SecurityConfig.java).
 
@@ -229,61 +236,46 @@ Acceptance criteria (once unblocked):
   unclassified values are preserved rather than guessed at.
 - Display and entry honor the per-value currency.
 
-### W5 — Introduce a notification port (size: S)
+### W5 — Introduce a notification port (size: S) — **already done on master**
 
-Current: `bale` is a well-isolated module that listens to a finance event; no
-outward coupling exists to undo.
+This item was built independently on master while this branch was open, and is
+no longer outstanding. PR #87 renamed the `bale` module to `notification`; PR
+#88 introduced a package-private `NotificationChannel` port with Bale as its
+only implementation, and a `NotificationFacadeImpl` that tries channels in
+registration order and stops at the first that delivers. The port's contract is
+the pre-existing best-effort `boolean send(Long userId, String text)`.
 
-Target: a `notification` module holding an outbound port, with Bale as one
-channel and email as the second, so a deployment can serve tenants on
-different channels.
+What that leaves genuinely open is only the **second channel** — and master
+deliberately did not build it, recording that "the YAGNI concern still stands
+for what is *not* built: no second channel, no multi-channel policy". The
+dispatcher's own Javadoc defers the multi-channel policy (deliver to all
+channels, or stop at the first success) to whenever a second channel arrives.
 
-Bale is not removed or replaced. Per
-[`decisions/2026-10-03-multi-market-not-migration.md`](../decisions/2026-10-03-multi-market-not-migration.md)
-it stays a supported channel, and the Iranian segment keeps using it.
+An email channel was drafted on this branch and then dropped when master's
+version proved both earlier and more thorough — master moved the whole Bale
+integration inside the module rather than wrapping it from outside. Two findings
+from that attempt are worth keeping, because they will apply to whoever adds the
+second channel:
 
-Email is the second channel because the mail infrastructure already exists and
-is already required in production — `JavaMailSender` is auto-configured and
-`spring.mail.*` is set in `application.yml`, with `MAIL_*` listed among the
-variables [`DEPLOYMENT.md`](../../DEPLOYMENT.md) requires under the `prod`
-profile. No new outbound infrastructure is introduced.
+- **Unconditional fan-out would be a production regression.** With Bale
+  configured, delivering to every channel means every existing Iranian school
+  receives an extra message per invoice. Master's first-success-wins dispatcher
+  already avoids that, but a future change to "deliver to all" would reintroduce
+  it.
+- **The notification text is hardcoded Persian.** `InvoiceIssuedEventListener`
+  builds its body as a Persian string literal and the port carries neither a
+  locale nor a message key. Any channel serving a non-Iranian tenant would send
+  Persian text. Fixing it depends on W1: until a message bundle exists there is
+  nothing to resolve a key against.
 
-`CLAUDE_LEGACY.md` previously forbade a generic notification abstraction until
-a second channel was actually requested. That entry was superseded on
-2026-10-03: the condition it named is now met, since Bale does not reach
-schools outside Iran. Its two carve-outs still hold — `InviteEmailSender` and
-`SmsDriver` stay in `iam/internal` and are not channels, the first because
-activation email is token-templated and its result is part of the
-`InviteIssued` contract, the second because OTP delivery is fail-closed while
-this port is best-effort.
+Remaining acceptance criteria for the second channel, when it is requested:
 
-Acceptance criteria:
-
-- Publishing modules depend on the port, not on any channel.
-- Bale behavior is unchanged when the Bale channel is configured.
-- A deployment with no Bale configuration starts and delivers through the
-  other channel.
+- Publishers keep depending on the facade, not on any channel.
+- Bale behavior is unchanged when Bale is configured.
+- A deployment with no Bale configuration starts and delivers through the other
+  channel.
+- The multi-channel policy is decided explicitly rather than inherited.
 - `ApplicationModules.verify()` still passes.
-
-Two limitations are known and deliberately left open rather than guessed at:
-
-- **Channel selection is per-deployment, not per-tenant.** The email channel is
-  conditional on Bale being unconfigured, which is the inverse of the Bale
-  channel's own condition. Fanning out to both channels unconditionally was
-  rejected: every existing Iranian school would then receive an extra email per
-  invoice, a production behavior change nobody asked for. True per-tenant
-  selection — the shape
-  [`decisions/2026-10-03-multi-market-not-migration.md`](../decisions/2026-10-03-multi-market-not-migration.md)
-  calls for — needs the school's `locale` field wired through to request
-  resolution, which has not been done. Until then this condition preserves
-  current behavior exactly.
-- **The notification text is hardcoded Persian.** The email subject in
-  `EmailNotificationChannel` and the invoice body built by
-  `InvoiceIssuedNotificationListener` are both Persian string literals, and the
-  port carries neither a locale nor a message key. Email is the channel for the
-  non-Iranian segment, so Persian text there is wrong. Fixing it depends on W1:
-  until a message bundle exists there is nothing to resolve a key against. No
-  translation was invented here.
 
 ### W6 — Build the data-protection surface (size: L)
 
@@ -329,8 +321,8 @@ Acceptance criteria:
 
 W0 is a bug fix and comes first; W3 depends on it to be meaningful. W2 then
 depends on W3, since the calendar seam reads the locale that W3 establishes.
-W5 is independent of all three. W2, W3, and W5 are small and unblock a credible
-non-Persian demo. W1 is the long pole and should start early because it touches every
+W5 is already done on master, so it is not in the order at all. W2 and W3 are
+small and unblock a credible non-Persian demo. W1 is the long pole and should start early because it touches every
 template. W6 and W7 are product-heavy and should not start until the open
 questions below are answered. W4 stays blocked.
 
@@ -351,8 +343,10 @@ These are product decisions. This document does not answer them.
 3. Does the canonical monetary unit decision in
    [`finance-monetary-unit.md`](finance-monetary-unit.md) still stand if the
    product serves a second currency? W4 cannot start until this is settled.
-4. Does Bale remain a supported channel, and what replaces it where Bale is
-   unavailable?
+4. Bale remains a supported channel — the `notification` module keeps it as
+   its only one. What still has no answer is which channel serves a tenant
+   where Bale is unavailable, and whether delivery then goes to one channel or
+   to all of them.
 5. Which jurisdiction's data-protection profile applies, where is data hosted,
    and who is the controller when a school is the tenant? W6's acceptance
    criteria are shaped by this and it needs qualified legal advice, not a

@@ -1,39 +1,40 @@
 package com.example.roshdeandishe.notification.internal;
 
 import com.example.roshdeandishe.notification.NotificationFacade;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
 
-/**
- * پیام را به همه‌ی کانال‌های موجود می‌فرستد. شکست (false) یا Exception در یک
- * کانال نباید مانع کانال‌های بعدی شود - پورت best-effort است، پس Exception
- * اینجا مهار و لاگ می‌شود، نه بالا داده.
- */
 @Service
 class NotificationFacadeImpl implements NotificationFacade {
 
-    private static final Logger log = LoggerFactory.getLogger(NotificationFacadeImpl.class);
-
     private final List<NotificationChannel> channels;
+    private final BaleWebhookService webhookService;
 
-    NotificationFacadeImpl(List<NotificationChannel> channels) {
+    NotificationFacadeImpl(List<NotificationChannel> channels, BaleWebhookService webhookService) {
         this.channels = channels;
+        this.webhookService = webhookService;
+    }
+
+    /**
+     * کانال‌ها به ترتیبِ ثبت امتحان می‌شوند و با اولین کانالی که پیام را
+     * رساند متوقف می‌شود. با یک کانال (بله) این دقیقاً رفتار قبلی است؛
+     * سیاستِ چندکاناله (ارسال به همه یا فقط اولین موفق) تصمیمی است که با
+     * اضافه‌شدنِ کانال دوم باید گرفته شود (OpenSpec: changes/
+     * notification-channel-abstraction.md).
+     */
+    @Override
+    public boolean sendMessageToUser(Long userId, String text) {
+        for (NotificationChannel channel : channels) {
+            if (channel.send(userId, text)) {
+                return true;
+            }
+        }
+        return false;
     }
 
     @Override
-    public boolean sendToUser(Long userId, String text) {
-        boolean delivered = false;
-        for (NotificationChannel channel : channels) {
-            try {
-                delivered |= channel.sendToUser(userId, text);
-            } catch (RuntimeException e) {
-                log.warn("کانال اطلاع‌رسانی {} برای userId={} با خطا مواجه شد؛ کانال‌های بعدی ادامه می‌یابند.",
-                        channel.getClass().getSimpleName(), userId, e);
-            }
-        }
-        return delivered;
+    public void processIncomingUpdate(String rawJson) {
+        webhookService.processRawUpdate(rawJson);
     }
 }

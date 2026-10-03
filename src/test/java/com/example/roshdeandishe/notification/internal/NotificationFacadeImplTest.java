@@ -8,79 +8,67 @@ import java.util.List;
 import static org.assertj.core.api.Assertions.assertThat;
 
 /**
- * تست واحدِ fan-out ی {@link NotificationFacadeImpl}: بدون Spring context و
- * بدون دیتابیس، با کانال‌های جعلی.
+ * مسیریابی پیام از NotificationFacade به کانال‌ها، بدون Spring و Docker.
+ * کانال‌ها fake هستند؛ رفتار واقعی بله در BaleFlowIntegrationTest و
+ * BaleChannelTest پوشش داده می‌شود.
  */
 class NotificationFacadeImplTest {
 
-    /** کانالی که هر پیام را ثبت می‌کند و نتیجه‌ی ازپیش‌تعیین‌شده برمی‌گرداند. */
-    private static final class RecordingChannel implements NotificationChannel {
+    private static class FakeChannel implements NotificationChannel {
         private final boolean result;
-        private final RuntimeException toThrow;
-        final List<String> received = new ArrayList<>();
+        private final List<String> calls = new ArrayList<>();
 
-        RecordingChannel(boolean result) {
-            this(result, null);
-        }
-
-        RecordingChannel(boolean result, RuntimeException toThrow) {
+        FakeChannel(boolean result) {
             this.result = result;
-            this.toThrow = toThrow;
         }
 
         @Override
-        public boolean sendToUser(Long userId, String text) {
-            received.add(userId + ":" + text);
-            if (toThrow != null) {
-                throw toThrow;
-            }
+        public boolean send(Long userId, String text) {
+            calls.add(userId + ":" + text);
             return result;
         }
     }
 
-    @Test
-    void everyChannelReceivesTheMessage() {
-        RecordingChannel first = new RecordingChannel(true);
-        RecordingChannel second = new RecordingChannel(true);
-
-        boolean delivered = new NotificationFacadeImpl(List.of(first, second)).sendToUser(7L, "hello");
-
-        assertThat(delivered).isTrue();
-        assertThat(first.received).containsExactly("7:hello");
-        assertThat(second.received).containsExactly("7:hello");
+    private static NotificationFacadeImpl facade(NotificationChannel... channels) {
+        // webhookService در مسیر sendMessageToUser استفاده نمی‌شود
+        return new NotificationFacadeImpl(List.of(channels), null);
     }
 
     @Test
-    void aChannelReturningFalseDoesNotStopTheOthers() {
-        RecordingChannel failing = new RecordingChannel(false);
-        RecordingChannel working = new RecordingChannel(true);
+    void returnsTrueWhenTheOnlyChannelDelivers() {
+        FakeChannel bale = new FakeChannel(true);
 
-        boolean delivered = new NotificationFacadeImpl(List.of(failing, working)).sendToUser(7L, "hello");
-
-        assertThat(failing.received).hasSize(1);
-        assertThat(working.received).containsExactly("7:hello");
-        assertThat(delivered).isTrue();
+        assertThat(facade(bale).sendMessageToUser(7L, "سلام")).isTrue();
+        assertThat(bale.calls).containsExactly("7:سلام");
     }
 
     @Test
-    void aChannelThrowingIsContainedAndDoesNotStopTheOthers() {
-        RecordingChannel throwing = new RecordingChannel(true, new IllegalStateException("boom"));
-        RecordingChannel working = new RecordingChannel(true);
-
-        boolean delivered = new NotificationFacadeImpl(List.of(throwing, working)).sendToUser(7L, "hello");
-
-        assertThat(throwing.received).hasSize(1);
-        assertThat(working.received).containsExactly("7:hello");
-        assertThat(delivered).isTrue();
+    void returnsFalseWhenTheOnlyChannelCannotDeliver() {
+        assertThat(facade(new FakeChannel(false)).sendMessageToUser(7L, "سلام")).isFalse();
     }
 
     @Test
-    void returnsFalseWhenNoChannelDelivers() {
-        RecordingChannel failing = new RecordingChannel(false);
-        RecordingChannel throwing = new RecordingChannel(true, new IllegalStateException("boom"));
+    void returnsFalseWithoutAnyChannel() {
+        assertThat(facade().sendMessageToUser(7L, "سلام")).isFalse();
+    }
 
-        boolean delivered = new NotificationFacadeImpl(List.of(failing, throwing)).sendToUser(7L, "hello");
+    @Test
+    void stopsAtTheFirstChannelThatDelivers() {
+        FakeChannel first = new FakeChannel(true);
+        FakeChannel second = new FakeChannel(true);
 
-        assertThat(delivered).isFalse();
+        assertThat(facade(first, second).sendMessageToUser(7L, "سلام")).isTrue();
+        assertThat(first.calls).hasSize(1);
+        assertThat(second.calls).isEmpty();
+    }
+
+    @Test
+    void fallsThroughToTheNextChannelWhenOneCannotDeliver() {
+        FakeChannel unreachable = new FakeChannel(false);
+        FakeChannel reachable = new FakeChannel(true);
+
+        assertThat(facade(unreachable, reachable).sendMessageToUser(7L, "سلام")).isTrue();
+        assertThat(unreachable.calls).hasSize(1);
+        assertThat(reachable.calls).hasSize(1);
     }
 }

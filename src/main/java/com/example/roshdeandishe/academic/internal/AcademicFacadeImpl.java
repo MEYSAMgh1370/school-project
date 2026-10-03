@@ -17,7 +17,9 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.time.Instant;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 
 @Service
@@ -29,6 +31,7 @@ class AcademicFacadeImpl implements AcademicFacade {
     private final ClassRepository classRepository;
     private final StudentGuardianRepository studentGuardianRepository;
     private final GradeRepository gradeRepository;
+    private final CourseRepository courseRepository;
     private final IamFacade iamFacade;
     private final SchoolFacade schoolFacade;
     private final ApplicationEventPublisher eventPublisher;
@@ -38,6 +41,7 @@ class AcademicFacadeImpl implements AcademicFacade {
             ClassRepository classRepository,
             StudentGuardianRepository studentGuardianRepository,
             GradeRepository gradeRepository,
+            CourseRepository courseRepository,
             IamFacade iamFacade,
             SchoolFacade schoolFacade,
             ApplicationEventPublisher eventPublisher
@@ -46,6 +50,7 @@ class AcademicFacadeImpl implements AcademicFacade {
         this.classRepository = classRepository;
         this.studentGuardianRepository = studentGuardianRepository;
         this.gradeRepository = gradeRepository;
+        this.courseRepository = courseRepository;
         this.iamFacade = iamFacade;
         this.schoolFacade = schoolFacade;
         this.eventPublisher = eventPublisher;
@@ -125,8 +130,20 @@ class AcademicFacadeImpl implements AcademicFacade {
     @Override
     @Transactional
     public GradeId recordGrade(Long schoolId, Long studentId, Long classId, String academicYear, GradingTerm term,
-                                DescriptiveGradeLevel descriptiveLevel, BigDecimal numericScore, String comment) {
+                                DescriptiveGradeLevel descriptiveLevel, BigDecimal numericScore, String comment,
+                                Long courseId) {
         ClassEntity classEntity = requireClassInSchool(schoolId, classId);
+        if (courseId != null) {
+            // درس باید در فهرست سراسری باشد و هم‌پایه‌ی کلاس (فهرست به‌تفکیک پایه است)
+            CourseEntity course = courseRepository.findById(courseId)
+                    .orElseThrow(() -> new AcademicException(new AcademicError.CourseNotFound(courseId)));
+            if (course.getGradeLevel() != classEntity.getGradeLevel()) {
+                throw new AcademicException(new AcademicError.CourseNotForClass(courseId, classId));
+            }
+            if (!course.isGraded()) {
+                throw new AcademicException(new AcademicError.CourseNotGradable(courseId));
+            }
+        }
         StudentEntity student = studentRepository.findById(studentId)
                 .orElseThrow(() -> new AcademicException(new AcademicError.StudentNotFound(studentId)));
         if (!student.getSchoolId().equals(schoolId) || !student.getClassId().equals(classId)) {
@@ -153,12 +170,17 @@ class AcademicFacadeImpl implements AcademicFacade {
             }
         }
 
-        GradeEntity grade = gradeRepository
-                .findByStudentIdAndClassIdAndAcademicYearAndTerm(studentId, classId, academicYear, term)
+        // نمرهٔ کل و نمره‌ی هر درس ردیف‌های جدا هستند (دو ایندکس جزئیِ V5)
+        GradeEntity grade = (courseId == null
+                ? gradeRepository.findByStudentIdAndClassIdAndAcademicYearAndTermAndCourseIdIsNull(
+                        studentId, classId, academicYear, term)
+                : gradeRepository.findByStudentIdAndClassIdAndAcademicYearAndTermAndCourseId(
+                        studentId, classId, academicYear, term, courseId))
                 .orElseGet(GradeEntity::new);
         grade.setSchoolId(schoolId);
         grade.setStudentId(studentId);
         grade.setClassId(classId);
+        grade.setCourseId(courseId);
         grade.setAcademicYear(academicYear);
         grade.setTerm(term);
         grade.setScheme(scheme);
@@ -173,16 +195,26 @@ class AcademicFacadeImpl implements AcademicFacade {
 
     @Override
     public GradeInfo getGrade(Long gradeId) {
-        return gradeRepository.findById(gradeId)
-                .map(AcademicFacadeImpl::toGradeInfo)
+        GradeEntity grade = gradeRepository.findById(gradeId)
                 .orElseThrow(() -> new AcademicException(new AcademicError.GradeNotFound(gradeId)));
+        return toGradeInfos(List.of(grade)).get(0);
     }
 
     @Override
-    public List<GradeInfo> listGradesForClass(Long schoolId, Long classId, String academicYear, GradingTerm term) {
+    public List<GradeInfo> listGradesForClass(Long schoolId, Long classId, String academicYear, GradingTerm term,
+                                              Long courseId) {
         requireClassInSchool(schoolId, classId);
-        return gradeRepository.findByClassIdAndAcademicYearAndTerm(classId, academicYear, term).stream()
-                .map(AcademicFacadeImpl::toGradeInfo)
+        List<GradeEntity> grades = courseId == null
+                ? gradeRepository.findByClassIdAndAcademicYearAndTermAndCourseIdIsNull(classId, academicYear, term)
+                : gradeRepository.findByClassIdAndAcademicYearAndTermAndCourseId(classId, academicYear, term, courseId);
+        return toGradeInfos(grades);
+    }
+
+    @Override
+    public List<CourseInfo> listCoursesForClass(Long schoolId, Long classId) {
+        ClassEntity classEntity = requireClassInSchool(schoolId, classId);
+        return courseRepository.findByGradeLevelAndGradedTrueOrderByNameAsc(classEntity.getGradeLevel()).stream()
+                .map(c -> new CourseInfo(new CourseId(c.getId()), c.getGradeLevel(), c.getName()))
                 .toList();
     }
 
@@ -191,10 +223,17 @@ class AcademicFacadeImpl implements AcademicFacade {
         if (studentIds.isEmpty()) {
             return List.of();
         }
-        return gradeRepository.findByStudentIdIn(studentIds).stream()
+        List<GradeEntity> grades = gradeRepository.findByStudentIdIn(studentIds).stream()
                 .filter(g -> g.getSchoolId().equals(schoolId))
-                .map(AcademicFacadeImpl::toGradeInfo)
                 .toList();
+        // درسی که بعد از ثبتِ نمره «غیرنمره‌پذیر» شده (graded = false) از کارنامه‌ی دانش‌آموز/ولی
+        // پنهان است؛ ردیف‌ها حذف نمی‌شوند (اگر دوباره نمره‌پذیر شود برمی‌گردند) و فهرستِ مدیر که
+        // صریحاً با courseId می‌پرسد همچنان آن‌ها را می‌دهد.
+        Map<Long, CourseEntity> coursesById = coursesOf(grades);
+        return toGradeInfos(grades.stream()
+                .filter(g -> g.getCourseId() == null || coursesById.get(g.getCourseId()) == null
+                        || coursesById.get(g.getCourseId()).isGraded())
+                .toList(), coursesById);
     }
 
     @Override
@@ -292,12 +331,34 @@ class AcademicFacadeImpl implements AcademicFacade {
                 c.getGradeLevel(), c.getGradingScheme());
     }
 
-    private static GradeInfo toGradeInfo(GradeEntity g) {
-        return new GradeInfo(
-                new GradeId(g.getId()), g.getSchoolId(), new StudentId(g.getStudentId()), new ClassId(g.getClassId()),
-                g.getAcademicYear(), g.getTerm(), g.getScheme(), g.getDescriptiveLevel(), g.getNumericScore(),
-                g.getComment(), g.getRecordedByUserId(), g.getRecordedAt()
-        );
+    // درس‌های یک فهرست از نمره با یک query برای همه‌ی ردیف‌ها گرفته می‌شود (نه یکی به‌ازای هر نمره).
+    private Map<Long, CourseEntity> coursesOf(List<GradeEntity> grades) {
+        List<Long> courseIds = grades.stream()
+                .map(GradeEntity::getCourseId)
+                .filter(java.util.Objects::nonNull)
+                .distinct()
+                .toList();
+        Map<Long, CourseEntity> byId = new HashMap<>();
+        if (!courseIds.isEmpty()) {
+            courseRepository.findAllById(courseIds).forEach(c -> byId.put(c.getId(), c));
+        }
+        return byId;
+    }
+
+    private List<GradeInfo> toGradeInfos(List<GradeEntity> grades) {
+        return toGradeInfos(grades, coursesOf(grades));
+    }
+
+    private List<GradeInfo> toGradeInfos(List<GradeEntity> grades, Map<Long, CourseEntity> coursesById) {
+        return grades.stream()
+                .map(g -> new GradeInfo(
+                        new GradeId(g.getId()), g.getSchoolId(), new StudentId(g.getStudentId()),
+                        new ClassId(g.getClassId()), g.getAcademicYear(), g.getTerm(), g.getScheme(),
+                        g.getDescriptiveLevel(), g.getNumericScore(), g.getComment(), g.getRecordedByUserId(),
+                        g.getRecordedAt(), g.getCourseId(),
+                        g.getCourseId() == null || coursesById.get(g.getCourseId()) == null
+                                ? null : coursesById.get(g.getCourseId()).getName()))
+                .toList();
     }
 
     /**

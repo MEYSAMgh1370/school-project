@@ -29,9 +29,9 @@ public interface AcademicFacade {
     /**
      * نسخه‌ی Optional از getStudentInfo برای فراخوان‌هایی که «نبودن
      * دانش‌آموز» برایشان حالت عادی است، نه خطای دامنه - مثل
-     * notification.InvoiceIssuedNotificationListener که برای فاکتوری با studentId بدون
+     * notification.internal.InvoiceIssuedEventListener که برای فاکتوری با studentId بدون
      * StudentEntity فقط باید اطلاع‌رسانی را رد کند (همان قرارداد
-     * findMyEnrollment/BaleFacade.sendMessageToUser).
+     * findMyEnrollment/NotificationFacade.sendMessageToUser).
      */
     Optional<StudentInfo> findStudentInfo(Long studentId);
 
@@ -62,9 +62,23 @@ public interface AcademicFacade {
      * descriptiveLevel/numericScore باید متناظر با شِمای واقعیِ کلاس
      * (ClassEntity.gradingScheme) پر باشد (AcademicError.GradingSchemeMismatch
      * وگرنه) - شِما پارامتر جداگانه نمی‌گیرد چون قابل استنتاج از خودِ کلاس است.
+     * <p>
+     * {@code courseId} اختیاری است: {@code null} یعنی «نمرهٔ کل» (رفتار پیشین)؛
+     * با مقدار، درس باید در فهرست سراسری باشد (AcademicError.CourseNotFound) و
+     * هم‌پایه‌ی کلاس (AcademicError.CourseNotForClass). برای هر (دانش‌آموز، کلاس،
+     * سال، نوبت) یک نمرهٔ کل و یک نمره به‌ازای هر درس می‌تواند وجود داشته باشد.
      */
     GradeId recordGrade(Long schoolId, Long studentId, Long classId, String academicYear, GradingTerm term,
-                         DescriptiveGradeLevel descriptiveLevel, BigDecimal numericScore, String comment);
+                         DescriptiveGradeLevel descriptiveLevel, BigDecimal numericScore, String comment,
+                         Long courseId);
+
+    /**
+     * درس‌های سراسریِ هم‌پایه‌ی یک کلاس، به ترتیب نام - برای انتخابگر درس در
+     * دفتر نمرات (فقط درس‌های نمره‌پذیر: درسِ {@code graded = false} فقط در برنامهٔ
+     * کلاسی می‌آید). فهرست فقط‌خواندنی است (openspec/changes/grades-by-course.md).
+     * AcademicError.ClassNotFound اگر کلاس متعلق به این مدرسه نباشد.
+     */
+    List<CourseInfo> listCoursesForClass(Long schoolId, Long classId);
 
     GradeInfo getGrade(Long gradeId);
 
@@ -73,8 +87,11 @@ public interface AcademicFacade {
      * برای ورود/بازبینیِ نمرات. عمداً فقط با GRADES_EDIT گیت می‌شود، نه
      * GRADES_VIEW (که STUDENT/PARENT هم دارند) - وگرنه یک دانش‌آموز می‌توانست
      * با فراخوانی مستقیمِ این endpoint، نمره‌ی کل هم‌کلاسی‌هایش را ببیند.
+     * {@code courseId == null} فقط «نمرهٔ کل»ها را برمی‌گرداند (همان رفتار پیشین)،
+     * با مقدار فقط نمره‌های همان درس را.
      */
-    List<GradeInfo> listGradesForClass(Long schoolId, Long classId, String academicYear, GradingTerm term);
+    List<GradeInfo> listGradesForClass(Long schoolId, Long classId, String academicYear, GradingTerm term,
+                                       Long courseId);
 
     /**
      * همه‌ی نمره‌های ثبت‌شده برای چند دانش‌آموز مشخص، در همه‌ی سال‌ها/نوبت‌ها -
@@ -116,7 +133,7 @@ public interface AcademicFacade {
      * دانش‌آموز). Optional، نه throwing: «این کاربر در این مدرسه دانش‌آموز
      * نیست» یک حالت عادی است (مثلاً یک SCHOOL_ADMIN یا TEACHER که اصلاً
      * StudentEntity ندارد)، نه یک خطای دامنه - همان قرارداد
-     * issueInviteToken/BaleFacade.sendMessageToUser.
+     * issueInviteToken/NotificationFacade.sendMessageToUser.
      */
     Optional<EnrollmentInfo> findMyEnrollment(Long userId, Long schoolId);
 
@@ -132,6 +149,12 @@ public interface AcademicFacade {
     record GradeId(Long value) {
     }
 
+    record CourseId(Long value) {
+    }
+
+    record CourseInfo(CourseId id, int gradeLevel, String name) {
+    }
+
     record StudentInfo(StudentId id, Long userId, Long schoolId, ClassId classId) {
     }
 
@@ -140,7 +163,8 @@ public interface AcademicFacade {
 
     record GradeInfo(GradeId id, Long schoolId, StudentId studentId, ClassId classId, String academicYear,
                       GradingTerm term, GradingScheme scheme, DescriptiveGradeLevel descriptiveLevel,
-                      BigDecimal numericScore, String comment, Long recordedByUserId, Instant recordedAt) {
+                      BigDecimal numericScore, String comment, Long recordedByUserId, Instant recordedAt,
+                      Long courseId, String courseName) {
     }
 
     record EnrollmentInfo(StudentId studentId, Long schoolId, ClassId classId, String className, String section) {

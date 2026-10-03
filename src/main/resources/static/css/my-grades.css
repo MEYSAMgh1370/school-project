@@ -1,0 +1,93 @@
+/* Student picker on /my-grades: composed from shared tokens and Bulma primitives. */
+.app-picker {
+  position: relative;
+  max-inline-size: 28rem;
+  margin-block-end: var(--space-4);
+}
+
+.app-picker-toggle {
+  appearance: none;
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  inline-size: 100%;
+  min-block-size: 44px;
+  padding: var(--space-2) var(--space-4);
+  background: var(--bulma-scheme-main);
+  border: 1px solid var(--bulma-border);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-sm);
+  color: var(--bulma-text);
+  cursor: pointer;
+  font: inherit;
+  font-weight: var(--bulma-weight-semibold);
+  text-align: start;
+}
+
+.app-picker-toggle:hover {
+  background: var(--bulma-scheme-main-bis);
+}
+
+/* chevron at the inline-end edge; RTL-only app, same drawing as the sidebar's:
+   closed points toward inline-end (left), open points down */
+.app-picker-chevron {
+  margin-inline-start: auto;
+  inline-size: 0.5em;
+  block-size: 0.5em;
+  border: 2px solid currentColor;
+  border-inline-end: 0;
+  border-block-start: 0;
+  transform: rotate(135deg);
+  transition: transform 0.15s ease;
+}
+
+.app-picker-toggle[aria-expanded="true"] .app-picker-chevron {
+  transform: rotate(45deg);
+}
+
+.app-picker-list {
+  position: absolute;
+  inset-inline: 0;
+  z-index: 10;
+  margin: var(--space-1) 0 0;
+  padding: var(--space-1);
+  list-style: none;
+  background: var(--bulma-scheme-main);
+  border: 1px solid var(--bulma-border);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-md);
+}
+
+.app-picker-option {
+  appearance: none;
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  inline-size: 100%;
+  min-block-size: 44px;
+  padding: var(--space-2) var(--space-3);
+  background: transparent;
+  border: 0;
+  border-radius: var(--radius-sm);
+  color: var(--bulma-text);
+  cursor: pointer;
+  font: inherit;
+  text-align: start;
+}
+
+.app-picker-option:hover {
+  background: var(--bulma-scheme-main-bis);
+}
+
+.app-picker-option.is-selected {
+  font-weight: var(--bulma-weight-semibold);
+  color: var(--bulma-link);
+}
+
+.app-picker-option .tag {
+  margin-inline-start: auto;
+}
+
+.app-picker-panel > p {
+  margin-block-end: 0;
+}

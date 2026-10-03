@@ -73,6 +73,10 @@ public class MyExamsController {
     }
 
     private Long resolveStudentId(Long userId, Long schoolId) {
+        // عضوِ سابق (بدون عضویتِ فعال) دانش‌آموزِ این مدرسه حساب نمی‌شود: نه فهرست، نه شروعِ تلاش
+        if (!iamFacade.hasActiveMembership(new IamFacade.UserId(userId), schoolId)) {
+            return null;
+        }
         return academicFacade.findMyEnrollment(userId, schoolId)
                 .map(enrollment -> enrollment.studentId().value())
                 .orElse(null);

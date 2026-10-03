@@ -264,6 +264,11 @@ class IamFacadeImpl implements IamFacade {
     }
 
     @Override
+    public boolean hasActiveMembership(UserId userId, Long schoolId) {
+        return !schoolMembershipRepository.findByUserIdAndSchoolIdAndActiveTrue(userId.value(), schoolId).isEmpty();
+    }
+
+    @Override
     @Transactional
     public Long createMembership(UserId userId, Long schoolId, String roleCode) {
         // PLATFORM_ADMIN مسیر بررسی مجوز ندارد (PermissionDecisionService فقط
@@ -448,6 +453,32 @@ class IamFacadeImpl implements IamFacade {
                 .filter(r -> !PLATFORM_ADMIN_ROLE_CODE.equals(r.getCode()))
                 .map(this::toRoleInfo)
                 .toList();
+    }
+
+    @Override
+    public java.util.Map<String, List<String>> findPermissionCodesByRole(Long schoolId,
+                                                                         java.util.Collection<String> roleCodes) {
+        List<RoleEntity> roles = roleRepository.findBySchoolIdIsNullOrSchoolId(schoolId).stream()
+                .filter(r -> !PLATFORM_ADMIN_ROLE_CODE.equals(r.getCode()) && roleCodes.contains(r.getCode()))
+                .toList();
+        if (roles.isEmpty()) {
+            return java.util.Map.of();
+        }
+        List<RolePermissionEntity> grants = rolePermissionRepository.findByRoleIdIn(
+                roles.stream().map(RoleEntity::getId).toList());
+        java.util.Map<Long, String> codeByPermissionId = new java.util.HashMap<>();
+        permissionRepository.findAllById(grants.stream().map(RolePermissionEntity::getPermissionId).distinct().toList())
+                .forEach(p -> codeByPermissionId.put(p.getId(), p.getCode()));
+        java.util.Map<String, List<String>> result = new java.util.LinkedHashMap<>();
+        for (RoleEntity role : roles) {
+            result.put(role.getCode(), grants.stream()
+                    .filter(g -> g.getRoleId().equals(role.getId()))
+                    .map(g -> codeByPermissionId.get(g.getPermissionId()))
+                    .filter(Objects::nonNull)
+                    .sorted()
+                    .toList());
+        }
+        return result;
     }
 
     @Override

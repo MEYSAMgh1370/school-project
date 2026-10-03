@@ -28,8 +28,12 @@ dimension**, not something to be removed:
   alongside Gregorian.
 - RTL layout and the Vazirmatn typeface stay, conditional on locale rather
   than unconditional.
-- Bale stays a supported notification channel. A notification port is added so
-  other channels can exist beside it; Bale is not replaced or removed.
+- Bale stays a supported notification channel, and is not replaced or removed.
+  The port that lets other channels sit beside it already exists: master
+  renamed the module `notification` (PR #87) and added a package-private
+  `NotificationChannel` with Bale as its only implementation (PR #88). A second
+  channel goes inside that module when one is actually requested; this decision
+  is why one eventually will be, not a licence to add it now.
 - Money carries an explicit currency, because two segments mean at least two
   currencies.
 

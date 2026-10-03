@@ -337,7 +337,12 @@ aspirational list. Current inventory:
 - `layout/main.jte` — the only owner of `<head>`; `title`, `content`,
   optional `scripts`, and optional `styles` (rules in OpenSpec /
   UX_ROADMAP §2).
-- `layout/navbar.jte` — school/role switcher, fed by `NavbarModelAssembler`.
+- `layout/navbar.jte` — top bar (school/role switcher, user menu) plus the
+  grouped page-link sidebar (`aside.app-sidebar`, inline-start, fixed ≥1024px;
+  sticky-bar + drawer below), fed by `NavbarModelAssembler`. The page links come
+  from `web.model.NavCatalog`, the same source as the dashboard's «دسترسی سریع»
+  cards (`dashboard.jte`, `app-shortcut` in `dashboard.css`). Layout rules live
+  in `app.css` §"Sidebar layout".
 - `layout/page-header.jte` — `title` + optional `subtitle`; renders the
   `title is-4` / `subtitle is-6` pair from §3. Extracted 2026-09-27,
   adopted by 14 pages.
