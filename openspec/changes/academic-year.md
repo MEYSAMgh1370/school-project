@@ -5,8 +5,8 @@ created by the application, the school's current year, the «سال تحصیلی
 its behavior is current: it is recorded in
 [`specs/current-system.md`](../specs/current-system.md). **Phases 1-3 are not
 implemented**, and nothing about them changes the current specification until
-they are built. Several design questions were answered by the product owner the
-same day (below), the rest are still open. Foundational change: other proposals
+they are built. Several design questions were answered by the product owner on
+2026-10-02 and more on 2026-10-03 (below); the rest are still open. Foundational change: other proposals
 depend on it ([`class-timetable.md`](class-timetable.md), and the deferred
 "course list changes over time" question in
 [`grades-by-course.md`](grades-by-course.md)). Every item that is a product
@@ -44,6 +44,32 @@ decision is a question below, not invented here.
 6. **Promotion is automatic by default, can also be done by hand, and the
    automatic mode can be switched on or off** (a school setting).
 7. **Build order**: phase 0, then the class timetable, then phases 1-3.
+
+## Decisions Taken By The Product Owner (2026-10-03)
+
+Answers to the first unresolved questions (numbering is the one the questions had).
+
+- **Q1 - automatic promotion is fully automatic.** Default rule: when the school
+  switches to a new year and automatic promotion is on, every student moves to the
+  next grade level; repeaters (and any other exception) are changed by hand
+  afterwards. The new year's **classes are created from scratch** - they are not
+  copied from last year. *Consequence recorded as a new question (8):* the target
+  classes do not exist at the moment of the switch.
+- **Q2 - invoices when tuition is set late: a separate action.** Saving the year's
+  tuition issues nothing by itself; a separate "issue the year's invoices" action
+  (the existing backfill, now per year) issues them for students enrolled in that
+  year who have none.
+- **Q3 - paying an earlier year's invoice is allowed** (decision 1 covers payments).
+- **Q5 - past years are hidden from non-admins, confirmed.** Teachers, students and
+  parents see only the current year (this removes the all-years view of
+  `/my-grades`). **Report cards of earlier years are obtained through the school
+  admin**; no student/parent self-service view of them is built.
+
+Proposed defaults, **not yet confirmed** (they stand unless the product owner
+objects): Q4 existing data is attributed to one year chosen by the admin when the
+feature is enabled, unmatched free-text grade years are reported not guessed; Q6 the
+admin may switch the current year back to an earlier year; Q7 no platform-operator
+work is needed for years; the "ABA" question is closed (below).
 
 ## Verified Baseline (before phase 0)
 
@@ -153,8 +179,9 @@ As each kind of data becomes year-scoped, the **school admin** can open any year
 to look at it and still correct it (decision 1); **teachers, students and
 parents only see the current year's data**. Concretely this will change
 `/my-grades` (today it shows all years) and `/grades` for teachers (today the
-year is free text). It is not applied in phase 0 and it is flagged in question 5
-because it removes something users have today.
+year is free text). It is not applied in phase 0; it removes something users have
+today, and the product owner confirmed it on 2026-10-03 (question 5: earlier years'
+report cards come from the school admin).
 
 ### What becomes year-scoped (by phase)
 
@@ -193,9 +220,11 @@ level), **graduate** (the school's last grade, `SchoolLevel.maxGrade`), or
   default rule; **manual** is the same bulk screen with a per-student choice, and
   the admin can use it even when the automatic mode is on, to override outcomes
   or to run it by hand when it is off.
-- What "automatic" means exactly - the rule that decides promote/repeat, and
-  whether it runs by itself or only pre-fills the admin's screen - is question
-  1 below. It is a Ministry/product rule and is not invented here.
+- **Automatic** (decided 2026-10-03): runs by itself when the school switches its
+  current year and the setting is on; the default rule moves every student to the
+  next grade level, and repeaters are changed by hand. It is *not* a rule from
+  grades (no pass mark). Whether it can be undone, and where a promoted student is
+  placed when the new year's classes do not exist yet, is question 8 below.
 - Guardian links stay; last year's grades stay on the old enrollment; new-year
   invoices follow the tuition rule (question 3).
 
@@ -268,34 +297,17 @@ classes/enrollments and promotion.
 
 ## Unresolved Questions
 
-1. **What does "automatic" promotion do?** Options: (a) the default rule is
-   "everyone moves to the next grade level, repeaters are changed by hand", run
-   automatically when the school switches year; (b) the same default, but it only
-   pre-fills the promotion screen and the admin confirms with one click
-   (recommended: nothing changes students' classes without a person confirming,
-   and the school setting then decides whether the screen opens pre-filled);
-   (c) a rule from grades (a pass mark, per-term averages), which needs the
-   Ministry's rule, an overall average and grades per course, all open. Also: new
-   classes for the new year must exist before promoting; are they created by the
-   admin, or copied from last year's classes (same name/section, grade level
-   kept)? And can an automatic run be undone?
-2. **Invoices when tuition is set late.** The admin sets the year's tuition
-   after students are already enrolled in the year. Are invoices issued at the
-   moment the fee is saved (for everyone enrolled that year without one), by a
-   separate "issue the year's invoices" action, or only for students enrolled
-   afterwards (today's rule)?
-3. **Paying last year's invoice.** Decision 1 (nothing is frozen) covers
-   payments too; confirm that a family can still pay an earlier year's unpaid
-   invoice.
+1. ~~What does "automatic" promotion do?~~ **Answered 2026-10-03:** fully automatic
+   at the year switch, everyone to the next grade level, repeaters by hand; new
+   classes are created from scratch (see question 8 for what follows from that).
+2. ~~Invoices when tuition is set late.~~ **Answered 2026-10-03:** a separate action.
+3. ~~Paying last year's invoice.~~ **Answered 2026-10-03:** yes, allowed.
 4. **Existing data.** When phases 1-3 are enabled, which year do all current
    classes, enrollments, tuition and grades belong to? One year chosen by the
    admin (as proposed), and existing free-text grade years that match no listed
    year are reported, not guessed.
-5. **Hiding past years from non-admins.** Decision 2 means students, parents and
-   teachers would no longer see earlier years' grades (a student today can see
-   all years in `/my-grades`). Confirm that is intended, and whether a student or
-   parent should be able to see their own earlier years' report cards in some
-   other way.
+5. ~~Hiding past years from non-admins.~~ **Answered 2026-10-03:** yes, hidden; earlier
+   years' report cards come from the school admin.
 6. **Admin viewing versus switching back.** The admin can look at any year, and
    the school's *current* year is what everyone else sees. May the admin switch
    the current year back to an earlier year (e.g. a mistaken choice), or is a
@@ -305,3 +317,17 @@ classes/enrollments and promotion.
    Course catalog rows still come from data migrations because no platform actor
    or permission exists (`platform-admin-not-assignable.md`); that deferred
    platform work is unchanged.
+8. **Placing promoted students when the new year's classes do not exist.** The
+   automatic promotion runs at the year switch, and the new year's classes are made
+   from scratch, so at that moment there is no class to put anyone in (and a grade
+   level may later have several classes). Options: (a) the automatic run records
+   each student as promoted to the next *grade level* with the class still
+   pending, and the admin assigns classes once they are created (a pending-students
+   list); (b) the run waits until the admin has created the new classes and then
+   runs; (c) a promoted student goes to the class with the same name/section as
+   before, if one exists. Also open: can an automatic run be undone, and what makes a
+   student a graduate when the school's last grade is passed.
+9. **Closed: a version column for the school's current year ("ABA").** The expected
+   current year is compared by value in the write itself; a revision counter would
+   only reject requests that are not wrong. Revisit only if an audit trail of
+   changes is ever needed (see "The year and the school's current year").
