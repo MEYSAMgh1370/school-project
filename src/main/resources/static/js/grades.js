@@ -7,6 +7,9 @@ document.addEventListener('alpine:init', () => {
         // درس‌های سراسریِ هم‌پایه‌ی کلاسِ انتخاب‌شده؛ courseId خالی = «نمره‌ی کل»
         courses: [],
         filter: { classId: '', courseId: '', academicYear: '', term: 'FIRST' },
+        // سال‌هایی که کاربر می‌تواند انتخاب کند: مدیر (ACADEMIC_YEAR_MANAGE) همه‌ی فهرست، بقیه فقط
+        // سالِ جاریِ مدرسه؛ خالی = مدرسه هنوز سالِ جاری ندارد و کاربر مدیر نیست (فیلدِ متنی)
+        years: [],
         roster: [],
         filterText: '',
         loading: false,
@@ -38,8 +41,9 @@ document.addEventListener('alpine:init', () => {
                 this.roster = [];
                 this.courses = [];
                 this.filter = { classId: '', courseId: '', academicYear: '', term: 'FIRST' };
+                this.years = [];
                 this.loadClasses();
-                this.loadCurrentYear();
+                this.loadYears();
             });
             // با عوض‌شدنِ کلاس، فهرست درس‌های همان پایه گرفته می‌شود و انتخابِ
             // درس به «نمره‌ی کل» برمی‌گردد (درسِ پایه‌ی قبلی برای این کلاس معتبر نیست).
@@ -53,9 +57,23 @@ document.addEventListener('alpine:init', () => {
                 this.filter.courseId = '';
                 this.loadCourses();
             });
+            // سالِ دیگر یعنی جدولِ دیگر: ردیف‌های سالِ قبلی با سالِ تازه قابل ثبت نیستند (ثبت از filter.academicYear
+            // می‌خواند) و فهرستِ درس‌ها هم به بازه‌ی اعتبارِ درس وابسته است
+            // (فقط با فهرستِ سال‌ها؛ در فیلدِ متنی load() خودش سال را نرمال می‌کند و این واکنش بارگذاریِ
+            // در جریان را باطل می‌کرد)
+            this.$watch('filter.academicYear', () => {
+                if (this.years.length === 0) {
+                    return;
+                }
+                this.loadSeq++;
+                this.loading = false;
+                this.loaded = false;
+                this.roster = [];
+                this.loadCourses();
+            });
             if (this.schoolId) {
                 this.loadClasses();
-                this.loadCurrentYear();
+                this.loadYears();
             }
         },
 
@@ -105,7 +123,10 @@ document.addEventListener('alpine:init', () => {
                 return;
             }
             try {
-                const response = await fetch(`${this.gradesBase()}/courses?classId=${classId}`, {
+                // فقط وقتی سال یکی از سال‌های فهرست است (در فیلدِ متنی، نیمه‌تایپ‌شده سالِ نامعتبر می‌شد)
+                const yearQuery = this.years.includes(this.filter.academicYear)
+                    ? `&academicYear=${encodeURIComponent(this.filter.academicYear)}` : '';
+                const response = await fetch(`${this.gradesBase()}/courses?classId=${classId}${yearQuery}`, {
                     headers: { 'X-School-ID': this.schoolId }
                 });
                 if (!response.ok) {
@@ -121,6 +142,10 @@ document.addEventListener('alpine:init', () => {
                 const courses = await response.json();
                 if (seq === this.courseSeq) {
                     this.courses = courses;
+                    // درسِ انتخاب‌شده‌ای که برای این سال ارائه نمی‌شود به «نمره‌ی کل» برمی‌گردد
+                    if (this.filter.courseId && !courses.some(c => String(c.id) === String(this.filter.courseId))) {
+                        this.filter.courseId = '';
+                    }
                 }
             } catch (e) {
                 if (seq === this.courseSeq) {
@@ -154,22 +179,42 @@ document.addEventListener('alpine:init', () => {
             }
         },
 
-        // سال تحصیلیِ جاریِ مدرسه (openspec/changes/academic-year.md) به‌عنوان
-        // مقدار پیش‌فرضِ فیلدِ «سال تحصیلی» می‌آید؛ فیلد همچنان قابل ویرایش است
-        // (سال‌های قبل هم قابل اصلاح‌اند). فقط وقتی پر می‌شود که خالی باشد و
-        // مدرسه عوض نشده باشد؛ بدون سال جاری یا با خطا، فیلد دست‌نخورده می‌ماند.
-        async loadCurrentYear() {
+        // سال‌های قابل‌انتخاب و سالِ جاریِ مدرسه (openspec/changes/academic-year.md): مدیر (ACADEMIC_YEAR_MANAGE)
+        // همه‌ی فهرست را از endpoint ادمین می‌گیرد و هر سال را می‌تواند باز کند؛ بقیه فقط سالِ جاری را
+        // می‌بینند. سالِ جاری پیش‌فرضِ انتخاب است و فقط وقتی پر می‌شود که خالی باشد و مدرسه عوض
+        // نشده باشد؛ بدون هیچ سالی، فیلد متنی می‌ماند و سرور سالِ ناشناخته را رد می‌کند.
+        async loadYears() {
             const seq = ++this.yearSeq;
             const schoolId = this.schoolId;
             try {
-                const response = await fetch(`/api/me/schools/${schoolId}/academic-year`);
-                if (!response.ok) {
+                let codes = [];
+                let current = null;
+                const adminResponse = await fetch(`/api/admin/schools/${schoolId}/academic-year`,
+                    { headers: { 'X-School-ID': schoolId } });
+                if (adminResponse.ok) {
+                    const settings = await adminResponse.json();
+                    codes = settings.years.map(y => y.code);
+                    current = settings.current ? settings.current.code : null;
+                } else {
+                    const response = await fetch(`/api/me/schools/${schoolId}/academic-year`);
+                    if (!response.ok) {
+                        return;
+                    }
+                    const settings = await response.json();
+                    current = settings.current ? settings.current.code : null;
+                    codes = current ? [current] : [];
+                }
+                if (seq !== this.yearSeq || schoolId !== this.schoolId) {
                     return;
                 }
-                const settings = await response.json();
-                if (seq === this.yearSeq && schoolId === this.schoolId
-                    && settings.current && !this.filter.academicYear) {
-                    this.filter.academicYear = settings.current.code;
+                this.years = codes;
+                if (current && !this.filter.academicYear) {
+                    // پس از رندرِ گزینه‌ها، تا x-model روی select مقدار را از دست ندهد
+                    this.$nextTick(() => {
+                        if (seq === this.yearSeq && !this.filter.academicYear) {
+                            this.filter.academicYear = current;
+                        }
+                    });
                 }
             } catch (e) {
                 // پیش‌فرض اختیاری است؛ نبودنش مانع کار نیست

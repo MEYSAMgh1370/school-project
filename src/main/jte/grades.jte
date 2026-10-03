@@ -48,8 +48,18 @@
                                     </div>
                                     <div class="control">
                                         <label class="label" for="gradeYear">سال تحصیلی</label>
-                                        <input class="input" dir="ltr" id="gradeYear" type="text"
-                                               placeholder="۱۴۰۴-۱۴۰۵" x-model="filter.academicYear" required>
+                                        <%-- مدیر هر سالِ فهرست را می‌بیند؛ بقیه فقط سالِ جاری؛ بدونِ هیچ سالی (مدرسه سال
+                                             جاری ندارد و کاربر مدیر نیست) فیلدِ متنی می‌ماند و سرور سالِ ناشناخته را رد می‌کند --%>
+                                        <div class="select is-fullwidth" x-cloak x-show="years.length > 0">
+                                            <select id="gradeYear" dir="ltr" x-model="filter.academicYear" :disabled="years.length === 0">
+                                                <template x-for="year in years" :key="year">
+                                                    <option :value="year" x-text="year"></option>
+                                                </template>
+                                            </select>
+                                        </div>
+                                        <input class="input" dir="ltr" id="gradeYearText" type="text" aria-label="سال تحصیلی"
+                                               placeholder="۱۴۰۴-۱۴۰۵" x-model="filter.academicYear"
+                                               x-cloak x-show="years.length === 0" :required="years.length === 0">
                                     </div>
                                     <div class="control">
                                         <label class="label" for="gradeTerm">نوبت</label>

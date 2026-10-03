@@ -297,7 +297,9 @@ document.addEventListener('alpine:init', () => {
                 return;
             }
             try {
-                const courses = await this.getJson(`/classes/${this.classId}/courses`);
+                // فقط درس‌هایی که برای سالِ انتخاب‌شده ارائه می‌شوند (بازه‌ی اعتبارِ درس)
+                const yearQuery = this.year ? `?academicYear=${encodeURIComponent(this.year)}` : '';
+                const courses = await this.getJson(`/classes/${this.classId}/courses${yearQuery}`);
                 if (seq === this.courseSeq) {
                     this.courses = courses;
                 }

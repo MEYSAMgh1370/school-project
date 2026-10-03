@@ -79,4 +79,14 @@ class GradesCoursePickerRenderTest {
         assertThat(html.indexOf("<th scope=\"col\">درس</th>"))
                 .isLessThan(html.indexOf("<th scope=\"col\">نمره</th>"));
     }
+
+    @Test
+    void theYearIsASelectOfListedYearsWithATextFallbackWhenThereAreNone() {
+        String html = render("grades.jte", Map.of("navbar", NAVBAR));
+
+        // با فهرستِ سال‌ها: select؛ بدونِ هیچ سالی: فیلدِ متنی (هر دو به filter.academicYear وصل‌اند)
+        assertThat(html).contains("id=\"gradeYear\"").contains("x-for=\"year in years\"");
+        assertThat(html).contains("id=\"gradeYearText\"").contains("x-show=\"years.length === 0\"");
+        assertThat(html).contains("<label class=\"label\" for=\"gradeYear\">سال تحصیلی</label>");
+    }
 }
