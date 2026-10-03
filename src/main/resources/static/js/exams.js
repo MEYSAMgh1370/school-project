@@ -94,11 +94,9 @@ document.addEventListener('alpine:init', () => {
             return `${year}-${month}-${day}`;
         },
 
-        mostRecentSaturday(dateStr) {
-            const date = new Date(dateStr + 'T00:00:00');
-            const daysSinceSaturday = (date.getDay() - 6 + 7) % 7;
-            date.setDate(date.getDate() - daysSinceSaturday);
-            return this.formatLocalDate(date);
+        // آغازِ هفته‌ی مدرسه (شنبه یا دوشنبه، W9) که تاریخ در آن است؛ سرور همین را می‌خواهد
+        weekStartOf(dateStr) {
+            return this.formatLocalDate(Calendar.weekStartOf(new Date(dateStr + 'T00:00:00'), Calendar.weekStart()));
         },
 
         topicName(topicId) {
@@ -401,7 +399,7 @@ document.addEventListener('alpine:init', () => {
             this.notice = '';
             this.weeklyResult = null;
             try {
-                const weekStart = this.mostRecentSaturday(this.weeklyForm.date);
+                const weekStart = this.weekStartOf(this.weeklyForm.date);
                 const response = await fetch(
                     `${this.examsBase()}/weekly?studentId=${this.weeklyForm.studentId}&weekStart=${weekStart}`,
                     {

@@ -11,7 +11,9 @@ document.addEventListener('alpine:init', () => {
         error: '',
         notice: '',
 
-        weekStart: null, // Date محلی، نیمه‌شبِ شنبه‌ی هفته‌ی انتخاب‌شده
+        // هفته‌ی مدرسه‌ی انتخاب‌شده ('SAT' | 'MON'، W9): از navbar، با تغییر مدرسه به‌روز می‌شود
+        week: 'SAT',
+        weekStart: null, // Date محلی، نیمه‌شبِ روز شروع هفته‌ی انتخاب‌شده
         intervals: [],
 
         pickerOpen: false,
@@ -30,10 +32,15 @@ document.addEventListener('alpine:init', () => {
         init() {
             const saved = parseInt(localStorage.getItem('selectedSchoolId') || '', 10);
             this.schoolId = Number.isInteger(saved) ? saved : null;
-            this.weekStart = this.mostRecentSaturday(new Date());
+            this.week = Calendar.weekStart();
+            this.weekStart = this.weekStartOf(new Date());
             this.syncPickerMonth();
             window.addEventListener('school-changed', (e) => {
                 this.schoolId = e.detail.id;
+                // هفته‌ی مدرسه‌ی تازه؛ همان روزِ نمایش‌داده‌شده به آغازِ هفته‌ی آن مدرسه می‌چسبد
+                this.week = Calendar.weekStart();
+                this.weekStart = this.weekStartOf(this.weekStart);
+                this.syncPickerMonth();
                 this.error = '';
                 this.notice = '';
                 this.load();
@@ -64,11 +71,14 @@ document.addEventListener('alpine:init', () => {
             return new Date(utcDate.getUTCFullYear(), utcDate.getUTCMonth(), utcDate.getUTCDate());
         },
 
-        mostRecentSaturday(date) {
-            const d = new Date(date.getFullYear(), date.getMonth(), date.getDate());
-            const daysSinceSaturday = (d.getDay() + 1) % 7; // یکشنبه=0 در getDay -> شنبه باید ۰ شود
-            d.setDate(d.getDate() - daysSinceSaturday);
-            return d;
+        // آغازِ هفته‌ی مدرسه (شنبه یا دوشنبه) که date در آن است
+        weekStartOf(date) {
+            return Calendar.weekStartOf(date, this.week);
+        },
+
+        // سرستون‌های انتخابگر، به ترتیب هفته‌ی مدرسه
+        get weekdayShort() {
+            return Calendar.weekdayShortFor(this.week);
         },
 
         faDigits(value) {
@@ -135,7 +145,7 @@ document.addEventListener('alpine:init', () => {
         // --------------------------------------------------------- هفته‌ها
 
         get isCurrentWeek() {
-            return this.formatLocalDate(this.weekStart) === this.formatLocalDate(this.mostRecentSaturday(new Date()));
+            return this.formatLocalDate(this.weekStart) === this.formatLocalDate(this.weekStartOf(new Date()));
         },
 
         goPrevWeek() {
@@ -155,7 +165,7 @@ document.addEventListener('alpine:init', () => {
         },
 
         goThisWeek() {
-            this.weekStart = this.mostRecentSaturday(new Date());
+            this.weekStart = this.weekStartOf(new Date());
             this.syncPickerMonth();
             this.load();
         },
@@ -181,7 +191,7 @@ document.addEventListener('alpine:init', () => {
                 const civil = Calendar.fromDate(d);
                 days.push({
                     iso,
-                    name: Calendar.weekdayNames[i],
+                    name: Calendar.weekdayNamesFor(this.week)[i],
                     dateNum: this.faDigits(civil.d),
                     isToday: iso === todayIso,
                     blocks: this.blocksForDay(iso)
@@ -271,7 +281,7 @@ document.addEventListener('alpine:init', () => {
         get pickerCells() {
             const { y, m } = this.pickerMonth;
             const firstLocal = this.toLocalMidnight(Calendar.toDate(y, m, 1));
-            const firstCol = Calendar.weekdayIndex(firstLocal);
+            const firstCol = Calendar.weekdayIndex(firstLocal, this.week);
             const daysCount = Calendar.daysInMonth(y, m);
             const weekStartIso = this.formatLocalDate(this.weekStart);
             const weekEndDate = new Date(this.weekStart);
@@ -299,7 +309,7 @@ document.addEventListener('alpine:init', () => {
         },
 
         pickDay(cell) {
-            this.weekStart = this.mostRecentSaturday(cell.date);
+            this.weekStart = this.weekStartOf(cell.date);
             this.pickerOpen = false;
             this.load();
         },

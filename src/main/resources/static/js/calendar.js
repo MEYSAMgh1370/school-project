@@ -11,9 +11,12 @@
 // می‌مانند. استثنا: «سال تحصیلی» - سرور کدش را با قاعده‌ی جلالی می‌سازد و ذخیره
 // می‌کند (school.internal.AcademicYearProvisioner، مثلاً 1405-1406)؛ آن یک قاعده‌ی
 // دامنه است نه نمایش، پس اینجا دست‌نخورده می‌ماند (eu-market-readiness.md، W8).
-// روز شروع هفته هم عمداً اینجا نیست: هفته‌ی درسی شنبه‌محور یک قانون دامنه‌ی
-// سرور است (studyplan و exam، requireSaturday)، نه ترجیح نمایشی - تغییرش
-// تصمیم محصول است. به همین دلیل weekdayNames در هر دو تقویم از شنبه شروع می‌شود.
+// روز شروع هفته یک قانون دامنه‌ی هر مدرسه است نه ترجیح نمایشی (W9): سرور
+// (SchoolFacade.WeekStart) آن را برای هر مدرسه نگه می‌دارد و navbar در
+// data-week-starts می‌گذارد. این فایل آن را فقط می‌خواند (weekStart()) و هیچ
+// پیش‌فرضی از زبان نمی‌سازد: مدرسه‌ی ایرانی و فارسی یکی نیستند. فهرست‌های
+// weekdayNames/weekdayShort همچنان شنبه‌اول‌اند؛ *For(week) آن‌ها را بر اساس
+// هفته‌ی مدرسه می‌چرخاند. بدون navbar (صفحه‌ی بی‌مدرسه) شنبه است.
 //
 // وابستگی: برای fa باید /js/jalali.js پیش از این فایل بارگذاری شده باشد.
 // برای زبان‌های میلادی لازم نیست.
@@ -22,10 +25,73 @@ window.Calendar = (function () {
 
     // ---------------------------------------------------- بخش مشترک
 
-    // index صفر شنبه است (نه یکشنبه‌ی getDay) - همان قانون هفته‌ی شنبه‌محور
-    // سرور؛ به تقویم وابسته نیست، پس بین هر دو پیاده‌سازی مشترک است.
-    function weekdayIndex(date) {
-        return (date.getDay() + 1) % 7;
+    // ---- هفته‌ی مدرسه (W9): به تقویم وابسته نیست، پس بین هر دو پیاده‌سازی مشترک است
+
+    // کدها همان کدهای ذخیره‌شده‌ی school.week_start_day و TimetableDay اند
+    const WEEK_CODES = ['SAT', 'SUN', 'MON', 'TUE', 'WED', 'THU', 'FRI']; // شنبه‌اول
+    // Date.getDay() (یکشنبه ۰) روزِ اولِ هر هفته
+    const FIRST_GET_DAY = { SAT: 6, MON: 1 };
+
+    // مدرسه‌ی انتخاب‌شده در navbar: همان قرارداد صفحه‌ها - navbar پیش از کامپوننت
+    // صفحه init می‌شود و مدرسه را در localStorage می‌گذارد.
+    function readSelectedWeekStart() {
+        if (typeof document === 'undefined') return 'SAT';
+        const holder = document.querySelector('[data-week-starts]');
+        if (!holder) return 'SAT';
+        let bySchool;
+        try {
+            bySchool = JSON.parse(holder.getAttribute('data-week-starts'));
+        } catch (e) {
+            return 'SAT';
+        }
+        let id = null;
+        try {
+            id = localStorage.getItem('selectedSchoolId');
+        } catch (e) {
+            // حالت خصوصی/مسدود: مثل navbar، اولین مدرسه
+        }
+        const week = Object.prototype.hasOwnProperty.call(bySchool, id) ? bySchool[id] : Object.values(bySchool)[0];
+        return Object.prototype.hasOwnProperty.call(FIRST_GET_DAY, week) ? week : 'SAT';
+    }
+
+    let weekStartSource = readSelectedWeekStart;
+
+    function resolveWeek(week) {
+        const resolved = week || weekStartSource();
+        if (!Object.prototype.hasOwnProperty.call(FIRST_GET_DAY, resolved)) {
+            throw new Error('calendar.js: روز شروع هفته‌ی ناشناخته: ' + resolved);
+        }
+        return resolved;
+    }
+
+    // جایگاه یک روز در هفته‌ی مدرسه: ۰ = روز شروع هفته. بدون week، مدرسه‌ی انتخاب‌شده.
+    function weekdayIndex(date, week) {
+        return (date.getDay() - FIRST_GET_DAY[resolveWeek(week)] + 7) % 7;
+    }
+
+    // نیمه‌شبِ محلیِ آخرین روز شروع هفته (همان روز یا پیش از آن)
+    function weekStartOf(date, week) {
+        const start = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+        start.setDate(start.getDate() - weekdayIndex(start, week));
+        return start;
+    }
+
+    // لیستی شنبه‌اول را به هفته‌ی مدرسه می‌چرخاند
+    function rotate(list, week) {
+        const shift = WEEK_CODES.indexOf(resolveWeek(week));
+        return list.slice(shift).concat(list.slice(0, shift));
+    }
+
+    function addWeekSupport(calendar) {
+        calendar.weekStart = () => resolveWeek();
+        calendar.weekStartOf = weekStartOf;
+        calendar.weekCodes = (week) => rotate(WEEK_CODES, week);
+        // روزهای درسی = پنج روز اولِ هفته: شنبه تا چهارشنبه یا دوشنبه تا جمعه
+        // (همان SchoolFacade.WeekStart.schoolDays())
+        calendar.schoolDayCodes = (week) => rotate(WEEK_CODES, week).slice(0, 5);
+        calendar.weekdayNamesFor = (week) => rotate(calendar.weekdayNames, week);
+        calendar.weekdayShortFor = (week) => rotate(calendar.weekdayShort, week);
+        return calendar;
     }
 
     function toIsoDate(date) {
@@ -111,7 +177,7 @@ window.Calendar = (function () {
         };
         calendar.daysInMonth = (y, m) => daysInMonth(calendar, y, m);
         calendar.periodRange = (y, kind, index) => periodRange(calendar, y, kind, index);
-        return calendar;
+        return addWeekSupport(calendar);
     }
 
     // ---------------------------------------------------- تقویم میلادی
@@ -159,7 +225,7 @@ window.Calendar = (function () {
         };
         calendar.daysInMonth = (y, m) => daysInMonth(calendar, y, m);
         calendar.periodRange = (y, kind, index) => periodRange(calendar, y, kind, index);
-        return calendar;
+        return addWeekSupport(calendar);
     }
 
     // ---------------------------------------------------- انتخاب بر اساس زبان
@@ -175,5 +241,9 @@ window.Calendar = (function () {
     const active = forLanguage(documentLang);
     // برای تست و هر جایی که باید صریحاً یک زبان را بسازد
     active.forLanguage = forLanguage;
+    // برای تست: منبع «هفته‌ی مدرسه‌ی انتخاب‌شده» را جایگزین می‌کند (null = برگشت به خواندن از navbar)
+    active.setWeekStartSource = (source) => {
+        weekStartSource = source || readSelectedWeekStart;
+    };
     return active;
 })();

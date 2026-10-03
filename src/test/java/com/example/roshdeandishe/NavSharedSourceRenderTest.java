@@ -97,6 +97,24 @@ class NavSharedSourceRenderTest {
     }
 
     @Test
+    void theNavbarCarriesEachSchoolsWeekStartForTheCalendar() {
+        NavbarModel navbar = new NavbarModel("سارا", List.of(
+                new NavbarModel.SchoolOption(5L, "ایرانی", List.of("TEACHER")),
+                new NavbarModel.SchoolOption(9L, "اروپایی", List.of("TEACHER"), Map.of(),
+                        com.example.roshdeandishe.school.SchoolFacade.WeekStart.MONDAY)));
+
+        assertThat(navbar.weekStartsJson()).isEqualTo("{\"5\":\"SAT\",\"9\":\"MON\"}");
+
+        String html = HtmlUtils.htmlUnescape(render("layout/navbar.jte", Map.of("navbar", navbar)));
+        assertThat(html).contains("data-week-starts=\"{\"5\":\"SAT\",\"9\":\"MON\"}\"");
+    }
+
+    @Test
+    void aNavbarWithoutSchoolsHasAnEmptyWeekStartMap() {
+        assertThat(new NavbarModel("بی‌مدرسه", List.of()).weekStartsJson()).isEqualTo("{}");
+    }
+
+    @Test
     void permissionsAreEmptyForSystemRolesRenderedWithoutThem() {
         String html = HtmlUtils.htmlUnescape(render("layout/navbar.jte", Map.of("navbar", NAVBAR)));
 

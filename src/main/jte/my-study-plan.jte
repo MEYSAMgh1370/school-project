@@ -43,7 +43,7 @@
                                                 <button class="button is-small" type="button" @click="pickerNextMonth" aria-label="ماه بعد"><span class="app-dir-glyph" aria-hidden="true">‹</span></button>
                                             </div>
                                             <div class="sp-picker-grid">
-                                                <template x-for="(w, i) in Calendar.weekdayShort" :key="i">
+                                                <template x-for="(w, i) in weekdayShort" :key="i">
                                                     <div class="sp-picker-weekday" x-text="w"></div>
                                                 </template>
                                             </div>

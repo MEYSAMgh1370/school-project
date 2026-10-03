@@ -36,6 +36,20 @@
                     </div>
                 </div>
 
+                <div class="field">
+                    <label class="label" for="schoolWeekStart">شروع هفته‌ی درسی</label>
+                    <div class="control">
+                        <div class="select is-fullwidth">
+                            <select id="schoolWeekStart" x-model="weekStart" required>
+                                <template x-for="option in weekStartOptions" :key="option.value">
+                                    <option :value="option.value" x-text="option.label"></option>
+                                </template>
+                            </select>
+                        </div>
+                    </div>
+                    <p class="help">بعد از ساخت مدرسه قابل تغییر نیست.</p>
+                </div>
+
                 <div class="field is-grouped">
                     <div class="control is-expanded">
                         <label class="label" for="schoolTimezone">منطقه‌ی زمانی</label>

@@ -60,7 +60,7 @@
                         مدیر مدرسه هنوز سال تحصیلیِ جاری را انتخاب نکرده است.
                     </p>
                     <p id="dashboardTimetableHoliday" x-show="enrolled && academicYear !== null && !isSchoolDay()">
-                        امروز روز کلاسی نیست (روزهای کلاسی شنبه تا چهارشنبه است).
+                        امروز روز کلاسی نیست (روزهای کلاسی <span x-text="schoolDaysLabel()"></span> است).
                     </p>
                     <p id="dashboardTimetableNone"
                        x-show="enrolled && academicYear !== null && isSchoolDay() && todayRows().length === 0">

@@ -11,7 +11,7 @@
     <div class="container">
         @template.layout.page-header(
             title = "برنامه‌ی کلاسی",
-            subtitle = "زنگ‌ها، فعالیت‌های فوق‌برنامه و برنامه‌ی هفتگیِ هر کلاس؛ شنبه تا چهارشنبه.")
+            subtitle = "زنگ‌ها، فعالیت‌های فوق‌برنامه و برنامه‌ی هفتگیِ هر کلاس.")
 
         @template.layout.school-scope(
             noSchoolMessage = "برای مدیریت برنامه‌ی کلاسی، یک مدرسه از سوییچر بالا انتخاب کنید.",
