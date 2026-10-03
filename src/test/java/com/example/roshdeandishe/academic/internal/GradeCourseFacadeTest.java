@@ -46,6 +46,7 @@ class GradeCourseFacadeTest {
     private ClassRepository classes;
     private GradeRepository grades;
     private CourseRepository courses;
+    private SchoolFacade school;
     private AcademicFacadeImpl facade;
 
     @BeforeEach
@@ -56,8 +57,12 @@ class GradeCourseFacadeTest {
         courses = mock(CourseRepository.class);
         IamFacade iam = mock(IamFacade.class);
         when(iam.currentUserId()).thenReturn(new UserId(1L));
+        school = mock(SchoolFacade.class);
+        when(school.listAcademicYears()).thenReturn(List.of(
+                new SchoolFacade.AcademicYearInfo(new SchoolFacade.AcademicYearId(1L), "1404-1405", 1404),
+                new SchoolFacade.AcademicYearInfo(new SchoolFacade.AcademicYearId(2L), "1405-1406", 1405)));
         facade = new AcademicFacadeImpl(students, classes, mock(StudentGuardianRepository.class), grades, courses,
-                iam, mock(SchoolFacade.class), mock(ApplicationEventPublisher.class));
+                iam, school, mock(ApplicationEventPublisher.class));
 
         ClassEntity classEntity = new ClassEntity(SCHOOL, "پنجم الف", 9L, "الف", GRADE_LEVEL, GradingScheme.NUMERIC);
         ReflectionTestUtils.setField(classEntity, "id", CLASS_ID);
@@ -95,9 +100,9 @@ class GradeCourseFacadeTest {
     @Test
     void aGradeWithoutACourseIsTheOverallGradeAndUsesTheOverallLookup() {
         when(grades.findByStudentIdAndClassIdAndAcademicYearAndTermAndCourseIdIsNull(
-                STUDENT, CLASS_ID, "1405", GradingTerm.FIRST)).thenReturn(Optional.empty());
+                STUDENT, CLASS_ID, "1405-1406", GradingTerm.FIRST)).thenReturn(Optional.empty());
 
-        facade.recordGrade(SCHOOL, STUDENT, CLASS_ID, "1405", GradingTerm.FIRST, null, new BigDecimal("17"), null, null);
+        facade.recordGrade(SCHOOL, STUDENT, CLASS_ID, "1405-1406", GradingTerm.FIRST, null, new BigDecimal("17"), null, null);
 
         assertThat(savedGrade().getCourseId()).isNull();
         verify(courses, never()).findById(any());
@@ -109,9 +114,9 @@ class GradeCourseFacadeTest {
     void aGradeWithACourseOfTheClassGradeLevelIsStoredWithThatCourse() {
         when(courses.findById(30L)).thenReturn(Optional.of(course(30L, GRADE_LEVEL, "ریاضی")));
         when(grades.findByStudentIdAndClassIdAndAcademicYearAndTermAndCourseId(
-                STUDENT, CLASS_ID, "1405", GradingTerm.FIRST, 30L)).thenReturn(Optional.empty());
+                STUDENT, CLASS_ID, "1405-1406", GradingTerm.FIRST, 30L)).thenReturn(Optional.empty());
 
-        facade.recordGrade(SCHOOL, STUDENT, CLASS_ID, "1405", GradingTerm.FIRST, null, new BigDecimal("18"), null, 30L);
+        facade.recordGrade(SCHOOL, STUDENT, CLASS_ID, "1405-1406", GradingTerm.FIRST, null, new BigDecimal("18"), null, 30L);
 
         assertThat(savedGrade().getCourseId()).isEqualTo(30L);
         verify(grades, never()).findByStudentIdAndClassIdAndAcademicYearAndTermAndCourseIdIsNull(
@@ -125,9 +130,9 @@ class GradeCourseFacadeTest {
         existing.setId(55L);
         existing.setCourseId(30L);
         when(grades.findByStudentIdAndClassIdAndAcademicYearAndTermAndCourseId(
-                STUDENT, CLASS_ID, "1405", GradingTerm.FIRST, 30L)).thenReturn(Optional.of(existing));
+                STUDENT, CLASS_ID, "1405-1406", GradingTerm.FIRST, 30L)).thenReturn(Optional.of(existing));
 
-        facade.recordGrade(SCHOOL, STUDENT, CLASS_ID, "1405", GradingTerm.FIRST, null, new BigDecimal("12"), "بهتر", 30L);
+        facade.recordGrade(SCHOOL, STUDENT, CLASS_ID, "1405-1406", GradingTerm.FIRST, null, new BigDecimal("12"), "بهتر", 30L);
 
         GradeEntity saved = savedGrade();
         assertThat(saved).isSameAs(existing);
@@ -140,7 +145,7 @@ class GradeCourseFacadeTest {
         when(courses.findById(31L)).thenReturn(Optional.empty());
 
         assertThatThrownBy(() -> facade.recordGrade(
-                SCHOOL, STUDENT, CLASS_ID, "1405", GradingTerm.FIRST, null, new BigDecimal("12"), null, 31L))
+                SCHOOL, STUDENT, CLASS_ID, "1405-1406", GradingTerm.FIRST, null, new BigDecimal("12"), null, 31L))
                 .isInstanceOfSatisfying(AcademicException.class, e ->
                         assertThat(e.error()).isEqualTo(new AcademicError.CourseNotFound(31L)));
         verify(grades, never()).save(any());
@@ -151,7 +156,7 @@ class GradeCourseFacadeTest {
         when(courses.findById(32L)).thenReturn(Optional.of(course(32L, GRADE_LEVEL + 1, "علوم ششم")));
 
         assertThatThrownBy(() -> facade.recordGrade(
-                SCHOOL, STUDENT, CLASS_ID, "1405", GradingTerm.FIRST, null, new BigDecimal("12"), null, 32L))
+                SCHOOL, STUDENT, CLASS_ID, "1405-1406", GradingTerm.FIRST, null, new BigDecimal("12"), null, 32L))
                 .isInstanceOfSatisfying(AcademicException.class, e ->
                         assertThat(e.error()).isEqualTo(new AcademicError.CourseNotForClass(32L, CLASS_ID)));
         verify(grades, never()).save(any());
@@ -164,7 +169,7 @@ class GradeCourseFacadeTest {
         when(courses.findById(33L)).thenReturn(Optional.of(club));
 
         assertThatThrownBy(() -> facade.recordGrade(
-                SCHOOL, STUDENT, CLASS_ID, "1405", GradingTerm.FIRST, null, new BigDecimal("12"), null, 33L))
+                SCHOOL, STUDENT, CLASS_ID, "1405-1406", GradingTerm.FIRST, null, new BigDecimal("12"), null, 33L))
                 .isInstanceOfSatisfying(AcademicException.class, e ->
                         assertThat(e.error()).isEqualTo(new AcademicError.CourseNotGradable(33L)));
         verify(grades, never()).save(any());
@@ -175,7 +180,7 @@ class GradeCourseFacadeTest {
         when(courses.findById(30L)).thenReturn(Optional.of(course(30L, GRADE_LEVEL, "ریاضی")));
 
         assertThatThrownBy(() -> facade.recordGrade(
-                SCHOOL, STUDENT, CLASS_ID, "1405", GradingTerm.FIRST, null, new BigDecimal("21"), null, 30L))
+                SCHOOL, STUDENT, CLASS_ID, "1405-1406", GradingTerm.FIRST, null, new BigDecimal("21"), null, 30L))
                 .isInstanceOfSatisfying(AcademicException.class, e ->
                         assertThat(e.error()).isInstanceOf(AcademicError.InvalidGrade.class));
         verify(grades, never()).save(any());
@@ -185,14 +190,14 @@ class GradeCourseFacadeTest {
     void listingWithoutACourseReturnsOnlyOverallGradesAndWithACourseOnlyThatCourse() {
         GradeEntity overall = gradeRow(1L, null);
         GradeEntity math = gradeRow(2L, 30L);
-        when(grades.findByClassIdAndAcademicYearAndTermAndCourseIdIsNull(CLASS_ID, "1405", GradingTerm.FIRST))
+        when(grades.findByClassIdAndAcademicYearAndTermAndCourseIdIsNull(CLASS_ID, "1405-1406", GradingTerm.FIRST))
                 .thenReturn(List.of(overall));
-        when(grades.findByClassIdAndAcademicYearAndTermAndCourseId(CLASS_ID, "1405", GradingTerm.FIRST, 30L))
+        when(grades.findByClassIdAndAcademicYearAndTermAndCourseId(CLASS_ID, "1405-1406", GradingTerm.FIRST, 30L))
                 .thenReturn(List.of(math));
         when(courses.findAllById(List.of(30L))).thenReturn(List.of(course(30L, GRADE_LEVEL, "ریاضی")));
 
-        List<GradeInfo> overallRows = facade.listGradesForClass(SCHOOL, CLASS_ID, "1405", GradingTerm.FIRST, null);
-        List<GradeInfo> mathRows = facade.listGradesForClass(SCHOOL, CLASS_ID, "1405", GradingTerm.FIRST, 30L);
+        List<GradeInfo> overallRows = facade.listGradesForClass(SCHOOL, CLASS_ID, "1405-1406", GradingTerm.FIRST, null);
+        List<GradeInfo> mathRows = facade.listGradesForClass(SCHOOL, CLASS_ID, "1405-1406", GradingTerm.FIRST, 30L);
 
         assertThat(overallRows).singleElement().satisfies(row -> {
             assertThat(row.courseId()).isNull();
@@ -260,11 +265,49 @@ class GradeCourseFacadeTest {
         grade.setStudentId(STUDENT);
         grade.setClassId(CLASS_ID);
         grade.setCourseId(courseId);
-        grade.setAcademicYear("1405");
+        grade.setAcademicYear("1405-1406");
         grade.setTerm(GradingTerm.FIRST);
         grade.setScheme(GradingScheme.NUMERIC);
         grade.setNumericScore(new BigDecimal("15"));
         grade.setRecordedAt(Instant.parse("2026-10-02T10:00:00Z"));
         return grade;
+    }
+
+    @Test
+    void aGradeYearThatIsNotInTheListIsRejectedAndNothingIsSaved() {
+        for (String bad : new String[]{"1405", "2024-2025", "1406-1407", "abc"}) {
+            assertThatThrownBy(() -> facade.recordGrade(SCHOOL, STUDENT, CLASS_ID, bad, GradingTerm.FIRST, null,
+                    new BigDecimal("17"), null, null))
+                    .isInstanceOfSatisfying(AcademicException.class,
+                            e -> assertThat(e.error()).isEqualTo(new AcademicError.InvalidAcademicYear(bad)));
+        }
+
+        verify(grades, never()).save(any(GradeEntity.class));
+    }
+
+    @Test
+    void persianAndArabicDigitsAndSpacesAreCanonicalizedToTheListedYear() {
+        when(grades.findByStudentIdAndClassIdAndAcademicYearAndTermAndCourseIdIsNull(
+                STUDENT, CLASS_ID, "1405-1406", GradingTerm.FIRST)).thenReturn(Optional.empty());
+
+        facade.recordGrade(SCHOOL, STUDENT, CLASS_ID, " ۱۴۰۵-۱۴۰۶ ", GradingTerm.FIRST, null,
+                new BigDecimal("17"), null, null);
+        facade.recordGrade(SCHOOL, STUDENT, CLASS_ID, "١٤٠٥-١٤٠٦", GradingTerm.FIRST, null,
+                new BigDecimal("17"), null, null);
+
+        ArgumentCaptor<GradeEntity> captor = ArgumentCaptor.forClass(GradeEntity.class);
+        verify(grades, org.mockito.Mockito.times(2)).save(captor.capture());
+        assertThat(captor.getAllValues()).extracting(GradeEntity::getAcademicYear)
+                .containsOnly("1405-1406");
+    }
+
+    @Test
+    void readingByYearCanonicalizesTheDigitsToo() {
+        when(grades.findByClassIdAndAcademicYearAndTermAndCourseIdIsNull(CLASS_ID, "1405-1406", GradingTerm.FIRST))
+                .thenReturn(List.of());
+
+        assertThat(facade.listGradesForClass(SCHOOL, CLASS_ID, "۱۴۰۵-۱۴۰۶", GradingTerm.FIRST, null)).isEmpty();
+
+        verify(grades).findByClassIdAndAcademicYearAndTermAndCourseIdIsNull(CLASS_ID, "1405-1406", GradingTerm.FIRST);
     }
 }

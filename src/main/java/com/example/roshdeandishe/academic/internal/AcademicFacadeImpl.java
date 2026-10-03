@@ -152,6 +152,9 @@ class AcademicFacadeImpl implements AcademicFacade {
         if (academicYear == null || academicYear.isBlank()) {
             throw new AcademicException(new AcademicError.InvalidGrade("سال تحصیلی الزامی است"));
         }
+        // سال کلید است: یک شکل canonical و حتماً از فهرستِ سال‌ها (academic-year.md فاز ۱)
+        academicYear = AcademicYearCodes.canonical(academicYear);
+        requireListedYear(academicYear);
 
         GradingScheme scheme = classEntity.getGradingScheme() != null ? classEntity.getGradingScheme() : GradingScheme.NUMERIC;
         switch (scheme) {
@@ -193,6 +196,13 @@ class AcademicFacadeImpl implements AcademicFacade {
         return new GradeId(saved.getId());
     }
 
+    private void requireListedYear(String academicYear) {
+        boolean listed = schoolFacade.listAcademicYears().stream().anyMatch(y -> y.code().equals(academicYear));
+        if (!listed) {
+            throw new AcademicException(new AcademicError.InvalidAcademicYear(academicYear));
+        }
+    }
+
     @Override
     public GradeInfo getGrade(Long gradeId) {
         GradeEntity grade = gradeRepository.findById(gradeId)
@@ -203,6 +213,7 @@ class AcademicFacadeImpl implements AcademicFacade {
     @Override
     public List<GradeInfo> listGradesForClass(Long schoolId, Long classId, String academicYear, GradingTerm term,
                                               Long courseId) {
+        academicYear = AcademicYearCodes.canonical(academicYear);
         requireClassInSchool(schoolId, classId);
         List<GradeEntity> grades = courseId == null
                 ? gradeRepository.findByClassIdAndAcademicYearAndTermAndCourseIdIsNull(classId, academicYear, term)
