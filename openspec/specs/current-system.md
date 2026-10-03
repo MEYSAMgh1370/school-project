@@ -93,7 +93,7 @@ Known intentional exceptions:
 - auth/account endpoints;
 - `/api/me` and related current-user endpoints (no permission; they return the caller's own data and, for `/api/me/schools/{id}/**` and `/api/me/enrollment`, only while the caller has at least one **active** membership in that school);
 - Bale webhook endpoints (`/api/bale/webhook`, served by the `notification` module);
-- tokenized exam-taking endpoints.
+- tokenized exam-taking endpoints (the signed token must be unexpired and its student must still have an active membership in the exam's school; otherwise `401 invalid-exam-token`).
 
 Failure cases:
 

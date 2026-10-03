@@ -271,7 +271,7 @@ class ExamFacadeImpl implements ExamFacade {
     @Override
     public ExamTakeInfo getExamForToken(String token) {
         ExamTokenService.TokenData data = requireToken(token);
-        ExamEntity exam = requireExamById(data.examId());
+        ExamEntity exam = requireExamForToken(data);
         return new ExamTakeInfo(new ExamId(exam.getId()), exam.getTitle(), exam.getStartAt(), exam.getEndAt(),
                 exam.getDurationMinutes(), toSectionInfos(exam.getId()));
     }
@@ -279,7 +279,7 @@ class ExamFacadeImpl implements ExamFacade {
     @Override
     public List<TakeQuestionInfo> getSectionQuestions(String token, Long sectionId) {
         ExamTokenService.TokenData data = requireToken(token);
-        ExamEntity exam = requireExamById(data.examId());
+        ExamEntity exam = requireExamForToken(data);
         SectionEntity section = requireSectionInExam(exam.getId(), sectionId);
         List<SectionQuestionEntity> sectionQuestions = sectionQuestionRepository
                 .findBySectionIdOrderByIdAsc(section.getId());
@@ -304,7 +304,7 @@ class ExamFacadeImpl implements ExamFacade {
     @Transactional
     public void submitAnswer(String token, Long sectionId, Long questionId, Integer choice) {
         ExamTokenService.TokenData data = requireToken(token);
-        ExamEntity exam = requireExamById(data.examId());
+        ExamEntity exam = requireExamForToken(data);
         SectionEntity section = requireSectionInExam(exam.getId(), sectionId);
         SectionQuestionEntity sectionQuestion = sectionQuestionRepository
                 .findBySectionIdAndQuestionId(section.getId(), questionId)
@@ -444,6 +444,23 @@ class ExamFacadeImpl implements ExamFacade {
         if (!exam.getSchoolId().equals(schoolId)) {
             // آزمون مدرسه‌ی دیگر - از دید این ماژول همان «یافت نشد»
             throw new ExamException(new ExamError.ExamNotFound(examId));
+        }
+        return exam;
+    }
+
+    /**
+     * آزمونِ توکن، به‌شرطِ این‌که دانش‌آموزِ توکن هنوز عضوِ فعالِ مدرسه‌ی آزمون باشد: توکن امضاشده است و
+     * پس از صدور از پایگاه داده باطل‌شدنی نبود، پس عضویتِ غیرفعال‌شده تا انقضای توکن همچنان جلسه را
+     * باز نگه می‌داشت. پاسخ همان «توکن نامعتبر» است (نوع و وضعیتِ جدید ندارد).
+     */
+    private ExamEntity requireExamForToken(ExamTokenService.TokenData data) {
+        ExamEntity exam = requireExamById(data.examId());
+        boolean activeMember = academicFacade.findStudentInfo(data.studentId())
+                .filter(student -> exam.getSchoolId().equals(student.schoolId()))
+                .map(student -> iamFacade.hasActiveMembership(new IamFacade.UserId(student.userId()), exam.getSchoolId()))
+                .orElse(false);
+        if (!activeMember) {
+            throw new ExamException(new ExamError.InvalidExamToken("توکن جلسه‌ی آزمون نامعتبر یا منقضی شده است."));
         }
         return exam;
     }
