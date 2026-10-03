@@ -18,8 +18,8 @@ import java.util.Map;
  * <p>
  * دو نرمال‌سازی عمدی نسبت به مبدأ: شمارنده‌ی بلوک‌ها ({@code intervalsInfo})
  * per-run است نه دیکشنری سطح ماژول (در moshavere آن دیکشنری global بین
- * اجراها نشت می‌کرد - باگ، نه رفتار)، و روزها به ترتیب شنبه تا جمعه پیموده
- * می‌شوند (ترتیب fri-اول مبدأ فقط عارضه‌ی مرتب‌سازی کلیدهای jsonb پستگرس
+ * اجراها نشت می‌کرد - باگ، نه رفتار)، و روزها به ترتیب هفته‌ی مدرسه (شنبه‌محور:
+ * شنبه تا جمعه) پیموده می‌شوند (ترتیب fri-اول مبدأ فقط عارضه‌ی مرتب‌سازی کلیدهای jsonb پستگرس
  * بود - رجوع به Weekday در StudyPlanFacade).
  */
 final class SliceScheduleInterval {
@@ -27,21 +27,27 @@ final class SliceScheduleInterval {
     static final int[][] ALLOWED_INTERVAL_TIME = {{90, 15}, {75, 15}, {60, 10}, {45, 10}, {30, 5}};
 
     private final Map<Weekday, List<TimeRange>> schedule;
+    private final List<Weekday> weekOrder;
     private final LinkedHashMap<Integer, Integer> intervalsInfo = new LinkedHashMap<>();
 
-    SliceScheduleInterval(Map<Weekday, List<TimeRange>> schedule) {
+    /**
+     * @param weekOrder ترتیبِ پیمایش روزها: روزِ اولِ هفته‌ی مدرسه تا آخر
+     *                  ({@link Weekday#weekStartingOn})
+     */
+    SliceScheduleInterval(Map<Weekday, List<TimeRange>> schedule, List<Weekday> weekOrder) {
         this.schedule = schedule;
+        this.weekOrder = weekOrder;
         for (int[] pair : ALLOWED_INTERVAL_TIME) {
             intervalsInfo.put(pair[0], 0);
         }
     }
 
     /**
-     * برش کل هفته - بلوک‌های خالی هر روز به ترتیب شنبه تا جمعه.
+     * برش کل هفته - بلوک‌های خالی هر روز به ترتیب هفته‌ی مدرسه (شنبه‌محور: شنبه تا جمعه).
      */
     LinkedHashMap<Weekday, List<StudyBlock>> sliceSchedule() {
         LinkedHashMap<Weekday, List<StudyBlock>> byDay = new LinkedHashMap<>();
-        for (Weekday day : Weekday.values()) {
+        for (Weekday day : weekOrder) {
             List<StudyBlock> blocks = new ArrayList<>();
             for (TimeRange range : schedule.getOrDefault(day, List.of())) {
                 blocks.addAll(sliceInterval(range));

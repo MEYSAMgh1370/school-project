@@ -8,11 +8,12 @@ import com.example.roshdeandishe.exam.shared.ExamError;
 import com.example.roshdeandishe.exam.shared.ExamException;
 import com.example.roshdeandishe.iam.IamFacade;
 import com.example.roshdeandishe.iam.shared.exception.IamException;
+import com.example.roshdeandishe.school.SchoolFacade;
+import com.example.roshdeandishe.school.SchoolFacade.WeekStart;
 import com.example.roshdeandishe.studyplan.StudyPlanFacade;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.time.DayOfWeek;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -43,6 +44,7 @@ class ExamFacadeImpl implements ExamFacade {
     private final AcademicFacade academicFacade;
     private final StudyPlanFacade studyPlanFacade;
     private final IamFacade iamFacade;
+    private final SchoolFacade schoolFacade;
 
     ExamFacadeImpl(ExamRepository examRepository,
                    SectionRepository sectionRepository,
@@ -54,7 +56,8 @@ class ExamFacadeImpl implements ExamFacade {
                    CurriculumFacade curriculumFacade,
                    AcademicFacade academicFacade,
                    StudyPlanFacade studyPlanFacade,
-                   IamFacade iamFacade) {
+                   IamFacade iamFacade,
+                   SchoolFacade schoolFacade) {
         this.examRepository = examRepository;
         this.sectionRepository = sectionRepository;
         this.sectionQuestionRepository = sectionQuestionRepository;
@@ -66,6 +69,7 @@ class ExamFacadeImpl implements ExamFacade {
         this.academicFacade = academicFacade;
         this.studyPlanFacade = studyPlanFacade;
         this.iamFacade = iamFacade;
+        this.schoolFacade = schoolFacade;
     }
 
     // ------------------------------------------------------------ authoring
@@ -176,7 +180,7 @@ class ExamFacadeImpl implements ExamFacade {
     @Transactional
     public ExamId generateWeeklyExam(Long schoolId, Long studentId, LocalDate weekStart) {
         requireStudentInSchool(schoolId, studentId);
-        requireSaturday(weekStart);
+        requireWeekStart(schoolId, weekStart);
 
         Optional<ExamEntity> existing = examRepository
                 .findByStudentIdAndExamTypeAndWeekStart(studentId, ExamType.WEEKLY, weekStart);
@@ -496,9 +500,14 @@ class ExamFacadeImpl implements ExamFacade {
                         new ExamError.InvalidExamToken("توکن جلسه‌ی آزمون نامعتبر یا منقضی شده است.")));
     }
 
-    private static void requireSaturday(LocalDate weekStart) {
-        if (weekStart == null || weekStart.getDayOfWeek() != DayOfWeek.SATURDAY) {
-            throw new ExamException(new ExamError.InvalidExam("شروع هفته باید شنبه باشد."));
+    /** روز شروع هفته را SchoolFacade مالکی می‌کند (W9)؛ این ماژول آن را ثابت نمی‌کند. */
+    private void requireWeekStart(Long schoolId, LocalDate weekStart) {
+        WeekStart week = schoolFacade.findSchool(new SchoolFacade.SchoolId(schoolId))
+                .map(SchoolFacade.SchoolInfo::weekStart)
+                .orElseThrow(() -> new IllegalStateException("school not found: " + schoolId));
+        if (weekStart == null || weekStart.getDayOfWeek() != week.firstDay()) {
+            String day = week == WeekStart.MONDAY ? "دوشنبه" : "شنبه";
+            throw new ExamException(new ExamError.InvalidExam("شروع هفته باید " + day + " باشد."));
         }
     }
 

@@ -4,6 +4,8 @@ import com.example.roshdeandishe.academic.AcademicFacade;
 import com.example.roshdeandishe.curriculum.CurriculumFacade;
 import com.example.roshdeandishe.iam.IamFacade;
 import com.example.roshdeandishe.iam.shared.exception.IamException;
+import com.example.roshdeandishe.school.SchoolFacade;
+import com.example.roshdeandishe.school.SchoolFacade.WeekStart;
 import com.example.roshdeandishe.studyplan.StudyPlanFacade;
 import com.example.roshdeandishe.studyplan.shared.StudyPlanError;
 import com.example.roshdeandishe.studyplan.shared.StudyPlanException;
@@ -13,7 +15,6 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.time.DayOfWeek;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -41,6 +42,7 @@ class StudyPlanFacadeImpl implements StudyPlanFacade {
     private final CurriculumFacade curriculumFacade;
     private final AcademicFacade academicFacade;
     private final IamFacade iamFacade;
+    private final SchoolFacade schoolFacade;
     // عمداً مستقل ساخته می‌شود، نه تزریق Spring - همان دلیل مستندشده در
     // notification.internal.BaleWebhookService: spring-modulith-events-jackson یک
     // Jackson 3 (tools.jackson) دیگر هم روی classpath می‌آورد و auto-configuration
@@ -57,7 +59,8 @@ class StudyPlanFacadeImpl implements StudyPlanFacade {
                         IntervalScheduleRepository scheduleRepository,
                         CurriculumFacade curriculumFacade,
                         AcademicFacade academicFacade,
-                        IamFacade iamFacade) {
+                        IamFacade iamFacade,
+                        SchoolFacade schoolFacade) {
         this.planRepository = planRepository;
         this.planCourseWeightRepository = planCourseWeightRepository;
         this.weekCourseRepository = weekCourseRepository;
@@ -69,6 +72,7 @@ class StudyPlanFacadeImpl implements StudyPlanFacade {
         this.curriculumFacade = curriculumFacade;
         this.academicFacade = academicFacade;
         this.iamFacade = iamFacade;
+        this.schoolFacade = schoolFacade;
     }
 
     // ---------------------------------------------------------------- plans
@@ -124,7 +128,7 @@ class StudyPlanFacadeImpl implements StudyPlanFacade {
     public WeekCourseId createWeekCourse(Long schoolId, Long planId, LocalDate weekStart,
                                          Long courseTopicId, List<Long> subTopicIds) {
         PlanEntity plan = requirePlanInSchool(schoolId, planId);
-        requireSaturday(weekStart);
+        requireWeekStart(schoolId, weekStart);
         Set<Long> schoolTopicIds = schoolTopicIds(schoolId);
         if (courseTopicId == null || !schoolTopicIds.contains(courseTopicId)) {
             throw new StudyPlanException(new StudyPlanError.TopicNotFound(courseTopicId));
@@ -211,7 +215,7 @@ class StudyPlanFacadeImpl implements StudyPlanFacade {
                 ? null
                 : fromJson(schedule.getCurrentSchedule());
         return new ScheduleInfo(studentId, fromJson(schedule.getDefaultSchedule()), current,
-                schedule.getLastEditedAt(), currentActive(schedule));
+                schedule.getLastEditedAt(), currentActive(schedule, weekStartOf(schoolId)));
     }
 
     @Override
@@ -247,7 +251,7 @@ class StudyPlanFacadeImpl implements StudyPlanFacade {
     @Transactional
     public List<IntervalInfo> suggestWeek(Long schoolId, Long studentId, LocalDate weekStart) {
         requireStudentInSchool(schoolId, studentId);
-        requireSaturday(weekStart);
+        WeekStart week = requireWeekStart(schoolId, weekStart);
         LocalDateTime start = weekStart.atStartOfDay();
         LocalDateTime end = weekStart.plusDays(7).atStartOfDay();
         if (intervalRepository.existsByStudentIdAndStartTimeGreaterThanEqualAndStartTimeLessThan(
@@ -264,10 +268,11 @@ class StudyPlanFacadeImpl implements StudyPlanFacade {
             throw new StudyPlanException(new StudyPlanError.PlanNotAssigned(studentId));
         }
 
-        Map<Weekday, List<TimeRange>> schedule = effectiveSchedule(studentId);
+        Map<Weekday, List<TimeRange>> schedule = effectiveSchedule(studentId, week);
         List<Suggestor.WeekCourseData> weekCourses = loadWeekCourseData(assignment.getPlanId());
 
-        List<Suggestor.ProposedInterval> proposed = Suggestor.suggest(weekStart, schedule, weights, weekCourses);
+        List<Suggestor.ProposedInterval> proposed = Suggestor.suggest(weekStart, Weekday.weekStartingOn(week.firstDay()), schedule, weights,
+                weekCourses);
 
         List<IntervalInfo> created = new ArrayList<>();
         for (Suggestor.ProposedInterval interval : proposed) {
@@ -285,7 +290,7 @@ class StudyPlanFacadeImpl implements StudyPlanFacade {
     @Override
     public List<IntervalInfo> getWeek(Long schoolId, Long studentId, LocalDate date) {
         requireStudentInSchool(schoolId, studentId);
-        LocalDate weekStart = saturdayOfWeek(date == null ? LocalDate.now() : date);
+        LocalDate weekStart = weekStartOf(schoolId).weekStartOf(date == null ? LocalDate.now() : date);
         List<StudyIntervalEntity> intervals = intervalRepository
                 .findByStudentIdAndStartTimeGreaterThanEqualAndEndTimeLessThanEqualOrderByStartTimeAscIdAsc(
                         studentId, weekStart.atStartOfDay(), weekStart.plusDays(7).atStartOfDay());
@@ -296,7 +301,7 @@ class StudyPlanFacadeImpl implements StudyPlanFacade {
     @Transactional
     public void clearWeek(Long schoolId, Long studentId, LocalDate weekStart) {
         requireStudentInSchool(schoolId, studentId);
-        requireSaturday(weekStart);
+        requireWeekStart(schoolId, weekStart);
         List<StudyIntervalEntity> intervals = intervalRepository
                 .findByStudentIdAndStartTimeGreaterThanEqualAndEndTimeLessThanEqualOrderByStartTimeAscIdAsc(
                         studentId, weekStart.atStartOfDay(), weekStart.plusDays(7).atStartOfDay());
@@ -313,7 +318,7 @@ class StudyPlanFacadeImpl implements StudyPlanFacade {
     public List<CopyResult> copyWeek(Long schoolId, Long sourceStudentId, LocalDate weekStart,
                                      List<Long> targetStudentIds) {
         requireStudentInSchool(schoolId, sourceStudentId);
-        requireSaturday(weekStart);
+        requireWeekStart(schoolId, weekStart);
         List<StudyIntervalEntity> source = intervalRepository
                 .findByStudentIdAndStartTimeGreaterThanEqualAndEndTimeLessThanEqualOrderByStartTimeAscIdAsc(
                         sourceStudentId, weekStart.atStartOfDay(), weekStart.plusDays(7).atStartOfDay());
@@ -414,7 +419,11 @@ class StudyPlanFacadeImpl implements StudyPlanFacade {
 
     @Override
     public List<RecentTopic> getRecentTopics(Long studentId) {
-        LocalDate weekStart = saturdayOfWeek(LocalDate.now());
+        Optional<AcademicFacade.StudentInfo> student = academicFacade.findStudentInfo(studentId);
+        if (student.isEmpty()) {
+            return List.of();
+        }
+        LocalDate weekStart = weekStartOf(student.get().schoolId()).weekStartOf(LocalDate.now());
         List<StudyIntervalEntity> intervals = intervalRepository
                 .findByStudentIdAndStartTimeGreaterThanEqualAndEndTimeLessThanEqualOrderByStartTimeAscIdAsc(
                         studentId, weekStart.atStartOfDay(), weekStart.plusDays(7).atStartOfDay());
@@ -486,40 +495,45 @@ class StudyPlanFacadeImpl implements StudyPlanFacade {
 
     /**
      * برنامه‌ی مؤثر برای پیشنهاد: currentSchedule فقط اگر در هفته‌ی جاری
-     * (از شنبه‌ی اخیر) ویرایش شده باشد - پورت property «schedule» موshavere
+     * (از روز شروع هفته‌ی اخیرِ مدرسه) ویرایش شده باشد - پورت property «schedule» موshavere
      * با مقایسه‌ی timestamp ساده (MOSHAVERE_PORT_SPEC.md §6). بدون رکورد -
      * برنامه‌ی خالی، که پایین‌تر در FillSlices به ScheduleTooSmall می‌رسد.
      */
-    private Map<Weekday, List<TimeRange>> effectiveSchedule(Long studentId) {
+    private Map<Weekday, List<TimeRange>> effectiveSchedule(Long studentId, WeekStart week) {
         Optional<IntervalScheduleEntity> entity = scheduleRepository.findByStudentId(studentId);
         if (entity.isEmpty()) {
             return emptySchedule();
         }
         IntervalScheduleEntity schedule = entity.get();
-        if (currentActive(schedule)) {
+        if (currentActive(schedule, week)) {
             return fromJson(schedule.getCurrentSchedule());
         }
         return fromJson(schedule.getDefaultSchedule());
     }
 
-    private boolean currentActive(IntervalScheduleEntity schedule) {
+    private boolean currentActive(IntervalScheduleEntity schedule, WeekStart week) {
         if (schedule.getCurrentSchedule() == null || schedule.getLastEditedAt() == null) {
             return false;
         }
         LocalDate editedOn = LocalDate.ofInstant(schedule.getLastEditedAt(), java.time.ZoneId.systemDefault());
-        return !editedOn.isBefore(saturdayOfWeek(LocalDate.now()));
+        return !editedOn.isBefore(week.weekStartOf(LocalDate.now()));
     }
 
-    private static LocalDate saturdayOfWeek(LocalDate date) {
-        int daysSinceSaturday = (date.getDayOfWeek().getValue() - DayOfWeek.SATURDAY.getValue() + 7) % 7;
-        return date.minusDays(daysSinceSaturday);
+    /** روز شروع هفته‌ی این مدرسه - تنها مالکِ آن SchoolFacade است (W9). */
+    private WeekStart weekStartOf(Long schoolId) {
+        return schoolFacade.findSchool(new SchoolFacade.SchoolId(schoolId))
+                .map(SchoolFacade.SchoolInfo::weekStart)
+                .orElseThrow(() -> new IllegalStateException("school not found: " + schoolId));
     }
 
-    private static void requireSaturday(LocalDate weekStart) {
-        if (weekStart == null || weekStart.getDayOfWeek() != DayOfWeek.SATURDAY) {
+    private WeekStart requireWeekStart(Long schoolId, LocalDate weekStart) {
+        WeekStart week = weekStartOf(schoolId);
+        if (weekStart == null || weekStart.getDayOfWeek() != week.firstDay()) {
+            String day = week == WeekStart.MONDAY ? "دوشنبه" : "شنبه";
             throw new StudyPlanException(new StudyPlanError.InvalidWeekStart(
-                    "شروع هفته باید شنبه باشد (هفته‌ی درسی از شنبه آغاز می‌شود)."));
+                    "شروع هفته باید " + day + " باشد (هفته‌ی درسی این مدرسه از " + day + " آغاز می‌شود)."));
         }
+        return week;
     }
 
     private PlanEntity requirePlanInSchool(Long schoolId, Long planId) {
