@@ -37,24 +37,41 @@ function icuGregorian(jy, jm, jd) {
 
 const iso = (date) => date.toISOString().slice(0, 10);
 
+// هر روز مدنیِ بازه را به‌صورت Date محلیِ ظهر می‌دهد (ظهر، تا شکاف نیمه‌شبِ DST پیش نیاید).
+// روزی که در منطقه‌ی زمانیِ این ماشین اصلاً وجود ندارد رد می‌شود: کیریباتی در پایان
+// ۱۹۹۴ روز ۳۱ دسامبر را حذف کرد و `new Date(1994, 11, 31)` آن‌جا به ۱ ژانویه می‌پرد.
+// این خطای تست است نه کد - هیچ کاربری آن روز را در داده‌ی خود نخواهد داشت.
+function existingCivilDays(fromMs, toMs) {
+    const days = [];
+    let skipped = 0;
+    for (let ms = fromMs; ms <= toMs; ms += DAY_MS) {
+        const utc = new Date(ms);
+        const local = new Date(utc.getUTCFullYear(), utc.getUTCMonth(), utc.getUTCDate(), 12);
+        if (local.getDate() !== utc.getUTCDate() || local.getMonth() !== utc.getUTCMonth()) {
+            skipped += 1;
+            continue;
+        }
+        days.push({ ms, local, utc });
+    }
+    return { days, skipped };
+}
+
 // -------------------------------------------------------------------- fa
 
 test('fa: fromDate agrees with ICU on every day from 1950 to 2100', () => {
-    let checked = 0;
-    for (let ms = Date.UTC(1950, 0, 1); ms <= Date.UTC(2100, 11, 31); ms += DAY_MS) {
-        const utc = new Date(ms);
-        // fromDate می‌خواند اجزای محلی را؛ یک Date محلی با همان روز مدنی می‌سازیم
-        const local = new Date(utc.getUTCFullYear(), utc.getUTCMonth(), utc.getUTCDate());
+    // fromDate اجزای محلیِ Date را می‌خواند
+    const { days, skipped } = existingCivilDays(Date.UTC(1950, 0, 1), Date.UTC(2100, 11, 31));
+    for (const { ms, local, utc } of days) {
         assert.deepEqual(fa.fromDate(local), icuJalali(ms), iso(utc));
-        checked += 1;
     }
-    assert.equal(checked, 55152);
+    assert.equal(days.length + skipped, 55152);
+    assert.ok(skipped <= 1, `at most one civil day may be missing from a time zone, got ${skipped}`);
 });
 
 test('fa: toDate round-trips fromDate and returns UTC midnight', () => {
-    for (let ms = Date.UTC(1990, 0, 1); ms <= Date.UTC(2060, 11, 31); ms += DAY_MS) {
-        const utc = new Date(ms);
-        const j = fa.fromDate(new Date(utc.getUTCFullYear(), utc.getUTCMonth(), utc.getUTCDate()));
+    const { days } = existingCivilDays(Date.UTC(1990, 0, 1), Date.UTC(2060, 11, 31));
+    for (const { ms, local, utc } of days) {
+        const j = fa.fromDate(local);
         assert.equal(fa.toDate(j.y, j.m, j.d).getTime(), ms, iso(utc));
     }
 });
@@ -94,6 +111,9 @@ test('fa: output is unchanged - names, digits and date text are exactly what the
     assert.deepEqual(fa.weekdayNames, Jalali.weekdayNames);
     assert.deepEqual(fa.weekdayShort, Jalali.weekdayShort);
     assert.equal(fa.digits(1405), '۱۴۰۵');
+    // W2b: صفحه‌ها از Jalali.toPersianDigits به Calendar.digits رفتند. در fa این «همان تابع»
+    // است، نه یک تابع هم‌ارز - پس خروجی فارسیِ آن ۱۱ فراخوان ضرورتاً یکی می‌ماند.
+    assert.equal(fa.digits, Jalali.toPersianDigits);
     for (const value of ['2026-10-03T08:15:00Z', '2026-10-05', new Date(2026, 2, 21, 12), 1700000000000]) {
         assert.equal(fa.formatDate(value), new Date(value).toLocaleDateString('fa-IR'));
     }
@@ -196,7 +216,7 @@ test('en: periodRange gives real Gregorian months, quarters and years', () => {
 test('en: dates and digits carry nothing Persian', () => {
     const persian = /[؀-ۿ۰-۹]/;
     assert.equal(en.digits(1405), '1405');
-    assert.equal(en.formatDate('2026-10-03T08:15:00Z'), 'Oct 3, 2026');
+    assert.equal(en.formatDate(new Date(2026, 9, 3, 12)), 'Oct 3, 2026');
     assert.ok(!persian.test(en.formatDate(new Date(2026, 2, 21, 12))));
     const range = en.formatRange(new Date(2026, 9, 3), new Date(2026, 9, 9));
     assert.ok(!persian.test(range), range);
