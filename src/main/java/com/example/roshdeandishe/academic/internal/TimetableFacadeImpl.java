@@ -196,6 +196,7 @@ class TimetableFacadeImpl implements TimetableFacade {
         periodRepository.lockPeriod(PERIOD_ROW_LOCK_NAMESPACE, Objects.hash(periodId));
         ClassEntity classEntity = requireClassInSchool(schoolId, classId);
         requirePeriodInSchool(schoolId, periodId);
+        requireSchoolDay(schoolId, weekday);
         if (courseId != null) {
             CourseEntity course = courseRepository.findById(courseId)
                     .orElseThrow(() -> new AcademicException(new AcademicError.CourseNotFound(courseId)));
@@ -253,6 +254,7 @@ class TimetableFacadeImpl implements TimetableFacade {
         if (weekday == null) {
             throw new AcademicException(new AcademicError.InvalidTimetableEntry("روز هفته الزامی است"));
         }
+        requireSchoolDay(schoolId, weekday);
         // همان قفلِ setEntry، تا پاک‌کردن و ویرایشِ هم‌زمانِ یک خانه سریالی شوند
         entryRepository.lockCell(CELL_LOCK_NAMESPACE, Objects.hash(classId, weekday.name(), periodId));
         entryRepository.findByClassIdAndWeekdayAndPeriodId(classId, weekday, periodId)
@@ -386,6 +388,20 @@ class TimetableFacadeImpl implements TimetableFacade {
                 .ifPresent(p -> {
                     throw new AcademicException(new AcademicError.PeriodOverlaps(p.getId()));
                 });
+    }
+
+    /**
+     * روز باید روز درسیِ همین مدرسه باشد: شنبه تا چهارشنبه یا دوشنبه تا جمعه، بر اساس
+     * روز شروع هفته‌ی مدرسه (W9). قاعده در SchoolFacade است، نه اینجا.
+     */
+    private void requireSchoolDay(Long schoolId, TimetableDay weekday) {
+        SchoolFacade.WeekStart week = schoolFacade.findSchool(new SchoolFacade.SchoolId(schoolId))
+                .map(SchoolFacade.SchoolInfo::weekStart)
+                .orElseThrow(() -> new IllegalStateException("school not found: " + schoolId));
+        if (!week.schoolDays().contains(weekday.dayOfWeek())) {
+            throw new AcademicException(new AcademicError.InvalidTimetableEntry(
+                    "روز " + weekday.name() + " روز درسی این مدرسه نیست"));
+        }
     }
 
     private TimetablePeriodEntity requirePeriodInSchool(Long schoolId, Long periodId) {

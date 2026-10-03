@@ -13,6 +13,11 @@ import com.example.roshdeandishe.iam.IamFacade.UserId;
 import com.example.roshdeandishe.school.SchoolFacade;
 import com.example.roshdeandishe.school.SchoolFacade.AcademicYearId;
 import com.example.roshdeandishe.school.SchoolFacade.AcademicYearInfo;
+import com.example.roshdeandishe.school.SchoolFacade.SchoolId;
+import com.example.roshdeandishe.school.SchoolFacade.SchoolInfo;
+import com.example.roshdeandishe.school.SchoolFacade.SchoolLevel;
+import com.example.roshdeandishe.school.SchoolFacade.SchoolStatus;
+import com.example.roshdeandishe.school.SchoolFacade.WeekStart;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.dao.DataIntegrityViolationException;
@@ -67,6 +72,7 @@ class TimetableFacadeTest {
         school = mock(SchoolFacade.class);
         facade = new TimetableFacadeImpl(periods, entries, activities, courses, classes, iam, school);
 
+        when(school.findSchool(new SchoolId(SCHOOL))).thenReturn(Optional.of(schoolInfo(WeekStart.SATURDAY)));
         when(school.listAcademicYears()).thenReturn(List.of(new AcademicYearInfo(new AcademicYearId(1L), YEAR, 1405)));
         when(classes.findById(CLASS_ID)).thenReturn(Optional.of(classEntity(CLASS_ID, SCHOOL)));
         when(classes.findById(OTHER_CLASS)).thenReturn(Optional.of(classEntity(OTHER_CLASS, SCHOOL)));
@@ -92,6 +98,11 @@ class TimetableFacadeTest {
             }
             return a;
         });
+    }
+
+    private static SchoolInfo schoolInfo(WeekStart weekStart) {
+        return new SchoolInfo(new SchoolId(SCHOOL), "مدرسه", SchoolStatus.ACTIVE, "UTC", "fa-IR",
+                SchoolLevel.ELEMENTARY, null, weekStart);
     }
 
     private static ClassEntity classEntity(Long id, Long schoolId) {
@@ -375,6 +386,51 @@ class TimetableFacadeTest {
         org.mockito.InOrder order = org.mockito.Mockito.inOrder(entries);
         order.verify(entries).lockCell(org.mockito.ArgumentMatchers.anyInt(), org.mockito.ArgumentMatchers.anyInt());
         order.verify(entries).findByClassIdAndWeekdayAndPeriodId(CLASS_ID, TimetableDay.SAT, PERIOD);
+    }
+
+    @Test
+    void aSaturdayWeekSchoolHasSaturdayToWednesdayAndNothingElse() {
+        when(courses.findById(30L)).thenReturn(Optional.of(course(30L, GRADE_LEVEL, true)));
+        for (TimetableDay day : List.of(TimetableDay.SAT, TimetableDay.SUN, TimetableDay.MON, TimetableDay.TUE,
+                TimetableDay.WED)) {
+            facade.setEntry(SCHOOL, CLASS_ID, PERIOD, day, 30L, null, null);
+        }
+        for (TimetableDay day : List.of(TimetableDay.THU, TimetableDay.FRI)) {
+            assertThatThrownBy(() -> facade.setEntry(SCHOOL, CLASS_ID, PERIOD, day, 30L, null, null))
+                    .isInstanceOfSatisfying(AcademicException.class,
+                            e -> assertThat(e.error()).isInstanceOf(AcademicError.InvalidTimetableEntry.class));
+            assertThatThrownBy(() -> facade.clearEntry(SCHOOL, CLASS_ID, PERIOD, day))
+                    .isInstanceOf(AcademicException.class);
+        }
+    }
+
+    @Test
+    void aMondayWeekSchoolHasMondayToFridayAndNothingElse() {
+        when(courses.findById(30L)).thenReturn(Optional.of(course(30L, GRADE_LEVEL, true)));
+        when(school.findSchool(new SchoolId(SCHOOL))).thenReturn(Optional.of(schoolInfo(WeekStart.MONDAY)));
+
+        for (TimetableDay day : List.of(TimetableDay.MON, TimetableDay.TUE, TimetableDay.WED, TimetableDay.THU,
+                TimetableDay.FRI)) {
+            facade.setEntry(SCHOOL, CLASS_ID, PERIOD, day, 30L, null, null);
+        }
+        for (TimetableDay day : List.of(TimetableDay.SAT, TimetableDay.SUN)) {
+            assertThatThrownBy(() -> facade.setEntry(SCHOOL, CLASS_ID, PERIOD, day, 30L, null, null))
+                    .isInstanceOfSatisfying(AcademicException.class,
+                            e -> assertThat(e.error()).isInstanceOf(AcademicError.InvalidTimetableEntry.class));
+            assertThatThrownBy(() -> facade.clearEntry(SCHOOL, CLASS_ID, PERIOD, day))
+                    .isInstanceOf(AcademicException.class);
+        }
+        // پیش از هر نوشتن رد می‌شود: برای روز غیردرسی هیچ خانه‌ای ذخیره نشد
+        verify(entries, org.mockito.Mockito.never()).saveAndFlush(
+                org.mockito.ArgumentMatchers.argThat(e -> e.getWeekday() == TimetableDay.SAT));
+    }
+
+    @Test
+    void timetableDayMapsEveryRealDayBothWays() {
+        for (java.time.DayOfWeek day : java.time.DayOfWeek.values()) {
+            assertThat(TimetableDay.of(day).dayOfWeek()).isEqualTo(day);
+        }
+        assertThat(TimetableDay.values()).hasSize(7);
     }
 
     @Test
