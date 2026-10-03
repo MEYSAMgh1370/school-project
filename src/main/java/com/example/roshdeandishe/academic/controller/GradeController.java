@@ -72,10 +72,12 @@ public class GradeController {
      */
     @GetMapping("/courses")
     @RequiresPermission("GRADES_EDIT")
-    public List<CourseResponse> listCourses(@PathVariable Long schoolId, @RequestParam Long classId) {
+    public List<CourseResponse> listCourses(@PathVariable Long schoolId, @RequestParam Long classId,
+                                            @RequestParam(required = false) String academicYear) {
         TenantContext.requireMatches(schoolId);
 
-        return academicFacade.listCoursesForClass(schoolId, classId).stream()
+        // سالِ اختیاری: فقط درس‌هایی که برای آن سال ارائه می‌شوند (بازه‌ی اعتبارِ درس)
+        return academicFacade.listCoursesForClass(schoolId, classId, academicYear).stream()
                 .map(course -> new CourseResponse(course.id().value(), course.gradeLevel(), course.name()))
                 .toList();
     }

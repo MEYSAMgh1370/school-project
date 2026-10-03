@@ -161,9 +161,11 @@ class TimetableFacadeImpl implements TimetableFacade {
     // ---- خانه‌ها ----
 
     @Override
-    public List<CourseInfo> listCoursesForTimetable(Long schoolId, Long classId) {
+    public List<CourseInfo> listCoursesForTimetable(Long schoolId, Long classId, String academicYear) {
         ClassEntity classEntity = requireClassInSchool(schoolId, classId);
+        Integer startYear = academicYear == null ? null : startYearOf(academicYear);
         return courseRepository.findByGradeLevelOrderByNameAsc(classEntity.getGradeLevel()).stream()
+                .filter(c -> startYear == null || c.isOfferedIn(startYear))
                 .map(c -> new CourseInfo(new CourseId(c.getId()), c.getGradeLevel(), c.getName()))
                 .toList();
     }
@@ -195,13 +197,17 @@ class TimetableFacadeImpl implements TimetableFacade {
         // بن‌بست نمی‌شود؛ زنگ بعد از قفل خوانده می‌شود تا حذفِ هم‌زمان دیده شود
         periodRepository.lockPeriod(PERIOD_ROW_LOCK_NAMESPACE, Objects.hash(periodId));
         ClassEntity classEntity = requireClassInSchool(schoolId, classId);
-        requirePeriodInSchool(schoolId, periodId);
+        TimetablePeriodEntity period = requirePeriodInSchool(schoolId, periodId);
         requireSchoolDay(schoolId, weekday);
         if (courseId != null) {
             CourseEntity course = courseRepository.findById(courseId)
                     .orElseThrow(() -> new AcademicException(new AcademicError.CourseNotFound(courseId)));
             if (course.getGradeLevel() != classEntity.getGradeLevel()) {
                 throw new AcademicException(new AcademicError.CourseNotForClass(courseId, classId));
+            }
+            // بازه‌ی اعتبارِ درس به سالِ همین زنگ (academic-year.md فاز ۱)
+            if (!course.isOfferedIn(startYearOf(period.getAcademicYear()))) {
+                throw new AcademicException(new AcademicError.CourseNotValidForYear(courseId, period.getAcademicYear()));
             }
         } else {
             // پیش‌فرضِ پلتفرم یا فعالیتِ همین مدرسه؛ فعالیتِ مدرسه‌ی دیگر «یافت نشد»
@@ -325,6 +331,15 @@ class TimetableFacadeImpl implements TimetableFacade {
                         e.getActivityId() == null ? null : activityNames.get(e.getActivityId()),
                         e.getTeacherUserId()))
                 .toList();
+    }
+
+    /** سالِ شروعِ سالِ فهرست‌شده؛ سالِ ناشناخته InvalidAcademicYear. */
+    private int startYearOf(String academicYear) {
+        return schoolFacade.listAcademicYears().stream()
+                .filter(y -> y.code().equals(academicYear))
+                .findFirst()
+                .orElseThrow(() -> new AcademicException(new AcademicError.InvalidAcademicYear(academicYear)))
+                .startYear();
     }
 
     private void requireKnownYear(String academicYear) {

@@ -154,7 +154,14 @@ class AcademicFacadeImpl implements AcademicFacade {
         }
         // سال کلید است: یک شکل canonical و حتماً از فهرستِ سال‌ها (academic-year.md فاز ۱)
         academicYear = AcademicYearCodes.canonical(academicYear);
-        requireListedYear(academicYear);
+        int startYear = requireListedYear(academicYear);
+        if (courseId != null) {
+            // بازه‌ی اعتبارِ درس به سالِ نمره (academic-year.md فاز ۱)؛ وجودِ درس پیش‌تر بررسی شده
+            CourseEntity course = courseRepository.findById(courseId).orElseThrow();
+            if (!course.isOfferedIn(startYear)) {
+                throw new AcademicException(new AcademicError.CourseNotValidForYear(courseId, academicYear));
+            }
+        }
 
         GradingScheme scheme = classEntity.getGradingScheme() != null ? classEntity.getGradingScheme() : GradingScheme.NUMERIC;
         switch (scheme) {
@@ -196,11 +203,13 @@ class AcademicFacadeImpl implements AcademicFacade {
         return new GradeId(saved.getId());
     }
 
-    private void requireListedYear(String academicYear) {
-        boolean listed = schoolFacade.listAcademicYears().stream().anyMatch(y -> y.code().equals(academicYear));
-        if (!listed) {
-            throw new AcademicException(new AcademicError.InvalidAcademicYear(academicYear));
-        }
+    /** سالِ شروعِ یک سالِ فهرست‌شده؛ سالِ ناشناخته InvalidAcademicYear. */
+    private int requireListedYear(String academicYear) {
+        return schoolFacade.listAcademicYears().stream()
+                .filter(y -> y.code().equals(academicYear))
+                .findFirst()
+                .orElseThrow(() -> new AcademicException(new AcademicError.InvalidAcademicYear(academicYear)))
+                .startYear();
     }
 
     @Override
@@ -222,9 +231,12 @@ class AcademicFacadeImpl implements AcademicFacade {
     }
 
     @Override
-    public List<CourseInfo> listCoursesForClass(Long schoolId, Long classId) {
+    public List<CourseInfo> listCoursesForClass(Long schoolId, Long classId, String academicYear) {
         ClassEntity classEntity = requireClassInSchool(schoolId, classId);
+        String year = AcademicYearCodes.canonical(academicYear);
+        Integer startYear = year == null ? null : requireListedYear(year);
         return courseRepository.findByGradeLevelAndGradedTrueOrderByNameAsc(classEntity.getGradeLevel()).stream()
+                .filter(c -> startYear == null || c.isOfferedIn(startYear))
                 .map(c -> new CourseInfo(new CourseId(c.getId()), c.getGradeLevel(), c.getName()))
                 .toList();
     }

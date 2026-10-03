@@ -75,6 +75,11 @@ public class AcademicExceptionHandler {
                     "درس مربوط به پایه‌ی این کلاس نیست",
                     "درس " + e.courseId() + " برای پایه‌ی کلاس " + e.classId() + " تعریف نشده است."
             );
+            case AcademicError.CourseNotValidForYear e -> ProblemDetailFactory.problem(
+                    HttpStatus.BAD_REQUEST, "course-not-valid-for-year",
+                    "این درس در این سال تحصیلی ارائه نمی‌شود",
+                    "درس " + e.courseId() + " برای سال «" + e.academicYear() + "» معتبر نیست."
+            );
             case AcademicError.CourseNotGradable e -> ProblemDetailFactory.problem(
                     HttpStatus.BAD_REQUEST, "course-not-gradable",
                     "این درس در کارنامه نمی‌آید",

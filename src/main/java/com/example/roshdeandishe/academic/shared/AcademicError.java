@@ -62,6 +62,10 @@ public sealed interface AcademicError {
     record CourseNotGradable(Long courseId) implements AcademicError {
     }
 
+    /** درس در بازه‌ی اعتبارش برای این سالِ تحصیلی ارائه نمی‌شود. */
+    record CourseNotValidForYear(Long courseId, String academicYear) implements AcademicError {
+    }
+
     /** کدِ سال تحصیلی در فهرستِ سراسریِ سال‌ها نیست. */
     record InvalidAcademicYear(String academicYear) implements AcademicError {
     }

@@ -76,9 +76,16 @@ public interface AcademicFacade {
      * درس‌های سراسریِ هم‌پایه‌ی یک کلاس، به ترتیب نام - برای انتخابگر درس در
      * دفتر نمرات (فقط درس‌های نمره‌پذیر: درسِ {@code graded = false} فقط در برنامهٔ
      * کلاسی می‌آید). فهرست فقط‌خواندنی است (openspec/changes/grades-by-course.md).
+     * {@code academicYear} (اختیاری) فقط درس‌هایی را می‌دهد که برای آن سال ارائه می‌شوند
+     * (بازه‌ی اعتبار، academic-year.md فاز ۱)؛ سالِ ناشناخته: InvalidAcademicYear.
      * AcademicError.ClassNotFound اگر کلاس متعلق به این مدرسه نباشد.
      */
-    List<CourseInfo> listCoursesForClass(Long schoolId, Long classId);
+    List<CourseInfo> listCoursesForClass(Long schoolId, Long classId, String academicYear);
+
+    /** همه‌ی درس‌های پایه، بدون فیلترِ سال (بازه‌ی اعتبار نادیده). */
+    default List<CourseInfo> listCoursesForClass(Long schoolId, Long classId) {
+        return listCoursesForClass(schoolId, classId, null);
+    }
 
     GradeInfo getGrade(Long gradeId);
 

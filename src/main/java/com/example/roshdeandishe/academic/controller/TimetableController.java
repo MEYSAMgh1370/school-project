@@ -157,10 +157,12 @@ public class TimetableController {
 
     /** درس‌های هم‌پایه‌ی کلاس، شاملِ غیرنمره‌پذیر (برخلاف /grades/courses). */
     @GetMapping("/classes/{classId}/courses")
-    public List<CourseResponse> courses(@PathVariable Long schoolId, @PathVariable Long classId) {
+    public List<CourseResponse> courses(@PathVariable Long schoolId, @PathVariable Long classId,
+                                        @RequestParam(required = false) String academicYear) {
         TenantContext.requireMatches(schoolId);
 
-        return timetableFacade.listCoursesForTimetable(schoolId, classId).stream()
+        // سالِ اختیاری: فقط درس‌هایی که برای آن سال ارائه می‌شوند (بازه‌ی اعتبارِ درس)
+        return timetableFacade.listCoursesForTimetable(schoolId, classId, academicYear).stream()
                 .map(c -> new CourseResponse(c.id().value(), c.gradeLevel(), c.name()))
                 .toList();
     }

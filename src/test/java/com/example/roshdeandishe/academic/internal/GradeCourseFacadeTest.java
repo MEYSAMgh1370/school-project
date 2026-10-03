@@ -310,4 +310,52 @@ class GradeCourseFacadeTest {
 
         verify(grades).findByClassIdAndAcademicYearAndTermAndCourseIdIsNull(CLASS_ID, "1405-1406", GradingTerm.FIRST);
     }
+
+    private static CourseEntity ranged(Long id, Integer from, Integer until) {
+        CourseEntity c = course(id, GRADE_LEVEL, "ریاضی");
+        ReflectionTestUtils.setField(c, "validFromYear", from);
+        ReflectionTestUtils.setField(c, "validUntilYear", until);
+        return c;
+    }
+
+    @Test
+    void aCourseOutsideItsRangeIsRejectedForThatYearAndNothingIsSaved() {
+        when(courses.findById(30L)).thenReturn(Optional.of(ranged(30L, 1406, null)));
+        when(courses.findById(31L)).thenReturn(Optional.of(ranged(31L, null, 1404)));
+
+        for (long id : new long[]{30L, 31L}) {
+            assertThatThrownBy(() -> facade.recordGrade(SCHOOL, STUDENT, CLASS_ID, "1405-1406", GradingTerm.FIRST,
+                    null, new BigDecimal("17"), null, id))
+                    .isInstanceOfSatisfying(AcademicException.class,
+                            e -> assertThat(e.error()).isEqualTo(
+                                    new AcademicError.CourseNotValidForYear(id, "1405-1406")));
+        }
+
+        verify(grades, never()).save(any(GradeEntity.class));
+    }
+
+    @Test
+    void aCourseInsideItsRangeIsGradable() {
+        when(courses.findById(30L)).thenReturn(Optional.of(ranged(30L, 1404, 1405)));
+        when(grades.findByStudentIdAndClassIdAndAcademicYearAndTermAndCourseId(
+                STUDENT, CLASS_ID, "1404-1405", GradingTerm.FIRST, 30L)).thenReturn(Optional.empty());
+
+        facade.recordGrade(SCHOOL, STUDENT, CLASS_ID, "1404-1405", GradingTerm.FIRST, null,
+                new BigDecimal("17"), null, 30L);
+
+        verify(grades).save(any(GradeEntity.class));
+    }
+
+    @Test
+    void theGradeBookCourseListForAYearHidesCoursesOutsideTheirRange() {
+        when(courses.findByGradeLevelAndGradedTrueOrderByNameAsc(GRADE_LEVEL)).thenReturn(List.of(
+                ranged(30L, null, null), ranged(31L, 1406, null), ranged(32L, null, 1404)));
+
+        assertThat(facade.listCoursesForClass(SCHOOL, CLASS_ID, "۱۴۰۵-۱۴۰۶")).extracting(c -> c.id().value())
+                .containsExactly(30L);
+        assertThat(facade.listCoursesForClass(SCHOOL, CLASS_ID)).hasSize(3);
+        assertThatThrownBy(() -> facade.listCoursesForClass(SCHOOL, CLASS_ID, "1999-2000"))
+                .isInstanceOfSatisfying(AcademicException.class,
+                        e -> assertThat(e.error()).isInstanceOf(AcademicError.InvalidAcademicYear.class));
+    }
 }
