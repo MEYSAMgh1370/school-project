@@ -64,13 +64,16 @@ From code and tests, not from memory:
 
 ### Permission-aware navigation
 
-- `NavCatalog.Link.permissions` (any-of): the management permission of the page
-  (`MEMBERSHIP_MANAGE`, `STUDENT_ENROLL`, `ROLE_MANAGE`, `ACADEMIC_YEAR_MANAGE`,
-  `CLASS_VIEW`, `TIMETABLE_MANAGE`, `CURRICULUM_VIEW`, `STUDYPLAN_VIEW`,
-  `EXAM_VIEW`, `GRADES_EDIT`, `FINANCE_MANAGE`, `EXPENSE_VIEW`). The self-service
-  «من» links have none (their permissions such as `GRADES_VIEW` are shared with
-  other roles).
-- Sidebar condition: `roles.includes(selectedRole) || permissions.some(p =>
+- `NavCatalog.Link.permissions` (**all-of**): the management permission of the page plus
+  any permission its *blocking* first load needs, because permissions are chosen
+  independently in a custom role and a page whose first request answers `403` closes
+  itself: `MEMBERSHIP_MANAGE`, `STUDENT_ENROLL` + `STUDENT_VIEW`, `ROLE_MANAGE`,
+  `ACADEMIC_YEAR_MANAGE`, `CLASS_VIEW`, `TIMETABLE_MANAGE`, `CURRICULUM_VIEW`,
+  `STUDYPLAN_VIEW`, `EXAM_VIEW`, `GRADES_EDIT` + `CLASS_VIEW`, `FINANCE_MANAGE` +
+  `FINANCE_VIEW`, `EXPENSE_VIEW`. Secondary loads that each page already treats as
+  best-effort (names, class lists, ...) are not required. The self-service «من» links
+  have none (their permissions such as `GRADES_VIEW` are shared with other roles).
+- Sidebar condition: `roles.includes(selectedRole) || ['A','B'].every(p =>
   selectedRole's permissions.includes(p))`. A group shows when any of its links does.
 - `IamFacade.findPermissionCodesByRole(schoolId, roleCodes)` returns the permissions of
   the user's roles with a fixed number of queries (not one per role/permission), the
@@ -79,7 +82,7 @@ From code and tests, not from memory:
   on every school or role change (the same custom-role code can hold different
   permissions in different schools).
 - Invariant, enforced by `NavPermissionsFlowIntegrationTest`: for every seeded system
-  role, "holds one of the link's permissions" is exactly "the role is in the link's
+  role, "holds all of the link's permissions" is exactly "the role is in the link's
   roles", so no link appears or disappears for an existing role.
 
 ### Client errors

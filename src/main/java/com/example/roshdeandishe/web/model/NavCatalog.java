@@ -30,7 +30,7 @@ public final class NavCatalog {
                     new Link("/people", "اعضای مدرسه", "افزودن و مدیریت اعضای مدرسه",
                             List.of(ADMIN), List.of(ADMIN)).withPermissions("MEMBERSHIP_MANAGE"),
                     new Link("/students", "دانش‌آموزان", "فهرست دانش‌آموزان مدرسه",
-                            List.of(ADMIN, TEACHER), List.of(ADMIN, TEACHER)).withPermissions("STUDENT_ENROLL"),
+                            List.of(ADMIN, TEACHER), List.of(ADMIN, TEACHER)).withPermissions("STUDENT_ENROLL", "STUDENT_VIEW"),
                     new Link("/roles", "نقش‌ها و دسترسی‌ها", "تعریف نقش‌ها و دسترسی‌هایشان",
                             List.of(ADMIN), List.of()).withPermissions("ROLE_MANAGE"),
                     new Link("/academic-year", "سال تحصیلی", "انتخاب سال تحصیلی جاریِ مدرسه",
@@ -54,12 +54,12 @@ public final class NavCatalog {
                             List.of(STUDENT), List.of(STUDENT)))),
             new Group("grades", "نمرات", List.of(
                     new Link("/grades", "دفتر نمرات", "ثبت و مرور نمره‌ها",
-                            List.of(ADMIN, TEACHER), List.of(ADMIN, TEACHER)).withPermissions("GRADES_EDIT"),
+                            List.of(ADMIN, TEACHER), List.of(ADMIN, TEACHER)).withPermissions("GRADES_EDIT", "CLASS_VIEW"),
                     new Link("/my-grades", "نمره‌های من", "نمره‌های شما",
                             List.of(STUDENT, PARENT), List.of(STUDENT, PARENT)))),
             new Group("finance", "مالی", List.of(
                     new Link("/finance", "امور مالی", "شهریه، پرداخت‌ها و فاکتورها",
-                            List.of(ADMIN, FINANCE), List.of(ADMIN, FINANCE)).withPermissions("FINANCE_MANAGE"),
+                            List.of(ADMIN, FINANCE), List.of(ADMIN, FINANCE)).withPermissions("FINANCE_MANAGE", "FINANCE_VIEW"),
                     new Link("/expenses", "هزینه‌ها", "ثبت و پیگیری هزینه‌ها",
                             List.of(ADMIN, FINANCE), List.of(FINANCE)).withPermissions("EXPENSE_VIEW"),
                     new Link("/my-invoices", "فاکتورهای من", "شهریه و پرداخت‌های شما",
@@ -122,27 +122,31 @@ public final class NavCatalog {
             return includes(roles, roleExpression);
         }
 
-        /** همان، به‌علاوه‌ی اجتماعِ Permissionهای لینک‌ها (نقشِ سفارشی). */
+        /** همان، به‌علاوه‌ی «همه‌ی Permissionهای یکی از لینک‌ها» (نقشِ سفارشی). */
         public String visibleWhen(String roleExpression, String permissionsExpression) {
             Set<String> roles = new LinkedHashSet<>();
-            Set<String> permissions = new LinkedHashSet<>();
+            Set<List<String>> permissionSets = new LinkedHashSet<>();
             links.forEach(link -> {
                 roles.addAll(link.roles());
-                permissions.addAll(link.permissions());
+                permissionSets.add(link.permissions());
             });
-            return anyOf(includes(roles, roleExpression), permissions, permissionsExpression);
+            return anyOf(includes(roles, roleExpression), permissionSets, permissionsExpression);
         }
     }
 
     /**
      * @param roles         نقش‌هایی که لینک را در سایدبار می‌بینند (فقط نمایش)
      * @param shortcutRoles زیرمجموعه‌ی {@code roles} که برایشان کارت «دسترسی سریع» هم هست
-     * @param permissions   هر یک از این Permissionها (یا) لینک را برای نقشِ دارای آن هم نمایش می‌دهد -
-     *                      برای نقش‌های سفارشی (مثلاً معاونِ دارای TIMETABLE_MANAGE) که در {@code roles}
-     *                      نیستند. فقط Permissionِ مدیریتیِ همان صفحه؛ نه Permissionی که نقش‌های
-     *                      خودسرویس هم دارند (GRADES_VIEW، FINANCE_VIEW). برای نقش‌های سیستمی باید با
-     *                      {@code roles} هم‌خوان باشد (NavCatalogPermissionsFlowIntegrationTest). خالی
-     *                      = فقط بر اساس نقش (صفحه‌های «من»). کارتِ «دسترسی سریع» همچنان فقط بر اساس نقش است.
+     * @param permissions   <b>همه‌ی</b> این Permissionها را که نقشِ انتخاب‌شده داشته باشد لینک را برایش
+     *                      نمایش می‌دهد - برای نقش‌های سفارشی (مثلاً معاونِ دارای TIMETABLE_MANAGE) که در
+     *                      {@code roles} نیستند. مجموعه = Permissionِ مدیریتیِ صفحه + Permissionی که
+     *                      بارگذاریِ اولیه‌ی <i>مسدودکننده</i>ی صفحه لازم دارد (Permissionها مستقل انتخاب
+     *                      می‌شوند: FINANCE_MANAGE بدون FINANCE_VIEW صفحه‌ای می‌دهد که با اولین 403 بسته
+     *                      می‌شود، و STUDENT_ENROLL بدون STUDENT_VIEW هم). نه Permissionی که نقش‌های
+     *                      خودسرویس هم دارند، مگر در ترکیبی که فقط نقش‌های همان لینک دارند (GRADES_VIEW،
+     *                      FINANCE_VIEW تنها). برای نقش‌های سیستمی باید با {@code roles} هم‌خوان باشد
+     *                      (NavPermissionsFlowIntegrationTest). خالی = فقط بر اساس نقش (صفحه‌های «من»).
+     *                      کارتِ «دسترسی سریع» همچنان فقط بر اساس نقش است.
      */
     public record Link(String href, String label, String description,
                        List<String> roles, List<String> shortcutRoles, List<String> permissions) {
@@ -155,9 +159,9 @@ public final class NavCatalog {
             return new Link(href, label, description, roles, shortcutRoles, List.of(codes));
         }
 
-        /** نمایش در سایدبار: نقشِ انتخاب‌شده در {@code roles} باشد یا Permissionی از {@code permissions} داشته باشد. */
+        /** نمایش در سایدبار: نقشِ انتخاب‌شده در {@code roles} باشد یا همه‌ی {@code permissions} را داشته باشد. */
         public String visibleWhen(String roleExpression, String permissionsExpression) {
-            return anyOf(includes(roles, roleExpression), permissions, permissionsExpression);
+            return anyOf(includes(roles, roleExpression), List.of(permissions), permissionsExpression);
         }
 
         public String visibleWhen(String roleExpression) {
@@ -169,22 +173,28 @@ public final class NavCatalog {
         }
     }
 
-    // «شرطِ نقش || یکی از Permissionها» به‌صورت عبارتِ Alpine؛ بدون Permission همان شرطِ نقش
-    private static String anyOf(String roleCondition, java.util.Collection<String> permissions,
+    // «شرطِ نقش || داشتنِ همه‌ی Permissionهای یک لینک (برای هر لینک)» به‌صورت عبارتِ Alpine؛ بدون
+    // Permission همان شرطِ نقش
+    private static String anyOf(String roleCondition, java.util.Collection<List<String>> permissionSets,
                                 String permissionsExpression) {
-        if (permissions.isEmpty()) {
-            return roleCondition;
-        }
-        StringBuilder codes = new StringBuilder("[");
-        boolean first = true;
-        for (String code : permissions) {
-            if (!first) {
-                codes.append(", ");
+        StringBuilder expression = new StringBuilder(roleCondition);
+        for (List<String> codes : permissionSets) {
+            if (codes.isEmpty()) {
+                continue;
             }
-            codes.append('\'').append(code).append('\'');
-            first = false;
+            StringBuilder list = new StringBuilder("[");
+            boolean first = true;
+            for (String code : codes) {
+                if (!first) {
+                    list.append(", ");
+                }
+                list.append('\'').append(code).append('\'');
+                first = false;
+            }
+            list.append(']');
+            expression.append(" || ").append(list).append(".every(p => ").append(permissionsExpression)
+                    .append(".includes(p))");
         }
-        codes.append(']');
-        return roleCondition + " || " + codes + ".some(p => " + permissionsExpression + ".includes(p))";
+        return expression.toString();
     }
 }

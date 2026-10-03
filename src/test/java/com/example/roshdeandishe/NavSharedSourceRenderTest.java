@@ -75,9 +75,9 @@ class NavSharedSourceRenderTest {
         String decoded = HtmlUtils.htmlUnescape(html);
         assertThat(decoded).contains(
                 "href=\"/people\" x-show=\"['SCHOOL_ADMIN'].includes(selectedRole) "
-                        + "|| ['MEMBERSHIP_MANAGE'].some(p => permissions.includes(p))\"",
+                        + "|| ['MEMBERSHIP_MANAGE'].every(p => permissions.includes(p))\"",
                 "href=\"/students\" x-show=\"['SCHOOL_ADMIN', 'TEACHER'].includes(selectedRole) "
-                        + "|| ['STUDENT_ENROLL'].some(p => permissions.includes(p))\"",
+                        + "|| ['STUDENT_ENROLL', 'STUDENT_VIEW'].every(p => permissions.includes(p))\"",
                 // صفحه‌های «من» فقط بر اساس نقش‌اند (Permissionِ خودسرویس مثل GRADES_VIEW معیار نیست)
                 "href=\"/my-grades\" x-show=\"['STUDENT', 'PARENT'].includes(selectedRole)\"");
     }
@@ -93,7 +93,7 @@ class NavSharedSourceRenderTest {
         // schoolNavbar(roles، Permissionهای هر نقش) و لینکی که با Permission نشان داده می‌شود
         assertThat(html).contains("schoolNavbar({7: ['DEPUTY',],}, {7: {'DEPUTY': ['TIMETABLE_MANAGE','CLASS_VIEW',],},})");
         assertThat(html).contains("href=\"/timetable\" x-show=\"['SCHOOL_ADMIN'].includes(selectedRole) "
-                + "|| ['TIMETABLE_MANAGE'].some(p => permissions.includes(p))\"");
+                + "|| ['TIMETABLE_MANAGE'].every(p => permissions.includes(p))\"");
     }
 
     @Test

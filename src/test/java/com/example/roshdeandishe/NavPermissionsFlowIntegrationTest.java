@@ -54,7 +54,7 @@ class NavPermissionsFlowIntegrationTest {
                     continue;
                 }
                 for (String role : SYSTEM_ROLES) {
-                    boolean byPermission = permissionsByRole.get(role).stream().anyMatch(link.permissions()::contains);
+                    boolean byPermission = permissionsByRole.get(role).containsAll(link.permissions());
                     assertThat(byPermission)
                             .as("%s for %s: link roles %s, link permissions %s, role permissions %s",
                                     link.href(), role, link.roles(), link.permissions(), permissionsByRole.get(role))
@@ -90,7 +90,7 @@ class NavPermissionsFlowIntegrationTest {
 
         assertThat(html).contains("'" + code + "': ['CLASS_VIEW','TIMETABLE_MANAGE',]");
         assertThat(html).contains("href=\"/timetable\" x-show=\"['SCHOOL_ADMIN'].includes(selectedRole) "
-                + "|| ['TIMETABLE_MANAGE'].some(p => permissions.includes(p))\"");
+                + "|| ['TIMETABLE_MANAGE'].every(p => permissions.includes(p))\"");
         // و API همان Permission را واقعاً می‌دهد: لینک فقط نمایشِ همین دسترسی است
         mockMvc.perform(get("/api/admin/schools/1/timetable/years").header("X-School-ID", "1").session(deputy))
                 .andExpect(status().isOk());
