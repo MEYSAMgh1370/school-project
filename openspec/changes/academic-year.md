@@ -223,8 +223,10 @@ level), **graduate** (the school's last grade, `SchoolLevel.maxGrade`), or
 - **Automatic** (decided 2026-10-03): runs by itself when the school switches its
   current year and the setting is on; the default rule moves every student to the
   next grade level, and repeaters are changed by hand. It is *not* a rule from
-  grades (no pass mark). Whether it can be undone, and where a promoted student is
-  placed when the new year's classes do not exist yet, is question 8 below.
+  grades (no pass mark). A promoted student is recorded with the next grade level and a
+  **pending class**, which the admin fills in once the new year's classes exist, and
+  the run can be undone (question 8, answered 2026-10-03); what counts as graduating
+  is still open there.
 - Guardian links stay; last year's grades stay on the old enrollment; new-year
   invoices follow the tuition rule (question 3).
 
@@ -317,16 +319,17 @@ classes/enrollments and promotion.
    Course catalog rows still come from data migrations because no platform actor
    or permission exists (`platform-admin-not-assignable.md`); that deferred
    platform work is unchanged.
-8. **Placing promoted students when the new year's classes do not exist.** The
-   automatic promotion runs at the year switch, and the new year's classes are made
-   from scratch, so at that moment there is no class to put anyone in (and a grade
-   level may later have several classes). Options: (a) the automatic run records
-   each student as promoted to the next *grade level* with the class still
-   pending, and the admin assigns classes once they are created (a pending-students
-   list); (b) the run waits until the admin has created the new classes and then
-   runs; (c) a promoted student goes to the class with the same name/section as
-   before, if one exists. Also open: can an automatic run be undone, and what makes a
-   student a graduate when the school's last grade is passed.
+8. **Placing promoted students when the new year's classes do not exist.**
+   **Answered 2026-10-03:** option (a). The automatic run records each student as
+   promoted to the next *grade level* with the class still **pending**; once the
+   admin has created the new year's classes, the admin places the pending students
+   (a "pending placement" list). **An automatic run can be undone** (answered
+   2026-10-03: yes). *Still open:* what makes a student a graduate when the school's
+   last grade is passed (the levels are 1-6, 7-9 and 10-12, and a school stays in one
+   level) - proposed: students in the last grade of the school's level become
+   "graduated" in the automatic run (history, grades and invoices kept, no new-year
+   enrollment or invoice), reversible by the same undo, and the admin can mark a
+   student as repeating instead before or after.
 9. **Closed: a version column for the school's current year ("ABA").** The expected
    current year is compared by value in the write itself; a revision counter would
    only reject requests that are not wrong. Revisit only if an audit trail of
