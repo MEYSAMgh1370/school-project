@@ -1,6 +1,5 @@
 @import com.example.roshdeandishe.web.model.NavCatalog
 @import com.example.roshdeandishe.web.model.NavbarModel
-@import com.example.roshdeandishe.web.model.RoleLabels
 
 @param NavbarModel navbar
 
@@ -61,7 +60,7 @@
                             @for(var role : school.roles())
                                 <button type="button" class="navbar-item" x-show="selectedSchoolId === ${school.id()}" @click="selectRole('${role}')">
                                     <span class="app-inline-gap" x-show="selectedRole === '${role}'">✓</span>
-                                    ${RoleLabels.persian(role)}
+                                    ${navbar.roleLabel(school.id(), role)}
                                 </button>
                             @endfor
                         @endfor
@@ -114,7 +113,7 @@
                     @for(var role : school.roles())
                         <button type="button" class="app-sidebar-account-item" x-show="selectedSchoolId === ${school.id()}" @click="selectRole('${role}')">
                             <span class="app-inline-gap" x-show="selectedRole === '${role}'">✓</span>
-                            ${RoleLabels.persian(role)}
+                            ${navbar.roleLabel(school.id(), role)}
                         </button>
                     @endfor
                 @endfor

@@ -79,8 +79,8 @@ public class MyStudyIntervalController {
     }
 
     private Long resolveStudentId(Long userId, Long schoolId) {
-        // عضوِ سابق (بدون عضویتِ فعال) دانش‌آموزِ این مدرسه حساب نمی‌شود
-        if (!iamFacade.hasActiveMembership(new IamFacade.UserId(userId), schoolId)) {
+        // دانش‌آموزِ این مدرسه یعنی نقشِ فعالِ دانش‌آموز
+        if (!iamFacade.findActiveRoleCodes(new IamFacade.UserId(userId), schoolId).contains("STUDENT")) {
             return null;
         }
         return academicFacade.findMyEnrollment(userId, schoolId)

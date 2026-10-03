@@ -48,8 +48,8 @@ public class MyEnrollmentController {
     @GetMapping("/api/me/enrollment")
     public ResponseEntity<MyEnrollmentResponse> myEnrollment(@RequestParam Long schoolId) {
         Long userId = iamFacade.currentUserId().value();
-        // عضوِ سابق: «ثبت‌نامی نیست» (204)، نه اطلاعاتِ مدرسه‌ای که دیگر عضوش نیست
-        if (!iamFacade.hasActiveMembership(new IamFacade.UserId(userId), schoolId)) {
+        // بدونِ نقشِ فعالِ دانش‌آموز (عضوِ سابق، یا فقط معلم/ولی): «ثبت‌نامی نیست» (204)
+        if (!iamFacade.findActiveRoleCodes(new IamFacade.UserId(userId), schoolId).contains("STUDENT")) {
             return ResponseEntity.noContent().build();
         }
         return academicFacade.findMyEnrollment(userId, schoolId)

@@ -35,6 +35,7 @@ import java.util.Set;
 public class WardsAssembler {
 
     private static final String PARENT_ROLE = "PARENT";
+    private static final String STUDENT_ROLE = "STUDENT";
     private static final String OWN_GRADES_LABEL = "نمره‌های من";
 
     private final IamFacade iamFacade;
@@ -56,41 +57,43 @@ public class WardsAssembler {
     }
 
     /**
-     * فقط نامِ فرزندانِ لینک‌شده‌ی کاربرِ فعلی در همه‌ی مدرسه‌هایی که عضویتِ
-     * فعال (با هر نقشی) دارد - برای صفحه‌ی «نمره‌های من». دامنه عمداً با
-     * {@code MyGradesController} یکی است: آن endpoint فرزندان را مستقل از نقش
-     * (listWards) برمی‌گرداند، پس مثلاً معلمِ فعالی که عضویتِ والدش غیرفعال
-     * شده هم نامِ فرزندش را می‌بیند و با دانش‌آموزِ خودش اشتباه نمی‌شود. بدون
-     * فراخوانی finance. خودِ کاربر (اگر دانش‌آموزِ آن مدرسه است) هم با
-     * {@code own = true} می‌آید، حتی بدون نمره.
+     * فقط نامِ فرزندانِ لینک‌شده‌ی کاربرِ فعلی در مدرسه‌هایی که ولیِ فعال است - برای صفحه‌ی «نمره‌های من».
+     * دامنه عمداً با {@code MyGradesController} یکی است: آن endpoint فرزندان را فقط با نقشِ فعالِ والد و
+     * دانش‌آموزیِ خودِ کاربر را فقط با نقشِ فعالِ دانش‌آموز برمی‌گرداند، پس معلمِ فعالی که عضویتِ والدش
+     * غیرفعال شده نامِ فرزندش را نمی‌بیند. بدون فراخوانی finance. خودِ کاربر (اگر دانش‌آموزِ فعالِ آن
+     * مدرسه است) هم با {@code own = true} می‌آید، حتی بدون نمره.
      */
     public List<WardRef> wardRefsForCurrentUser() {
         UserId userId = iamFacade.currentUserId();
         List<WardRef> refs = new ArrayList<>();
-        for (Long schoolId : activeSchoolIds(iamFacade.findMembershipsByUser(userId))) {
+        activeRolesBySchool(iamFacade.findMembershipsByUser(userId)).forEach((schoolId, roles) -> {
             // خودِ کاربر اگر دانش‌آموزِ این مدرسه است - حتی بدون هیچ نمره‌ای -
             // تا «نمره‌های من» از روی ردیف‌های نمره حدس زده نشود.
-            Optional<EnrollmentInfo> own = academicFacade.findMyEnrollment(userId.value(), schoolId);
+            Optional<EnrollmentInfo> own = roles.contains(STUDENT_ROLE)
+                    ? academicFacade.findMyEnrollment(userId.value(), schoolId) : Optional.empty();
             own.ifPresent(enrollment -> refs.add(
                     new WardRef(enrollment.studentId().value(), schoolId, OWN_GRADES_LABEL, true)));
+            if (!roles.contains(PARENT_ROLE)) {
+                return;
+            }
             for (StudentInfo ward : academicFacade.listWards(userId.value(), schoolId)) {
                 if (own.isPresent() && own.get().studentId().equals(ward.id())) {
                     continue;
                 }
                 refs.add(new WardRef(ward.id().value(), schoolId, wardName(ward), false));
             }
-        }
+        });
         return List.copyOf(refs);
     }
 
-    private static Set<Long> activeSchoolIds(List<MembershipInfo> memberships) {
-        Set<Long> schoolIds = new LinkedHashSet<>();
+    private static java.util.Map<Long, Set<String>> activeRolesBySchool(List<MembershipInfo> memberships) {
+        java.util.Map<Long, Set<String>> roles = new java.util.LinkedHashMap<>();
         for (MembershipInfo membership : memberships) {
             if (membership.active()) {
-                schoolIds.add(membership.schoolId());
+                roles.computeIfAbsent(membership.schoolId(), id -> new LinkedHashSet<>()).add(membership.roleCode());
             }
         }
-        return schoolIds;
+        return roles;
     }
 
     private static Set<Long> parentSchoolIds(List<MembershipInfo> memberships) {

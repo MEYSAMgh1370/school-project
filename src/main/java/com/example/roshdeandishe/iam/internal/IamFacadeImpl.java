@@ -264,8 +264,14 @@ class IamFacadeImpl implements IamFacade {
     }
 
     @Override
-    public boolean hasActiveMembership(UserId userId, Long schoolId) {
-        return !schoolMembershipRepository.findByUserIdAndSchoolIdAndActiveTrue(userId.value(), schoolId).isEmpty();
+    public java.util.Set<String> findActiveRoleCodes(UserId userId, Long schoolId) {
+        List<Long> roleIds = schoolMembershipRepository.findByUserIdAndSchoolIdAndActiveTrue(userId.value(), schoolId)
+                .stream().map(SchoolMembershipEntity::getRoleId).distinct().toList();
+        if (roleIds.isEmpty()) {
+            return java.util.Set.of();
+        }
+        return roleRepository.findAllById(roleIds).stream().map(RoleEntity::getCode)
+                .collect(java.util.stream.Collectors.toUnmodifiableSet());
     }
 
     @Override
@@ -478,6 +484,16 @@ class IamFacadeImpl implements IamFacade {
                     .sorted()
                     .toList());
         }
+        return result;
+    }
+
+    @Override
+    public java.util.Map<String, String> findCustomRoleDisplayNames(Long schoolId,
+                                                                    java.util.Collection<String> roleCodes) {
+        java.util.Map<String, String> result = new java.util.LinkedHashMap<>();
+        roleRepository.findBySchoolIdIsNullOrSchoolId(schoolId).stream()
+                .filter(r -> schoolId.equals(r.getSchoolId()) && roleCodes.contains(r.getCode()))
+                .forEach(r -> result.put(r.getCode(), r.getDisplayName()));
         return result;
     }
 

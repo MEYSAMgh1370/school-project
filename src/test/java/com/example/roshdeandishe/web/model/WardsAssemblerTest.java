@@ -143,10 +143,10 @@ class WardsAssemblerTest {
     }
 
     @Test
-    void wardRefsCoverEveryActiveSchoolRegardlessOfRoleAndCallNoFinance() {
+    void wardRefsCoverOnlySchoolsWhereTheUserIsAnActiveParentAndCallNoFinance() {
         when(iam.currentUserId()).thenReturn(PARENT);
         // مدرسه‌ی ۵: والدِ فعال؛ ۶: عضویتِ غیرفعال (قابل‌انتخاب نیست)؛
-        // ۷: معلمِ فعال که ممکن است فرزندِ لینک‌شده داشته باشد (listWards مستقل از نقش است)
+        // ۷: معلمِ فعال - حتی با فرزندِ لینک‌شده، بدونِ نقشِ والد نامِ فرزند برنمی‌گردد (مثلِ MyGradesController)
         when(iam.findMembershipsByUser(PARENT)).thenReturn(List.of(
                 membership(5L, "PARENT", true), membership(6L, "PARENT", false), membership(7L, "TEACHER", true)));
         givenWard(5L, 100L, 200L, "آرین رضایی");
@@ -154,9 +154,10 @@ class WardsAssemblerTest {
 
         List<WardRef> refs = assembler.wardRefsForCurrentUser();
 
-        assertThat(refs).containsExactly(new WardRef(100L, 5L, "آرین رضایی"), new WardRef(101L, 7L, "سارا کریمی"));
+        assertThat(refs).containsExactly(new WardRef(100L, 5L, "آرین رضایی"));
         assertThat(refs).noneMatch(WardRef::own);
         verify(academic, never()).listWards(PARENT.value(), 6L);
+        verify(academic, never()).listWards(PARENT.value(), 7L);
         verify(finance, never()).listInvoicesForStudents(anyLong(), org.mockito.ArgumentMatchers.anyList());
     }
 

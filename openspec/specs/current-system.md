@@ -93,9 +93,9 @@ Known intentional exceptions:
 
 - public pages and static assets;
 - auth/account endpoints;
-- `/api/me` and related current-user endpoints (no permission; they return the caller's own data and, for `/api/me/schools/{id}/**` and `/api/me/enrollment`, only while the caller has at least one **active** membership in that school);
+- `/api/me` and related current-user endpoints (no permission; they return the caller's own data and, for `/api/me/schools/{id}/**` and `/api/me/enrollment`, only for the data of a role the caller holds as an **active** membership in that school: own grades, invoices, enrollment, exams and study intervals need `STUDENT`, linked children's grades and invoices need `PARENT`, the timetable views need `STUDENT`/`PARENT`/`TEACHER` respectively);
 - Bale webhook endpoints (`/api/bale/webhook`, served by the `notification` module);
-- tokenized exam-taking endpoints.
+- tokenized exam-taking endpoints (the signed token must be unexpired and its student must still have an active `STUDENT` membership in the exam's school; otherwise `401 invalid-exam-token`).
 
 Failure cases:
 
@@ -129,7 +129,7 @@ Current invariants:
 - `layout/navbar.jte` is reused by authenticated management pages: a top bar
   (school/role switcher, user menu) plus a grouped, collapsible sidebar (a
   drawer below 1024px). Page links come from `web.model.NavCatalog`, which also
-  drives the dashboard shortcut cards (cards by built-in role; sidebar links also by the page's management permission, so a custom role that holds it sees the link); see
+  drives the dashboard shortcut cards (system roles by built-in role; a custom role also sees the sidebar link and the shortcut card of every page whose permissions it holds, and its title, not its code, appears in the role switcher); see
   [`changes/navigation-sidebar-and-dashboard-shortcuts.md`](../changes/navigation-sidebar-and-dashboard-shortcuts.md).
 - `layout/page-header.jte`, `layout/school-scope.jte`, and
   `layout/empty-state.jte` are shared partials extracted on 2026-09-27;

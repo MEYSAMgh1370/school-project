@@ -99,3 +99,7 @@ server-side. Accordion state saved under the previous index keys is ignored once
 Sidebar links and group headers are now also shown to a custom role that holds the page's
 management permission (`NavCatalog.Link.permissions`); dashboard shortcut cards stay by
 built-in role. See [`self-service-gate-nav-permissions-bad-requests.md`](self-service-gate-nav-permissions-bad-requests.md).
+
+Shortcut cards are now also shown to a custom role holding all of a card's link permissions
+(system roles unchanged), and custom role titles replace raw codes in the role switcher. See
+[`custom-role-ui-and-timetable-gate.md`](custom-role-ui-and-timetable-gate.md).

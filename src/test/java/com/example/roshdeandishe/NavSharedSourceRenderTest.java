@@ -146,8 +146,36 @@ class NavSharedSourceRenderTest {
         // Alpine فقط زیر یک x-data ریشه x-show را اجرا می‌کند؛ بدونش کارت‌ها برای
         // همیشه با x-cloak پنهان می‌مانند (کامپایل و رندر JTE این را نشان نمی‌دهد)
         assertThat(html).containsPattern("<section[^>]*dashboard-shortcuts-title[^>]* x-data[ >\\n]");
-        assertThat(html).contains("x-show=\"['SCHOOL_ADMIN', 'TEACHER'].includes($store.nav.selectedRole)\"");
+        // کارتِ مدیریتی: نقش‌های کارت || (فقط نقشِ سفارشی) همه‌ی Permissionهای لینک
+        assertThat(html).contains("x-show=\"['SCHOOL_ADMIN', 'TEACHER'].includes($store.nav.selectedRole) || "
+                + "['STUDENT_ENROLL', 'STUDENT_VIEW'].every(p => (!['SCHOOL_ADMIN', 'TEACHER', 'STUDENT', 'PARENT', "
+                + "'FINANCE_ADMIN'].includes($store.nav.selectedRole) ? $store.nav.permissions : []).includes(p))\"");
+        // کارتِ «من»: فقط بر اساس نقش
         assertThat(html).contains("x-show=\"['STUDENT'].includes($store.nav.selectedRole)\"");
+    }
+
+    @Test
+    void roleSwitcherShowsTheCustomRoleDisplayNameNotItsCode() {
+        NavbarModel navbar = new NavbarModel("معاون", List.of(new NavbarModel.SchoolOption(
+                7L, "مدرسه‌ی نمونه", List.of("SCHOOL_ADMIN", "DEPUTY"))),
+                Map.of(7L, Map.of("DEPUTY", "معاون آموزشی")));
+
+        String html = render("layout/navbar.jte", Map.of("navbar", navbar));
+
+        // هم منوی بالا و هم حساب کاربریِ سایدبار؛ کدِ خام نباید به UI برسد
+        assertThat(html.split("معاون آموزشی", -1).length - 1).isEqualTo(2);
+        assertThat(html).contains("مدیر مدرسه");
+        assertThat(html).doesNotContainPattern(">\\s*DEPUTY\\s*<");
+    }
+
+    @Test
+    void roleLabelFallsBackToTheSystemLabelThenTheRawCode() {
+        NavbarModel navbar = new NavbarModel("x", List.of(), Map.of(7L, Map.of("DEPUTY", "معاون آموزشی")));
+
+        assertThat(navbar.roleLabel(7L, "DEPUTY")).isEqualTo("معاون آموزشی");
+        assertThat(navbar.roleLabel(7L, "TEACHER")).isEqualTo("معلم");
+        // همنامیِ نقش سفارشی در مدرسه‌ی دیگر نشت نمی‌کند
+        assertThat(navbar.roleLabel(8L, "DEPUTY")).isEqualTo("DEPUTY");
     }
 
     @Test

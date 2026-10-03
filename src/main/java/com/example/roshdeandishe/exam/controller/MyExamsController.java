@@ -73,8 +73,9 @@ public class MyExamsController {
     }
 
     private Long resolveStudentId(Long userId, Long schoolId) {
-        // عضوِ سابق (بدون عضویتِ فعال) دانش‌آموزِ این مدرسه حساب نمی‌شود: نه فهرست، نه شروعِ تلاش
-        if (!iamFacade.hasActiveMembership(new IamFacade.UserId(userId), schoolId)) {
+        // دانش‌آموزِ این مدرسه یعنی نقشِ فعالِ دانش‌آموز: نه عضوِ سابق و نه کسی که فقط نقشِ دیگری دارد
+        // (نه فهرست، نه شروعِ تلاش)
+        if (!iamFacade.findActiveRoleCodes(new IamFacade.UserId(userId), schoolId).contains("STUDENT")) {
             return null;
         }
         return academicFacade.findMyEnrollment(userId, schoolId)

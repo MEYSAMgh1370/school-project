@@ -116,6 +116,8 @@ any active `PARENT` membership.
   grades, unknown ids, outside click, Escape, keyboard, focus return) was verified
   in a browser against the compiled templates; the project has no JS test setup.
 - `WardsAssemblerTest` also covers `wardRefsForCurrentUser` (names only, for
-  every school with an active membership of any role - matching
-  `MyGradesController`, which returns wards independent of role; no finance call).
+  every school where the user is an active parent, plus the user's own enrollment where they
+  are an active student - matching `MyGradesController`, which since
+  [`custom-role-ui-and-timetable-gate.md`](custom-role-ui-and-timetable-gate.md) binds each
+  part to its role; no finance call).
 - Existing `*FlowIntegrationTest` assertions on the dashboard run in CI.

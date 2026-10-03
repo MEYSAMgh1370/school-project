@@ -31,7 +31,10 @@ From code and tests, not from memory:
 
 ## Decisions (assumptions to confirm)
 
-1. **Gate = at least one active membership in the school, any role.** Not a
+1. **Gate = at least one active membership in the school, any role.** *(Superseded the
+   same day by [`custom-role-ui-and-timetable-gate.md`](custom-role-ui-and-timetable-gate.md):
+   each endpoint now requires the active role that fits it, and `hasActiveMembership` was
+   replaced by `findActiveRoleCodes`.)* Not a
    role-matching gate: that would remove the documented union behavior (a teacher
    whose own student membership is deactivated still sees their data while another
    membership is active). A user with no active membership at all gets nothing:
@@ -97,10 +100,11 @@ From code and tests, not from memory:
 ## Out Of Scope
 
 - Role display names for custom roles in the role switcher (it still shows the role
-  code; `RoleLabels` knows only the system roles).
-- Dashboard shortcut cards for custom roles.
-- Revoking an exam session token when a membership is deactivated.
-- Making the class timetable's per-role gate match this one.
+  code; `RoleLabels` knows only the system roles). *Done in
+  [`custom-role-ui-and-timetable-gate.md`](custom-role-ui-and-timetable-gate.md).*
+- Dashboard shortcut cards for custom roles. *Done in the same change.*
+- Revoking an exam session token when a membership is deactivated. *Done in [`exam-token-membership-check.md`](exam-token-membership-check.md).*
+- Making the class timetable's per-role gate match this one. *Resolved the other way in the same follow-up: the other endpoints now match the timetable.*
 - Other Spring MVC exceptions (not-acceptable, request-body size, ...).
 
 ## Acceptance Criteria

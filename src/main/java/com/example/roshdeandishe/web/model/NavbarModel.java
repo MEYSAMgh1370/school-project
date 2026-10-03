@@ -10,8 +10,25 @@ import java.util.Map;
  * صفحه‌ی مدیریتی به template مشترک {@code layout/navbar.jte} می‌دهد.
  * فقط عضویت‌های فعال را شامل می‌شود؛ کاربر بدون عضویت (فرد B2C آینده)
  * لیست خالی می‌گیرد و دراپ‌داون مدرسه اصلاً رندر نمی‌شود.
+ *
+ * @param roleNames عنوانِ نقش‌های <b>سفارشی</b> (شناسه‌ی مدرسه ← کدِ نقش ← عنوان) برای هر عضویتِ کاربر، فعال یا
+ *                  غیرفعال؛ نقش‌های سیستمی در آن نیستند ({@link RoleLabels})
  */
-public record NavbarModel(String fullName, List<SchoolOption> schools) {
+public record NavbarModel(String fullName, List<SchoolOption> schools, Map<Long, Map<String, String>> roleNames) {
+
+    /** بدون عنوانِ نقش‌های سفارشی (صفحه‌هایی که فقط نقش‌های سیستمی دارند و در تست‌ها). */
+    public NavbarModel(String fullName, List<SchoolOption> schools) {
+        this(fullName, schools, Map.of());
+    }
+
+    /**
+     * برچسبِ نمایشیِ نقش در یک مدرسه: عنوانِ نقشِ سفارشی که مدیر مدرسه تعریف کرده، یا برچسب فارسیِ نقش
+     * سیستمی؛ فقط اگر هیچ‌کدام نبود کدِ خام ({@link RoleLabels#persian}).
+     */
+    public String roleLabel(Long schoolId, String roleCode) {
+        String custom = roleNames.getOrDefault(schoolId, Map.of()).get(roleCode);
+        return custom != null ? custom : RoleLabels.persian(roleCode);
+    }
 
     /**
      * روز شروع هفته‌ی هر مدرسه، به‌صورت JSON {@code {"5":"SAT","9":"MON"}} برای صفتِ

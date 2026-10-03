@@ -17,15 +17,19 @@ import com.example.roshdeandishe.studyplan.shared.StudyPlanException;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
+import java.util.Set;
+
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 /**
- * endpointهای خودسرویس ({@code /api/me/**}، بدون مجوز) فقط به کسی داده می‌دهند که در همین
- * مدرسه حداقل یک عضویتِ فعال دارد: ثبت‌نام و لینکِ ولی با غیرفعال‌شدنِ عضویت پاک نمی‌شوند.
+ * endpointهای خودسرویس ({@code /api/me/**}، بدون مجوز) هر کدام نقشِ فعالِ مناسبِ خودشان را می‌خواهند
+ * (دانش‌آموز برای داده‌ی خودش، ولی برای فرزندان): ثبت‌نام و لینکِ ولی با غیرفعال‌شدنِ عضویت پاک نمی‌شوند.
  * بدون Spring/Docker: facade ها mock هستند و نشان می‌دهند عضوِ سابق هرگز به academic/finance/
  * exam/studyplan نمی‌رسد. (رفتارِ واقعی روی دیتابیس در SelfServiceMembershipFlowIntegrationTest.)
  */
@@ -42,7 +46,7 @@ class SelfServiceMembershipGateTest {
         iam = mock(IamFacade.class);
         academic = mock(AcademicFacade.class);
         when(iam.currentUserId()).thenReturn(new UserId(USER));
-        when(iam.hasActiveMembership(new UserId(USER), SCHOOL)).thenReturn(false);
+        when(iam.findActiveRoleCodes(new UserId(USER), SCHOOL)).thenReturn(Set.of());
     }
 
     @Test
@@ -93,5 +97,35 @@ class SelfServiceMembershipGateTest {
                 .isInstanceOf(StudyPlanException.class);
 
         verifyNoInteractions(academic, plans);
+    }
+
+    @Test
+    void aParentOnlyLooksUpWardsAndAStudentOnlyLooksUpTheirOwnEnrollment() {
+        when(academic.listWards(USER, SCHOOL)).thenReturn(java.util.List.of());
+        when(academic.findMyEnrollment(USER, SCHOOL)).thenReturn(java.util.Optional.empty());
+
+        when(iam.findActiveRoleCodes(new UserId(USER), SCHOOL)).thenReturn(Set.of("PARENT"));
+        assertThat(new MyGradesController(academic, iam).myGrades(SCHOOL)).isEmpty();
+        verify(academic).listWards(USER, SCHOOL);
+        verify(academic, never()).findMyEnrollment(USER, SCHOOL);
+
+        org.mockito.Mockito.clearInvocations(academic);
+        when(iam.findActiveRoleCodes(new UserId(USER), SCHOOL)).thenReturn(Set.of("STUDENT"));
+        assertThat(new MyGradesController(academic, iam).myGrades(SCHOOL)).isEmpty();
+        verify(academic).findMyEnrollment(USER, SCHOOL);
+        verify(academic, never()).listWards(USER, SCHOOL);
+    }
+
+    @Test
+    void aMemberWithOnlyANonMatchingRoleGetsNothing() {
+        when(iam.findActiveRoleCodes(new UserId(USER), SCHOOL)).thenReturn(Set.of("TEACHER", "FINANCE_ADMIN"));
+        FinanceFacade finance = mock(FinanceFacade.class);
+
+        assertThat(new MyGradesController(academic, iam).myGrades(SCHOOL)).isEmpty();
+        assertThat(new MyInvoicesController(finance, academic, iam).myInvoices(SCHOOL)).isEmpty();
+        assertThat(new MyEnrollmentController(academic, iam).myEnrollment(SCHOOL).getStatusCode().value())
+                .isEqualTo(204);
+
+        verifyNoInteractions(academic, finance);
     }
 }

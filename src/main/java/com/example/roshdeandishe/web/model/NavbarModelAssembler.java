@@ -10,9 +10,11 @@ import org.springframework.stereotype.Component;
 
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 
 /**
  * ترکیب داده‌ی ناوبار مشترک (عضویت‌ها از iam + نام مدرسه از school) در یک
@@ -46,7 +48,11 @@ public class NavbarModelAssembler {
         // گزینه‌های سوییچر: فقط عضویت‌های فعال، گروه‌شده per-school با
         // فهرست نقش‌های فعالِ همان مدرسه (برای دراپ‌داون نقش).
         Map<Long, List<String>> rolesBySchool = new LinkedHashMap<>();
+        // کدِ همه‌ی نقش‌های هر مدرسه (فعال و غیرفعال): جدولِ داشبورد هم برچسبِ نقش‌های غیرفعال را نشان می‌دهد
+        Map<Long, Set<String>> allRolesBySchool = new LinkedHashMap<>();
         for (MembershipInfo membership : memberships) {
+            allRolesBySchool.computeIfAbsent(membership.schoolId(), id -> new LinkedHashSet<>())
+                    .add(membership.roleCode());
             if (!membership.active()) {
                 continue;
             }
@@ -61,7 +67,14 @@ public class NavbarModelAssembler {
                     // مدرسه‌ی نیافته فقط یک گزینه‌ی نمایشی است؛ اجرای قاعده‌ی هفته با سرور است
                     school.map(SchoolFacade.SchoolInfo::weekStart).orElse(SchoolFacade.WeekStart.SATURDAY)));
         });
-        return new NavbarModel(profile.fullName(), List.copyOf(options));
+        Map<Long, Map<String, String>> roleNames = new LinkedHashMap<>();
+        allRolesBySchool.forEach((schoolId, roles) -> {
+            Map<String, String> names = iamFacade.findCustomRoleDisplayNames(schoolId, roles);
+            if (!names.isEmpty()) {
+                roleNames.put(schoolId, names);
+            }
+        });
+        return new NavbarModel(profile.fullName(), List.copyOf(options), roleNames);
     }
 
     /**
