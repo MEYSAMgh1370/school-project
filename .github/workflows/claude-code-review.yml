@@ -8,9 +8,11 @@ name: Claude code review
 # To re-enable: uncomment those two lines. Nothing else needs changing; both
 # findings from the review of #95 are already fixed here.
 #
-# `workflow_dispatch` is kept only so this file stays a valid workflow. A manual
-# run does nothing useful: the prompt needs a pull request's number and head
-# commit, and a dispatch carries neither.
+# `workflow_dispatch` is kept only so this file stays a valid workflow. It
+# cannot actually review anything: the prompt needs a pull request's number and
+# head commit, and a dispatch carries neither, so the job's `if` below refuses
+# any event that is not a pull request. Clicking Run workflow leaves a skipped
+# job, not a failed one, and spends nothing.
 #
 # What it does when enabled: runs the official code-review plugin and posts
 # findings as inline comments on the lines they concern. The check never blocks
@@ -57,11 +59,13 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 30
 
-    # Skip the pull requests that are served no secrets; see the header.
+    # Nothing but a pull request may start this job: a manual dispatch has no
+    # pull request to review, and the fork and Dependabot cases below are
+    # served no secrets. Everything else is skipped rather than failed.
     if: >-
-      github.event_name != 'pull_request' ||
-      (github.event.pull_request.head.repo.full_name == github.repository &&
-       github.actor != 'dependabot[bot]')
+      github.event_name == 'pull_request' &&
+      github.event.pull_request.head.repo.full_name == github.repository &&
+      github.actor != 'dependabot[bot]'
 
     permissions:
       contents: read
