@@ -75,4 +75,56 @@ class NavCatalogTest {
         assertThat(expression).endsWith("].includes($store.nav.selectedRole)")
                 .contains("'SCHOOL_ADMIN'", "'TEACHER'", "'STUDENT'", "'PARENT'", "'FINANCE_ADMIN'");
     }
+
+    @Test
+    void selfServiceLinksAreRoleOnlyAndManagementLinksNameTheirManagePermission() {
+        allLinks().forEach(link -> {
+            if (link.href().startsWith("/my-")) {
+                // «من»: بدونِ Permission - GRADES_VIEW/FINANCE_VIEW را نقش‌های دیگر هم دارند
+                assertThat(link.permissions()).as(link.href()).isEmpty();
+            } else {
+                assertThat(link.permissions()).as(link.href()).isNotEmpty();
+            }
+        });
+        assertThat(permissionsOf("/timetable")).containsExactly("TIMETABLE_MANAGE");
+    }
+
+    @Test
+    void aPageWhoseFirstLoadNeedsAnotherPermissionRequiresBothSoACustomRoleIsNotShownADeadPage() {
+        // Permissionها مستقل انتخاب می‌شوند: بدونِ خواندنِ مسدودکننده، صفحه با اولین 403 بسته می‌شود
+        assertThat(permissionsOf("/finance")).containsExactlyInAnyOrder("FINANCE_MANAGE", "FINANCE_VIEW");
+        assertThat(permissionsOf("/students")).containsExactlyInAnyOrder("STUDENT_ENROLL", "STUDENT_VIEW");
+        assertThat(permissionsOf("/grades")).containsExactlyInAnyOrder("GRADES_EDIT", "CLASS_VIEW");
+    }
+
+    private static java.util.List<String> permissionsOf(String href) {
+        return allLinks().stream().filter(l -> l.href().equals(href)).findFirst().orElseThrow().permissions();
+    }
+
+    @Test
+    void visibleWhenWithPermissionsAddsAnOrBranchRequiringAllOfThemAndWithoutThemIsUnchanged() {
+        NavCatalog.Link timetable = allLinks().stream().filter(l -> l.href().equals("/timetable")).findFirst().orElseThrow();
+        NavCatalog.Link mine = allLinks().stream().filter(l -> l.href().equals("/my-timetable")).findFirst().orElseThrow();
+
+        assertThat(timetable.visibleWhen("role", "perms"))
+                .isEqualTo("['SCHOOL_ADMIN'].includes(role) || ['TIMETABLE_MANAGE'].every(p => perms.includes(p))");
+        assertThat(timetable.visibleWhen("role")).isEqualTo("['SCHOOL_ADMIN'].includes(role)");
+        NavCatalog.Link finance = allLinks().stream().filter(l -> l.href().equals("/finance")).findFirst().orElseThrow();
+        assertThat(finance.visibleWhen("role", "perms")).isEqualTo(
+                "['SCHOOL_ADMIN', 'FINANCE_ADMIN'].includes(role) "
+                        + "|| ['FINANCE_MANAGE', 'FINANCE_VIEW'].every(p => perms.includes(p))");
+        // لینکِ «من» حتی با عبارتِ Permission همان شرطِ نقش را می‌دهد
+        assertThat(mine.visibleWhen("role", "perms")).isEqualTo(mine.visibleWhen("role"));
+    }
+
+    @Test
+    void aGroupIsAlsoVisibleForTheUnionOfItsLinksPermissions() {
+        Group school = NavCatalog.groups().stream().filter(g -> g.id().equals("school")).findFirst().orElseThrow();
+
+        assertThat(school.visibleWhen("role", "perms"))
+                .startsWith("['SCHOOL_ADMIN', 'TEACHER'].includes(role) || [")
+                .contains("['MEMBERSHIP_MANAGE'].every(", "['STUDENT_ENROLL', 'STUDENT_VIEW'].every(",
+                        "['ROLE_MANAGE'].every(", "['ACADEMIC_YEAR_MANAGE'].every(")
+                .endsWith(".every(p => perms.includes(p))");
+    }
 }

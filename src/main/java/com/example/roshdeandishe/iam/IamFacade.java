@@ -82,6 +82,14 @@ public interface IamFacade {
     List<MembershipInfo> findMembershipsByUser(UserId userId);
 
     /**
+     * آیا این کاربر در این مدرسه حداقل یک عضویتِ <b>فعال</b> (با هر نقشی) دارد؟ نگهبانِ
+     * endpointهای خودسرویس ({@code /api/me/**}) که مجوز ندارند و فقط با هویتِ کاربر کار
+     * می‌کنند: ثبت‌نام، لینکِ ولی و خانه‌های برنامه با غیرفعال‌شدنِ عضویت پاک نمی‌شوند، پس
+     * بدونِ این بررسی عضوِ سابق همچنان داده‌ی مدرسه را می‌گرفت.
+     */
+    boolean hasActiveMembership(UserId userId, Long schoolId);
+
+    /**
      * تخصیص یک نقش به یک کاربر در یک مدرسه‌ی خاص - یعنی همان عملیات
      * "ادمین، فلان معلم را با نقش TEACHER به مدرسه اضافه می‌کند". اگر همین
      * (user, school, role) از قبل وجود داشته باشد، آن Membership موجود
@@ -231,6 +239,14 @@ public interface IamFacade {
      * web.RoleLabels).
      */
     List<RoleInfo> listRoles(Long schoolId);
+
+    /**
+     * Permissionهای هر یک از نقش‌های داده‌شده (سیستمی یا سفارشیِ همین مدرسه) با چند query ثابت
+     * - برای ناوبار که روی هر صفحه می‌سازدش و نباید به‌ازای هر نقش/Permission query بزند
+     * ({@link #listRoles} چنین می‌کند). کدِ ناشناخته و PLATFORM_ADMIN در نتیجه نیست.
+     */
+    java.util.Map<String, List<String>> findPermissionCodesByRole(Long schoolId,
+                                                                  java.util.Collection<String> roleCodes);
 
     /**
      * ساخت یک نقش سفارشی برای یک مدرسه‌ی خاص - حل‌کننده‌ی Open Question 3

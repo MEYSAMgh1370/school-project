@@ -22,7 +22,7 @@
      سرگروه (aria-expanded) لینک‌هایش را باز/بسته می‌کند؛ وضعیت در
      localStorage می‌ماند و گروهِ صفحه‌ی جاری همیشه باز است (navbar.js). --%>
 <div class="app-shell-nav"
-     x-data="schoolNavbar({@for(var school : navbar.schools())${school.id()}: [@for(var role : school.roles())'${role}',@endfor],@endfor})"
+     x-data="schoolNavbar({@for(var school : navbar.schools())${school.id()}: [@for(var role : school.roles())'${role}',@endfor],@endfor}, {@for(var school : navbar.schools())${school.id()}: {@for(var role : school.roles())'${role}': [@for(var code : school.rolePermissions().getOrDefault(role, java.util.List.of()))'${code}',@endfor],@endfor},@endfor})"
      @keydown.escape.window="schoolOpen = false; personOpen = false; menuOpen = false">
     <nav class="navbar app-topbar" role="navigation" aria-label="main navigation">
         <div class="navbar-brand">
@@ -85,7 +85,7 @@
         </ul>
         @if(!navbar.schools().isEmpty())
             @for(var group : NavCatalog.groups())
-                <div x-cloak x-show="${group.visibleWhen("selectedRole")}" data-group="${group.id()}">
+                <div x-cloak x-show="${group.visibleWhen("selectedRole", "permissions")}" data-group="${group.id()}">
                     <button type="button" class="app-sidebar-toggle" aria-controls="sidebar-group-${group.id()}-list"
                             :aria-expanded="isGroupOpen('${group.id()}')" @click="toggleGroup('${group.id()}')">
                         <span>${group.label()}</span>
@@ -93,7 +93,7 @@
                     </button>
                     <ul class="menu-list" id="sidebar-group-${group.id()}-list" x-show="isGroupOpen('${group.id()}')">
                         @for(var link : group.links())
-                            <li><a href="${link.href()}" x-show="${link.visibleWhen("selectedRole")}">${link.label()}</a></li>
+                            <li><a href="${link.href()}" x-show="${link.visibleWhen("selectedRole", "permissions")}">${link.label()}</a></li>
                         @endfor
                     </ul>
                 </div>

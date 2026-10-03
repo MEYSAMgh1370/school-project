@@ -28,40 +28,40 @@ public final class NavCatalog {
     private static final List<Group> GROUPS = List.of(
             new Group("school", "مدرسه", List.of(
                     new Link("/people", "اعضای مدرسه", "افزودن و مدیریت اعضای مدرسه",
-                            List.of(ADMIN), List.of(ADMIN)),
+                            List.of(ADMIN), List.of(ADMIN)).withPermissions("MEMBERSHIP_MANAGE"),
                     new Link("/students", "دانش‌آموزان", "فهرست دانش‌آموزان مدرسه",
-                            List.of(ADMIN, TEACHER), List.of(ADMIN, TEACHER)),
+                            List.of(ADMIN, TEACHER), List.of(ADMIN, TEACHER)).withPermissions("STUDENT_ENROLL", "STUDENT_VIEW"),
                     new Link("/roles", "نقش‌ها و دسترسی‌ها", "تعریف نقش‌ها و دسترسی‌هایشان",
-                            List.of(ADMIN), List.of()),
+                            List.of(ADMIN), List.of()).withPermissions("ROLE_MANAGE"),
                     new Link("/academic-year", "سال تحصیلی", "انتخاب سال تحصیلی جاریِ مدرسه",
-                            List.of(ADMIN), List.of(ADMIN)))),
+                            List.of(ADMIN), List.of(ADMIN)).withPermissions("ACADEMIC_YEAR_MANAGE"))),
             new Group("education", "آموزش", List.of(
                     new Link("/classes", "کلاس‌ها", "کلاس‌ها و ثبت‌نام دانش‌آموزان",
-                            List.of(ADMIN, TEACHER), List.of(ADMIN, TEACHER)),
+                            List.of(ADMIN, TEACHER), List.of(ADMIN, TEACHER)).withPermissions("CLASS_VIEW"),
                     new Link("/timetable", "برنامه‌ی کلاسی", "زنگ‌ها و برنامه‌ی هفتگیِ کلاس‌ها",
-                            List.of(ADMIN), List.of(ADMIN)),
+                            List.of(ADMIN), List.of(ADMIN)).withPermissions("TIMETABLE_MANAGE"),
                     new Link("/my-timetable", "برنامه‌ی کلاسی من", "برنامه‌ی هفتگیِ شما",
                             List.of(STUDENT, PARENT, TEACHER), List.of(STUDENT, PARENT, TEACHER)),
                     new Link("/curriculum", "سرفصل‌ها و بانک سؤال", "سرفصل‌های درسی و بانک سؤال",
-                            List.of(ADMIN, TEACHER), List.of()),
+                            List.of(ADMIN, TEACHER), List.of()).withPermissions("CURRICULUM_VIEW"),
                     new Link("/study-plans", "برنامه‌های مطالعه", "برنامه‌های مطالعه‌ی کلاس‌ها",
-                            List.of(ADMIN, TEACHER), List.of()),
+                            List.of(ADMIN, TEACHER), List.of()).withPermissions("STUDYPLAN_VIEW"),
                     new Link("/exams", "آزمون‌ها", "ساخت و پیگیری آزمون‌ها",
-                            List.of(ADMIN, TEACHER), List.of(ADMIN, TEACHER)),
+                            List.of(ADMIN, TEACHER), List.of(ADMIN, TEACHER)).withPermissions("EXAM_VIEW"),
                     new Link("/my-exams", "آزمون‌های من", "آزمون‌های شما و نتیجه‌ها",
                             List.of(STUDENT), List.of(STUDENT)),
                     new Link("/my-study-plan", "برنامه‌ی مطالعه‌ی من", "برنامه‌ی مطالعه‌ی شما",
                             List.of(STUDENT), List.of(STUDENT)))),
             new Group("grades", "نمرات", List.of(
                     new Link("/grades", "دفتر نمرات", "ثبت و مرور نمره‌ها",
-                            List.of(ADMIN, TEACHER), List.of(ADMIN, TEACHER)),
+                            List.of(ADMIN, TEACHER), List.of(ADMIN, TEACHER)).withPermissions("GRADES_EDIT", "CLASS_VIEW"),
                     new Link("/my-grades", "نمره‌های من", "نمره‌های شما",
                             List.of(STUDENT, PARENT), List.of(STUDENT, PARENT)))),
             new Group("finance", "مالی", List.of(
                     new Link("/finance", "امور مالی", "شهریه، پرداخت‌ها و فاکتورها",
-                            List.of(ADMIN, FINANCE), List.of(ADMIN, FINANCE)),
+                            List.of(ADMIN, FINANCE), List.of(ADMIN, FINANCE)).withPermissions("FINANCE_MANAGE", "FINANCE_VIEW"),
                     new Link("/expenses", "هزینه‌ها", "ثبت و پیگیری هزینه‌ها",
-                            List.of(ADMIN, FINANCE), List.of(FINANCE)),
+                            List.of(ADMIN, FINANCE), List.of(FINANCE)).withPermissions("EXPENSE_VIEW"),
                     new Link("/my-invoices", "فاکتورهای من", "شهریه و پرداخت‌های شما",
                             List.of(STUDENT, PARENT), List.of(STUDENT, PARENT)))));
 
@@ -121,14 +121,48 @@ public final class NavCatalog {
             links.forEach(link -> roles.addAll(link.roles()));
             return includes(roles, roleExpression);
         }
+
+        /** همان، به‌علاوه‌ی «همه‌ی Permissionهای یکی از لینک‌ها» (نقشِ سفارشی). */
+        public String visibleWhen(String roleExpression, String permissionsExpression) {
+            Set<String> roles = new LinkedHashSet<>();
+            Set<List<String>> permissionSets = new LinkedHashSet<>();
+            links.forEach(link -> {
+                roles.addAll(link.roles());
+                permissionSets.add(link.permissions());
+            });
+            return anyOf(includes(roles, roleExpression), permissionSets, permissionsExpression);
+        }
     }
 
     /**
      * @param roles         نقش‌هایی که لینک را در سایدبار می‌بینند (فقط نمایش)
      * @param shortcutRoles زیرمجموعه‌ی {@code roles} که برایشان کارت «دسترسی سریع» هم هست
+     * @param permissions   <b>همه‌ی</b> این Permissionها را که نقشِ انتخاب‌شده داشته باشد لینک را برایش
+     *                      نمایش می‌دهد - برای نقش‌های سفارشی (مثلاً معاونِ دارای TIMETABLE_MANAGE) که در
+     *                      {@code roles} نیستند. مجموعه = Permissionِ مدیریتیِ صفحه + Permissionی که
+     *                      بارگذاریِ اولیه‌ی <i>مسدودکننده</i>ی صفحه لازم دارد (Permissionها مستقل انتخاب
+     *                      می‌شوند: FINANCE_MANAGE بدون FINANCE_VIEW صفحه‌ای می‌دهد که با اولین 403 بسته
+     *                      می‌شود، و STUDENT_ENROLL بدون STUDENT_VIEW هم). نه Permissionی که نقش‌های
+     *                      خودسرویس هم دارند، مگر در ترکیبی که فقط نقش‌های همان لینک دارند (GRADES_VIEW،
+     *                      FINANCE_VIEW تنها). برای نقش‌های سیستمی باید با {@code roles} هم‌خوان باشد
+     *                      (NavPermissionsFlowIntegrationTest). خالی = فقط بر اساس نقش (صفحه‌های «من»).
+     *                      کارتِ «دسترسی سریع» همچنان فقط بر اساس نقش است.
      */
     public record Link(String href, String label, String description,
-                       List<String> roles, List<String> shortcutRoles) {
+                       List<String> roles, List<String> shortcutRoles, List<String> permissions) {
+
+        public Link(String href, String label, String description, List<String> roles, List<String> shortcutRoles) {
+            this(href, label, description, roles, shortcutRoles, List.of());
+        }
+
+        Link withPermissions(String... codes) {
+            return new Link(href, label, description, roles, shortcutRoles, List.of(codes));
+        }
+
+        /** نمایش در سایدبار: نقشِ انتخاب‌شده در {@code roles} باشد یا همه‌ی {@code permissions} را داشته باشد. */
+        public String visibleWhen(String roleExpression, String permissionsExpression) {
+            return anyOf(includes(roles, roleExpression), List.of(permissions), permissionsExpression);
+        }
 
         public String visibleWhen(String roleExpression) {
             return includes(roles, roleExpression);
@@ -137,5 +171,30 @@ public final class NavCatalog {
         public String shortcutVisibleWhen(String roleExpression) {
             return includes(shortcutRoles, roleExpression);
         }
+    }
+
+    // «شرطِ نقش || داشتنِ همه‌ی Permissionهای یک لینک (برای هر لینک)» به‌صورت عبارتِ Alpine؛ بدون
+    // Permission همان شرطِ نقش
+    private static String anyOf(String roleCondition, java.util.Collection<List<String>> permissionSets,
+                                String permissionsExpression) {
+        StringBuilder expression = new StringBuilder(roleCondition);
+        for (List<String> codes : permissionSets) {
+            if (codes.isEmpty()) {
+                continue;
+            }
+            StringBuilder list = new StringBuilder("[");
+            boolean first = true;
+            for (String code : codes) {
+                if (!first) {
+                    list.append(", ");
+                }
+                list.append('\'').append(code).append('\'');
+                first = false;
+            }
+            list.append(']');
+            expression.append(" || ").append(list).append(".every(p => ").append(permissionsExpression)
+                    .append(".includes(p))");
+        }
+        return expression.toString();
     }
 }

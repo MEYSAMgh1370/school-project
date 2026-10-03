@@ -91,12 +91,13 @@ Known intentional exceptions:
 
 - public pages and static assets;
 - auth/account endpoints;
-- `/api/me` and related current-user endpoints;
+- `/api/me` and related current-user endpoints (no permission; they return the caller's own data and, for `/api/me/schools/{id}/**` and `/api/me/enrollment`, only while the caller has at least one **active** membership in that school);
 - Bale webhook endpoints (`/api/bale/webhook`, served by the `notification` module);
 - tokenized exam-taking endpoints.
 
 Failure cases:
 
+- a malformed request body, an invalid or missing parameter, an unsupported method or content type answer `400`/`405`/`415` problem details (`malformed-request-body`, `invalid-parameter`, `missing-parameter`, `method-not-allowed`, `unsupported-media-type`), not `500`;
 - missing required tenant header returns an error before controller logic;
 - tenant/path mismatch is rejected by controllers that accept both;
 - missing module entitlement and missing permission are separate authorization failures.
@@ -126,7 +127,7 @@ Current invariants:
 - `layout/navbar.jte` is reused by authenticated management pages: a top bar
   (school/role switcher, user menu) plus a grouped, collapsible sidebar (a
   drawer below 1024px). Page links come from `web.model.NavCatalog`, which also
-  drives the dashboard shortcut cards; see
+  drives the dashboard shortcut cards (cards by built-in role; sidebar links also by the page's management permission, so a custom role that holds it sees the link); see
   [`changes/navigation-sidebar-and-dashboard-shortcuts.md`](../changes/navigation-sidebar-and-dashboard-shortcuts.md).
 - `layout/page-header.jte`, `layout/school-scope.jte`, and
   `layout/empty-state.jte` are shared partials extracted on 2026-09-27;
