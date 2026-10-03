@@ -449,9 +449,85 @@ decision this document must not invent: when a non-Iranian school's year starts,
 what its code looks like, and whether the provisioner runs per tenant or per
 deployment. Those are in the open questions below.
 
+### W9 — A per-school week start (size: L, decided 2026-10-03, in progress)
+
+Decisions, from the product owner on 2026-10-03:
+
+1. **The week starts on Monday** — for non-Iranian schools only. Iranian schools keep
+   the Saturday week, and their stored data is not touched.
+2. **A Monday-start school's days are Monday to Friday.** A Saturday-start school keeps
+   Saturday to Wednesday.
+3. **Each school carries its own explicit week-start field**, not a deployment setting
+   and not inferred from `school.locale`.
+
+This is a domain change, not a display setting, which is why `Calendar` keeps both
+calendars Saturday-first. Everything below was checked against the code on 2026-10-03.
+
+What assumes a Saturday week today:
+
+- **Study plans and exams, server.** `StudyPlanFacadeImpl` calls `requireSaturday` four
+  times and `saturdayOfWeek` three times; `ExamFacadeImpl` calls `requireSaturday`
+  once. Any other week start is rejected with `InvalidWeekStart`. The week is stored
+  as a plain date — `studyplan.week_courses.week_start` and `exam.exams.week_start` —
+  with no database check on the weekday, so those columns need no change.
+- **Class timetable.** The school week is `TimetableDay` = `SAT, SUN, MON, TUE, WED`,
+  and `V7__class_timetable.sql` backs it with
+  `check (weekday in ('SAT','SUN','MON','TUE','WED'))`. Thursday and Friday are
+  deliberately absent (decision 8 in [`class-timetable.md`](class-timetable.md)).
+- **Client.** `mostRecentSaturday` exists twice, in `my-study-plan.js` and `exams.js`;
+  `study-plans.js` and `timetable-grid.js` each hold their own Saturday-first day list;
+  and `calendar.js` orders `weekdayNames` Saturday-first for both calendars.
+- **Documented rule.** [`DESIGN.md`](../../DESIGN.md) §8: the week starts Saturday and
+  the weekend is Friday.
+- **No way to choose per school.** `school.locale` is free text typed into
+  `school-new.jte`, stored and returned, and read by nothing.
+
+Design:
+
+- **Storage.** A new `school.schools.week_start_day varchar(3) not null default 'SAT'`,
+  checked to `('SAT','MON')`. Only the two decided values are allowed; widening the
+  check later is a one-line migration, whereas an unused value is a promise nobody
+  made. The default means every existing school is unchanged and nothing is migrated.
+- **School days derive from the week start.** `SAT` gives Saturday to Wednesday and
+  `MON` gives Monday to Friday. One place owns that mapping so the timetable, study
+  plans and exams cannot disagree; it lives in the `school` module's public API, which
+  `studyplan`, `exam` and `academic` read through `SchoolFacade` (no dependency cycle:
+  `school` imports none of them).
+- **Server.** `requireSaturday` becomes a check against the school's week start, and
+  `saturdayOfWeek` becomes "the most recent week start of this school". The timetable's
+  weekday check is widened to include `THU` and `FRI`, and the facade rejects a day
+  outside the school's own set, so a Saturday-start school still cannot book a
+  Thursday and a Monday-start school cannot book a Saturday.
+- **API and navbar.** `weekStartDay` is added to the school's response and creation
+  request (optional, default `SAT`) and to each school in the navbar. The navbar already
+  renders per-school data for the switcher, so the client learns the selected school's
+  week from the page itself and no page needs a new request.
+- **Creation form.** `school-new.jte` gets a week-start choice, defaulting to Saturday.
+- **Client.** `Calendar` gains the selected school's week start, orders `weekdayNames`
+  and `weekdayShort` from it, and offers `mostRecentWeekStart`; the pages above stop
+  hard-coding Saturday.
+
+Not decided, and not done here: **changing a school's week start after creation.** There
+is no school-edit screen today, so the field is set once. If a school ever switches, its
+stored study-plan and exam weeks (anchored on Saturdays) would no longer match; that
+needs its own decision about what happens to history.
+
+Acceptance criteria:
+
+- An existing school behaves exactly as before: Saturday weeks, Saturday-to-Wednesday
+  timetable, no data changed.
+- A school created with `MON` accepts study-plan and exam weeks that start on a Monday,
+  rejects one that starts on a Saturday with `InvalidWeekStart`, and the reverse holds
+  for a `SAT` school.
+- A `MON` school's timetable accepts `MON` to `FRI` and rejects `SAT` and `SUN`; a `SAT`
+  school's still accepts `SAT` to `WED` and rejects `THU` and `FRI`.
+- The navbar, the week picker and the day columns of the study-plan, exam and timetable
+  pages follow the selected school, and switching school switches them.
+- Persian rendering for a `SAT` school is unchanged.
+
 ## Suggested Order
 
-W0, W3 and W2 are done. W2b is mechanical and next. W5 was already done on
+W0, W3, W2 and W2b are done. W9 has a decision but not yet a design. W5 was already done on
 master. W1 is the long pole and should start early because it touches every
 template; the English locale is not demonstrable beyond the page shell until it
 lands, since the page text is still Persian. W6 and W7 are product-heavy and
@@ -486,12 +562,14 @@ These are product decisions. This document does not answer them.
 6. What is the pricing model — per school, per seat, per module, or a
    combination? W7 cannot be specified without it.
 
-7. Should the week start differ for a non-Iranian school? Today it is Saturday
-   everywhere, enforced by the server for study plans and exams. A Monday-first
-   grid in a European market would be a domain change across `studyplan`, `exam`
-   and `DESIGN.md`, not a display setting — which is why the calendar seam
-   deliberately keeps it fixed.
-8. When does a non-Iranian school's academic year start, and what is its code
+7. ~~Should the week start differ for a non-Iranian school?~~ **Answered 2026-10-03:**
+   a non-Iranian school's week starts on Monday and its days are Monday to Friday;
+   Iranian schools keep Saturday; each school carries an explicit week-start field.
+   See W9. Still open: what happens to a school's stored study-plan and exam weeks if it
+   ever changes its week start after creation. There is no edit screen today, so the
+   field is set once.
+8. Left undecided by the product owner on 2026-10-03, for now: when does a
+   non-Iranian school's academic year start, and what is its code
    (for example `2026-2027`)? Does the provisioner run per tenant or per
    deployment? W8 cannot be specified without these.
 
