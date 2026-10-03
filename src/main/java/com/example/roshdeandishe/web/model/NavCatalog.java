@@ -25,6 +25,9 @@ public final class NavCatalog {
     private static final String PARENT = "PARENT";
     private static final String FINANCE = "FINANCE_ADMIN";
 
+    /** نقش‌های سیستمی: کارتِ «دسترسی سریع» برایشان فقط بر اساس نقش است، نه Permission (فقط نقش سفارشی Permission-محور است). */
+    private static final List<String> SYSTEM_ROLES = List.of(ADMIN, TEACHER, STUDENT, PARENT, FINANCE);
+
     private static final List<Group> GROUPS = List.of(
             new Group("school", "مدرسه", List.of(
                     new Link("/people", "اعضای مدرسه", "افزودن و مدیریت اعضای مدرسه",
@@ -94,6 +97,26 @@ public final class NavCatalog {
         Set<String> roles = new LinkedHashSet<>();
         shortcuts().forEach(link -> roles.addAll(link.shortcutRoles()));
         return includes(roles, roleExpression);
+    }
+
+    /**
+     * همان، به‌علاوه‌ی «نقشِ سفارشی‌ای که همه‌ی Permissionهای یکی از کارت‌ها را دارد».
+     */
+    public static String anyShortcutVisibleWhen(String roleExpression, String permissionsExpression) {
+        Set<String> roles = new LinkedHashSet<>();
+        Set<List<String>> permissionSets = new LinkedHashSet<>();
+        shortcuts().forEach(link -> {
+            roles.addAll(link.shortcutRoles());
+            permissionSets.add(link.permissions());
+        });
+        return anyOf(includes(roles, roleExpression), permissionSets, customRolePermissions(roleExpression,
+                permissionsExpression));
+    }
+
+    // نقشِ سفارشی = نقشی که در SYSTEM_ROLES نیست: نقش‌های سیستمی کارت‌هایشان را فقط از shortcutRoles می‌گیرند
+    // (مثلاً مدیر مدرسه Permissionِ EXPENSE_VIEW را دارد ولی کارتِ «هزینه‌ها» برای او نیست)
+    private static String customRolePermissions(String roleExpression, String permissionsExpression) {
+        return "(!" + includes(SYSTEM_ROLES, roleExpression) + " ? " + permissionsExpression + " : [])";
     }
 
     private static String includes(java.util.Collection<String> roles, String roleExpression) {
@@ -170,6 +193,15 @@ public final class NavCatalog {
 
         public String shortcutVisibleWhen(String roleExpression) {
             return includes(shortcutRoles, roleExpression);
+        }
+
+        /**
+         * کارت «دسترسی سریع»: نقشِ انتخاب‌شده در {@code shortcutRoles} باشد، یا نقشِ <b>سفارشی</b> باشد و همه‌ی
+         * {@code permissions} را داشته باشد (همان قاعده‌ی سایدبار؛ نقش‌های سیستمی همچنان فقط بر اساس نقش).
+         */
+        public String shortcutVisibleWhen(String roleExpression, String permissionsExpression) {
+            return anyOf(includes(shortcutRoles, roleExpression), List.of(permissions),
+                    customRolePermissions(roleExpression, permissionsExpression));
         }
     }
 

@@ -482,6 +482,16 @@ class IamFacadeImpl implements IamFacade {
     }
 
     @Override
+    public java.util.Map<String, String> findCustomRoleDisplayNames(Long schoolId,
+                                                                    java.util.Collection<String> roleCodes) {
+        java.util.Map<String, String> result = new java.util.LinkedHashMap<>();
+        roleRepository.findBySchoolIdIsNullOrSchoolId(schoolId).stream()
+                .filter(r -> schoolId.equals(r.getSchoolId()) && roleCodes.contains(r.getCode()))
+                .forEach(r -> result.put(r.getCode(), r.getDisplayName()));
+        return result;
+    }
+
+    @Override
     @Transactional
     public RoleInfo createCustomRole(Long schoolId, String code, String displayName, List<String> permissionCodes) {
         if (code == null || !ROLE_CODE_PATTERN.matcher(code).matches()) {

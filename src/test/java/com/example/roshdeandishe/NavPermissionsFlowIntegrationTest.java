@@ -65,6 +65,12 @@ class NavPermissionsFlowIntegrationTest {
     }
 
     @Test
+    void customRoleDisplayNamesAreSchoolScopedAndExcludeSystemRoles() {
+        assertThat(iamFacade.findCustomRoleDisplayNames(1L, List.of("SCHOOL_ADMIN", "NO_SUCH_ROLE", "PLATFORM_ADMIN")))
+                .isEmpty();
+    }
+
+    @Test
     void unknownAndPlatformRolesAreNotReturned() {
         assertThat(iamFacade.findPermissionCodesByRole(1L, List.of("NO_SUCH_ROLE", "PLATFORM_ADMIN"))).isEmpty();
     }
@@ -75,7 +81,7 @@ class NavPermissionsFlowIntegrationTest {
         String code = "DEPUTY_" + UUID.randomUUID().toString().substring(0, 6).toUpperCase().replace("-", "");
         mockMvc.perform(post("/api/admin/schools/1/roles").with(csrf()).header("X-School-ID", "1").session(admin)
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"code\":\"" + code + "\",\"displayName\":\"معاون\","
+                        .content("{\"code\":\"" + code + "\",\"displayName\":\"معاون آموزشی\","
                                 + "\"permissionCodes\":[\"TIMETABLE_MANAGE\",\"CLASS_VIEW\"]}"))
                 .andExpect(status().isOk());
         String email = "nav.deputy." + UUID.randomUUID().toString().substring(0, 8) + "@roshdeandishe.test";
@@ -89,6 +95,10 @@ class NavPermissionsFlowIntegrationTest {
         String html = HtmlUtils.htmlUnescape(result.getResponse().getContentAsString());
 
         assertThat(html).contains("'" + code + "': ['CLASS_VIEW','TIMETABLE_MANAGE',]");
+        // سوییچرِ نقش و جدولِ عضویت‌ها عنوانِ نقشِ سفارشی را نشان می‌دهند، نه کدِ خام
+        assertThat(html).contains("معاون آموزشی").doesNotContainPattern(">\\s*" + code + "\\s*<");
+        assertThat(iamFacade.findCustomRoleDisplayNames(1L, List.of(code, "SCHOOL_ADMIN", "PLATFORM_ADMIN")))
+                .containsExactly(Map.entry(code, "معاون آموزشی"));
         assertThat(html).contains("href=\"/timetable\" x-show=\"['SCHOOL_ADMIN'].includes(selectedRole) "
                 + "|| ['TIMETABLE_MANAGE'].every(p => permissions.includes(p))\"");
         // و API همان Permission را واقعاً می‌دهد: لینک فقط نمایشِ همین دسترسی است

@@ -249,6 +249,13 @@ public interface IamFacade {
                                                                   java.util.Collection<String> roleCodes);
 
     /**
+     * عنوانِ نمایشیِ نقش‌های <b>سفارشیِ</b> همین مدرسه (کدِ نقش ← عنوان) با یک query - برای UIهایی که فقط
+     * کدِ نقش را دارند (سوییچر نقشِ ناوبار). نقش‌های سیستمی در نتیجه نیستند (برچسب فارسی‌شان ثابت و
+     * سمت وب است)؛ کدِ ناشناخته و PLATFORM_ADMIN هم نیست.
+     */
+    java.util.Map<String, String> findCustomRoleDisplayNames(Long schoolId, java.util.Collection<String> roleCodes);
+
+    /**
      * ساخت یک نقش سفارشی برای یک مدرسه‌ی خاص - حل‌کننده‌ی Open Question 3
      * در CLAUDE.md، با سه تصمیم صریح (۲۰۲۶-۰۷-۱۳): (۱) نقش سفارشی فقط برای
      * همین مدرسه قابل‌مشاهده/تخصیص است، نه سراسری - دو مدرسه‌ی مختلف

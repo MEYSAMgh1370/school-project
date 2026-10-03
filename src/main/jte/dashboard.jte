@@ -1,7 +1,6 @@
 @import com.example.roshdeandishe.web.dto.DashboardModel
 @import com.example.roshdeandishe.web.model.NavCatalog
 @import com.example.roshdeandishe.web.model.NavbarModel
-@import com.example.roshdeandishe.web.model.RoleLabels
 
 @param DashboardModel model
 @param NavbarModel navbar
@@ -21,12 +20,12 @@
              ندارد و کل بخش پنهان می‌ماند. x-data خالی لازم است: Alpine فقط داخل
              یک x-data ریشه را راه‌اندازی می‌کند و این بخش ریشه‌ی دیگری ندارد. --%>
         <section class="mb-5" aria-labelledby="dashboard-shortcuts-title" x-data
-                 x-cloak x-show="${NavCatalog.anyShortcutVisibleWhen("$store.nav.selectedRole")}">
+                 x-cloak x-show="${NavCatalog.anyShortcutVisibleWhen("$store.nav.selectedRole", "$store.nav.permissions")}">
             <h2 class="title is-5" id="dashboard-shortcuts-title">دسترسی سریع</h2>
             <div class="columns is-multiline is-mobile is-variable is-3">
                 @for(var link : NavCatalog.shortcuts())
                     <div class="column is-4-desktop is-6-tablet is-6-mobile"
-                         x-cloak x-show="${link.shortcutVisibleWhen("$store.nav.selectedRole")}">
+                         x-cloak x-show="${link.shortcutVisibleWhen("$store.nav.selectedRole", "$store.nav.permissions")}">
                         <a class="box app-shortcut" href="${link.href()}">
                             <h3 class="title is-6 mb-1">${link.label()}</h3>
                             <p class="is-size-7 has-text-grey">${link.description()}</p>
@@ -166,7 +165,7 @@
                 @for(var membership : model.memberships())
                     <tr>
                         <td>${membership.schoolName()}</td>
-                        <td>${RoleLabels.persian(membership.roleCode())}</td>
+                        <td>${navbar.roleLabel(membership.schoolId(), membership.roleCode())}</td>
                         <td>
                             @if(membership.active())
                                 <span class="tag is-success">فعال</span>

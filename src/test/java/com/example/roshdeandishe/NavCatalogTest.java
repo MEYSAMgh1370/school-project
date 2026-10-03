@@ -77,6 +77,22 @@ class NavCatalogTest {
     }
 
     @Test
+    void shortcutCardForACustomRoleNeedsAllLinkPermissionsAndSystemRolesStayRoleOnly() {
+        NavCatalog.Link finance = NavCatalog.shortcuts().stream().filter(l -> l.href().equals("/finance")).findFirst().orElseThrow();
+        NavCatalog.Link mine = NavCatalog.shortcuts().stream().filter(l -> l.href().equals("/my-grades")).findFirst().orElseThrow();
+
+        assertThat(finance.shortcutVisibleWhen("role", "perms")).isEqualTo(
+                "['SCHOOL_ADMIN', 'FINANCE_ADMIN'].includes(role) || ['FINANCE_MANAGE', 'FINANCE_VIEW']"
+                        + ".every(p => (!['SCHOOL_ADMIN', 'TEACHER', 'STUDENT', 'PARENT', 'FINANCE_ADMIN']"
+                        + ".includes(role) ? perms : []).includes(p))");
+        // کارت‌های «من» Permission ندارند: همان شرطِ نقش
+        assertThat(mine.shortcutVisibleWhen("role", "perms")).isEqualTo(mine.shortcutVisibleWhen("role"));
+        assertThat(NavCatalog.anyShortcutVisibleWhen("role", "perms"))
+                .startsWith(NavCatalog.anyShortcutVisibleWhen("role").replace(")", ")"))
+                .contains("|| ['TIMETABLE_MANAGE'].every(p => (!");
+    }
+
+    @Test
     void selfServiceLinksAreRoleOnlyAndManagementLinksNameTheirManagePermission() {
         allLinks().forEach(link -> {
             if (link.href().startsWith("/my-")) {
