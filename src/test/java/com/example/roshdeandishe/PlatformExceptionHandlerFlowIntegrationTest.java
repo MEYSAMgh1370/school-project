@@ -51,4 +51,18 @@ class PlatformExceptionHandlerFlowIntegrationTest {
         mockMvc.perform(get("/css/app.css"))
                 .andExpect(status().isOk());
     }
+
+    @Test
+    void webFontServesWithoutSchoolHeaderOrAuthentication() throws Exception {
+        // رگرسیون: app.css فونت را به‌عنوان زیرمنبع CSS می‌گیرد و مرورگر برای آن
+        // X-School-ID نمی‌فرستد؛ پیش از اضافه‌شدن /fonts به EXCLUDED_PATHS
+        // فیلتر tenant با ۴۰۰ جوابش می‌داد (و Security هم لاگین می‌خواست).
+        mockMvc.perform(get("/fonts/Vazirmatn-Variable.woff2"))
+                .andExpect(status().isOk())
+                .andExpect(result -> {
+                    if (result.getResponse().getContentAsByteArray().length == 0) {
+                        throw new AssertionError("بدنه‌ی پاسخ فونت نباید خالی باشد");
+                    }
+                });
+    }
 }

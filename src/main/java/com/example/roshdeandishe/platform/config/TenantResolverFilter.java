@@ -32,6 +32,9 @@ public class TenantResolverFilter extends OncePerRequestFilter {
      */
     private static final String[] EXCLUDED_PATHS = {
             "/actuator", "/api/auth", "/login", "/error", "/css", "/js", "/favicon.ico",
+            // فونت وب (Vazirmatn) از داخل app.css به‌عنوان زیرمنبع CSS بارگذاری
+            // می‌شود و مرورگر برای آن X-School-ID نمی‌فرستد - همان استدلال /css و /js
+            "/fonts",
             "/swagger-ui", "/v3/api-docs", "/activate", "/register", "/webjars",
             // «من» و داشبورد درباره‌ی خودِ کاربرند، نه یک مدرسه‌ی خاص -
             // schoolId ای وجود ندارد که در هدر بیاید

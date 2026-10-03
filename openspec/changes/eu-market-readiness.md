@@ -131,6 +131,32 @@ Audited on 2026-09-29 against `src/`, `openspec/`, and the Flyway migrations.
 Each item states current state, target, and acceptance criteria. Sizes are a
 rough order of magnitude for planning only, not a commitment.
 
+### W0 — Serve the web font at all (size: XS, a bug fix)
+
+Current: the Vazirmatn font has never loaded. `/fonts/**` is absent from
+`EXCLUDED_PATHS` in
+[`TenantResolverFilter.java`](../../src/main/java/com/example/roshdeandishe/platform/config/TenantResolverFilter.java),
+which requires an `X-School-ID` header on every non-excluded path and returns
+400 without one. A browser fetching a CSS subresource sends no such header, so
+`GET /fonts/Vazirmatn-Variable.woff2` returns 400 on every page. `/fonts/**` is
+also absent from the `permitAll()` list in
+[`SecurityConfig.java`](../../src/main/java/com/example/roshdeandishe/iam/config/SecurityConfig.java),
+so it would additionally require authentication on the anonymous pages. No test
+covers a `/fonts/` request. The app has been rendering on the system font
+fallback since the typeface was vendored.
+
+This was found while scoping W3 and is a prerequisite for it: making a font
+stack locale-conditional is meaningless while the font 404s on every request.
+
+Target: the font is served to an unauthenticated browser with no tenant header.
+
+Acceptance criteria:
+
+- `GET /fonts/Vazirmatn-Variable.woff2` returns 200 with a non-empty body, with
+  no `X-School-ID` header and no authenticated session.
+- A test asserts that, and fails against the pre-fix code.
+- Nothing else in the security configuration is widened.
+
 ### W1 — Externalize user-facing strings (size: L)
 
 Current: Persian literals in 27 templates, 43 Java files, and 23 scripts; no
@@ -208,13 +234,28 @@ Acceptance criteria (once unblocked):
 Current: `bale` is a well-isolated module that listens to a finance event; no
 outward coupling exists to undo.
 
-Target: an explicit outbound notification abstraction with Bale as one
-implementation alongside at least one non-Bale channel, so a deployment can
-serve tenants on different channels.
+Target: a `notification` module holding an outbound port, with Bale as one
+channel and email as the second, so a deployment can serve tenants on
+different channels.
 
 Bale is not removed or replaced. Per
 [`decisions/2026-10-03-multi-market-not-migration.md`](../decisions/2026-10-03-multi-market-not-migration.md)
 it stays a supported channel, and the Iranian segment keeps using it.
+
+Email is the second channel because the mail infrastructure already exists and
+is already required in production — `JavaMailSender` is auto-configured and
+`spring.mail.*` is set in `application.yml`, with `MAIL_*` listed among the
+variables [`DEPLOYMENT.md`](../../DEPLOYMENT.md) requires under the `prod`
+profile. No new outbound infrastructure is introduced.
+
+`CLAUDE_LEGACY.md` previously forbade a generic notification abstraction until
+a second channel was actually requested. That entry was superseded on
+2026-10-03: the condition it named is now met, since Bale does not reach
+schools outside Iran. Its two carve-outs still hold — `InviteEmailSender` and
+`SmsDriver` stay in `iam/internal` and are not channels, the first because
+activation email is token-templated and its result is part of the
+`InviteIssued` contract, the second because OTP delivery is fail-closed while
+this port is best-effort.
 
 Acceptance criteria:
 
@@ -266,8 +307,10 @@ Acceptance criteria:
 
 ## Suggested Order
 
-W2, W3, and W5 are small, independent, and unblock a credible non-Persian
-demo. W1 is the long pole and should start early because it touches every
+W0 is a bug fix and comes first; W3 depends on it to be meaningful. W2 then
+depends on W3, since the calendar seam reads the locale that W3 establishes.
+W5 is independent of all three. W2, W3, and W5 are small and unblock a credible
+non-Persian demo. W1 is the long pole and should start early because it touches every
 template. W6 and W7 are product-heavy and should not start until the open
 questions below are answered. W4 stays blocked.
 
