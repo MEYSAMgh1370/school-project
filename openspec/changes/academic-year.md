@@ -226,8 +226,8 @@ level), **graduate** (the last grade the school offers), or
   grades (no pass mark). A promoted student is recorded with the next grade level and a
   **pending class**, which the admin fills in once the new year's classes exist, and
   the run can be undone (question 8, answered 2026-10-03). The last grade of the school's
-  school's last grade graduates automatically (question 10: the grades a school offers
-  are not modelled yet); **leave** is a deliberate per-student choice - removed from the
+  school's last grade graduates automatically (with the single school level of today;
+  several levels per school is deferred, question 10); **leave** is a deliberate per-student choice - removed from the
   next year's list, never deleted.
 - Guardian links stay; last year's grades stay on the old enrollment; new-year
   invoices follow the tuition rule (question 3).
@@ -329,15 +329,14 @@ classes/enrollments and promotion.
    2026-10-03: yes). **Graduation answered 2026-10-03:** a student in the **last grade
    the school offers** becomes "graduated" in the automatic run: no new-year enrollment
    or invoice, history, grades and invoices kept, reversible by the same undo; the admin
-   can mark a student as repeating instead before or after. (Revised the same day: a
-   school may have several levels and a student moves up from a lower grade of the same
-   school, so "last grade" is the school's own last grade, not the end of one level -
-   see question 10.)
+   can mark a student as repeating instead before or after. (A school offering several
+   levels was raised the same day and **deferred** - question 10; until it is taken up,
+   "last grade the school offers" is the last grade of the school's single level.)
    **Leaving the school (answered 2026-10-03):** a student who leaves is marked as
    **leaving** (the fourth outcome); they are removed from the school's list for the
    next year only - nothing is deleted - and the school membership is deactivated
    through the existing mechanism.
-10. **Which grades does a school offer?** *Code and documentation conflict with the
+10. **Deferred 2026-10-03 ("forget it for now"): which grades does a school offer?** *Code and documentation conflict with the
    product owner's statement (2026-10-03):* a school may have different grades, and a
    student moves up from a lower grade of the same school (for example 9 to 10 in a
    school with grades 7-12). Today a school has **exactly one level**
