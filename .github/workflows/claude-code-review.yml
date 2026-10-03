@@ -5,6 +5,12 @@ name: Claude code review
 # closed PRs, and PRs it judges too trivial to review, so the job is cheap on
 # small changes. The check never blocks a merge.
 #
+# The action refuses to run unless this file is byte-identical to the copy on
+# the default branch, which is how it stops a PR from rewriting its own
+# reviewer. So it does nothing on the PR that adds or edits it - the job still
+# reports success - and starts reviewing only once that PR is merged. A `review`
+# job that passes in seconds having reviewed nothing is this check, not a bug.
+#
 # Authentication: this expects a CLAUDE_CODE_OAUTH_TOKEN repository secret
 # (generated with `claude setup-token`, billed to the Claude subscription).
 # To bill a Claude API key instead, replace that line with:
