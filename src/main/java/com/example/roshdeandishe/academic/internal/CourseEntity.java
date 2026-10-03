@@ -26,4 +26,12 @@ class CourseEntity {
 
     @Column(nullable = false, length = 128)
     private String name;
+
+    /**
+     * {@code false} = درسی که در برنامهٔ کلاسی می‌آید ولی در کارنامه نمی‌آید:
+     * نمره‌دادن به آن رد می‌شود و انتخابگر درسِ دفتر نمرات آن را نشان نمی‌دهد
+     * (openspec/changes/class-timetable.md). پیش‌فرض true.
+     */
+    @Column(nullable = false)
+    private boolean graded = true;
 }

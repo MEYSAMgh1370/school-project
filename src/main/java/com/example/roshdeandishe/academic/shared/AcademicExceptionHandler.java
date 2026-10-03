@@ -75,6 +75,71 @@ public class AcademicExceptionHandler {
                     "درس مربوط به پایه‌ی این کلاس نیست",
                     "درس " + e.courseId() + " برای پایه‌ی کلاس " + e.classId() + " تعریف نشده است."
             );
+            case AcademicError.CourseNotGradable e -> ProblemDetailFactory.problem(
+                    HttpStatus.BAD_REQUEST, "course-not-gradable",
+                    "این درس در کارنامه نمی‌آید",
+                    "درس " + e.courseId() + " فقط در برنامهٔ کلاسی هست و نمره‌پذیر نیست."
+            );
+            case AcademicError.InvalidAcademicYear e -> ProblemDetailFactory.problem(
+                    HttpStatus.BAD_REQUEST, "invalid-academic-year",
+                    "سال تحصیلی نامعتبر است",
+                    "سال تحصیلی «" + e.academicYear() + "» در فهرست سال‌ها نیست."
+            );
+            case AcademicError.PeriodNotFound e -> ProblemDetailFactory.problem(
+                    HttpStatus.NOT_FOUND, "period-not-found",
+                    "زنگ یافت نشد",
+                    "زنگی با شناسه " + e.periodId() + " یافت نشد."
+            );
+            case AcademicError.InvalidPeriod e -> ProblemDetailFactory.problem(
+                    HttpStatus.BAD_REQUEST, "invalid-period",
+                    "زنگ نامعتبر است",
+                    e.reason()
+            );
+            case AcademicError.PeriodOverlaps e -> ProblemDetailFactory.problem(
+                    HttpStatus.CONFLICT, "period-overlaps",
+                    "زنگ هم‌پوشانی دارد",
+                    "این زنگ با زنگ " + e.otherPeriodId() + " همان مدرسه و سال هم‌پوشانی دارد."
+            );
+            case AcademicError.PeriodHasEntries e -> ProblemDetailFactory.problem(
+                    HttpStatus.CONFLICT, "period-has-entries",
+                    "زنگ در برنامه به کار رفته است",
+                    "زنگ " + e.periodId() + " خانه‌ی برنامه دارد؛ اول آن خانه‌ها را خالی کنید."
+            );
+            case AcademicError.ActivityNotFound e -> ProblemDetailFactory.problem(
+                    HttpStatus.NOT_FOUND, "activity-not-found",
+                    "فعالیت یافت نشد",
+                    "فعالیتی با شناسه " + e.activityId() + " یافت نشد."
+            );
+            case AcademicError.ActivityNameTaken e -> ProblemDetailFactory.problem(
+                    HttpStatus.CONFLICT, "activity-name-taken",
+                    "نام فعالیت تکراری است",
+                    "فعالیتی با نام «" + e.name() + "» از قبل هست."
+            );
+            case AcademicError.ActivityNotEditable e -> ProblemDetailFactory.problem(
+                    HttpStatus.CONFLICT, "activity-not-editable",
+                    "فعالیتِ پیش‌فرضِ پلتفرم قابل تغییر نیست",
+                    "فعالیت " + e.activityId() + " پیش‌فرضِ پلتفرم است؛ فقط فعالیت‌های خودِ مدرسه قابل تغییرند."
+            );
+            case AcademicError.ActivityInUse e -> ProblemDetailFactory.problem(
+                    HttpStatus.CONFLICT, "activity-in-use",
+                    "فعالیت در برنامه به کار رفته است",
+                    "فعالیت " + e.activityId() + " در برنامه هست؛ اول آن خانه‌ها را خالی کنید."
+            );
+            case AcademicError.InvalidTimetableEntry e -> ProblemDetailFactory.problem(
+                    HttpStatus.BAD_REQUEST, "invalid-timetable-entry",
+                    "خانه‌ی برنامه نامعتبر است",
+                    e.reason()
+            );
+            case AcademicError.TeacherNotEligible e -> ProblemDetailFactory.problem(
+                    HttpStatus.CONFLICT, "teacher-not-eligible",
+                    "کاربر معلمِ فعالِ این مدرسه نیست",
+                    "کاربر " + e.teacherUserId() + " عضویت معلمِ فعالی در این مدرسه ندارد."
+            );
+            case AcademicError.TeacherDoubleBooked e -> ProblemDetailFactory.problem(
+                    HttpStatus.CONFLICT, "teacher-double-booked",
+                    "معلم در همین زمان کلاس دیگری دارد",
+                    "این معلم در همین روز و زنگ در کلاس دیگری حضور دارد."
+            );
             case AcademicError.SchoolNotFound e -> ProblemDetailFactory.problem(
                     HttpStatus.NOT_FOUND, "school-not-found",
                     "مدرسه یافت نشد",

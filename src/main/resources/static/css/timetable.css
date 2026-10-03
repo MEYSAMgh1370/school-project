@@ -1,0 +1,97 @@
+/* Class timetable grids (/timetable, /my-timetable): composed from shared tokens
+   and Bulma primitives; logical properties only (RTL app). */
+.app-tt-grid {
+  inline-size: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
+}
+
+.app-tt-grid th,
+.app-tt-grid td {
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--bulma-border);
+  vertical-align: middle;
+  text-align: center;
+}
+
+.app-tt-grid thead th {
+  background: var(--bulma-scheme-main-bis);
+  white-space: nowrap;
+}
+
+/* first column: the period's label and times, kept readable while the days scroll */
+.app-tt-grid tbody th {
+  background: var(--bulma-scheme-main-bis);
+  text-align: start;
+  white-space: nowrap;
+  min-inline-size: 7rem;
+}
+
+.app-tt-grid td {
+  min-inline-size: 8rem;
+  min-block-size: 56px;
+}
+
+/* an admin cell is a button that fills the whole table cell (≥44px touch target) */
+.app-tt-cell {
+  appearance: none;
+  display: block;
+  inline-size: 100%;
+  min-block-size: 56px;
+  padding: var(--space-2);
+  background: transparent;
+  border: 0;
+  border-radius: var(--radius-sm);
+  color: inherit;
+  cursor: pointer;
+  font: inherit;
+  text-align: center;
+}
+
+.app-tt-cell:hover,
+.app-tt-cell:focus-visible {
+  background: var(--bulma-scheme-main-bis);
+}
+
+.app-tt-cell.is-empty {
+  color: var(--bulma-text-weak);
+}
+
+.app-tt-subject {
+  display: block;
+  font-weight: var(--bulma-weight-semibold);
+}
+
+.app-tt-meta {
+  display: block;
+  font-size: var(--bulma-size-7);
+  color: var(--bulma-text-weak);
+}
+
+.app-tt-today {
+  background: var(--bulma-scheme-main-bis);
+}
+
+/* dashboard "today" list */
+.app-tt-today-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.app-tt-today-list li {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-3);
+  padding-block: var(--space-2);
+  border-block-end: 1px solid var(--bulma-border);
+}
+
+.app-tt-today-list li:last-child {
+  border-block-end: 0;
+}
+
+.app-tt-time {
+  min-inline-size: 7rem;
+  color: var(--bulma-text-weak);
+}

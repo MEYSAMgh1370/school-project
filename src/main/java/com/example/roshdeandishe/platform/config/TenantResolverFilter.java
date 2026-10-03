@@ -81,6 +81,10 @@ public class TenantResolverFilter extends OncePerRequestFilter {
             "/my-grades",
             // همان استدلال /people برای صفحه‌ی «سال تحصیلی» (تنظیم سال جاریِ مدرسه)
             "/academic-year",
+            // برنامه‌ی کلاسی: همان استدلال /people برای صفحه‌ی مدیر، و همان استدلال
+            // /my-grades برای صفحه‌ی «برنامه‌ی کلاسی من» (fetch آن /api/me است)
+            "/timetable",
+            "/my-timetable",
             // صفحه‌ی ثبت مدرسه: مدرسه هنوز وجود ندارد که schoolId داشته باشد
             "/schools/new",
             // درِ ورودی برنددار مدرسه (/s/{slug}): صفحه‌ی عمومی، بازدیدکننده

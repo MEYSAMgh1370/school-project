@@ -1,14 +1,15 @@
 # Class Timetable (برنامهٔ کلاسی)
 
-Status: proposed 2026-10-02, **not implemented**. The product owner answered the
-seven original questions the same day (recorded below). The "current academic
-year" question became a platform-wide concept, designed in
-[`academic-year.md`](academic-year.md), which this proposal now **depends on**
-(its phase 0). The remaining questions are under Unresolved Questions and are
-not invented here. Nothing in [`specs/current-system.md`](../specs/current-system.md)
-changes until this is built.
+Status: proposed 2026-10-02, **implemented 2026-10-02** (backend, admin page,
+`/my-timetable`, student dashboard section). The product owner answered the
+seven original questions and then confirmed the assumptions of questions 3-6
+the same day (recorded below). The "current academic year" concept it depends
+on is [`academic-year.md`](academic-year.md) phase 0, already in `master`. One
+question is still open (platform-default activity names) and is not invented
+here: the platform list ships **empty**. The current behavior is described in
+[`specs/current-system.md`](../specs/current-system.md).
 
-## Verified Baseline
+## Verified Baseline (before implementation)
 
 From code and docs, not from memory:
 
@@ -66,7 +67,10 @@ From code and docs, not from memory:
 10. A **teacher sees their own hours**; a **student sees the timetable on the
     first page (the dashboard)**.
 
-## Proposed Contract
+## Contract
+
+The text below is the proposal; **As Built** at the end of this section lists where
+the implementation differs or is more precise.
 
 ### Where it lives
 
@@ -172,6 +176,75 @@ holidays and the school calendar, exam scheduling, change notifications,
 import/export, drag-and-drop editing, copying a timetable to the next year (a
 natural follow-up), per-school configurable school days, and the Android client.
 
+### As Built (differences and details)
+
+- Where it lives: `TimetableFacade` (public, `academic` base package, separate from
+  `AcademicFacade`), `TimetableController` (admin) and `MyTimetableController`
+  (`/api/me`) in `academic.controller`; `V7__class_timetable.sql`.
+- Admin endpoints (all `@RequiresModule("ACADEMIC")` + `TIMETABLE_MANAGE`, so that one
+  permission is enough for the page): `GET .../timetable/years` (all years +
+  the school's current one), `GET .../timetable/classes` (the school's classes),
+  `GET .../timetable/teachers` (active teachers), `GET|POST .../timetable/periods`,
+  `PUT|DELETE .../timetable/periods/{id}`, `GET|POST .../timetable/activities`,
+  `PUT|DELETE .../timetable/activities/{id}`, `GET .../timetable/classes/{classId}?academicYear=`
+  (entries), `GET .../timetable/classes/{classId}/courses` (all courses of the
+  grade, including non-graded), `PUT .../timetable/classes/{classId}/entries`
+  (set a cell; replaces whatever the cell held) and
+  `DELETE .../timetable/classes/{classId}/entries?periodId=&weekday=` (clear; an
+  empty cell is not an error). Times are `"HH:mm"` strings; `weekday` is a string and
+  an unknown day (e.g. `THU`) is `400 invalid-timetable-entry`.
+- `GET /api/me/schools/{id}/timetable` has **no year parameter**: it always returns
+  the school's *current* year (academic-year decision 2: non-admins see only the
+  current year; the admin opens other years on `/timetable`). The response is
+  `{academicYear, periods, views[]}` where each view is `OWN` (the user's own
+  class), `WARD` (a linked child, with the child's name and class) or `TEACHING`
+  (the user's own slots, each entry carrying the class name; an active teacher always gets this view, empty when there are no cells or no current year); entries carry the
+  teacher's name. A stranger gets `{academicYear: null, periods: [], views: []}` -
+  not an error, and not the school's current year. A member with no current year
+  chosen gets views without entries (the page says the year is not chosen).
+- An activity name must be free in the school **and** among platform defaults, so a
+  picker never shows two entries with the same name. A class is shown by its name only
+  (the section is already part of the name on the existing pages).
+- A race on the teacher unique index (two admins booking the same teacher at once)
+  is reported as `409 teacher-double-booked` as well; any other integrity
+  violation is not relabeled.
+- `position` of a period is its rank by start time (1..n, no gaps): it is renumbered after every create, update and delete, in two flushed phases because the unique index on `(school, year, position)` is checked immediately.
+- Creating/updating a period takes a transaction-level PostgreSQL advisory lock per
+  (school, year) before the overlap check, so two admins moving periods into the same
+  free range cannot both pass (no exclusion constraint: it needs the `btree_gist`
+  extension).
+- Setting a cell takes an advisory lock per (class, weekday, period) before reading the existing row, so two admins filling the same empty cell are serialized (the second replaces the first) instead of one failing on the unique index.
+- Deleting a period or an activity and writing a cell for it are serialized with row-level advisory locks (lock order is always period, then activity, then cell; clearing a cell takes the cell lock), so a concurrent delete and set end as `period-has-entries`/`period-not-found` (or `activity-in-use`/`activity-not-found`), never as a foreign-key `500`.
+- `GET /api/me/.../timetable` ties each view to an **active** membership with the
+  matching role in that school (`STUDENT` for `OWN`, `PARENT` for `WARD`, `TEACHER` for
+  `TEACHING`): enrollments, guardian links and timetable cells survive deactivating a
+  membership, so without this a former member kept receiving the timetable.
+- If the operator later sets `graded = false` on a course that already has grades, those
+  grade rows are kept but hidden from `/api/me/.../grades` (student/parent reads); the
+  admin list that asks for that `courseId` explicitly still returns them, and they come
+  back if the course is graded again. Overall grades are unaffected.
+- Granting the permission on an already deployed database: `IamSeedDataRunner`
+  grants per `(role, permission)` pair idempotently at every start, so the next
+  deploy adds `TIMETABLE_MANAGE` to `SCHOOL_ADMIN`.
+- Migration checked on a database that already held data (V1-V6 applied, a class
+  and a course inserted, then V7): the existing course gets `graded = true`; nothing
+  else changes.
+- UI: `/timetable` has the year select (current year tagged; another year shows a
+  note that others only see the current year), tabs «برنامهٔ کلاس‌ها» (class select +
+  Saturday–Wednesday × periods grid, a cell opens one modal: course or activity,
+  optional teacher, «خالی کردن خانه»), «زنگ‌ها» (add/edit/delete) and «فعالیت‌ها»
+  (platform defaults are listed without actions). `/my-timetable` is the read-only
+  grid with the same picker as `/my-grades` when there is more than one view.
+  Dashboard: «برنامهٔ امروز» for the `STUDENT` role only (Thursday/Friday say there
+  is no class), with a link to the week.
+- Known, not changed here: sidebar and dashboard links come from `NavCatalog`, which
+  decides visibility by built-in role codes (as for every other page); a custom role that
+  holds `TIMETABLE_MANAGE` can call the API but gets no link until navigation becomes
+  permission-aware (a separate change).
+- Known, not changed here: a malformed JSON body (for example an unknown enum value in
+  a body field) is answered with `500` by the platform's exception handling on every
+  endpoint; the timetable avoids it for `weekday` by taking a string.
+
 ## Compatibility And Risk
 
 - Additive: new tables, endpoints, pages and one permission. The only change to
@@ -228,25 +301,18 @@ natural follow-up), per-school configurable school days, and the Android client.
 ## Unresolved Questions
 
 1. **Platform-default activities.** Which defaults are registered for all schools
-   (the names)? Product input; not invented here. Without it the platform list is
-   empty and schools create their own.
-2. **Current academic year - resolved.** The student's dashboard and
-   `/my-timetable` use the school's current academic year, which exists since
-   phase 0 of [`academic-year.md`](academic-year.md)
-   (`SchoolFacade.findCurrentAcademicYear`). By that proposal's decision 2 the
-   school admin can open any year's timetable to look at it, while students,
-   parents and teachers see only the current year's.
-3. **Who sees what, where.** Decision 10 says the student sees it on the
-   dashboard and the teacher sees own hours. Assumed here: a **teacher's own
-   hours on `/my-timetable`** (no dashboard section), a **parent's children's
-   timetables on `/my-timetable`** with a child picker, the dashboard section
-   for the **student only**. Confirm, or say if parents/teachers also want a
-   dashboard section.
-4. **Periods per year.** Periods are per school *and* year (so next year can
-   differ without touching the past), which means defining them again each year
-   unless a «کپی از سال قبل» is added (listed out of scope). Confirm that is
-   acceptable, or that one period set per school is enough.
-5. **School days.** Fixed Saturday–Wednesday as stated. If some schools also run
-   Thursday (or a shorter week), a per-school setting is a later change.
-6. **Do students and parents see the teacher's name** in a timetable cell?
-   Assumed yes (the teacher is already visible through the class); confirm.
+   (the names)? Product input; not invented here. The platform list ships empty;
+   schools create their own, and the operator can add defaults with a data
+   migration (rows with `school_id` null).
+
+Resolved by the product owner on 2026-10-02 ("همان‌ها را تأیید می‌کنم"):
+
+- **Current academic year:** students, parents and teachers see the school's current
+  year; the school admin can open any year (see academic-year decision 2).
+- **Who sees what, where:** a teacher's own hours are on `/my-timetable` (no dashboard
+  section); a parent sees the children's timetables on `/my-timetable` with a child
+  picker; the dashboard section is for the student only.
+- **Periods per year:** periods are defined per school and year; copying from the
+  previous year is a later change.
+- **School days:** fixed Saturday–Wednesday; a per-school setting is a later change.
+- **Teacher names:** students and parents see the teacher's name in a cell.

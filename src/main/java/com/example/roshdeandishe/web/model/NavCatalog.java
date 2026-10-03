@@ -38,6 +38,10 @@ public final class NavCatalog {
             new Group("education", "آموزش", List.of(
                     new Link("/classes", "کلاس‌ها", "کلاس‌ها و ثبت‌نام دانش‌آموزان",
                             List.of(ADMIN, TEACHER), List.of(ADMIN, TEACHER)),
+                    new Link("/timetable", "برنامه‌ی کلاسی", "زنگ‌ها و برنامه‌ی هفتگیِ کلاس‌ها",
+                            List.of(ADMIN), List.of(ADMIN)),
+                    new Link("/my-timetable", "برنامه‌ی کلاسی من", "برنامه‌ی هفتگیِ شما",
+                            List.of(STUDENT, PARENT, TEACHER), List.of(STUDENT, PARENT, TEACHER)),
                     new Link("/curriculum", "سرفصل‌ها و بانک سؤال", "سرفصل‌های درسی و بانک سؤال",
                             List.of(ADMIN, TEACHER), List.of()),
                     new Link("/study-plans", "برنامه‌های مطالعه", "برنامه‌های مطالعه‌ی کلاس‌ها",
