@@ -45,7 +45,7 @@ The present implementation deliberately avoids a currency decision:
   raw values Toman. Neither is an accepted persisted or API contract, so the
   label conflict cannot justify a conversion.
 - Finance audit events carry amounts and
-  [`InvoiceIssuedEventListener.java`](../../src/main/java/com/example/roshdeandishe/bale/internal/InvoiceIssuedEventListener.java)
+  [`InvoiceIssuedNotificationListener.java`](../../src/main/java/com/example/roshdeandishe/notification/internal/InvoiceIssuedNotificationListener.java)
   currently inserts an unlabelled raw amount into the invoice-notification
   text.
 
@@ -203,7 +203,7 @@ minimum:
 - canonical validation and serialization through the finance and expense
   facades, implementations, events, entities, audit listener, and audit rows;
 - Toman-labelled, formatted Bale invoice messages in
-  [`InvoiceIssuedEventListener.java`](../../src/main/java/com/example/roshdeandishe/bale/internal/InvoiceIssuedEventListener.java);
+  [`InvoiceIssuedNotificationListener.java`](../../src/main/java/com/example/roshdeandishe/notification/internal/InvoiceIssuedNotificationListener.java);
 - V2-aware sample data and wording in
   [`seed-demo-data.py`](../../scripts/seed-demo-data.py); and
 - a new Flyway migration and migration test only when classification evidence

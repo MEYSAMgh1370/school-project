@@ -29,7 +29,7 @@ public interface AcademicFacade {
     /**
      * نسخه‌ی Optional از getStudentInfo برای فراخوان‌هایی که «نبودن
      * دانش‌آموز» برایشان حالت عادی است، نه خطای دامنه - مثل
-     * bale.InvoiceIssuedEventListener که برای فاکتوری با studentId بدون
+     * notification.InvoiceIssuedNotificationListener که برای فاکتوری با studentId بدون
      * StudentEntity فقط باید اطلاع‌رسانی را رد کند (همان قرارداد
      * findMyEnrollment/BaleFacade.sendMessageToUser).
      */

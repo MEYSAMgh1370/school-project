@@ -90,7 +90,7 @@ Audited on 2026-09-29 against `src/`, `openspec/`, and the Flyway migrations.
   a comment or Javadoc citing it as a pattern; no production code outside
   `bale` calls into it.
 - Coupling runs inward only:
-  [`InvoiceIssuedEventListener.java`](../../src/main/java/com/example/roshdeandishe/bale/internal/InvoiceIssuedEventListener.java)
+  [`InvoiceIssuedNotificationListener.java`](../../src/main/java/com/example/roshdeandishe/notification/internal/InvoiceIssuedNotificationListener.java)
   consumes a finance event. Finance does not know Bale exists.
 - `BaleWebhookController` is one of the documented tenant-filter exemptions in
   [`SecurityConfig.java`](../../src/main/java/com/example/roshdeandishe/iam/config/SecurityConfig.java).
@@ -264,6 +264,26 @@ Acceptance criteria:
 - A deployment with no Bale configuration starts and delivers through the
   other channel.
 - `ApplicationModules.verify()` still passes.
+
+Two limitations are known and deliberately left open rather than guessed at:
+
+- **Channel selection is per-deployment, not per-tenant.** The email channel is
+  conditional on Bale being unconfigured, which is the inverse of the Bale
+  channel's own condition. Fanning out to both channels unconditionally was
+  rejected: every existing Iranian school would then receive an extra email per
+  invoice, a production behavior change nobody asked for. True per-tenant
+  selection — the shape
+  [`decisions/2026-10-03-multi-market-not-migration.md`](../decisions/2026-10-03-multi-market-not-migration.md)
+  calls for — needs the school's `locale` field wired through to request
+  resolution, which has not been done. Until then this condition preserves
+  current behavior exactly.
+- **The notification text is hardcoded Persian.** The email subject in
+  `EmailNotificationChannel` and the invoice body built by
+  `InvoiceIssuedNotificationListener` are both Persian string literals, and the
+  port carries neither a locale nor a message key. Email is the channel for the
+  non-Iranian segment, so Persian text there is wrong. Fixing it depends on W1:
+  until a message bundle exists there is nothing to resolve a key against. No
+  translation was invented here.
 
 ### W6 — Build the data-protection surface (size: L)
 
