@@ -89,9 +89,6 @@ class GradeByCourseFlowIntegrationTest {
     }
 
     private long createClass(MockHttpSession adminSession, String name, String gradingScheme) throws Exception {
-        // مدرسه‌ی ۱ بین تست‌ها مشترک است و تستِ دیگری ممکن است سالِ جاری را روشن گذاشته باشد؛ کلاسِ این تست‌ها باید
-        // «بدون سال» باشد، چون نمره‌ها به سالِ دلخواهِ ۱۴۰۴-۱۴۰۵ ثبت می‌شوند (کلاس به یک سال تعلق دارد، فاز ۳)
-        jdbc.update("update school.schools set current_academic_year_id = null where id = 1");
         MvcResult result = mockMvc.perform(post("/api/admin/schools/1/classes")
                         .with(csrf())
                         .header("X-School-ID", "1")
