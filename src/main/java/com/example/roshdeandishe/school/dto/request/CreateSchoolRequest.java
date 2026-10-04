@@ -1,4 +1,4 @@
-package com.example.roshdeandishe.school.dto;
+package com.example.roshdeandishe.school.dto.request;
 
 import com.example.roshdeandishe.school.SchoolFacade.SchoolLevel;
 import com.example.roshdeandishe.school.SchoolFacade.WeekStart;

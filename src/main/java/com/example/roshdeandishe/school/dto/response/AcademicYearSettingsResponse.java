@@ -1,4 +1,4 @@
-package com.example.roshdeandishe.school.dto;
+package com.example.roshdeandishe.school.dto.response;
 
 import java.util.List;
 

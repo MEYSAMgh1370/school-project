@@ -1,4 +1,4 @@
-package com.example.roshdeandishe.school.dto;
+package com.example.roshdeandishe.school.dto.response;
 
 /**
  * آنچه هر عضو مدرسه می‌بیند: فقط سال جاری ({@code current} خالی = هنوز انتخاب

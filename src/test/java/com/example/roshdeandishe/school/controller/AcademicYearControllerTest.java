@@ -9,7 +9,7 @@ import com.example.roshdeandishe.school.SchoolFacade;
 import com.example.roshdeandishe.school.SchoolFacade.AcademicYearId;
 import com.example.roshdeandishe.school.SchoolFacade.AcademicYearInfo;
 import com.example.roshdeandishe.school.SchoolFacade.SchoolId;
-import com.example.roshdeandishe.school.dto.MyAcademicYearResponse;
+import com.example.roshdeandishe.school.dto.response.MyAcademicYearResponse;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 

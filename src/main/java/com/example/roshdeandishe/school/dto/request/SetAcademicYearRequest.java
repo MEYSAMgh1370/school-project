@@ -1,4 +1,4 @@
-package com.example.roshdeandishe.school.dto;
+package com.example.roshdeandishe.school.dto.request;
 
 /**
  * {@code expectedCurrentAcademicYearId}: سالِ جاریِ مدرسه همان‌طور که کلاینت می‌بیند
