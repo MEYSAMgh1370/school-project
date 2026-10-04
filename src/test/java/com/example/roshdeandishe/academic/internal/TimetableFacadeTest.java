@@ -331,6 +331,41 @@ class TimetableFacadeTest {
 
     // ---- خانه‌ها ----
 
+    private static CourseEntity ranged(Long id, Integer from, Integer until) {
+        CourseEntity c = course(id, GRADE_LEVEL, true);
+        ReflectionTestUtils.setField(c, "validFromYear", from);
+        ReflectionTestUtils.setField(c, "validUntilYear", until);
+        return c;
+    }
+
+    @Test
+    void theTimetableCourseListForAYearHidesCoursesOutsideTheirRange() {
+        when(courses.findByGradeLevelOrderByNameAsc(GRADE_LEVEL)).thenReturn(List.of(
+                ranged(30L, null, null), ranged(31L, 1406, null), ranged(32L, null, 1404), ranged(33L, 1405, 1405)));
+
+        assertThat(facade.listCoursesForTimetable(SCHOOL, CLASS_ID, YEAR)).extracting(c -> c.id().value())
+                .containsExactly(30L, 33L);
+        // ارقام فارسی همان سال را می‌دهد (مثل انتخابگرِ دفتر نمرات)
+        assertThat(facade.listCoursesForTimetable(SCHOOL, CLASS_ID, " ۱۴۰۵-۱۴۰۶ ")).extracting(c -> c.id().value())
+                .containsExactly(30L, 33L);
+        // بدونِ سال: همه، بازه نادیده (رفتارِ پیشین)
+        assertThat(facade.listCoursesForTimetable(SCHOOL, CLASS_ID)).hasSize(4);
+        assertThatThrownBy(() -> facade.listCoursesForTimetable(SCHOOL, CLASS_ID, "1999-2000"))
+                .isInstanceOfSatisfying(AcademicException.class,
+                        e -> assertThat(e.error()).isInstanceOf(AcademicError.InvalidAcademicYear.class));
+    }
+
+    @Test
+    void aCourseOutsideItsRangeCannotBePlacedInAPeriodOfThatYear() {
+        when(courses.findById(30L)).thenReturn(Optional.of(ranged(30L, 1406, null)));
+
+        assertThatThrownBy(() -> facade.setEntry(SCHOOL, CLASS_ID, PERIOD, TimetableDay.SAT, 30L, null, null))
+                .isInstanceOfSatisfying(AcademicException.class,
+                        e -> assertThat(e.error()).isEqualTo(new AcademicError.CourseNotValidForYear(30L, YEAR)));
+
+        verify(entries, never()).saveAndFlush(any(TimetableEntryEntity.class));
+    }
+
     @Test
     void theTimetableCourseListIncludesNonGradedCourses() {
         when(courses.findByGradeLevelOrderByNameAsc(GRADE_LEVEL))

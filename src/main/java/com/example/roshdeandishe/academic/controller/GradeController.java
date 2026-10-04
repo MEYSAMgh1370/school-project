@@ -33,15 +33,19 @@ import java.util.List;
 public class GradeController {
 
     private final AcademicFacade academicFacade;
+    private final AcademicYearVisibility yearVisibility;
 
-    public GradeController(AcademicFacade academicFacade) {
+    public GradeController(AcademicFacade academicFacade, AcademicYearVisibility yearVisibility) {
         this.academicFacade = academicFacade;
+        this.yearVisibility = yearVisibility;
     }
 
     @PostMapping
     @RequiresPermission("GRADES_EDIT")
     public GradeResponse recordGrade(@PathVariable Long schoolId, @RequestBody RecordGradeRequest request) {
         TenantContext.requireMatches(schoolId);
+        // معلم فقط در سالِ جاری می‌نویسد؛ مدیر در هر سال (academic-year.md فاز ۱)
+        yearVisibility.requireVisible(schoolId, request.academicYear());
 
         GradeId gradeId = academicFacade.recordGrade(
                 schoolId, request.studentId(), request.classId(), request.academicYear(), request.term(),
@@ -59,6 +63,7 @@ public class GradeController {
             @RequestParam(required = false) Long courseId
     ) {
         TenantContext.requireMatches(schoolId);
+        yearVisibility.requireVisible(schoolId, academicYear);
 
         // courseId خالی = فقط «نمرهٔ کل» (همان رفتار پیش از نمره‌ی هر درس)
         return academicFacade.listGradesForClass(schoolId, classId, academicYear, term, courseId).stream()
@@ -72,10 +77,15 @@ public class GradeController {
      */
     @GetMapping("/courses")
     @RequiresPermission("GRADES_EDIT")
-    public List<CourseResponse> listCourses(@PathVariable Long schoolId, @RequestParam Long classId) {
+    public List<CourseResponse> listCourses(@PathVariable Long schoolId, @RequestParam Long classId,
+                                            @RequestParam(required = false) String academicYear) {
         TenantContext.requireMatches(schoolId);
+        if (academicYear != null) {
+            yearVisibility.requireVisible(schoolId, academicYear);
+        }
 
-        return academicFacade.listCoursesForClass(schoolId, classId).stream()
+        // سالِ اختیاری: فقط درس‌هایی که برای آن سال ارائه می‌شوند (بازه‌ی اعتبارِ درس)
+        return academicFacade.listCoursesForClass(schoolId, classId, academicYear).stream()
                 .map(course -> new CourseResponse(course.id().value(), course.gradeLevel(), course.name()))
                 .toList();
     }

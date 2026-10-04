@@ -4,6 +4,8 @@ document.addEventListener('alpine:init', () => {
     // آینه‌ی آن است.
     Alpine.store('nav', {
         selectedRole: '',
+        // مدرسه‌ی انتخاب‌شده (داشبورد سالِ جاریِ همان مدرسه را نشان می‌دهد)
+        selectedSchoolId: null,
         // Permissionهای نقشِ انتخاب‌شده در مدرسه‌ی انتخاب‌شده (برای نمایشِ لینک به نقش‌های سفارشی)
         permissions: []
     });
@@ -68,6 +70,7 @@ document.addEventListener('alpine:init', () => {
             const schoolPermissions = this.rolePermissions[this.selectedSchoolId] || {};
             this.permissions = schoolPermissions[this.selectedRole] || [];
             Alpine.store('nav').selectedRole = this.selectedRole;
+            Alpine.store('nav').selectedSchoolId = this.selectedSchoolId;
             Alpine.store('nav').permissions = this.permissions;
         },
         isGroupOpen(index) {

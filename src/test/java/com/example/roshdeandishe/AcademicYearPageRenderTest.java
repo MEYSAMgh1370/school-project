@@ -64,4 +64,29 @@ class AcademicYearPageRenderTest {
 
         assertThat(html).contains(":disabled=\"!canSave()\"");
     }
+
+    @Test
+    void theFirstChoiceWarningIsShownOnlyWhileTheSchoolHasNoCurrentYear() {
+        StringOutput output = new StringOutput();
+        TemplateEngine.createPrecompiled(ContentType.Html).render("academic-year.jte", Map.of("navbar", NAVBAR), output);
+        String html = output.toString();
+
+        // همان شرطِ پیامِ «هنوز سالی انتخاب نشده»؛ متنِ هشدار می‌گوید چه چیزی از غیرِ مدیر پنهان می‌شود
+        assertThat(html).contains("id=\"academicYearFirstChoiceWarning\"").contains("x-show=\"!current\"");
+        assertThat(html).contains("معلم، دانش‌آموز و ولی فقط اطلاعاتِ همان سال را می‌بینند")
+                .contains("کارنامه‌ی سال‌های قبل را مدیر تحویل می‌دهد");
+    }
+
+    @Test
+    void offersAttributionOfExistingDataAndTheAutomaticPromotionSetting() {
+        String html = render().replaceAll("\\s+", " ");
+
+        // بنرِ داده‌ی انتساب‌نشده فقط وقتی سالِ جاری هست و چیزی مانده؛ هیچ سالی پیش‌فرض نیست (فقط گزینه‌ی راهنما)
+        assertThat(html).contains("id=\"academicYearUnattributed\"").contains("x-show=\"hasUnattributed()\"")
+                .contains("x-for=\"year in attributableYears\"").contains("id=\"academicYearAttributeButton\"")
+                .contains(":disabled=\"!attributeYear || attributing\"");
+        // ارتقای خودکار: انتخابگرِ روشن/خاموش و لینک به صفحه‌ی دستی
+        assertThat(html).contains("id=\"academicYearAutoPromotionToggle\"").contains("setAutoPromotion($event.target.checked)")
+                .contains("href=\"/promotion\"").contains("آخرین پایه‌ی مدرسه فارغ‌التحصیل می‌شود");
+    }
 }

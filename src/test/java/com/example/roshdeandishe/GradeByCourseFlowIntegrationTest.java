@@ -89,6 +89,9 @@ class GradeByCourseFlowIntegrationTest {
     }
 
     private long createClass(MockHttpSession adminSession, String name, String gradingScheme) throws Exception {
+        // مدرسه‌ی ۱ بین تست‌ها مشترک است و تستِ دیگری ممکن است سالِ جاری را روشن گذاشته باشد؛ کلاسِ این تست‌ها باید
+        // «بدون سال» باشد، چون نمره‌ها به سالِ دلخواهِ ۱۴۰۴-۱۴۰۵ ثبت می‌شوند (کلاس به یک سال تعلق دارد، فاز ۳)
+        jdbc.update("update school.schools set current_academic_year_id = null where id = 1");
         MvcResult result = mockMvc.perform(post("/api/admin/schools/1/classes")
                         .with(csrf())
                         .header("X-School-ID", "1")
@@ -150,6 +153,61 @@ class GradeByCourseFlowIntegrationTest {
                 .andExpect(jsonPath("$[0].numericScore").value(19))
                 .andExpect(jsonPath("$[0].courseId").value(math))
                 .andExpect(jsonPath("$[0].courseName").value(org.hamcrest.Matchers.startsWith("ریاضی")));
+    }
+
+    @Test
+    void aCourseOutsideItsValidityRangeIsHiddenFromTheYearsPickerAndRejectedForThatYear() throws Exception {
+        MockHttpSession admin = loginAsAdmin();
+        long classId = createClass(admin, "پایه پنجم - بازه‌ی درس", "NUMERIC");
+        String email = "range.student." + UUID.randomUUID().toString().substring(0, 8) + "@roshdeandishe.test";
+        registerAndLogin(email, "دانش‌آموز بازه");
+        long studentId = enrollStudent(admin, email, "دانش‌آموز بازه", classId);
+        long always = insertCourse(5, "همیشه");
+        long untilOld = insertCourse(5, "تا قدیمی");
+        long fromNew = insertCourse(5, "از جدید");
+        jdbc.update("update academic.courses set valid_until_year = 1404 where id = ?", untilOld);
+        jdbc.update("update academic.courses set valid_from_year = 1405 where id = ?", fromNew);
+
+        // انتخابگر برای هر سال: فقط درس‌هایی که برای آن سال ارائه می‌شوند؛ بدونِ سال همه
+        mockMvc.perform(get("/api/admin/schools/1/grades/courses").header("X-School-ID", "1").session(admin)
+                        .param("classId", String.valueOf(classId)).param("academicYear", "1404-1405"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[?(@.id == " + always + ")]").exists())
+                .andExpect(jsonPath("$[?(@.id == " + untilOld + ")]").exists())
+                .andExpect(jsonPath("$[?(@.id == " + fromNew + ")]").doesNotExist());
+        mockMvc.perform(get("/api/admin/schools/1/grades/courses").header("X-School-ID", "1").session(admin)
+                        .param("classId", String.valueOf(classId)).param("academicYear", "۱۴۰۵-۱۴۰۶"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[?(@.id == " + untilOld + ")]").doesNotExist())
+                .andExpect(jsonPath("$[?(@.id == " + fromNew + ")]").exists());
+        mockMvc.perform(get("/api/admin/schools/1/grades/courses").header("X-School-ID", "1").session(admin)
+                        .param("classId", String.valueOf(classId)))
+                .andExpect(jsonPath("$[?(@.id == " + untilOld + ")]").exists())
+                .andExpect(jsonPath("$[?(@.id == " + fromNew + ")]").exists());
+
+        // ثبتِ نمره‌ی درسی که برای آن سال ارائه نمی‌شود: 400؛ برای سالِ معتبرش 200
+        mockMvc.perform(post("/api/admin/schools/1/grades").with(csrf()).header("X-School-ID", "1").session(admin)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(recordBody(studentId, classId, "FIRST", "15", fromNew)))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.type").value(org.hamcrest.Matchers.endsWith("course-not-valid-for-year")));
+        record(admin, studentId, classId, "15", untilOld);
+
+        // سالِ ناشناخته: 400 و چیزی ثبت نمی‌شود
+        mockMvc.perform(post("/api/admin/schools/1/grades").with(csrf()).header("X-School-ID", "1").session(admin)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(recordBody(studentId, classId, "FIRST", "15", null).replace("1404-1405", "1999-2000")))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.type").value(org.hamcrest.Matchers.endsWith("invalid-academic-year")));
+    }
+
+    @Test
+    void theDatabaseRejectsAnInvertedValidityRange() {
+        long course = insertCourse(5, "وارونه");
+
+        org.assertj.core.api.Assertions.assertThatThrownBy(() -> jdbc.update(
+                        "update academic.courses set valid_from_year = 1406, valid_until_year = 1404 where id = ?", course))
+                .isInstanceOf(org.springframework.dao.DataIntegrityViolationException.class);
     }
 
     @Test

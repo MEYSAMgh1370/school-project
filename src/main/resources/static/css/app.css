@@ -742,3 +742,8 @@ button.navbar-burger,
 html[dir="ltr"] .app-dir-glyph {
   transform: scaleX(-1);
 }
+
+/* سالِ تحصیلیِ جاری کنار نامِ مدرسه در ناوبار */
+.app-year-tag {
+    margin-inline-start: 0.5rem;
+}

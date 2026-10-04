@@ -52,7 +52,10 @@ public class MyEnrollmentController {
         if (!iamFacade.findActiveRoleCodes(new IamFacade.UserId(userId), schoolId).contains("STUDENT")) {
             return ResponseEntity.noContent().build();
         }
+        // «کلاس من»: دانش‌آموزِ ارتقایافته‌ی جا‌نشده (PENDING) یا فارغ‌التحصیل کلاسی ندارد: 204، نه پاسخی با classId تهی
+        // (اپ موبایل classId/className را غیرتهی می‌خواند؛ academic-year.md فاز ۳)
         return academicFacade.findMyEnrollment(userId, schoolId)
+                .filter(info -> info.classId() != null)
                 .map(info -> ResponseEntity.ok(MyEnrollmentResponse.from(info)))
                 .orElseGet(() -> ResponseEntity.noContent().build());
     }

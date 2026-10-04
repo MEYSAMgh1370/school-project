@@ -44,13 +44,15 @@ public class TimetableController {
     private final AcademicFacade academicFacade;
     private final SchoolFacade schoolFacade;
     private final IamFacade iamFacade;
+    private final AcademicYearVisibility yearVisibility;
 
     public TimetableController(TimetableFacade timetableFacade, AcademicFacade academicFacade,
-                               SchoolFacade schoolFacade, IamFacade iamFacade) {
+                               SchoolFacade schoolFacade, IamFacade iamFacade, AcademicYearVisibility yearVisibility) {
         this.timetableFacade = timetableFacade;
         this.academicFacade = academicFacade;
         this.schoolFacade = schoolFacade;
         this.iamFacade = iamFacade;
+        this.yearVisibility = yearVisibility;
     }
 
     /** مدیر هر سالِ فهرست را می‌تواند باز کند؛ سالِ جاریِ مدرسه پیش‌فرضِ صفحه است. */
@@ -134,12 +136,16 @@ public class TimetableController {
 
     /** کلاس‌های مدرسه برای انتخابگرِ کلاس (بدون نیاز به CLASS_VIEW). */
     @GetMapping("/classes")
-    public List<ClassResponse> classes(@PathVariable Long schoolId) {
+    public List<ClassResponse> classes(@PathVariable Long schoolId,
+                                       @RequestParam(required = false) String academicYear) {
         TenantContext.requireMatches(schoolId);
 
-        return academicFacade.listClasses(schoolId).stream()
+        // همان قاعده‌ی /classes: پیش‌فرض سالِ جاری، "all" فقط برای مدیر
+        return yearVisibility.classListYear(schoolId, academicYear)
+                .map(year -> academicFacade.listClasses(schoolId, year))
+                .orElseGet(() -> academicFacade.listClasses(schoolId)).stream()
                 .map(c -> new ClassResponse(c.id().value(), c.schoolId(), c.name(), c.teacherId(), c.section(),
-                        c.gradeLevel(), c.gradingScheme()))
+                        c.gradeLevel(), c.gradingScheme(), c.academicYear()))
                 .toList();
     }
 
@@ -157,10 +163,12 @@ public class TimetableController {
 
     /** درس‌های هم‌پایه‌ی کلاس، شاملِ غیرنمره‌پذیر (برخلاف /grades/courses). */
     @GetMapping("/classes/{classId}/courses")
-    public List<CourseResponse> courses(@PathVariable Long schoolId, @PathVariable Long classId) {
+    public List<CourseResponse> courses(@PathVariable Long schoolId, @PathVariable Long classId,
+                                        @RequestParam(required = false) String academicYear) {
         TenantContext.requireMatches(schoolId);
 
-        return timetableFacade.listCoursesForTimetable(schoolId, classId).stream()
+        // سالِ اختیاری: فقط درس‌هایی که برای آن سال ارائه می‌شوند (بازه‌ی اعتبارِ درس)
+        return timetableFacade.listCoursesForTimetable(schoolId, classId, academicYear).stream()
                 .map(c -> new CourseResponse(c.id().value(), c.gradeLevel(), c.name()))
                 .toList();
     }

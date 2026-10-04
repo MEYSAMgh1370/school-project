@@ -1,6 +1,7 @@
 package com.example.roshdeandishe;
 
 import com.example.roshdeandishe.academic.AcademicFacade;
+import com.example.roshdeandishe.academic.controller.AcademicYearVisibility;
 import com.example.roshdeandishe.academic.controller.MyEnrollmentController;
 import com.example.roshdeandishe.academic.controller.MyGradesController;
 import com.example.roshdeandishe.curriculum.CurriculumFacade;
@@ -51,7 +52,7 @@ class SelfServiceMembershipGateTest {
 
     @Test
     void aFormerMemberGetsNoGradesAndNothingIsLookedUp() {
-        assertThat(new MyGradesController(academic, iam).myGrades(SCHOOL)).isEmpty();
+        assertThat(new MyGradesController(academic, iam, mock(AcademicYearVisibility.class)).myGrades(SCHOOL)).isEmpty();
 
         verifyNoInteractions(academic);
     }
@@ -105,13 +106,13 @@ class SelfServiceMembershipGateTest {
         when(academic.findMyEnrollment(USER, SCHOOL)).thenReturn(java.util.Optional.empty());
 
         when(iam.findActiveRoleCodes(new UserId(USER), SCHOOL)).thenReturn(Set.of("PARENT"));
-        assertThat(new MyGradesController(academic, iam).myGrades(SCHOOL)).isEmpty();
+        assertThat(new MyGradesController(academic, iam, mock(AcademicYearVisibility.class)).myGrades(SCHOOL)).isEmpty();
         verify(academic).listWards(USER, SCHOOL);
         verify(academic, never()).findMyEnrollment(USER, SCHOOL);
 
         org.mockito.Mockito.clearInvocations(academic);
         when(iam.findActiveRoleCodes(new UserId(USER), SCHOOL)).thenReturn(Set.of("STUDENT"));
-        assertThat(new MyGradesController(academic, iam).myGrades(SCHOOL)).isEmpty();
+        assertThat(new MyGradesController(academic, iam, mock(AcademicYearVisibility.class)).myGrades(SCHOOL)).isEmpty();
         verify(academic).findMyEnrollment(USER, SCHOOL);
         verify(academic, never()).listWards(USER, SCHOOL);
     }
@@ -121,7 +122,7 @@ class SelfServiceMembershipGateTest {
         when(iam.findActiveRoleCodes(new UserId(USER), SCHOOL)).thenReturn(Set.of("TEACHER", "FINANCE_ADMIN"));
         FinanceFacade finance = mock(FinanceFacade.class);
 
-        assertThat(new MyGradesController(academic, iam).myGrades(SCHOOL)).isEmpty();
+        assertThat(new MyGradesController(academic, iam, mock(AcademicYearVisibility.class)).myGrades(SCHOOL)).isEmpty();
         assertThat(new MyInvoicesController(finance, academic, iam).myInvoices(SCHOOL)).isEmpty();
         assertThat(new MyEnrollmentController(academic, iam).myEnrollment(SCHOOL).getStatusCode().value())
                 .isEqualTo(204);

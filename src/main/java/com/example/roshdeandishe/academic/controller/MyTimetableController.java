@@ -57,11 +57,15 @@ public class MyTimetableController {
         // اول هویت: بدونِ هیچ دیدی، حتی سالِ جاریِ مدرسه هم برای بیگانه برنگردد
         List<Pending> pending = new ArrayList<>();
         if (activeRoles.contains("STUDENT")) {
-            academicFacade.findMyEnrollment(userId, schoolId).ifPresent(e -> pending.add(new Pending(
-                    "OWN", e.studentId().value(), null, e.classId().value())));
+            // دانش‌آموزِ بدونِ کلاس (ارتقایافته و هنوز جا‌نشده، فارغ‌التحصیل) برنامه‌ای ندارد
+            academicFacade.findMyEnrollment(userId, schoolId).filter(e -> e.classId() != null)
+                    .ifPresent(e -> pending.add(new Pending("OWN", e.studentId().value(), null, e.classId().value())));
         }
         if (activeRoles.contains("PARENT")) {
             for (AcademicFacade.StudentInfo ward : academicFacade.listWards(userId, schoolId)) {
+                if (ward.classId() == null) {
+                    continue;
+                }
                 pending.add(new Pending("WARD", ward.id().value(), ward.userId(), ward.classId().value()));
             }
         }

@@ -50,7 +50,12 @@ public interface TimetableFacade {
     // ---- خانه‌های برنامه ----
 
     /** درس‌های هم‌پایه‌ی کلاس، شاملِ غیرنمره‌پذیر - انتخابگرِ برنامه (نه دفتر نمرات). */
-    List<CourseInfo> listCoursesForTimetable(Long schoolId, Long classId);
+    List<CourseInfo> listCoursesForTimetable(Long schoolId, Long classId, String academicYear);
+
+    /** همه‌ی درس‌های پایه، بدون فیلترِ سال (بازه‌ی اعتبار نادیده). */
+    default List<CourseInfo> listCoursesForTimetable(Long schoolId, Long classId) {
+        return listCoursesForTimetable(schoolId, classId, null);
+    }
 
     /** خانه‌های یک کلاس در یک سال. */
     List<EntryInfo> listEntriesForClass(Long schoolId, Long classId, String academicYear);

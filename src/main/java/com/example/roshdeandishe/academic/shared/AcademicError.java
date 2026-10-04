@@ -62,6 +62,14 @@ public sealed interface AcademicError {
     record CourseNotGradable(Long courseId) implements AcademicError {
     }
 
+    /** درس در بازه‌ی اعتبارش برای این سالِ تحصیلی ارائه نمی‌شود. */
+    record CourseNotValidForYear(Long courseId, String academicYear) implements AcademicError {
+    }
+
+    /** کاربر فقط سالِ جاریِ مدرسه را می‌بیند (بدونِ ACADEMIC_YEAR_MANAGE) و سالِ دیگری خواسته است. */
+    record AcademicYearNotAllowed(String academicYear) implements AcademicError {
+    }
+
     /** کدِ سال تحصیلی در فهرستِ سراسریِ سال‌ها نیست. */
     record InvalidAcademicYear(String academicYear) implements AcademicError {
     }
@@ -121,5 +129,32 @@ public sealed interface AcademicError {
      * که مقطعش دبستان (پایه‌های ۱ تا ۶) است.
      */
     record InvalidGradeLevel(int gradeLevel, int minGrade, int maxGrade) implements AcademicError {
+    }
+
+    /** مدرسه سالِ جاری ندارد؛ انتسابِ داده‌ی موجود و ارتقا بدون آن معنا ندارد (هیچ سالی حدس زده نمی‌شود). */
+    record YearNotChosen(Long schoolId) implements AcademicError {
+    }
+
+    /** درخواستِ انتساب/ارتقای نامعتبر (سالِ مبدأ بعد از جاری، دانش‌آموزی که ارتقا‌پذیر نیست، ...). */
+    record InvalidRollover(String reason) implements AcademicError {
+    }
+
+    /** کلاس برای سالی است که دانش‌آموز در آن ثبت‌نام می‌شود نیست (فقط مدرسه‌ی دارای سالِ ثبت‌نام‌شده). */
+    record ClassNotInYear(Long classId, String classYear, String expectedYear) implements AcademicError {
+    }
+
+    /** پایه‌ی کلاس با پایه‌ی هدفِ ارتقای دانش‌آموز یکی نیست. */
+    record ClassGradeMismatch(Long classId, int classGrade, int expectedGrade) implements AcademicError {
+    }
+
+    /** سالِ نمره با سالِ کلاس یکی نیست (کلاس به یک سال تعلق دارد). */
+    record GradeYearNotClassYear(Long classId, String classYear, String gradeYear) implements AcademicError {
+    }
+
+    record PromotionRunNotFound(Long runId) implements AcademicError {
+    }
+
+    /** اجرای ارتقا برگشت‌پذیر نیست (برگشته، اجرای جدیدتری هست، یا دانش‌آموزی از آن در کلاس جا داده شده). */
+    record PromotionRunNotUndoable(Long runId, String reason) implements AcademicError {
     }
 }

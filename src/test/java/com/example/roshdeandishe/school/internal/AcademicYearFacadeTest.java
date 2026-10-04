@@ -32,6 +32,7 @@ class AcademicYearFacadeTest {
 
     private SchoolRepository schools;
     private AcademicYearRepository years;
+    private org.springframework.context.ApplicationEventPublisher events;
     private SchoolFacadeImpl facade;
     private SchoolEntity school;
 
@@ -39,7 +40,8 @@ class AcademicYearFacadeTest {
     void setUp() {
         schools = mock(SchoolRepository.class);
         years = mock(AcademicYearRepository.class);
-        facade = new SchoolFacadeImpl(schools, years);
+        events = mock(org.springframework.context.ApplicationEventPublisher.class);
+        facade = new SchoolFacadeImpl(schools, years, events);
         school = new SchoolEntity();
         ReflectionTestUtils.setField(school, "id", 5L);
         when(schools.findById(5L)).thenReturn(Optional.of(school));
@@ -118,5 +120,50 @@ class AcademicYearFacadeTest {
                 .isInstanceOfSatisfying(SchoolException.class, e ->
                         assertThat(e.error()).isEqualTo(new SchoolError.SchoolNotFound(6L)));
         verify(schools, never()).compareAndSetCurrentAcademicYear(any(), any(), any());
+    }
+
+    @Test
+    void changingToAnotherYearPublishesTheChangeWithBothYears() {
+        when(years.findById(2L)).thenReturn(Optional.of(year(2L, "1405-1406", 1405)));
+        when(years.findById(1L)).thenReturn(Optional.of(year(1L, "1404-1405", 1404)));
+        when(schools.compareAndSetCurrentAcademicYear(5L, 1L, 2L)).thenReturn(1);
+
+        facade.setCurrentAcademicYear(SCHOOL, new AcademicYearId(2L), new AcademicYearId(1L));
+
+        verify(events).publishEvent(new com.example.roshdeandishe.school.CurrentAcademicYearChangedEvent(
+                5L, "1404-1405", 1404, "1405-1406", 1405));
+    }
+
+    @Test
+    void theFirstChoiceAndAChoiceOfTheSameYearPublishNothing() {
+        when(years.findById(2L)).thenReturn(Optional.of(year(2L, "1405-1406", 1405)));
+        when(schools.compareAndSetCurrentAcademicYear(5L, null, 2L)).thenReturn(1);
+        when(schools.compareAndSetCurrentAcademicYear(5L, 2L, 2L)).thenReturn(1);
+
+        facade.setCurrentAcademicYear(SCHOOL, new AcademicYearId(2L), null);
+        facade.setCurrentAcademicYear(SCHOOL, new AcademicYearId(2L), new AcademicYearId(2L));
+
+        verify(events, never()).publishEvent(any(Object.class));
+    }
+
+    @Test
+    void aRejectedChangePublishesNothing() {
+        when(years.findById(2L)).thenReturn(Optional.of(year(2L, "1405-1406", 1405)));
+        when(schools.compareAndSetCurrentAcademicYear(5L, 1L, 2L)).thenReturn(0);
+
+        assertThatThrownBy(() -> facade.setCurrentAcademicYear(SCHOOL, new AcademicYearId(2L), new AcademicYearId(1L)))
+                .isInstanceOf(SchoolException.class);
+
+        verify(events, never()).publishEvent(any(Object.class));
+    }
+
+    @Test
+    void autoPromotionIsOffUntilTheSchoolTurnsItOn() {
+        assertThat(facade.isAutoPromotion(SCHOOL)).isFalse();
+
+        facade.setAutoPromotion(SCHOOL, true);
+
+        assertThat(facade.isAutoPromotion(SCHOOL)).isTrue();
+        verify(schools).save(school);
     }
 }

@@ -9,6 +9,12 @@ document.addEventListener('alpine:init', () => {
         // نمی‌شود (وگرنه «هنوز سالی انتخاب نشده» گمراه‌کننده می‌شد)
         loaded: false,
         saving: false,
+        // ارتقای خودکار هنگام تعویضِ سال (academic-year.md فاز ۳) و داده‌ی موجودی که هنوز به سالی نسبت داده نشده
+        autoPromotion: false,
+        autoSaving: false,
+        unattributed: { classes: 0, students: 0 },
+        attributeYear: '',
+        attributing: false,
         blocked: false,
         error: '',
         notice: '',
@@ -68,6 +74,112 @@ document.addEventListener('alpine:init', () => {
             this.current = settings.current;
             this.years = settings.years;
             this.selectedId = settings.current ? settings.current.id : '';
+            this.autoPromotion = !!settings.autoPromotion;
+            this.loadUnattributed();
+        },
+
+        // سال‌هایی که داده‌ی موجود را می‌شود به آن‌ها نسبت داد: تا سالِ جاری (نه بعد از آن)
+        get attributableYears() {
+            if (!this.current) {
+                return [];
+            }
+            const index = this.years.findIndex(y => y.id === this.current.id);
+            return index < 0 ? [] : this.years.slice(0, index + 1);
+        },
+
+        hasUnattributed() {
+            return !!this.current && (this.unattributed.classes > 0 || this.unattributed.students > 0);
+        },
+
+        // بهترین تلاش: مدرسه‌ای که ماژول آموزشی را ندارد 403 می‌گیرد و فقط بنر نمی‌آید
+        async loadUnattributed() {
+            const schoolId = this.schoolId;
+            this.unattributed = { classes: 0, students: 0 };
+            if (!this.current) {
+                return;
+            }
+            try {
+                const response = await fetch(`/api/admin/schools/${schoolId}/academic-year/unattributed`,
+                    { headers: { 'X-School-ID': schoolId } });
+                if (response.ok && schoolId === this.schoolId) {
+                    this.unattributed = await response.json();
+                }
+            } catch (e) {
+                // بنر اختیاری است
+            }
+        },
+
+        async attribute() {
+            if (!this.attributeYear || this.attributing) {
+                return;
+            }
+            const schoolId = this.schoolId;
+            this.attributing = true;
+            this.error = '';
+            this.notice = '';
+            try {
+                const response = await fetch(`/api/admin/schools/${schoolId}/academic-year/attribution`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-School-ID': schoolId,
+                        'X-XSRF-TOKEN': this.csrfToken()
+                    },
+                    body: JSON.stringify({ academicYear: this.attributeYear })
+                });
+                if (schoolId !== this.schoolId) {
+                    return;
+                }
+                if (!response.ok) {
+                    this.error = (await this.classifyError(response)).message;
+                    return;
+                }
+                const result = await response.json();
+                this.notice = `کلاس‌ها و دانش‌آموزان قبلی به سال ${Calendar.digits(result.academicYear)} نسبت داده شد `
+                    + `(${Calendar.digits(String(result.classes))} کلاس، ${Calendar.digits(String(result.students))} دانش‌آموز).`;
+                this.attributeYear = '';
+                await this.loadUnattributed();
+            } catch (e) {
+                this.error = 'ارتباط با سرور برقرار نشد.';
+            } finally {
+                this.attributing = false;
+            }
+        },
+
+        async setAutoPromotion(enabled) {
+            const schoolId = this.schoolId;
+            this.autoSaving = true;
+            this.error = '';
+            this.notice = '';
+            try {
+                const response = await fetch(`/api/admin/schools/${schoolId}/academic-year/auto-promotion`, {
+                    method: 'PUT',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-School-ID': schoolId,
+                        'X-XSRF-TOKEN': this.csrfToken()
+                    },
+                    body: JSON.stringify({ enabled })
+                });
+                if (schoolId !== this.schoolId) {
+                    return;
+                }
+                if (!response.ok) {
+                    this.autoPromotion = !enabled; // سرور نپذیرفت؛ انتخابگر به حالت قبل برمی‌گردد
+                    this.error = (await this.classifyError(response)).message;
+                    return;
+                }
+                const settings = await response.json();
+                this.autoPromotion = !!settings.autoPromotion;
+                this.notice = this.autoPromotion
+                    ? 'ارتقای خودکار روشن شد؛ از تعویض بعدیِ سال اثر می‌کند.'
+                    : 'ارتقای خودکار خاموش شد.';
+            } catch (e) {
+                this.autoPromotion = !enabled;
+                this.error = 'ارتباط با سرور برقرار نشد.';
+            } finally {
+                this.autoSaving = false;
+            }
         },
 
         // فهرستِ همه‌ی سال‌ها فقط برای مدیر است (ACADEMIC_YEAR_MANAGE)؛ بقیه‌ی
@@ -85,6 +197,9 @@ document.addEventListener('alpine:init', () => {
             this.current = null;
             this.years = [];
             this.selectedId = '';
+            this.autoPromotion = false;
+            this.unattributed = { classes: 0, students: 0 };
+            this.attributeYear = '';
             try {
                 const response = await fetch(`/api/admin/schools/${this.schoolId}/academic-year`, {
                     headers: { 'X-School-ID': this.schoolId }

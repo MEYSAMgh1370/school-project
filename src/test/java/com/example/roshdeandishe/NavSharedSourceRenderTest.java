@@ -200,4 +200,25 @@ class NavSharedSourceRenderTest {
         assertThat(html).contains("columns is-multiline is-mobile");
         assertThat(html).contains("is-6-mobile");
     }
+
+    @Test
+    void theNavbarAndTheDashboardShowTheSelectedSchoolsCurrentYearInPersianDigits() {
+        NavbarModel navbar = new NavbarModel("سارا", List.of(
+                new NavbarModel.SchoolOption(1L, "مدرسه‌ی یک", List.of("SCHOOL_ADMIN"), Map.of(),
+                        com.example.roshdeandishe.school.SchoolFacade.WeekStart.SATURDAY, "1405-1406"),
+                new NavbarModel.SchoolOption(2L, "مدرسه‌ی دو", List.of("SCHOOL_ADMIN"))));
+
+        String sidebar = render("layout/navbar.jte", Map.of("navbar", navbar));
+        String dashboard = render("dashboard.jte", Map.of("model", dashboardModel(), "navbar", navbar));
+
+        assertThat(navbar.schools().get(0).currentYearDisplay()).isEqualTo("۱۴۰۵-۱۴۰۶");
+        assertThat(navbar.schools().get(1).currentYearDisplay()).isNull();
+        // فقط مدرسه‌ای که سالِ جاری دارد برچسب می‌گیرد
+        assertThat(sidebar.split("app-year-tag", -1).length - 1).isEqualTo(1);
+        assertThat(sidebar).contains("۱۴۰۵-۱۴۰۶");
+        assertThat(HtmlUtils.htmlUnescape(dashboard))
+                .contains("x-show=\"$store.nav.selectedSchoolId === 1\"")
+                .contains("سال تحصیلی جاری: <span dir=\"ltr\">۱۴۰۵-۱۴۰۶</span>")
+                .doesNotContain("$store.nav.selectedSchoolId === 2");
+    }
 }

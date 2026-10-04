@@ -34,4 +34,20 @@ class CourseEntity {
      */
     @Column(nullable = false)
     private boolean graded = true;
+
+    /**
+     * بازه‌ی اعتبار به «سالِ شروعِ» سال تحصیلی (1404 برای 1404-1405)، هر دو سر شامل؛ خالی = بدون محدودیت
+     * (openspec/changes/academic-year.md فاز ۱). مقدارها را مهاجرتِ داده می‌گذارد، نه برنامه.
+     */
+    @Column(name = "valid_from_year")
+    private Integer validFromYear;
+
+    @Column(name = "valid_until_year")
+    private Integer validUntilYear;
+
+    /** آیا درس برای سالِ تحصیلیِ با این سالِ شروع ارائه می‌شود؟ */
+    boolean isOfferedIn(int startYear) {
+        return (validFromYear == null || validFromYear <= startYear)
+                && (validUntilYear == null || startYear <= validUntilYear);
+    }
 }

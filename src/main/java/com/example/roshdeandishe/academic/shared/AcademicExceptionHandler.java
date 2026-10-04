@@ -75,6 +75,16 @@ public class AcademicExceptionHandler {
                     "درس مربوط به پایه‌ی این کلاس نیست",
                     "درس " + e.courseId() + " برای پایه‌ی کلاس " + e.classId() + " تعریف نشده است."
             );
+            case AcademicError.AcademicYearNotAllowed e -> ProblemDetailFactory.problem(
+                    HttpStatus.FORBIDDEN, "academic-year-not-allowed",
+                    "دسترسی به این سال تحصیلی مجاز نیست",
+                    "فقط مدیر مدرسه سال‌های غیرجاری را می‌بیند؛ سالِ «" + e.academicYear() + "» جاری نیست."
+            );
+            case AcademicError.CourseNotValidForYear e -> ProblemDetailFactory.problem(
+                    HttpStatus.BAD_REQUEST, "course-not-valid-for-year",
+                    "این درس در این سال تحصیلی ارائه نمی‌شود",
+                    "درس " + e.courseId() + " برای سال «" + e.academicYear() + "» معتبر نیست."
+            );
             case AcademicError.CourseNotGradable e -> ProblemDetailFactory.problem(
                     HttpStatus.BAD_REQUEST, "course-not-gradable",
                     "این درس در کارنامه نمی‌آید",
@@ -84,6 +94,41 @@ public class AcademicExceptionHandler {
                     HttpStatus.BAD_REQUEST, "invalid-academic-year",
                     "سال تحصیلی نامعتبر است",
                     "سال تحصیلی «" + e.academicYear() + "» در فهرست سال‌ها نیست."
+            );
+            case AcademicError.YearNotChosen e -> ProblemDetailFactory.problem(
+                    HttpStatus.CONFLICT, "year-not-chosen",
+                    "سال تحصیلی جاری انتخاب نشده است",
+                    "اول در صفحه‌ی «سال تحصیلی» سالِ جاری مدرسه را انتخاب کنید."
+            );
+            case AcademicError.InvalidRollover e -> ProblemDetailFactory.problem(
+                    HttpStatus.BAD_REQUEST, "invalid-rollover",
+                    "درخواست ارتقا یا انتساب نامعتبر است",
+                    e.reason()
+            );
+            case AcademicError.ClassNotInYear e -> ProblemDetailFactory.problem(
+                    HttpStatus.CONFLICT, "class-not-in-year",
+                    "کلاس برای سال دیگری است",
+                    "کلاس " + e.classId() + " برای سال «" + e.classYear() + "» است؛ کلاسی از سال «" + e.expectedYear() + "» انتخاب کنید."
+            );
+            case AcademicError.ClassGradeMismatch e -> ProblemDetailFactory.problem(
+                    HttpStatus.CONFLICT, "class-grade-mismatch",
+                    "پایه‌ی کلاس با پایه‌ی دانش‌آموز نمی‌خواند",
+                    "کلاس " + e.classId() + " پایه‌ی " + e.classGrade() + " است ولی این دانش‌آموز پایه‌ی " + e.expectedGrade() + " می‌شود."
+            );
+            case AcademicError.GradeYearNotClassYear e -> ProblemDetailFactory.problem(
+                    HttpStatus.BAD_REQUEST, "grade-year-not-class-year",
+                    "سالِ نمره با سالِ کلاس یکی نیست",
+                    "کلاس " + e.classId() + " برای سال «" + e.classYear() + "» است؛ نمره‌ی سالِ «" + e.gradeYear() + "» در آن ثبت نمی‌شود."
+            );
+            case AcademicError.PromotionRunNotFound e -> ProblemDetailFactory.problem(
+                    HttpStatus.NOT_FOUND, "promotion-run-not-found",
+                    "اجرای ارتقا یافت نشد",
+                    "اجرای ارتقای " + e.runId() + " یافت نشد."
+            );
+            case AcademicError.PromotionRunNotUndoable e -> ProblemDetailFactory.problem(
+                    HttpStatus.CONFLICT, "promotion-run-not-undoable",
+                    "این اجرای ارتقا برگشت‌پذیر نیست",
+                    e.reason()
             );
             case AcademicError.PeriodNotFound e -> ProblemDetailFactory.problem(
                     HttpStatus.NOT_FOUND, "period-not-found",

@@ -85,6 +85,14 @@ public interface SchoolFacade {
      */
     void setCurrentAcademicYear(SchoolId schoolId, AcademicYearId academicYearId, AcademicYearId expectedCurrent);
 
+    /**
+     * آیا با تعویضِ سالِ جاری به یک سالِ بعدی، دانش‌آموزان خودکار ارتقا می‌یابند
+     * (academic-year.md فاز ۳)؛ پیش‌فرض خاموش. SchoolError.SchoolNotFound اگر مدرسه نباشد.
+     */
+    boolean isAutoPromotion(SchoolId schoolId);
+
+    void setAutoPromotion(SchoolId schoolId, boolean enabled);
+
     record SchoolId(Long value) {
     }
 

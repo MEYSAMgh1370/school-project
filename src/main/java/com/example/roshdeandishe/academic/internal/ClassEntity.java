@@ -59,6 +59,19 @@ class ClassEntity {
     @Column(name = "grading_scheme", length = 16)
     private GradingScheme gradingScheme;
 
+    /**
+     * کدِ canonical سالی که کلاس به آن تعلق دارد («1405-1406»)؛ تهی = به سالی نسبت داده نشده
+     * (academic-year.md فاز ۳). پس از ساخت عوض نمی‌شود، جز با «انتساب داده‌ی موجود».
+     */
+    @Column(name = "academic_year", length = 16)
+    private String academicYear;
+
+    ClassEntity(Long schoolId, String name, Long teacherId, String section, int gradeLevel, GradingScheme gradingScheme,
+                String academicYear) {
+        this(schoolId, name, teacherId, section, gradeLevel, gradingScheme);
+        this.academicYear = academicYear;
+    }
+
     ClassEntity(Long schoolId, String name, Long teacherId, String section, int gradeLevel, GradingScheme gradingScheme) {
         this.schoolId = schoolId;
         this.name = name;

@@ -27,10 +27,13 @@ public class MyGradesController {
 
     private final AcademicFacade academicFacade;
     private final IamFacade iamFacade;
+    private final AcademicYearVisibility yearVisibility;
 
-    public MyGradesController(AcademicFacade academicFacade, IamFacade iamFacade) {
+    public MyGradesController(AcademicFacade academicFacade, IamFacade iamFacade,
+                              AcademicYearVisibility yearVisibility) {
         this.academicFacade = academicFacade;
         this.iamFacade = iamFacade;
+        this.yearVisibility = yearVisibility;
     }
 
     @GetMapping("/api/me/schools/{schoolId}/grades")
@@ -53,7 +56,11 @@ public class MyGradesController {
             return List.of();
         }
 
+        // غیرِ مدیر فقط نمره‌های سالِ جاریِ مدرسه را می‌بیند (academic-year.md فاز ۱، تصمیم ۵: کارنامه‌ی
+        // سال‌های قبل را مدیر می‌دهد)؛ مدرسه‌ی بدونِ سالِ جاری محدود نمی‌شود
+        java.util.Optional<String> onlyYear = yearVisibility.restrictedYear(schoolId);
         return academicFacade.listGradesForStudents(schoolId, studentIds).stream()
+                .filter(grade -> onlyYear.isEmpty() || onlyYear.get().equals(grade.academicYear()))
                 .map(MyGradeResponse::from)
                 .toList();
     }
