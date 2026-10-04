@@ -7,7 +7,7 @@ import com.example.roshdeandishe.studyplan.StudyPlanFacade;
 import com.example.roshdeandishe.studyplan.StudyPlanFacade.ScheduleInfo;
 import com.example.roshdeandishe.studyplan.StudyPlanFacade.TimeRange;
 import com.example.roshdeandishe.studyplan.StudyPlanFacade.Weekday;
-import com.example.roshdeandishe.studyplan.dto.ScheduleResponse;
+import com.example.roshdeandishe.studyplan.dto.response.ScheduleResponse;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.Map;

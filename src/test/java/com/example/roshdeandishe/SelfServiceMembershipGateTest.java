@@ -94,7 +94,7 @@ class SelfServiceMembershipGateTest {
 
         assertThat(controller.getWeek(SCHOOL, null)).isEmpty();
         assertThatThrownBy(() -> controller.updateInterval(SCHOOL, 1L,
-                new com.example.roshdeandishe.studyplan.dto.UpdateMyIntervalRequest(true, null)))
+                new com.example.roshdeandishe.studyplan.dto.request.UpdateMyIntervalRequest(true, null)))
                 .isInstanceOf(StudyPlanException.class);
 
         verifyNoInteractions(academic, plans);

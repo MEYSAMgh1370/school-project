@@ -6,8 +6,8 @@ import com.example.roshdeandishe.platform.TenantContext;
 import com.example.roshdeandishe.studyplan.StudyPlanFacade;
 import com.example.roshdeandishe.studyplan.StudyPlanFacade.WeekCourseId;
 import com.example.roshdeandishe.studyplan.StudyPlanFacade.WeekCourseInfo;
-import com.example.roshdeandishe.studyplan.dto.CreateWeekCourseRequest;
-import com.example.roshdeandishe.studyplan.dto.WeekCourseResponse;
+import com.example.roshdeandishe.studyplan.dto.request.CreateWeekCourseRequest;
+import com.example.roshdeandishe.studyplan.dto.response.WeekCourseResponse;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
