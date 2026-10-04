@@ -466,7 +466,7 @@ class AcademicRolloverFlowIntegrationTest {
     // ---- نمره ----
 
     @Test
-    void aGradeMustMatchTheClassYearAndAnAdminCanStillCorrectAnEarlierYearInTheOldClass() throws Exception {
+    void gradesNeedAnEnrollmentInTheClassButNotAMatchingYearAndAnAdminCanStillCorrectAnEarlierYearInTheOldClass() throws Exception {
         Setup x = schoolReadyToPromote();
         School s = x.school();
         adminPost(s, "/promotion", "{\"fromYear\":\"" + OLD + "\"}").andExpect(status().isOk());
@@ -474,9 +474,8 @@ class AcademicRolloverFlowIntegrationTest {
         adminPost(s, "/promotion/placements", "{\"placements\":[{\"studentId\":" + x.a().studentId() + ",\"classId\":" + new6 + "}]}")
                 .andExpect(status().isOk());
 
-        // کلاسِ ۱۴۰۵-۱۴۰۶: نمره‌ی سالِ قبل در آن نمی‌نشیند
-        adminPost(s, "/grades", grade(x.a().studentId(), new6, OLD)).andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.type").value(org.hamcrest.Matchers.endsWith("grade-year-not-class-year")));
+        // نمره‌ها جدی گرفته نمی‌شوند (سامانه‌ی رسمی نمره‌ی آموزش و پرورش است): سالِ نمره با سالِ کلاس هم‌خوانی اجباری ندارد
+        adminPost(s, "/grades", grade(x.a().studentId(), new6, OLD)).andExpect(status().isOk());
         adminPost(s, "/grades", grade(x.a().studentId(), new6, CURRENT)).andExpect(status().isOk());
         // اصلاحِ نمره‌ی سالِ قبل در کلاسِ سالِ قبل (دانش‌آموز دیگر در آن کلاس نیست ولی ثبت‌نامش را داشته)
         adminPost(s, "/grades", grade(x.a().studentId(), x.class5(), OLD)).andExpect(status().isOk());

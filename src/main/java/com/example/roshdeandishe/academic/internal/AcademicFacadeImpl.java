@@ -237,11 +237,6 @@ class AcademicFacadeImpl implements AcademicFacade {
         // سال کلید است: یک شکل canonical و حتماً از فهرستِ سال‌ها (academic-year.md فاز ۱)
         academicYear = AcademicYearCodes.canonical(academicYear);
         int startYear = requireListedYear(academicYear);
-        // کلاس به یک سال تعلق دارد (academic-year.md فاز ۳): نمره‌ی سالِ دیگری در آن ثبت نمی‌شود؛ کلاسِ بدون سال مثل قبل
-        if (classEntity.getAcademicYear() != null && !classEntity.getAcademicYear().equals(academicYear)) {
-            throw new AcademicException(new AcademicError.GradeYearNotClassYear(
-                    classId, classEntity.getAcademicYear(), academicYear));
-        }
         if (courseId != null) {
             // بازه‌ی اعتبارِ درس به سالِ نمره (academic-year.md فاز ۱)؛ وجودِ درس پیش‌تر بررسی شده
             CourseEntity course = courseRepository.findById(courseId).orElseThrow();

@@ -106,9 +106,6 @@ class AcademicYearVisibilityFlowIntegrationTest {
     @Test
     void onlyTheYearPermissionHolderSeesOtherYearsAndTheSchoolWithoutACurrentYearIsUnrestricted() throws Exception {
         MockHttpSession admin = login("admin@roshdeandishe.test", "password");
-        // مدرسه‌ی ۱ بین تست‌ها مشترک است: سالِ جاری پیش از ساختنِ کلاس پاک می‌شود، وگرنه کلاس به سالِ جاریِ تستِ قبلی
-        // تعلق می‌گرفت و نمره‌ی سالِ دیگر در آن رد می‌شد (academic-year.md فاز ۳)
-        clearCurrentYear();
         long classId = createClass(admin, "پایه پنجم - دید سال");
         String studentEmail = unique("yr.student");
         MockHttpSession student = registerAndLogin(studentEmail, "دانش‌آموز سال");
@@ -116,6 +113,7 @@ class AcademicYearVisibilityFlowIntegrationTest {
         String teacherEmail = unique("yr.teacher");
         MockHttpSession teacher = registerAndLogin(teacherEmail, "معلم سال");
         membership(admin, teacherEmail, "معلم سال", "TEACHER");
+        clearCurrentYear();
         try {
             // بدونِ سالِ جاری هیچ‌کس محدود نیست
             recordGrade(teacher, studentId, classId, OLD, 200);

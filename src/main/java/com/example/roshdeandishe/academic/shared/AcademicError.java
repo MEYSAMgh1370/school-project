@@ -147,10 +147,6 @@ public sealed interface AcademicError {
     record ClassGradeMismatch(Long classId, int classGrade, int expectedGrade) implements AcademicError {
     }
 
-    /** سالِ نمره با سالِ کلاس یکی نیست (کلاس به یک سال تعلق دارد). */
-    record GradeYearNotClassYear(Long classId, String classYear, String gradeYear) implements AcademicError {
-    }
-
     record PromotionRunNotFound(Long runId) implements AcademicError {
     }
 

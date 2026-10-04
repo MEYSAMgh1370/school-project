@@ -115,11 +115,6 @@ public class AcademicExceptionHandler {
                     "پایه‌ی کلاس با پایه‌ی دانش‌آموز نمی‌خواند",
                     "کلاس " + e.classId() + " پایه‌ی " + e.classGrade() + " است ولی این دانش‌آموز پایه‌ی " + e.expectedGrade() + " می‌شود."
             );
-            case AcademicError.GradeYearNotClassYear e -> ProblemDetailFactory.problem(
-                    HttpStatus.BAD_REQUEST, "grade-year-not-class-year",
-                    "سالِ نمره با سالِ کلاس یکی نیست",
-                    "کلاس " + e.classId() + " برای سال «" + e.classYear() + "» است؛ نمره‌ی سالِ «" + e.gradeYear() + "» در آن ثبت نمی‌شود."
-            );
             case AcademicError.PromotionRunNotFound e -> ProblemDetailFactory.problem(
                     HttpStatus.NOT_FOUND, "promotion-run-not-found",
                     "اجرای ارتقا یافت نشد",
