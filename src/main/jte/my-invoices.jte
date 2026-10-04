@@ -40,7 +40,12 @@
                     <tbody>
                     <template x-for="invoice in visibleInvoices()" :key="invoice.id">
                         <tr>
-                            <td>دانش‌آموز #<span x-text="invoice.studentId"></span></td>
+                            <td>
+                                دانش‌آموز #<span x-text="invoice.studentId"></span>
+                                <%-- سالِ فاکتور: فاکتورِ مانده‌دارِ سال‌های قبل هم در این فهرست می‌آید --%>
+                                <span class="tag is-light" dir="ltr" x-show="invoice.academicYear"
+                                      x-text="invoice.academicYear ? Calendar.digits(invoice.academicYear) : ''"></span>
+                            </td>
                             <td x-text="Money.formatAmount(invoice.amount)"></td>
                             <td x-text="Money.formatAmount(invoice.amountPaid)"></td>
                             <td x-text="Money.formatAmount(invoice.amount - invoice.amountPaid)"></td>

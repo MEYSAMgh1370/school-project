@@ -77,6 +77,8 @@ Answers to the first unresolved questions (numbering is the one the questions ha
 - **Leaving (decided 2026-10-03).** A student who moves to another school is marked as
   *leaving*: removed from the school's list for the next year, membership deactivated,
   nothing deleted.
+- **Phase 2 - a family sees an earlier year's invoice while it has a balance (decided
+  2026-10-03).** A debt is never hidden; a settled earlier invoice is.
 - **Phase 1 - a school without a current year (decided 2026-10-03, option c).** Not
   restricted until it chooses a year; the page warns the admin before the first choice.
 - **Withdrawn / deferred (2026-10-03).** Identity data that outlives one school and
@@ -368,10 +370,11 @@ be overturned.
    admin) see any year - they need earlier years' invoices to record payments (Q3), which is
    a narrowing of "only whoever holds `ACADEMIC_YEAR_MANAGE`" for administrative finance
    endpoints. Self-service `/api/me/schools/{id}/invoices` (and the dashboard's per-child
-   counts) return the **current year's** invoices plus unattributed (`NULL`) ones;
-   earlier years' invoices are hidden from families (decision Q5). *Open:* should a family
-   see an earlier year's invoice that still has a balance (proposed: yes, so a debt is
-   never hidden)? Not built.
+   counts) return the **current year's** invoices plus unattributed (`NULL`) ones, **and
+   an earlier year's invoice while it still has a balance** (decided 2026-10-03, the
+   proposal accepted: a debt must never be hidden from the family; a settled earlier
+   invoice is hidden, decision Q5). Each invoice carries its year so the family can tell an
+   old debt from the current one.
 8. **Not in phase 2:** classes/enrollments per year and promotion (phase 3), invoice
    history of tuition amounts, per-grade tuition, discounts.
 
@@ -443,8 +446,8 @@ Phase 2 (met 2026-10-03):
 - Existing year-less tuition and invoices are attributed to one year by an explicit action
   (transactional; refused when it would duplicate that year's tuition or a student's invoice);
   the backfill for a specific year is refused until then.
-- A family (and the dashboard counts, and the Bale bot) sees only the current year's invoices
-  plus unattributed ones.
+- A family (and the dashboard counts, and the Bale bot) sees the current year's invoices,
+  unattributed ones, and an earlier year's invoice only while it has a balance.
 
 Phase 3 (not built): classes/enrollments per year and promotion.
 

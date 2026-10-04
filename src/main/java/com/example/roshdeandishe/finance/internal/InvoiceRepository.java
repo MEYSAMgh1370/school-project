@@ -25,9 +25,14 @@ interface InvoiceRepository extends JpaRepository<InvoiceEntity, Long> {
     List<InvoiceEntity> findForYearOrUnattributed(@Param("schoolId") Long schoolId,
                                                   @Param("academicYear") String academicYear);
 
-    /** همان، برای زیرمجموعه‌ای از دانش‌آموزان (دیدِ خانواده). */
+    /**
+     * همان، برای زیرمجموعه‌ای از دانش‌آموزان (دیدِ خانواده): سالِ جاری، «بدون سال»، و فاکتورِ سال‌های
+     * <b>قبل</b> که هنوز مانده دارد - بدهی نباید از خانواده پنهان بماند (academic-year.md فاز ۲). مقایسه‌ی
+     * «قبل» با ترتیبِ حروفِ کدِ canonical درست است («1404-1405» &lt; «1405-1406»).
+     */
     @Query("select i from InvoiceEntity i where i.schoolId = :schoolId and i.studentId in :studentIds "
-            + "and (i.academicYear = :academicYear or i.academicYear is null) order by i.issuedAt desc")
+            + "and (i.academicYear = :academicYear or i.academicYear is null "
+            + "or (i.academicYear < :academicYear and i.amountPaid < i.amount)) order by i.issuedAt desc")
     List<InvoiceEntity> findForStudentsInYearOrUnattributed(@Param("schoolId") Long schoolId,
                                                             @Param("studentIds") Collection<Long> studentIds,
                                                             @Param("academicYear") String academicYear);

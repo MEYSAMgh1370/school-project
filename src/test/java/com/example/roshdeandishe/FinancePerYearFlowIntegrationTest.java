@@ -124,6 +124,32 @@ class FinancePerYearFlowIntegrationTest {
         return send(f, post("/api/admin/schools/" + f.schoolId() + "/invoices/backfill" + query), null);
     }
 
+    /**
+     * «صدورِ فاکتورهای سال» تا وقتی هر دانش‌آموز دقیقاً یک فاکتور برای آن سال دارد، و بعد idempotent است. رویدادِ
+     * ثبت‌نام ناهمگام اجرا می‌شود و ممکن است بعد از ثبتِ شهریه فاکتور بسازد؛ پس به‌جای «چه کسی صادر کرد»
+     * وضعیتِ نهایی سنجیده می‌شود. سالِ تهی = مدرسه‌ای که سالِ جاری ندارد (همه‌ی فاکتورها).
+     */
+    private void ensureInvoiced(Fixture f, String year, int expectedTotal) throws Exception {
+        backfill(f, year).andExpect(status().isOk());
+        int count = -1;
+        for (int attempt = 0; attempt < 50; attempt++) {
+            count = 0;
+            for (JsonNode invoice : json(getAdmin(f, "/invoices" + (year == null ? "" : "?academicYear=" + year))
+                    .andExpect(status().isOk()))) {
+                if (year == null || (!invoice.get("academicYear").isNull()
+                        && year.equals(invoice.get("academicYear").asText()))) {
+                    count++;
+                }
+            }
+            if (count == expectedTotal) {
+                break;
+            }
+            Thread.sleep(100);
+        }
+        assertThat(count).as("invoices of " + year).isEqualTo(expectedTotal);
+        backfill(f, year).andExpect(status().isOk()).andExpect(jsonPath("$.issuedCount").value(0));
+    }
+
     private int invoiceCount(Fixture f, String year, String expectedYearOrNull, boolean expectAllThatYear) throws Exception {
         String query = year == null ? "" : "?academicYear=" + year;
         JsonNode list = json(getAdmin(f, "/invoices" + query).andExpect(status().isOk()));
@@ -146,8 +172,7 @@ class FinancePerYearFlowIntegrationTest {
 
         setTuition(f, null, 100).andExpect(status().isOk()).andExpect(jsonPath("$.academicYear").doesNotExist());
         getAdmin(f, "/tuition-fee").andExpect(status().isOk()).andExpect(jsonPath("$.amount").value(100));
-        backfill(f, null).andExpect(status().isOk()).andExpect(jsonPath("$.issuedCount").value(2));
-        backfill(f, null).andExpect(status().isOk()).andExpect(jsonPath("$.issuedCount").value(0));
+        ensureInvoiced(f, null, 2);
         assertThat(invoiceCount(f, null, null, true)).isEqualTo(2);
         getAdmin(f, "/finance/unattributed").andExpect(status().isOk())
                 .andExpect(jsonPath("$.tuitionFee").value(true)).andExpect(jsonPath("$.invoices").value(2));
@@ -171,9 +196,8 @@ class FinancePerYearFlowIntegrationTest {
         getAdmin(f, "/tuition-fee?academicYear=" + OLD).andExpect(jsonPath("$.amount").value(80));
 
         // «صدورِ فاکتورهای سال» به مبلغ همان سال و مستقل برای هر سال
-        backfill(f, null).andExpect(jsonPath("$.issuedCount").value(2));
-        backfill(f, null).andExpect(jsonPath("$.issuedCount").value(0));
-        backfill(f, OLD).andExpect(jsonPath("$.issuedCount").value(2));
+        ensureInvoiced(f, CURRENT, 2);
+        ensureInvoiced(f, OLD, 2);
         JsonNode oldInvoices = json(getAdmin(f, "/invoices?academicYear=" + OLD).andExpect(status().isOk()));
         assertThat(oldInvoices).hasSize(2);
         oldInvoices.forEach(invoice -> {
@@ -217,7 +241,7 @@ class FinancePerYearFlowIntegrationTest {
         enroll(f, unique("fy.l1"), "قدیمی یک");
         enroll(f, unique("fy.l2"), "قدیمی دو");
         setTuition(f, null, 100).andExpect(status().isOk());
-        backfill(f, null).andExpect(jsonPath("$.issuedCount").value(2));
+        ensureInvoiced(f, null, 2);
 
         // مدیر سال جاری را انتخاب می‌کند و شهریه‌ی همان سال را می‌گذارد؛ هنوز فاکتورِ «بدون سال» هست
         setCurrentYear(f, CURRENT);
@@ -244,31 +268,31 @@ class FinancePerYearFlowIntegrationTest {
         assertThat(invoiceCount(f, OLD, OLD, true)).isEqualTo(2);
 
         // حالا سالِ جاری فاکتورهای خودش را می‌گیرد (به مبلغ ۱۵۰) و دوباره نسبت دادن چیزی تغییر نمی‌دهد
-        backfill(f, null).andExpect(jsonPath("$.issuedCount").value(2));
+        ensureInvoiced(f, CURRENT, 2);
         send(f, post("/api/admin/schools/" + f.schoolId() + "/finance/attribute-year"),
                 "{\"academicYear\":\"" + OLD + "\"}").andExpect(status().isOk())
                 .andExpect(jsonPath("$.tuitionAttributed").value(false)).andExpect(jsonPath("$.invoicesAttributed").value(0));
     }
 
     @Test
-    void familiesSeeOnlyTheCurrentYearButAnEarlierYearsInvoiceStaysPayable() throws Exception {
+    void aFamilySeesTheCurrentYearAndAnEarlierYearsInvoiceOnlyWhileItHasABalance() throws Exception {
         Fixture f = newSchool();
         setCurrentYear(f, CURRENT);
         MockHttpSession student = enroll(f, unique("fy.fam"), "دانش‌آموز خانواده");
         setTuition(f, OLD, 80).andExpect(status().isOk());
         setTuition(f, null, 100).andExpect(status().isOk());
-        backfill(f, OLD).andExpect(jsonPath("$.issuedCount").value(1));
-        backfill(f, null).andExpect(jsonPath("$.issuedCount").value(1));
+        ensureInvoiced(f, OLD, 1);
+        ensureInvoiced(f, CURRENT, 1);
 
-        // دانش‌آموز فقط فاکتورِ سالِ جاری را می‌بیند (سال‌های قبل پنهان است)
+        // سالِ جاری + فاکتورِ مانده‌دارِ سالِ قبل (بدهی پنهان نمی‌ماند)، هر دو با سالِ خودشان
         mockMvc.perform(get("/api/me/schools/" + f.schoolId() + "/invoices").session(student))
-                .andExpect(status().isOk()).andExpect(jsonPath("$.length()").value(1))
-                .andExpect(jsonPath("$[0].amount").value(100));
+                .andExpect(status().isOk()).andExpect(jsonPath("$.length()").value(2))
+                .andExpect(jsonPath("$[?(@.academicYear == '" + OLD + "')]").exists())
+                .andExpect(jsonPath("$[?(@.academicYear == '" + CURRENT + "')]").exists());
 
-        // ولی مدیر مالی فاکتورِ سالِ قبل را می‌بیند و پرداخت روی آن ثبت می‌شود (تصمیم Q3)
-        JsonNode old = json(getAdmin(f, "/invoices?academicYear=" + OLD).andExpect(status().isOk()));
+        // مدیر مالی فاکتورِ سالِ قبل را می‌بیند و پرداختِ جزئی روی آن ثبت می‌شود (تصمیم Q3)؛ هنوز مانده دارد
         long oldInvoiceId = 0;
-        for (JsonNode invoice : old) {
+        for (JsonNode invoice : json(getAdmin(f, "/invoices?academicYear=" + OLD).andExpect(status().isOk()))) {
             if (OLD.equals(invoice.get("academicYear").asText())) {
                 oldInvoiceId = invoice.get("id").asLong();
             }
@@ -276,11 +300,17 @@ class FinancePerYearFlowIntegrationTest {
         assertThat(oldInvoiceId).isPositive();
         send(f, post("/api/admin/schools/" + f.schoolId() + "/invoices/" + oldInvoiceId + "/payments"),
                 "{\"amount\":30,\"method\":\"CASH\",\"note\":null}").andExpect(status().isOk());
-        JsonNode after = json(getAdmin(f, "/invoices?academicYear=" + OLD).andExpect(status().isOk()));
-        for (JsonNode invoice : after) {
-            if (invoice.get("id").asLong() == oldInvoiceId) {
-                assertThat(invoice.get("amountPaid").decimalValue()).isEqualByComparingTo("30");
-            }
-        }
+        mockMvc.perform(get("/api/me/schools/" + f.schoolId() + "/invoices").session(student))
+                .andExpect(jsonPath("$.length()").value(2));
+
+        // تسویه‌ی کاملِ فاکتورِ سالِ قبل: از دیدِ خانواده پنهان می‌شود؛ مدیر مالی همچنان آن را می‌بیند
+        send(f, post("/api/admin/schools/" + f.schoolId() + "/invoices/" + oldInvoiceId + "/payments"),
+                "{\"amount\":50,\"method\":\"CASH\",\"note\":null}").andExpect(status().isOk());
+        mockMvc.perform(get("/api/me/schools/" + f.schoolId() + "/invoices").session(student))
+                .andExpect(jsonPath("$.length()").value(1))
+                .andExpect(jsonPath("$[0].academicYear").value(CURRENT));
+        JsonNode adminOld = json(getAdmin(f, "/invoices?academicYear=" + OLD).andExpect(status().isOk()));
+        assertThat(adminOld).hasSize(1);
+        assertThat(adminOld.get(0).get("status").asText()).isEqualTo("PAID");
     }
 }
