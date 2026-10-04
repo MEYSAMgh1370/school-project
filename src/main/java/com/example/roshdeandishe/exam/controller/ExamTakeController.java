@@ -4,10 +4,10 @@ import com.example.roshdeandishe.exam.ExamFacade;
 import com.example.roshdeandishe.exam.ExamFacade.ExamTakeInfo;
 import com.example.roshdeandishe.exam.ExamFacade.SectionInfo;
 import com.example.roshdeandishe.exam.ExamFacade.TakeQuestionInfo;
-import com.example.roshdeandishe.exam.dto.ExamTakeResponse;
-import com.example.roshdeandishe.exam.dto.SectionTakeResponse;
-import com.example.roshdeandishe.exam.dto.SubmitRequest;
-import com.example.roshdeandishe.exam.dto.TakeQuestionResponse;
+import com.example.roshdeandishe.exam.dto.response.ExamTakeResponse;
+import com.example.roshdeandishe.exam.dto.response.SectionTakeResponse;
+import com.example.roshdeandishe.exam.dto.request.SubmitRequest;
+import com.example.roshdeandishe.exam.dto.response.TakeQuestionResponse;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;

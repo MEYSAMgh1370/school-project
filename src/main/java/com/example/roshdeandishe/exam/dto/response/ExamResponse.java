@@ -1,4 +1,4 @@
-package com.example.roshdeandishe.exam.dto;
+package com.example.roshdeandishe.exam.dto.response;
 
 import com.example.roshdeandishe.exam.ExamType;
 

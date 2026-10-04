@@ -1,4 +1,4 @@
-package com.example.roshdeandishe.exam.dto;
+package com.example.roshdeandishe.exam.dto.request;
 
 import java.util.List;
 
