@@ -49,6 +49,21 @@ public class SchoolExceptionHandler {
                     "نشانی اختصاصی قبلاً گرفته شده",
                     "نشانی «" + e.slug() + "» قبلاً توسط مدرسه‌ی دیگری ثبت شده است. نشانی دیگری انتخاب کنید."
             );
+            case SchoolError.AcademicYearChanged e -> ProblemDetailFactory.problem(
+                    HttpStatus.CONFLICT, "academic-year-changed",
+                    "سال تحصیلی جاری در این فاصله عوض شده است",
+                    "سال تحصیلیِ جاریِ مدرسه دیگر همان نیست که در صفحه می‌دیدید؛ صفحه را تازه کنید و دوباره انتخاب کنید."
+            );
+            case SchoolError.AcademicYearNotFound e -> ProblemDetailFactory.problem(
+                    HttpStatus.NOT_FOUND, "academic-year-not-found",
+                    "سال تحصیلی یافت نشد",
+                    "سال تحصیلی‌ای با شناسه " + e.academicYearId() + " در فهرست سال‌ها نیست."
+            );
+            case SchoolError.InvalidSetting e -> ProblemDetailFactory.problem(
+                    HttpStatus.BAD_REQUEST, "invalid-setting",
+                    "تنظیم نامعتبر است",
+                    e.reason()
+            );
         };
     }
 }

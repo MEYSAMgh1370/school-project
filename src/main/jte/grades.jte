@@ -2,7 +2,7 @@
 
 @param NavbarModel navbar
 
-@template.layout.main(title = "نمرات", scripts = java.util.List.of("/js/navbar.js", "/js/jalali.js", "/js/member-names.js", "/js/grades.js"), content = @`
+@template.layout.main(title = "نمرات", scripts = java.util.List.of("/js/navbar.js", "/js/jalali.js", "/js/calendar.js", "/js/member-names.js", "/js/grades.js"), content = @`
 @template.layout.navbar(navbar = navbar)
 
 <section class="section" id="main-content" role="main" tabindex="-1" x-data="gradesPage()">
@@ -31,10 +31,35 @@
                                             </select>
                                         </div>
                                     </div>
+                                    <%-- درس: «نمرهٔ کل» (پیش‌فرض، رفتار پیشین) یا یکی از درس‌های سراسریِ
+                                         هم‌پایه‌ی کلاس. با تغییرِ درس پس از بارگذاری، جدول همان‌جا دوباره
+                                         بارگذاری می‌شود تا ردیف‌ها همیشه با درسِ نشان‌داده‌شده یکی باشند. --%>
+                                    <div class="control">
+                                        <label class="label" for="gradeCourse">درس</label>
+                                        <div class="select">
+                                            <select id="gradeCourse" x-model="filter.courseId" :disabled="!filter.classId"
+                                                    aria-describedby="gradeCourseHelp" @change="if (loaded || loading) load()">
+                                                <option value="">نمره‌ی کل</option>
+                                                <template x-for="course in courses" :key="course.id">
+                                                    <option :value="course.id" x-text="course.name"></option>
+                                                </template>
+                                            </select>
+                                        </div>
+                                    </div>
                                     <div class="control">
                                         <label class="label" for="gradeYear">سال تحصیلی</label>
-                                        <input class="input" dir="ltr" id="gradeYear" type="text"
-                                               placeholder="۱۴۰۴-۱۴۰۵" x-model="filter.academicYear" required>
+                                        <%-- مدیر هر سالِ فهرست را می‌بیند؛ بقیه فقط سالِ جاری؛ بدونِ هیچ سالی (مدرسه سال
+                                             جاری ندارد و کاربر مدیر نیست) فیلدِ متنی می‌ماند و سرور سالِ ناشناخته را رد می‌کند --%>
+                                        <div class="select is-fullwidth" x-cloak x-show="years.length > 0">
+                                            <select id="gradeYear" dir="ltr" x-model="filter.academicYear" :disabled="years.length === 0">
+                                                <template x-for="year in years" :key="year">
+                                                    <option :value="year" x-text="year"></option>
+                                                </template>
+                                            </select>
+                                        </div>
+                                        <input class="input" dir="ltr" id="gradeYearText" type="text" aria-label="سال تحصیلی"
+                                               placeholder="۱۴۰۴-۱۴۰۵" x-model="filter.academicYear"
+                                               x-cloak x-show="years.length === 0" :required="years.length === 0">
                                     </div>
                                     <div class="control">
                                         <label class="label" for="gradeTerm">نوبت</label>
@@ -51,6 +76,9 @@
                                         </button>
                                     </div>
                                 </div>
+                                <p class="help" id="gradeCourseHelp" x-show="filter.classId && courses.length === 0">
+                                    برای پایه‌ی این کلاس هنوز درسی تعریف نشده است؛ فقط «نمره‌ی کل» قابل ثبت است.
+                                </p>
                             </form>
                         </div>
 
@@ -64,6 +92,10 @@
 
                                 <template x-if="rosterStudents().length > 0">
                                     <div>
+                                        <p class="mb-3">
+                                            <span class="is-size-7 has-text-grey">نمره‌های:</span>
+                                            <span class="tag is-info is-light" id="gradeCourseLabel" x-text="courseLabel()"></span>
+                                        </p>
                                         <div class="field">
                                             <label class="label is-sr-only" for="gradeStudentSearch">جست‌وجوی نام دانش‌آموز</label>
                                             <div class="control has-icons-start">
@@ -113,7 +145,7 @@
                                                         <input class="input is-small" type="text" x-model="row.comment"
                                                                :aria-label="'نظر برای ' + row.name">
                                                     </td>
-                                                    <td dir="ltr" x-text="row.recordedAt ? new Date(row.recordedAt).toLocaleDateString('fa-IR') : '—'"></td>
+                                                    <td dir="ltr" x-text="row.recordedAt ? Calendar.formatDate(row.recordedAt) : '—'"></td>
                                                     <td>
                                                         <button class="button is-small is-link" type="button" @click="saveGrade(row)"
                                                                 :class="{ 'is-loading': row.saving }">

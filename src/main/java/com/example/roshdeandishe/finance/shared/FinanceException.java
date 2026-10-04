@@ -18,6 +18,10 @@ public final class FinanceException extends RuntimeException {
             case FinanceError.TuitionFeeNotSet e ->
                     "برای مدرسه‌ی با شناسه " + e.schoolId() + " هنوز شهریه‌ای تنظیم نشده است.";
             case FinanceError.InvalidTuitionFee e -> e.reason();
+            case FinanceError.InvalidAcademicYear e -> "سال تحصیلی «" + e.academicYear() + "» در فهرست سال‌ها نیست.";
+            case FinanceError.UnattributedInvoicesExist e ->
+                    "مدرسه‌ی " + e.schoolId() + " فاکتورِ بدون سال دارد؛ اول آن‌ها را به یک سال نسبت دهید.";
+            case FinanceError.AttributionConflict e -> e.reason();
             case FinanceError.InvoiceNotFound e ->
                     "فاکتوری با شناسه " + e.invoiceId() + " در این مدرسه وجود ندارد.";
             case FinanceError.InvalidPaymentAmount e -> e.reason();

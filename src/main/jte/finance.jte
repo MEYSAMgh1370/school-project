@@ -2,7 +2,7 @@
 
 @param NavbarModel navbar
 
-@template.layout.main(title = "امور مالی مدرسه", scripts = java.util.List.of("/js/navbar.js", "/js/member-names.js", "/js/money.js", "/js/finance.js"), content = @`
+@template.layout.main(title = "امور مالی مدرسه", scripts = java.util.List.of("/js/navbar.js", "/js/jalali.js", "/js/calendar.js", "/js/member-names.js", "/js/money.js", "/js/finance.js"), content = @`
 @template.layout.navbar(navbar = navbar)
 
 <section class="section" id="main-content" role="main" tabindex="-1" x-data="financePage()">
@@ -16,8 +16,53 @@
 
                 <template x-if="!blocked">
                     <div>
+                        <%-- سال تحصیلی (academic-year.md فاز ۲): شهریه و فاکتورها به‌تفکیک سال‌اند؛ مدیر مالی فاکتورِ
+                             سال‌های قبل را هم می‌بیند تا بتواند پرداخت ثبت کند. مدرسه‌ای که سالِ جاری ندارد این بخش را
+                             نمی‌بیند و مثل پیش از این بدون سال کار می‌کند. --%>
+                        <div class="box" id="financeYearBox" x-cloak x-show="years.length > 0">
+                            <div class="field">
+                                <label class="label" for="financeYear">سال تحصیلی</label>
+                                <div class="select">
+                                    <select id="financeYear" dir="ltr" x-model="year" @change="onYearChange()">
+                                        <template x-for="y in years" :key="y">
+                                            <option :value="y" x-text="Calendar.digits(y) + (y === currentYear ? ' (جاری)' : '')"></option>
+                                        </template>
+                                    </select>
+                                </div>
+                                <p class="help">شهریه، فاکتورها و «صدور فاکتور» برای همین سال‌اند. سالِ جاری پیش‌فرض است.</p>
+                            </div>
+                        </div>
+
+                        <div class="notification is-warning is-light" id="financeUnattributedBanner" x-cloak x-show="hasUnattributed()">
+                            <p class="mb-3">
+                                اطلاعاتِ مالیِ قبلی هنوز به هیچ سالی نسبت داده نشده است
+                                (<span x-show="unattributed.tuitionFee">شهریه و </span><span x-text="Calendar.digits(String(unattributed.invoices))"></span> فاکتور).
+                                تا نسبت داده نشود، «صدور فاکتور» برای یک سال انجام نمی‌شود، چون دانش‌آموزِ دارای فاکتورِ قدیمی دوباره فاکتور می‌گرفت.
+                                ثبت‌نام‌های تازه هم تا وقتی شهریه‌ی سالِ جاری ثبت نشده (یا شهریه‌ی قدیمی به سالِ جاری نسبت داده نشده) فاکتور نمی‌گیرند.
+                            </p>
+                            <div class="field is-grouped is-grouped-multiline">
+                                <div class="control">
+                                    <label class="label" for="financeAttributeYear">نسبت دادن به سال</label>
+                                    <div class="select">
+                                        <select id="financeAttributeYear" dir="ltr" x-model="attributeYear">
+                                            <option value="" disabled>یک سال را انتخاب کنید</option>
+                                            <template x-for="y in years" :key="'attr-' + y">
+                                                <option :value="y" x-text="Calendar.digits(y)"></option>
+                                            </template>
+                                        </select>
+                                    </div>
+                                </div>
+                                <div class="control app-control-align-end">
+                                    <button class="button is-warning" type="button" @click="attribute()"
+                                            :disabled="!attributeYear || attributing" :class="{ 'is-loading': attributing }">
+                                        نسبت دادن
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+
                         <div class="box">
-                            <h2 class="title is-6">شهریه‌ی مصوب</h2>
+                            <h2 class="title is-6">شهریه‌ی مصوب<span x-show="year"> - سال <span dir="ltr" x-text="Calendar.digits(year)"></span></span></h2>
                             <p class="mb-3" x-show="tuitionFee !== null">
                                 شهریه‌ی فعلی: <strong x-text="Money.formatAmount(tuitionFee)"></strong>
                             </p>
@@ -47,7 +92,7 @@
                             </div>
                             <div class="level-right">
                                 <button class="button is-small" @click="backfill" :class="{ 'is-loading': backfilling }">
-                                    صدور فاکتور برای دانش‌آموزان بدون فاکتور
+                                    صدور فاکتورهای این سال برای دانش‌آموزان بدون فاکتور
                                 </button>
                             </div>
                         </div>
@@ -67,15 +112,19 @@
                             <tbody>
                             <template x-for="invoice in invoices" :key="invoice.id">
                                 <tr>
-                                    <td x-text="studentName(invoice.studentId)"></td>
+                                    <td>
+                                        <span x-text="studentName(invoice.studentId)"></span>
+                                        <span class="tag is-light" x-show="currentYear && !invoice.academicYear"
+                                              title="این فاکتور هنوز به سالی نسبت داده نشده است">بدون سال</span>
+                                    </td>
                                     <td x-text="Money.formatAmount(invoice.amount)"></td>
                                     <td x-text="Money.formatAmount(invoice.amountPaid)"></td>
                                     <td>
                                         <span class="tag" :class="statusClass(invoice.status)"
                                               x-text="statusLabel(invoice.status)"></span>
                                     </td>
-                                    <td dir="ltr" x-text="new Date(invoice.issuedAt).toLocaleDateString('fa-IR')"></td>
-                                    <td dir="ltr" x-text="invoice.dueDate ? new Date(invoice.dueDate).toLocaleDateString('fa-IR') : '—'"></td>
+                                    <td dir="ltr" x-text="Calendar.formatDate(invoice.issuedAt)"></td>
+                                    <td dir="ltr" x-text="invoice.dueDate ? Calendar.formatDate(invoice.dueDate) : '—'"></td>
                                     <td>
                                         <button class="button is-small"
                                                 :class="{ 'is-link': expandedInvoiceId === invoice.id }"
@@ -113,7 +162,7 @@
                                             <td x-text="Money.formatAmount(payment.amount)"></td>
                                             <td x-text="methodLabel(payment.method)"></td>
                                             <td x-text="payment.note || '—'"></td>
-                                            <td dir="ltr" x-text="new Date(payment.paidAt).toLocaleDateString('fa-IR')"></td>
+                                            <td dir="ltr" x-text="Calendar.formatDate(payment.paidAt)"></td>
                                         </tr>
                                     </template>
                                     </tbody>

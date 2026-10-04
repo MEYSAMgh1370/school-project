@@ -5,7 +5,7 @@
 @template.layout.main(
     title = "برنامه‌ی مطالعه‌ی من",
     styles = java.util.List.of("/css/my-study-plan.css"),
-    scripts = java.util.List.of("/js/navbar.js", "/js/jalali.js", "/js/modal-focus.js", "/js/my-study-plan.js"),
+    scripts = java.util.List.of("/js/navbar.js", "/js/jalali.js", "/js/calendar.js", "/js/modal-focus.js", "/js/my-study-plan.js"),
     content = @`
 @template.layout.navbar(navbar = navbar)
 
@@ -32,18 +32,18 @@
                     <div>
                         <div class="sp-toolbar">
                             <div class="sp-weeknav">
-                                <button class="button" type="button" @click="goPrevWeek" aria-label="هفته قبل">›</button>
+                                <button class="button" type="button" @click="goPrevWeek" aria-label="هفته قبل"><span class="app-dir-glyph" aria-hidden="true">›</span></button>
                                 <div class="sp-picker">
                                     <button class="button" type="button" @click="togglePicker" x-text="weekRangeLabel"></button>
                                     <template x-if="pickerOpen">
                                         <div class="sp-picker-pop" @click.outside="pickerOpen = false">
                                             <div class="sp-picker-head">
-                                                <button class="button is-small" type="button" @click="pickerPrevMonth" aria-label="ماه قبل">›</button>
+                                                <button class="button is-small" type="button" @click="pickerPrevMonth" aria-label="ماه قبل"><span class="app-dir-glyph" aria-hidden="true">›</span></button>
                                                 <span class="has-text-weight-bold" x-text="pickerMonthLabel"></span>
-                                                <button class="button is-small" type="button" @click="pickerNextMonth" aria-label="ماه بعد">‹</button>
+                                                <button class="button is-small" type="button" @click="pickerNextMonth" aria-label="ماه بعد"><span class="app-dir-glyph" aria-hidden="true">‹</span></button>
                                             </div>
                                             <div class="sp-picker-grid">
-                                                <template x-for="w in Jalali.weekdayShort" :key="w">
+                                                <template x-for="(w, i) in weekdayShort" :key="i">
                                                     <div class="sp-picker-weekday" x-text="w"></div>
                                                 </template>
                                             </div>
@@ -60,7 +60,7 @@
                                         </div>
                                     </template>
                                 </div>
-                                <button class="button" type="button" @click="goNextWeek" aria-label="هفته بعد">‹</button>
+                                <button class="button" type="button" @click="goNextWeek" aria-label="هفته بعد"><span class="app-dir-glyph" aria-hidden="true">‹</span></button>
                                 <button class="button is-light" type="button" x-show="!isCurrentWeek" @click="goThisWeek">این هفته</button>
                             </div>
                         </div>

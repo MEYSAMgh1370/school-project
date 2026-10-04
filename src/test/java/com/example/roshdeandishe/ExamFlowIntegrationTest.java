@@ -41,6 +41,9 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 class ExamFlowIntegrationTest {
 
     @Autowired
+    private org.springframework.jdbc.core.JdbcTemplate jdbc;
+
+    @Autowired
     private MockMvc mockMvc;
 
     private final ObjectMapper objectMapper = new ObjectMapper();
@@ -272,6 +275,43 @@ class ExamFlowIntegrationTest {
         mockMvc.perform(get("/api/exam-take/exam").param("token", token))
                 .andExpect(status().isUnauthorized())
                 .andExpect(jsonPath("$.type").value(org.hamcrest.Matchers.endsWith("invalid-exam-token")));
+    }
+
+    @Test
+    void deactivatedMembershipEndsARunningExamSession() throws Exception {
+        MockHttpSession adminSession = loginAsAdmin();
+        long topicId = createTopic(adminSession, "سرفصل جلسه‌ی آزمون");
+        long questionId = createQuestion(adminSession, topicId, "سؤال جلسه‌ی آزمون");
+        long classId = createClass(adminSession, "کلاس جلسه‌ی آزمون");
+        String email = "exam.session." + java.util.UUID.randomUUID().toString().substring(0, 8) + "@roshdeandishe.test";
+        long studentId = enrollAndLoginStudent(adminSession, email, "دانش‌آموز جلسه", classId)[0];
+        MockHttpSession studentSession = login(email, "password123");
+        long examId = createExam(adminSession, "آزمون جلسه", LocalDateTime.now().minusMinutes(1),
+                LocalDateTime.now().plusMinutes(30), 10);
+        long sectionId = createManualSection(adminSession, examId, topicId, questionId);
+        assignStudent(adminSession, examId, studentId);
+        String token = startAttempt(studentSession, examId);
+        mockMvc.perform(get("/api/exam-take/exam").param("token", token)).andExpect(status().isOk());
+
+        jdbc.update("update iam.school_memberships set active = false where school_id = 1 and user_id in "
+                + "(select id from iam.users where email = ?)", email);
+
+        mockMvc.perform(get("/api/exam-take/exam").param("token", token))
+                .andExpect(status().isUnauthorized())
+                .andExpect(jsonPath("$.type").value(org.hamcrest.Matchers.endsWith("invalid-exam-token")));
+        mockMvc.perform(get("/api/exam-take/sections/" + sectionId + "/questions").param("token", token))
+                .andExpect(status().isUnauthorized());
+        mockMvc.perform(post("/api/exam-take/submit").param("token", token).with(csrf())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"sectionId\":" + sectionId + ",\"questionId\":" + questionId + ",\"choice\":1}"))
+                .andExpect(status().isUnauthorized());
+        assertThat(jdbc.queryForObject("select count(*) from exam.submits where student_id = ?", Integer.class,
+                studentId)).isZero();
+
+        // عضویتِ دوباره‌فعال‌شده همان توکن را تا انقضایش زنده می‌کند
+        jdbc.update("update iam.school_memberships set active = true where school_id = 1 and user_id in "
+                + "(select id from iam.users where email = ?)", email);
+        mockMvc.perform(get("/api/exam-take/exam").param("token", token)).andExpect(status().isOk());
     }
 
     @Test

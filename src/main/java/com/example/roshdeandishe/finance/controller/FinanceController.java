@@ -5,18 +5,23 @@ import com.example.roshdeandishe.finance.FinanceFacade;
 import com.example.roshdeandishe.finance.FinanceFacade.InvoiceInfo;
 import com.example.roshdeandishe.finance.FinanceFacade.PaymentInfo;
 import com.example.roshdeandishe.finance.FinanceFacade.TuitionFeeInfo;
-import com.example.roshdeandishe.finance.dto.BackfillResponse;
-import com.example.roshdeandishe.finance.dto.InvoiceResponse;
-import com.example.roshdeandishe.finance.dto.PaymentResponse;
-import com.example.roshdeandishe.finance.dto.RecordPaymentRequest;
-import com.example.roshdeandishe.finance.dto.SetTuitionFeeRequest;
-import com.example.roshdeandishe.finance.dto.TuitionFeeResponse;
+import com.example.roshdeandishe.finance.dto.request.AttributeYearRequest;
+import com.example.roshdeandishe.finance.dto.response.AttributionResponse;
+import com.example.roshdeandishe.finance.dto.response.BackfillResponse;
+import com.example.roshdeandishe.finance.dto.response.FinanceYearsResponse;
+import com.example.roshdeandishe.finance.dto.response.UnattributedResponse;
+import com.example.roshdeandishe.finance.dto.response.InvoiceResponse;
+import com.example.roshdeandishe.finance.dto.response.PaymentResponse;
+import com.example.roshdeandishe.finance.dto.request.RecordPaymentRequest;
+import com.example.roshdeandishe.finance.dto.request.SetTuitionFeeRequest;
+import com.example.roshdeandishe.finance.dto.response.TuitionFeeResponse;
 import com.example.roshdeandishe.finance.shared.FinanceError;
 import com.example.roshdeandishe.finance.shared.FinanceException;
 import com.example.roshdeandishe.iam.IamFacade;
 import com.example.roshdeandishe.iam.shared.RequiresModule;
 import com.example.roshdeandishe.iam.shared.RequiresPermission;
 import com.example.roshdeandishe.platform.TenantContext;
+import com.example.roshdeandishe.school.SchoolFacade;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -38,39 +43,49 @@ public class FinanceController {
     private final FinanceFacade financeFacade;
     private final IamFacade iamFacade;
     private final AcademicFacade academicFacade;
+    private final SchoolFacade schoolFacade;
 
-    public FinanceController(FinanceFacade financeFacade, IamFacade iamFacade, AcademicFacade academicFacade) {
+    public FinanceController(FinanceFacade financeFacade, IamFacade iamFacade, AcademicFacade academicFacade,
+                             SchoolFacade schoolFacade) {
         this.financeFacade = financeFacade;
         this.iamFacade = iamFacade;
         this.academicFacade = academicFacade;
+        this.schoolFacade = schoolFacade;
     }
 
     @PutMapping("/tuition-fee")
     @RequiresPermission("FINANCE_MANAGE")
-    public TuitionFeeResponse setTuitionFee(@PathVariable Long schoolId, @RequestBody SetTuitionFeeRequest request) {
+    public TuitionFeeResponse setTuitionFee(@PathVariable Long schoolId, @RequestBody SetTuitionFeeRequest request,
+                                            @RequestParam(required = false) String academicYear) {
         TenantContext.requireMatches(schoolId);
 
-        financeFacade.setTuitionFee(schoolId, request.amount());
-        return new TuitionFeeResponse(schoolId, request.amount());
+        // سالِ خالی = سالِ جاری (مدرسه‌ای که سالِ جاری ندارد: بدون سال، مثل پیش از فاز ۲)
+        financeFacade.setTuitionFee(schoolId, academicYear, request.amount());
+        TuitionFeeInfo info = financeFacade.getTuitionFee(schoolId, academicYear).orElseThrow();
+        return new TuitionFeeResponse(schoolId, info.amount(), info.academicYear());
     }
 
     @GetMapping("/tuition-fee")
     @RequiresPermission("FINANCE_VIEW")
-    public TuitionFeeResponse getTuitionFee(@PathVariable Long schoolId) {
+    public TuitionFeeResponse getTuitionFee(@PathVariable Long schoolId,
+                                            @RequestParam(required = false) String academicYear) {
         TenantContext.requireMatches(schoolId);
 
-        TuitionFeeInfo info = financeFacade.getTuitionFee(schoolId)
+        TuitionFeeInfo info = financeFacade.getTuitionFee(schoolId, academicYear)
                 .orElseThrow(() -> new FinanceException(new FinanceError.TuitionFeeNotSet(schoolId)));
-        return new TuitionFeeResponse(info.schoolId(), info.amount());
+        return new TuitionFeeResponse(info.schoolId(), info.amount(), info.academicYear());
     }
 
     @GetMapping("/invoices")
     @RequiresPermission("FINANCE_VIEW")
-    public List<InvoiceResponse> listInvoices(@PathVariable Long schoolId) {
+    public List<InvoiceResponse> listInvoices(@PathVariable Long schoolId,
+                                              @RequestParam(required = false) String academicYear) {
         TenantContext.requireMatches(schoolId);
 
+        // ادمین/مدیر مالی سالِ دلخواه را می‌بیند (برای ثبتِ پرداخت روی فاکتورِ سال‌های قبل لازم است)؛
+        // ولی فقط فاکتورهای فرزندانش را و فقط به شکلِ دیدِ خانواده (سالِ جاری)
         List<InvoiceInfo> invoices = hasSchoolWideFinanceVisibility(schoolId)
-                ? financeFacade.listInvoices(schoolId)
+                ? financeFacade.listInvoices(schoolId, academicYear)
                 : financeFacade.listInvoicesForStudents(schoolId, guardianWardStudentIds(schoolId));
 
         return invoices.stream()
@@ -140,15 +155,50 @@ public class FinanceController {
 
     @PostMapping("/invoices/backfill")
     @RequiresPermission("FINANCE_MANAGE")
-    public BackfillResponse backfillInvoices(@PathVariable Long schoolId) {
+    public BackfillResponse backfillInvoices(@PathVariable Long schoolId,
+                                             @RequestParam(required = false) String academicYear) {
         TenantContext.requireMatches(schoolId);
 
-        return new BackfillResponse(financeFacade.backfillInvoices(schoolId));
+        // «صدورِ فاکتورهای سال» (academic-year.md فاز ۲): سالِ خالی = سالِ جاری
+        return new BackfillResponse(financeFacade.backfillInvoices(schoolId, academicYear));
+    }
+
+    /** سال‌های قابل‌انتخاب در صفحه‌ی مالی؛ مدیر مالی ACADEMIC_YEAR_MANAGE ندارد، پس از اینجا می‌گیرد. */
+    @GetMapping("/finance/years")
+    @RequiresPermission("FINANCE_VIEW")
+    public FinanceYearsResponse years(@PathVariable Long schoolId) {
+        TenantContext.requireMatches(schoolId);
+
+        List<String> codes = schoolFacade.listAcademicYears().stream()
+                .map(SchoolFacade.AcademicYearInfo::code).toList();
+        String current = schoolFacade.findCurrentAcademicYear(new SchoolFacade.SchoolId(schoolId))
+                .map(SchoolFacade.AcademicYearInfo::code).orElse(null);
+        return new FinanceYearsResponse(codes, current);
+    }
+
+    /** شهریه و فاکتورهایی که هنوز به سالی نسبت داده نشده‌اند (هشدارِ صفحه‌ی مالی). */
+    @GetMapping("/finance/unattributed")
+    @RequiresPermission("FINANCE_MANAGE")
+    public UnattributedResponse unattributed(@PathVariable Long schoolId) {
+        TenantContext.requireMatches(schoolId);
+
+        FinanceFacade.UnattributedSummary summary = financeFacade.unattributedSummary(schoolId);
+        return new UnattributedResponse(summary.tuitionFee(), summary.invoices());
+    }
+
+    /** اقدامِ صریحِ ادمین: شهریه و فاکتورهای «بدون سال» را به یک سال نسبت می‌دهد. */
+    @PostMapping("/finance/attribute-year")
+    @RequiresPermission("FINANCE_MANAGE")
+    public AttributionResponse attributeYear(@PathVariable Long schoolId, @RequestBody AttributeYearRequest request) {
+        TenantContext.requireMatches(schoolId);
+
+        FinanceFacade.AttributionResult result = financeFacade.attributeToYear(schoolId, request.academicYear());
+        return new AttributionResponse(result.tuitionAttributed(), result.invoicesAttributed());
     }
 
     private static InvoiceResponse toResponse(InvoiceInfo info) {
         return new InvoiceResponse(info.id(), info.schoolId(), info.studentId(), info.amount(),
-                info.amountPaid(), info.issuedAt(), info.dueDate(), info.status());
+                info.amountPaid(), info.issuedAt(), info.dueDate(), info.status(), info.academicYear());
     }
 
     private static PaymentResponse toResponse(PaymentInfo info) {

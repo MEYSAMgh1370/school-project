@@ -57,9 +57,12 @@ after the module pass resolves codes and boundaries.
 - **Owning surface:** cross-module product page controllers live in the `web`
   module; pure auth/identity pages may live in `iam.shared`. The data API
   lives at the owning domain module's root controller. Name both.
-- **Navigation:** where the navbar link goes and for which *selected*
-  (display-only) roles it's visible — every management page is reachable
-  from `navbar-start`, no orphan URLs (UX_ROADMAP §2). Link visibility may
+- **Navigation:** which `web.model.NavCatalog` group the page's link joins,
+  for which *selected* (display-only) roles it's visible, and for which of
+  them it also gets a dashboard «دسترسی سریع» card — every management page
+  is reachable from the sidebar, no orphan URLs (UX_ROADMAP §2); the sidebar
+  and the dashboard cards both render from `NavCatalog`, so add the link
+  there and nowhere else. Link visibility may
   follow the selected role; enforcement stays server-side only. Exception:
   one-time bootstrapping pages (the `/schools/new` precedent) link from
   their entry-point flow instead of the navbar — say which case this is.

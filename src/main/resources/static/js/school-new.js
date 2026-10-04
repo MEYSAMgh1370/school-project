@@ -19,6 +19,14 @@ document.addEventListener('alpine:init', () => {
             { value: 'LOWER_SECONDARY', label: 'متوسطه اول (پایه‌های ۷ تا ۹)' },
             { value: 'UPPER_SECONDARY', label: 'متوسطه دوم (پایه‌های ۱۰ تا ۱۲)' }
         ],
+        // روز شروع هفته‌ی درسی (W9 - SchoolFacade.WeekStart): شنبه‌محور = شنبه تا
+        // چهارشنبه (هفته‌ی ایرانی، پیش‌فرض)، دوشنبه‌محور = دوشنبه تا جمعه. مقدار
+        // همان نام enum سرور است؛ بعد از ساخت قابل تغییر نیست.
+        weekStart: 'SATURDAY',
+        weekStartOptions: [
+            { value: 'SATURDAY', label: 'شنبه (شنبه تا چهارشنبه)' },
+            { value: 'MONDAY', label: 'دوشنبه (دوشنبه تا جمعه)' }
+        ],
         // نشانی اختصاصی (اختیاری): درِ ورودی برنددار مدرسه در /s/{slug}.
         // قالب همان قالب DNS label سرور است (SchoolFacadeImpl) - چک
         // client-side فقط UX است، اعتبارسنجی واقعی همیشه سمت سرور.
@@ -54,6 +62,7 @@ document.addEventListener('alpine:init', () => {
                         timezone: this.timezone.trim(),
                         locale: this.locale.trim(),
                         level: this.level,
+                        weekStart: this.weekStart,
                         slug: this.slug.trim().toLowerCase() || null
                     })
                 });

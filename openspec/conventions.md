@@ -34,7 +34,8 @@ Use these repository conventions, verified against current code and tests:
   <module>/
     <Module>Facade.java, enums, events    exposed module API
     controller/                           @RestController / @Controller
-    dto/                                  request/response records
+    dto/request/, dto/response/           request and response records
+    model/                                JTE page models and row types
     config/                               @Configuration, filters, aspects
     internal/                             entities, repositories, services — flat
     shared/                               @NamedInterface
@@ -42,7 +43,8 @@ Use these repository conventions, verified against current code and tests:
 
   `config/` exists only where a module has `@Configuration` classes, filters, or
   aspects to hold (currently `iam` and `platform`). `dto/` exists only where a
-  controller has request/response records to extract.
+  controller has request/response records to extract; `model/` only where a
+  page controller has page models or row types (not requests/responses) to hold.
 
 - Nothing moves into a base package. The base package is a module's exposed API;
   moving a class into it silently widens that module's contract, and
@@ -63,7 +65,7 @@ Use these repository conventions, verified against current code and tests:
   [`changes/package-by-type-within-modules.md`](changes/package-by-type-within-modules.md)
   for the full rationale and the alternatives this rejected.
 - Constructor injection only in production code; no field injection and no unnecessary `@Autowired` when Spring can wire a single constructor.
-- Package-private implementations, entities, repositories, constructors, and internal services by default. Public types are facade interfaces, REST/page controllers, and explicitly exposed `@NamedInterface` contracts. Request/response records in `dto/` are also public, for their controller's use, but `dto/` carries no `@NamedInterface`, so they are not part of the module's exposed API.
+- Package-private implementations, entities, repositories, constructors, and internal services by default. Public types are facade interfaces, REST/page controllers, and explicitly exposed `@NamedInterface` contracts. Request/response records in `dto/request/` and `dto/response/` are also public, for their controller's use, but `dto/` carries no `@NamedInterface`, so they are not part of the module's exposed API.
 - Facade interfaces are the normal cross-module contracts. Do not depend on another module's `internal/` package.
 - `record` DTOs, facade return types, IDs, and value objects unless a mutable JPA entity or neighboring pattern requires otherwise.
 - Keep Lombok to low-value boilerplate already established locally, primarily JPA entities with `@Getter`, `@Setter`, and `@NoArgsConstructor`. Prefer explicit constructors outside entities unless matching a verified local exception-handler pattern.

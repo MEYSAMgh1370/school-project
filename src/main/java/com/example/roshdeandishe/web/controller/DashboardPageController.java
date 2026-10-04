@@ -7,10 +7,11 @@ import com.example.roshdeandishe.iam.IamFacade.UserProfile;
 import com.example.roshdeandishe.school.SchoolFacade;
 import com.example.roshdeandishe.school.SchoolFacade.SchoolId;
 import com.example.roshdeandishe.school.SchoolFacade.SchoolInfo;
-import com.example.roshdeandishe.web.dto.DashboardModel;
-import com.example.roshdeandishe.web.dto.MembershipRow;
-import com.example.roshdeandishe.web.dto.SchoolEntryRow;
+import com.example.roshdeandishe.web.model.DashboardModel;
+import com.example.roshdeandishe.web.model.MembershipRow;
+import com.example.roshdeandishe.web.model.SchoolEntryRow;
 import com.example.roshdeandishe.web.model.NavbarModelAssembler;
+import com.example.roshdeandishe.web.model.WardsAssembler;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -55,12 +56,14 @@ public class DashboardPageController {
     private final IamFacade iamFacade;
     private final SchoolFacade schoolFacade;
     private final NavbarModelAssembler navbarModelAssembler;
+    private final WardsAssembler wardsAssembler;
 
     public DashboardPageController(IamFacade iamFacade, SchoolFacade schoolFacade,
-                                   NavbarModelAssembler navbarModelAssembler) {
+                                   NavbarModelAssembler navbarModelAssembler, WardsAssembler wardsAssembler) {
         this.iamFacade = iamFacade;
         this.schoolFacade = schoolFacade;
         this.navbarModelAssembler = navbarModelAssembler;
+        this.wardsAssembler = wardsAssembler;
     }
 
     @GetMapping("/dashboard")
@@ -82,7 +85,8 @@ public class DashboardPageController {
                 .toList();
 
         model.addAttribute("model", new DashboardModel(profile.fullName(), profile.email(), profile.phoneNumber(),
-                rows, schoolEntries(memberships, schools)));
+                rows, schoolEntries(memberships, schools), WardsAssembler.isParent(memberships),
+                wardsAssembler.forParent(userId, memberships)));
         model.addAttribute("navbar", navbarModelAssembler.assemble(profile, memberships));
         return "dashboard";
     }

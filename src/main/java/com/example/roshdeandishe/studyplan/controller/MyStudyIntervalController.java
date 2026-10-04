@@ -6,8 +6,8 @@ import com.example.roshdeandishe.curriculum.CurriculumFacade.TopicInfo;
 import com.example.roshdeandishe.iam.IamFacade;
 import com.example.roshdeandishe.studyplan.StudyPlanFacade;
 import com.example.roshdeandishe.studyplan.StudyPlanFacade.IntervalInfo;
-import com.example.roshdeandishe.studyplan.dto.MyIntervalResponse;
-import com.example.roshdeandishe.studyplan.dto.UpdateMyIntervalRequest;
+import com.example.roshdeandishe.studyplan.dto.response.MyIntervalResponse;
+import com.example.roshdeandishe.studyplan.dto.request.UpdateMyIntervalRequest;
 import com.example.roshdeandishe.studyplan.shared.StudyPlanError;
 import com.example.roshdeandishe.studyplan.shared.StudyPlanException;
 import org.springframework.web.bind.annotation.*;
@@ -79,6 +79,10 @@ public class MyStudyIntervalController {
     }
 
     private Long resolveStudentId(Long userId, Long schoolId) {
+        // دانش‌آموزِ این مدرسه یعنی نقشِ فعالِ دانش‌آموز
+        if (!iamFacade.findActiveRoleCodes(new IamFacade.UserId(userId), schoolId).contains("STUDENT")) {
+            return null;
+        }
         return academicFacade.findMyEnrollment(userId, schoolId)
                 .map(enrollment -> enrollment.studentId().value())
                 .orElse(null);

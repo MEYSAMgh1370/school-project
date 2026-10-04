@@ -2,7 +2,7 @@
 
 @param NavbarModel navbar
 
-@template.layout.main(title = "فاکتورهای من", scripts = java.util.List.of("/js/navbar.js", "/js/money.js", "/js/my-invoices.js"), content = @`
+@template.layout.main(title = "فاکتورهای من", scripts = java.util.List.of("/js/navbar.js", "/js/jalali.js", "/js/calendar.js", "/js/money.js", "/js/my-invoices.js"), content = @`
 @template.layout.navbar(navbar = navbar)
 
 <section class="section" id="main-content" role="main" tabindex="-1" x-data="myInvoicesPage()">
@@ -18,7 +18,13 @@
 
                 <p x-show="loading">در حال بارگذاری...</p>
 
-                <div class="table-container" x-show="!loading && invoices.length > 0">
+                <%-- فیلتر یک فرزند (از لینک داشبورد): همیشه دیده می‌شود و راه برگشت دارد. --%>
+                <div class="notification is-light" x-cloak x-show="studentFilter !== null">
+                    فقط فاکتورهای دانش‌آموز #<span x-text="studentFilter"></span> نمایش داده می‌شود.
+                    <a href="/my-invoices">نمایش همه</a>
+                </div>
+
+                <div class="table-container" x-show="!loading && visibleInvoices().length > 0">
                 <table class="table is-fullwidth is-striped">
                     <thead>
                     <tr>
@@ -32,9 +38,14 @@
                     </tr>
                     </thead>
                     <tbody>
-                    <template x-for="invoice in invoices" :key="invoice.id">
+                    <template x-for="invoice in visibleInvoices()" :key="invoice.id">
                         <tr>
-                            <td>دانش‌آموز #<span x-text="invoice.studentId"></span></td>
+                            <td>
+                                دانش‌آموز #<span x-text="invoice.studentId"></span>
+                                <%-- سالِ فاکتور: فاکتورِ مانده‌دارِ سال‌های قبل هم در این فهرست می‌آید --%>
+                                <span class="tag is-light" dir="ltr" x-show="invoice.academicYear"
+                                      x-text="invoice.academicYear ? Calendar.digits(invoice.academicYear) : ''"></span>
+                            </td>
                             <td x-text="Money.formatAmount(invoice.amount)"></td>
                             <td x-text="Money.formatAmount(invoice.amountPaid)"></td>
                             <td x-text="Money.formatAmount(invoice.amount - invoice.amountPaid)"></td>
@@ -42,8 +53,8 @@
                                 <span class="tag" :class="statusClass(invoice.status)"
                                       x-text="statusLabel(invoice.status)"></span>
                             </td>
-                            <td dir="ltr" x-text="new Date(invoice.issuedAt).toLocaleDateString('fa-IR')"></td>
-                            <td dir="ltr" x-text="invoice.dueDate ? new Date(invoice.dueDate).toLocaleDateString('fa-IR') : '—'"></td>
+                            <td dir="ltr" x-text="Calendar.formatDate(invoice.issuedAt)"></td>
+                            <td dir="ltr" x-text="invoice.dueDate ? Calendar.formatDate(invoice.dueDate) : '—'"></td>
                         </tr>
                     </template>
                     </tbody>
@@ -51,7 +62,7 @@
                 </div>
 
                 @template.layout.empty-state(
-                    show = "!loading && !error && invoices.length === 0",
+                    show = "!loading && !error && visibleInvoices().length === 0",
                     art = "money",
                     message = @`فاکتوری برای شما یا فرزندانتان در این مدرسه ثبت نشده است.`)
             `)

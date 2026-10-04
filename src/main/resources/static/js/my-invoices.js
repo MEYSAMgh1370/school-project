@@ -2,10 +2,18 @@ document.addEventListener('alpine:init', () => {
     Alpine.data('myInvoicesPage', () => ({
         schoolId: null,
         invoices: [],
+        // فیلتر یک فرزند از لینک داشبورد (?student=<id>)؛ null یعنی همه. فقط
+        // نمایش است: API همه‌ی فرزندانِ لینک‌شده را می‌دهد و دسترسی سمت سرور
+        // می‌ماند. شناسه‌ی نامعتبر یا ناآشنا فقط فهرستِ خالی می‌دهد.
+        studentFilter: null,
         loading: false,
         error: '',
 
         init() {
+            // کل مقدار باید عدد باشد؛ پیشوندِ عددی («100junk») نادیده می‌ماند.
+            const raw = new URLSearchParams(window.location.search).get('student') || '';
+            const requested = /^\d+$/.test(raw) ? parseInt(raw, 10) : NaN;
+            this.studentFilter = Number.isInteger(requested) ? requested : null;
             const saved = parseInt(localStorage.getItem('selectedSchoolId') || '', 10);
             this.schoolId = Number.isInteger(saved) ? saved : null;
             window.addEventListener('school-changed', (e) => {
@@ -41,6 +49,12 @@ document.addEventListener('alpine:init', () => {
             } finally {
                 this.loading = false;
             }
+        },
+
+        visibleInvoices() {
+            return this.studentFilter === null
+                ? this.invoices
+                : this.invoices.filter((invoice) => invoice.studentId === this.studentFilter);
         },
 
         statusLabel(status) {

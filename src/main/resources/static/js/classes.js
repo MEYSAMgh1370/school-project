@@ -19,13 +19,20 @@ document.addEventListener('alpine:init', () => {
         submitting: false,
         error: '',
         notice: '',
-        form: { name: '', section: '', teacherId: '', gradeLevel: '' },
+        form: { name: '', section: '', teacherId: '', gradeLevel: '', academicYear: '' },
+        // سال‌ها فقط برای مدیرِ سال (ACADEMIC_YEAR_MANAGE) در دسترس است؛ بدونِ آن انتخابگر نمی‌آید و فهرست همان
+        // سالِ جاری می‌ماند (academic-year.md فاز ۳)
+        years: [],
+        currentYear: null,
+        yearFilter: '',
 
         init() {
             const saved = parseInt(localStorage.getItem('selectedSchoolId') || '', 10);
             this.schoolId = Number.isInteger(saved) ? saved : null;
             window.addEventListener('school-changed', (e) => {
                 this.schoolId = e.detail.id;
+                this.yearFilter = '';
+                this.form.academicYear = '';
                 this.error = '';
                 this.notice = '';
                 this.selectedClassId = null;
@@ -43,6 +50,16 @@ document.addEventListener('alpine:init', () => {
 
         classesBase() {
             return `/api/admin/schools/${this.schoolId}/classes`;
+        },
+
+        // پیش‌فرض: کلاس‌های سالِ جاری (+ بدون سال)؛ با انتخابِ یک سال همان سال
+        classesUrl() {
+            return this.yearFilter ? `${this.classesBase()}?academicYear=${encodeURIComponent(this.yearFilter)}`
+                : this.classesBase();
+        },
+
+        yearLabel(code) {
+            return code ? Calendar.digits(code) : 'بدون سال';
         },
 
         schoolBase() {
@@ -122,11 +139,12 @@ document.addEventListener('alpine:init', () => {
             this.loading = true;
             this.error = '';
             try {
-                const [classesResponse, membershipsResponse, studentsResponse, schoolResponse] = await Promise.all([
-                    fetch(this.classesBase(), { headers: { 'X-School-ID': this.schoolId } }),
+                const [classesResponse, membershipsResponse, studentsResponse, schoolResponse, yearsResponse] = await Promise.all([
+                    fetch(this.classesUrl(), { headers: { 'X-School-ID': this.schoolId } }),
                     fetch(this.membershipsBase(), { headers: { 'X-School-ID': this.schoolId } }),
                     fetch(this.studentsBase(), { headers: { 'X-School-ID': this.schoolId } }),
-                    fetch(this.schoolBase(), { headers: { 'X-School-ID': this.schoolId } })
+                    fetch(this.schoolBase(), { headers: { 'X-School-ID': this.schoolId } }),
+                    fetch(`${this.schoolBase()}/academic-year`, { headers: { 'X-School-ID': this.schoolId } })
                 ]);
                 if (!classesResponse.ok) {
                     await this.showError(classesResponse);
@@ -134,6 +152,14 @@ document.addEventListener('alpine:init', () => {
                     return;
                 }
                 this.classes = await classesResponse.json();
+                if (yearsResponse.ok) {
+                    const settings = await yearsResponse.json();
+                    this.years = settings.years;
+                    this.currentYear = settings.current ? settings.current.code : null;
+                } else {
+                    this.years = [];
+                    this.currentYear = null;
+                }
                 // فقط برای نمایش بازه‌ی مجاز پایه در فرم - best-effort، اگر
                 // مدرسه به هر دلیلی در دسترس نبود صفحه نمی‌شکند (اعتبارسنجی
                 // واقعی همیشه سمت سرور انجام می‌شود).
@@ -194,7 +220,9 @@ document.addEventListener('alpine:init', () => {
                         // select همیشه رشته برمی‌گرداند؛ تبدیل صریح به عدد چون
                         // teacherId سمت سرور Long است
                         teacherId: this.form.teacherId ? parseInt(this.form.teacherId, 10) : null,
-                        gradeLevel: parseInt(this.form.gradeLevel, 10)
+                        gradeLevel: parseInt(this.form.gradeLevel, 10),
+                        // خالی = سالِ جاریِ مدرسه (سمت سرور)
+                        academicYear: this.form.academicYear || null
                     })
                 });
                 if (!response.ok) {
@@ -202,7 +230,7 @@ document.addEventListener('alpine:init', () => {
                     return;
                 }
                 this.notice = 'کلاس جدید اضافه شد.';
-                this.form = { name: '', section: '', teacherId: '', gradeLevel: '' };
+                this.form = { name: '', section: '', teacherId: '', gradeLevel: '', academicYear: '' };
                 await this.load();
             } catch (e) {
                 this.error = 'ارتباط با سرور برقرار نشد.';

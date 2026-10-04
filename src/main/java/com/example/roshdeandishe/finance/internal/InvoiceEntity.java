@@ -58,6 +58,10 @@ class InvoiceEntity {
             columnDefinition = "numeric(12,2) default 0 not null")
     private BigDecimal amountPaid;
 
+    /** کدِ canonical سالِ تحصیلی؛ خالی = «به سالی نسبت داده نشده» (academic-year.md فاز ۲). */
+    @Column(name = "academic_year", length = 16)
+    private String academicYear;
+
     InvoiceEntity(Long schoolId, Long studentId, BigDecimal amount, Instant issuedAt, Instant dueDate) {
         this.schoolId = schoolId;
         this.studentId = studentId;

@@ -47,7 +47,7 @@
                 </div>
 
                 <div class="notification is-warning" x-show="!loading && classes.length === 0">
-                    ابتدا باید حداقل یک کلاس بسازید (صفحه‌ی کلاس‌ها).
+                    برای ثبت‌نام باید حداقل یک کلاس (در سال تحصیلی جاری) داشته باشید؛ ابتدا از صفحه‌ی کلاس‌ها بسازید.
                 </div>
 
                 <div class="box" x-show="classes.length > 0">
@@ -97,7 +97,7 @@
                         <tr>
                             <td x-text="studentName(student.userId)"></td>
                             <td dir="ltr" x-text="studentEmail(student.userId)"></td>
-                            <td x-text="className(student.classId)"></td>
+                            <td x-text="classLabel(student)"></td>
                             <td>
                                 <button class="button is-small" type="button"
                                         @click="toggleGuardianPanel(student.studentId)"

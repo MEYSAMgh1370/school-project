@@ -3,8 +3,8 @@ package com.example.roshdeandishe.academic.controller;
 import com.example.roshdeandishe.academic.AcademicFacade;
 import com.example.roshdeandishe.academic.AcademicFacade.ClassId;
 import com.example.roshdeandishe.academic.AcademicFacade.ClassInfo;
-import com.example.roshdeandishe.academic.dto.ClassResponse;
-import com.example.roshdeandishe.academic.dto.CreateClassRequest;
+import com.example.roshdeandishe.academic.dto.response.ClassResponse;
+import com.example.roshdeandishe.academic.dto.request.CreateClassRequest;
 import com.example.roshdeandishe.iam.shared.RequiresModule;
 import com.example.roshdeandishe.iam.shared.RequiresPermission;
 import com.example.roshdeandishe.platform.TenantContext;
@@ -34,9 +34,11 @@ import java.util.List;
 public class ClassController {
 
     private final AcademicFacade academicFacade;
+    private final AcademicYearVisibility yearVisibility;
 
-    public ClassController(AcademicFacade academicFacade) {
+    public ClassController(AcademicFacade academicFacade, AcademicYearVisibility yearVisibility) {
         this.academicFacade = academicFacade;
+        this.yearVisibility = yearVisibility;
     }
 
     @PostMapping
@@ -45,17 +47,22 @@ public class ClassController {
         TenantContext.requireMatches(schoolId);
 
         ClassId classId = academicFacade.createClass(
-                schoolId, request.name(), request.teacherId(), request.section(), request.gradeLevel(), request.gradingScheme());
-        return new ClassResponse(classId.value(), schoolId, request.name(), request.teacherId(), request.section(),
-                request.gradeLevel(), request.gradingScheme());
+                schoolId, request.name(), request.teacherId(), request.section(), request.gradeLevel(),
+                request.gradingScheme(), request.academicYear());
+        return toResponse(academicFacade.listClasses(schoolId).stream()
+                .filter(c -> c.id().equals(classId)).findFirst().orElseThrow());
     }
 
     @GetMapping
     @RequiresPermission("CLASS_VIEW")
-    public List<ClassResponse> listClasses(@PathVariable Long schoolId) {
+    public List<ClassResponse> listClasses(@PathVariable Long schoolId,
+                                           @RequestParam(required = false) String academicYear) {
         TenantContext.requireMatches(schoolId);
 
-        return academicFacade.listClasses(schoolId).stream()
+        // پیش‌فرض سالِ جاری (به‌علاوه‌ی کلاس‌های بدون سال)؛ "all" فقط برای مدیر (academic-year.md فاز ۳)
+        return yearVisibility.classListYear(schoolId, academicYear)
+                .map(year -> academicFacade.listClasses(schoolId, year))
+                .orElseGet(() -> academicFacade.listClasses(schoolId)).stream()
                 .map(ClassController::toResponse)
                 .toList();
     }
@@ -63,6 +70,6 @@ public class ClassController {
 
     private static ClassResponse toResponse(ClassInfo info) {
         return new ClassResponse(info.id().value(), info.schoolId(), info.name(), info.teacherId(), info.section(),
-                info.gradeLevel(), info.gradingScheme());
+                info.gradeLevel(), info.gradingScheme(), info.academicYear());
     }
 }

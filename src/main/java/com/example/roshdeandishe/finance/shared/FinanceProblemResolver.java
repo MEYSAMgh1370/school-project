@@ -23,6 +23,21 @@ public class FinanceProblemResolver {
                     "شهریه تنظیم نشده است",
                     "برای مدرسه‌ی با شناسه " + e.schoolId() + " هنوز شهریه‌ای تنظیم نشده است."
             );
+            case FinanceError.InvalidAcademicYear e -> ProblemDetailFactory.problem(
+                    HttpStatus.BAD_REQUEST, "invalid-academic-year",
+                    "سال تحصیلی نامعتبر است",
+                    "سال تحصیلی «" + e.academicYear() + "» در فهرست سال‌ها نیست."
+            );
+            case FinanceError.UnattributedInvoicesExist e -> ProblemDetailFactory.problem(
+                    HttpStatus.CONFLICT, "unattributed-invoices-exist",
+                    "فاکتورِ بدون سال وجود دارد",
+                    "اول اطلاعاتِ مالیِ قبلی را به یک سال نسبت دهید؛ وگرنه دانش‌آموزی که فاکتورِ قدیمی دارد دوباره فاکتور می‌گیرد."
+            );
+            case FinanceError.AttributionConflict e -> ProblemDetailFactory.problem(
+                    HttpStatus.CONFLICT, "attribution-conflict",
+                    "نسبت دادن به این سال ممکن نیست",
+                    e.reason()
+            );
             case FinanceError.InvalidTuitionFee e -> ProblemDetailFactory.problem(
                     HttpStatus.BAD_REQUEST, "invalid-tuition-fee",
                     "مبلغ شهریه نامعتبر است",

@@ -3,9 +3,9 @@ package com.example.roshdeandishe.iam.controller;
 import com.example.roshdeandishe.iam.IamFacade;
 import com.example.roshdeandishe.iam.IamFacade.UserId;
 import com.example.roshdeandishe.iam.IamFacade.UserProfile;
-import com.example.roshdeandishe.iam.dto.MeResponse;
-import com.example.roshdeandishe.iam.dto.MyMembershipResponse;
-import com.example.roshdeandishe.iam.dto.SetPhoneRequest;
+import com.example.roshdeandishe.iam.dto.response.MeResponse;
+import com.example.roshdeandishe.iam.dto.response.MyMembershipResponse;
+import com.example.roshdeandishe.iam.dto.request.SetPhoneRequest;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -51,7 +51,7 @@ public class MeController {
 
     /**
      * ثبت شماره تلفن کاربر فعلی - قدم اول برای اتصال به ربات بله (ماژول
-     * bale). عمداً همان‌جا (نه در ماژول bale) قرار دارد چون این یک تغییر
+     * notification). عمداً همان‌جا (نه در ماژول notification) قرار دارد چون این یک تغییر
      * روی خودِ حساب کاربری است، نه چیزی مختص کانال بله.
      */
     @PutMapping("/phone")

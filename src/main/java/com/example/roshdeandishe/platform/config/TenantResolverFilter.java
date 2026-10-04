@@ -32,6 +32,9 @@ public class TenantResolverFilter extends OncePerRequestFilter {
      */
     private static final String[] EXCLUDED_PATHS = {
             "/actuator", "/api/auth", "/login", "/error", "/css", "/js", "/favicon.ico",
+            // فونت وب (Vazirmatn) از داخل app.css به‌عنوان زیرمنبع CSS بارگذاری
+            // می‌شود و مرورگر برای آن X-School-ID نمی‌فرستد - همان استدلال /css و /js
+            "/fonts",
             "/swagger-ui", "/v3/api-docs", "/activate", "/register", "/webjars",
             // «من» و داشبورد درباره‌ی خودِ کاربرند، نه یک مدرسه‌ی خاص -
             // schoolId ای وجود ندارد که در هدر بیاید
@@ -79,6 +82,15 @@ public class TenantResolverFilter extends OncePerRequestFilter {
             // خودش هم زیرمجموعه‌ی پیشوند /api/me است و بدون X-School-ID کار
             // می‌کند (schoolId از path می‌آید، نه هدر)
             "/my-grades",
+            // همان استدلال /people برای صفحه‌ی «سال تحصیلی» (تنظیم سال جاریِ مدرسه)
+            "/academic-year",
+            // همان استدلال /academic-year برای صفحه‌ی «ارتقای پایه» (academic-year.md فاز ۳)؛ API آن زیر
+            // /api/admin/schools/{id}/promotion است و هدر دارد
+            "/promotion",
+            // برنامه‌ی کلاسی: همان استدلال /people برای صفحه‌ی مدیر، و همان استدلال
+            // /my-grades برای صفحه‌ی «برنامه‌ی کلاسی من» (fetch آن /api/me است)
+            "/timetable",
+            "/my-timetable",
             // صفحه‌ی ثبت مدرسه: مدرسه هنوز وجود ندارد که schoolId داشته باشد
             "/schools/new",
             // درِ ورودی برنددار مدرسه (/s/{slug}): صفحه‌ی عمومی، بازدیدکننده
@@ -88,7 +100,7 @@ public class TenantResolverFilter extends OncePerRequestFilter {
             "/s/",
             // وب‌هوک بله: فراخوان‌کننده سرور بله است، نه یک مرورگر که بتواند
             // X-School-ID بفرستد - مدرسه‌ی هدف از روی chatId/userId لینک‌شده
-            // در خودِ ماژول bale تشخیص داده می‌شود
+            // در خودِ ماژول notification تشخیص داده می‌شود
             "/api/bale/webhook",
             // جلسه‌ی آزمون‌دهی: مجوز و schoolId هر دو از توکن جلسه‌ی آزمون
             // (query param token) resolve می‌شوند، نه از این هدر - همان

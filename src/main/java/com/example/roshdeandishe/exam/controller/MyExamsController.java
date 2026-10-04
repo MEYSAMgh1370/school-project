@@ -7,11 +7,11 @@ import com.example.roshdeandishe.exam.ExamFacade.ExamInfo;
 import com.example.roshdeandishe.exam.ExamFacade.ExamResultSummary;
 import com.example.roshdeandishe.exam.ExamFacade.SectionInfo;
 import com.example.roshdeandishe.exam.ExamFacade.SectionResult;
-import com.example.roshdeandishe.exam.dto.AttemptResponse;
-import com.example.roshdeandishe.exam.dto.ExamResponse;
-import com.example.roshdeandishe.exam.dto.ExamResultResponse;
-import com.example.roshdeandishe.exam.dto.SectionResponse;
-import com.example.roshdeandishe.exam.dto.SectionResultResponse;
+import com.example.roshdeandishe.exam.dto.response.AttemptResponse;
+import com.example.roshdeandishe.exam.dto.response.ExamResponse;
+import com.example.roshdeandishe.exam.dto.response.ExamResultResponse;
+import com.example.roshdeandishe.exam.dto.response.SectionResponse;
+import com.example.roshdeandishe.exam.dto.response.SectionResultResponse;
 import com.example.roshdeandishe.exam.shared.ExamError;
 import com.example.roshdeandishe.exam.shared.ExamException;
 import com.example.roshdeandishe.iam.IamFacade;
@@ -73,6 +73,11 @@ public class MyExamsController {
     }
 
     private Long resolveStudentId(Long userId, Long schoolId) {
+        // دانش‌آموزِ این مدرسه یعنی نقشِ فعالِ دانش‌آموز: نه عضوِ سابق و نه کسی که فقط نقشِ دیگری دارد
+        // (نه فهرست، نه شروعِ تلاش)
+        if (!iamFacade.findActiveRoleCodes(new IamFacade.UserId(userId), schoolId).contains("STUDENT")) {
+            return null;
+        }
         return academicFacade.findMyEnrollment(userId, schoolId)
                 .map(enrollment -> enrollment.studentId().value())
                 .orElse(null);

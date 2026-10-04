@@ -4,10 +4,10 @@ import com.example.roshdeandishe.academic.AcademicFacade;
 import com.example.roshdeandishe.academic.AcademicFacade.GuardianLinkId;
 import com.example.roshdeandishe.academic.AcademicFacade.StudentId;
 import com.example.roshdeandishe.academic.AcademicFacade.StudentInfo;
-import com.example.roshdeandishe.academic.dto.EnrollStudentRequest;
-import com.example.roshdeandishe.academic.dto.GuardianLinkResponse;
-import com.example.roshdeandishe.academic.dto.LinkGuardianRequest;
-import com.example.roshdeandishe.academic.dto.StudentResponse;
+import com.example.roshdeandishe.academic.dto.request.EnrollStudentRequest;
+import com.example.roshdeandishe.academic.dto.response.GuardianLinkResponse;
+import com.example.roshdeandishe.academic.dto.request.LinkGuardianRequest;
+import com.example.roshdeandishe.academic.dto.response.StudentResponse;
 import com.example.roshdeandishe.iam.shared.RequiresModule;
 import com.example.roshdeandishe.iam.shared.RequiresPermission;
 import com.example.roshdeandishe.platform.TenantContext;
@@ -60,10 +60,13 @@ public class StudentController {
      */
     @GetMapping
     @RequiresPermission("STUDENT_VIEW")
-    public List<StudentResponse> listStudents(@PathVariable Long schoolId) {
+    public List<StudentResponse> listStudents(@PathVariable Long schoolId,
+                                              @RequestParam(required = false) Long classId) {
         TenantContext.requireMatches(schoolId);
 
-        return academicFacade.listStudents(schoolId).stream()
+        // با classId: دانش‌آموزانِ آن کلاس شاملِ کسانی که در سالی در آن بوده‌اند (دفتر نمراتِ سالِ قبل)
+        return (classId == null ? academicFacade.listStudents(schoolId)
+                : academicFacade.listStudentsInClass(schoolId, classId)).stream()
                 .map(StudentController::toResponse)
                 .toList();
     }
@@ -96,6 +99,7 @@ public class StudentController {
     }
 
     private static StudentResponse toResponse(StudentInfo info) {
-        return new StudentResponse(info.id().value(), info.userId(), info.schoolId(), info.classId().value());
+        return new StudentResponse(info.id().value(), info.userId(), info.schoolId(),
+                info.classId() == null ? null : info.classId().value(), info.status());
     }
 }

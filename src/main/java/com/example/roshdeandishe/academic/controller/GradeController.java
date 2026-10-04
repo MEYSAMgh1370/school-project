@@ -4,8 +4,9 @@ import com.example.roshdeandishe.academic.AcademicFacade;
 import com.example.roshdeandishe.academic.AcademicFacade.GradeId;
 import com.example.roshdeandishe.academic.AcademicFacade.GradeInfo;
 import com.example.roshdeandishe.academic.GradingTerm;
-import com.example.roshdeandishe.academic.dto.GradeResponse;
-import com.example.roshdeandishe.academic.dto.RecordGradeRequest;
+import com.example.roshdeandishe.academic.dto.response.CourseResponse;
+import com.example.roshdeandishe.academic.dto.response.GradeResponse;
+import com.example.roshdeandishe.academic.dto.request.RecordGradeRequest;
 import com.example.roshdeandishe.iam.shared.RequiresModule;
 import com.example.roshdeandishe.iam.shared.RequiresPermission;
 import com.example.roshdeandishe.platform.TenantContext;
@@ -32,19 +33,23 @@ import java.util.List;
 public class GradeController {
 
     private final AcademicFacade academicFacade;
+    private final AcademicYearVisibility yearVisibility;
 
-    public GradeController(AcademicFacade academicFacade) {
+    public GradeController(AcademicFacade academicFacade, AcademicYearVisibility yearVisibility) {
         this.academicFacade = academicFacade;
+        this.yearVisibility = yearVisibility;
     }
 
     @PostMapping
     @RequiresPermission("GRADES_EDIT")
     public GradeResponse recordGrade(@PathVariable Long schoolId, @RequestBody RecordGradeRequest request) {
         TenantContext.requireMatches(schoolId);
+        // معلم فقط در سالِ جاری می‌نویسد؛ مدیر در هر سال (academic-year.md فاز ۱)
+        yearVisibility.requireVisible(schoolId, request.academicYear());
 
         GradeId gradeId = academicFacade.recordGrade(
                 schoolId, request.studentId(), request.classId(), request.academicYear(), request.term(),
-                request.descriptiveLevel(), request.numericScore(), request.comment());
+                request.descriptiveLevel(), request.numericScore(), request.comment(), request.courseId());
         return toResponse(academicFacade.getGrade(gradeId.value()));
     }
 
@@ -54,12 +59,34 @@ public class GradeController {
             @PathVariable Long schoolId,
             @RequestParam Long classId,
             @RequestParam String academicYear,
-            @RequestParam GradingTerm term
+            @RequestParam GradingTerm term,
+            @RequestParam(required = false) Long courseId
     ) {
         TenantContext.requireMatches(schoolId);
+        yearVisibility.requireVisible(schoolId, academicYear);
 
-        return academicFacade.listGradesForClass(schoolId, classId, academicYear, term).stream()
+        // courseId خالی = فقط «نمرهٔ کل» (همان رفتار پیش از نمره‌ی هر درس)
+        return academicFacade.listGradesForClass(schoolId, classId, academicYear, term, courseId).stream()
                 .map(GradeController::toResponse)
+                .toList();
+    }
+
+    /**
+     * درس‌های سراسریِ هم‌پایه‌ی یک کلاس برای انتخابگر درس در دفتر نمرات. فهرست
+     * فقط‌خواندنی است؛ مثل بقیه‌ی این کنترلر با GRADES_EDIT گیت می‌شود.
+     */
+    @GetMapping("/courses")
+    @RequiresPermission("GRADES_EDIT")
+    public List<CourseResponse> listCourses(@PathVariable Long schoolId, @RequestParam Long classId,
+                                            @RequestParam(required = false) String academicYear) {
+        TenantContext.requireMatches(schoolId);
+        if (academicYear != null) {
+            yearVisibility.requireVisible(schoolId, academicYear);
+        }
+
+        // سالِ اختیاری: فقط درس‌هایی که برای آن سال ارائه می‌شوند (بازه‌ی اعتبارِ درس)
+        return academicFacade.listCoursesForClass(schoolId, classId, academicYear).stream()
+                .map(course -> new CourseResponse(course.id().value(), course.gradeLevel(), course.name()))
                 .toList();
     }
 
@@ -67,7 +94,7 @@ public class GradeController {
         return new GradeResponse(
                 info.id().value(), info.studentId().value(), info.classId().value(), info.academicYear(),
                 info.term(), info.scheme(), info.descriptiveLevel(), info.numericScore(), info.comment(),
-                info.recordedByUserId(), info.recordedAt()
+                info.recordedByUserId(), info.recordedAt(), info.courseId(), info.courseName()
         );
     }
 }

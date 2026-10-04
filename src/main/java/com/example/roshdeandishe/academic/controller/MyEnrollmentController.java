@@ -1,7 +1,7 @@
 package com.example.roshdeandishe.academic.controller;
 
 import com.example.roshdeandishe.academic.AcademicFacade;
-import com.example.roshdeandishe.academic.dto.MyEnrollmentResponse;
+import com.example.roshdeandishe.academic.dto.response.MyEnrollmentResponse;
 import com.example.roshdeandishe.iam.IamFacade;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -23,9 +23,9 @@ import org.springframework.web.bind.annotation.RestController;
  * چرا این کنترلر در ماژول iam (کنار MeController) نیست: iam نمی‌تواند به
  * academic وابسته شود (academic از قبل به iam وابسته است - وابستگی برعکس
  * یعنی یک چرخه که ModularityTests.verifyModularStructure() آن را رد
- * می‌کند). این دقیقاً همان الگویی است که ماژول bale برای «به این کاربرِ
+ * می‌کند). این دقیقاً همان الگویی است که ماژول notification برای «به این کاربرِ
  * مشخص، درباره‌ی داده‌ی خودش چه می‌توان گفت» استفاده می‌کند (ترکیب IamFacade
- * + AcademicFacade، بدون اینکه هیچ‌کدام به bale وابسته شوند).
+ * + AcademicFacade، بدون اینکه هیچ‌کدام به notification وابسته شوند).
  * <p>
  * {@code schoolId} به‌عنوان query param، نه X-School-ID/path variable: یک
  * کاربر می‌تواند هم‌زمان STUDENT یک مدرسه و چیز دیگری در مدرسه‌ی دیگر باشد،
@@ -48,7 +48,14 @@ public class MyEnrollmentController {
     @GetMapping("/api/me/enrollment")
     public ResponseEntity<MyEnrollmentResponse> myEnrollment(@RequestParam Long schoolId) {
         Long userId = iamFacade.currentUserId().value();
+        // بدونِ نقشِ فعالِ دانش‌آموز (عضوِ سابق، یا فقط معلم/ولی): «ثبت‌نامی نیست» (204)
+        if (!iamFacade.findActiveRoleCodes(new IamFacade.UserId(userId), schoolId).contains("STUDENT")) {
+            return ResponseEntity.noContent().build();
+        }
+        // «کلاس من»: دانش‌آموزِ ارتقایافته‌ی جا‌نشده (PENDING) یا فارغ‌التحصیل کلاسی ندارد: 204، نه پاسخی با classId تهی
+        // (اپ موبایل classId/className را غیرتهی می‌خواند؛ academic-year.md فاز ۳)
         return academicFacade.findMyEnrollment(userId, schoolId)
+                .filter(info -> info.classId() != null)
                 .map(info -> ResponseEntity.ok(MyEnrollmentResponse.from(info)))
                 .orElseGet(() -> ResponseEntity.noContent().build());
     }

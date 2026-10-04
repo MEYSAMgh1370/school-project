@@ -2,12 +2,27 @@ document.addEventListener('alpine:init', () => {
     Alpine.data('gradesPage', () => ({
         schoolId: null,
         classes: [],
+        classesSeq: 0,
         students: [],
         pupils: [],
-        filter: { classId: '', academicYear: '', term: 'FIRST' },
+        // درس‌های سراسریِ هم‌پایه‌ی کلاسِ انتخاب‌شده؛ courseId خالی = «نمره‌ی کل»
+        courses: [],
+        filter: { classId: '', courseId: '', academicYear: '', term: 'FIRST' },
+        // سال‌هایی که کاربر می‌تواند انتخاب کند: مدیر (ACADEMIC_YEAR_MANAGE) همه‌ی فهرست، بقیه فقط
+        // سالِ جاریِ مدرسه؛ خالی = مدرسه هنوز سالِ جاری ندارد و کاربر مدیر نیست (فیلدِ متنی)
+        years: [],
         roster: [],
         filterText: '',
         loading: false,
+        // شمارنده‌ی بارگذاری: فقط پاسخ آخرین درخواست روی roster اثر می‌گذارد
+        // (تغییرِ سریع درس/کلاس پاسخ کهنه را دور می‌ریزد، وگرنه جدولِ یک درس
+        // با برچسب و ثبتِ درسِ دیگر نمایش داده می‌شد).
+        loadSeq: 0,
+        // همین الگو برای درس‌ها و برای کلاس/دانش‌آموزان: فقط پاسخ آخرین درخواست
+        // (و فقط برای همان مدرسه/کلاس) اثر می‌گذارد.
+        courseSeq: 0,
+        schoolSeq: 0,
+        yearSeq: 0,
         loaded: false,
         blocked: false,
         error: '',
@@ -20,13 +35,48 @@ document.addEventListener('alpine:init', () => {
                 this.schoolId = e.detail.id;
                 this.error = '';
                 this.notice = '';
+                this.loadSeq++;
+                this.courseSeq++;
+                this.loading = false;
                 this.loaded = false;
                 this.roster = [];
-                this.filter = { classId: '', academicYear: '', term: 'FIRST' };
+                this.courses = [];
+                this.filter = { classId: '', courseId: '', academicYear: '', term: 'FIRST' };
+                this.years = [];
                 this.loadClasses();
+                this.loadYears();
+            });
+            // با عوض‌شدنِ کلاس، فهرست درس‌های همان پایه گرفته می‌شود و انتخابِ
+            // درس به «نمره‌ی کل» برمی‌گردد (درسِ پایه‌ی قبلی برای این کلاس معتبر نیست).
+            // جدولِ کلاس قبلی هم کنار گذاشته می‌شود (و بارگذاری در جریانش دور ریخته
+            // می‌شود): ردیف‌های کلاس قبلی با کلاس جدید قابل ثبت نیستند.
+            this.$watch('filter.classId', () => {
+                this.loadSeq++;
+                this.loading = false;
+                this.loaded = false;
+                this.roster = [];
+                this.filter.courseId = '';
+                this.loadCourses();
+            });
+            // سالِ دیگر یعنی جدولِ دیگر: ردیف‌های سالِ قبلی با سالِ تازه قابل ثبت نیستند (ثبت از filter.academicYear
+            // می‌خواند) و فهرستِ درس‌ها هم به بازه‌ی اعتبارِ درس وابسته است
+            // (فقط با فهرستِ سال‌ها؛ در فیلدِ متنی load() خودش سال را نرمال می‌کند و این واکنش بارگذاریِ
+            // در جریان را باطل می‌کرد)
+            this.$watch('filter.academicYear', () => {
+                if (this.years.length === 0) {
+                    return;
+                }
+                this.loadSeq++;
+                this.loading = false;
+                this.loaded = false;
+                this.roster = [];
+                this.loadCourses();
+                // کلاس‌ها به سال تعلق دارند (academic-year.md فاز ۳)
+                this.reloadClassesForYear();
             });
             if (this.schoolId) {
                 this.loadClasses();
+                this.loadYears();
             }
         },
 
@@ -68,6 +118,51 @@ document.addEventListener('alpine:init', () => {
             return `/api/admin/schools/${this.schoolId}/grades`;
         },
 
+        async loadCourses() {
+            const seq = ++this.courseSeq;
+            this.courses = [];
+            const classId = this.filter.classId ? parseInt(this.filter.classId, 10) : null;
+            if (!classId) {
+                return;
+            }
+            try {
+                // فقط وقتی سال یکی از سال‌های فهرست است (در فیلدِ متنی، نیمه‌تایپ‌شده سالِ نامعتبر می‌شد)
+                const yearQuery = this.years.includes(this.filter.academicYear)
+                    ? `&academicYear=${encodeURIComponent(this.filter.academicYear)}` : '';
+                const response = await fetch(`${this.gradesBase()}/courses?classId=${classId}${yearQuery}`, {
+                    headers: { 'X-School-ID': this.schoolId }
+                });
+                if (!response.ok) {
+                    // بدون فهرست درس‌ها، «نمره‌ی کل» همچنان قابل ثبت است
+                    const message = (await this.classifyError(response)).message;
+                    if (seq === this.courseSeq) {
+                        this.error = message;
+                    }
+                    return;
+                }
+                // بدنه اول خوانده می‌شود و درست قبل از انتساب بررسی می‌شود که هنوز همین
+                // درخواست آخرین است (کلاس/مدرسه ممکن است حین خواندنِ بدنه عوض شده باشد)
+                const courses = await response.json();
+                if (seq === this.courseSeq) {
+                    this.courses = courses;
+                    // درسِ انتخاب‌شده‌ای که برای این سال ارائه نمی‌شود به «نمره‌ی کل» برمی‌گردد
+                    if (this.filter.courseId && !courses.some(c => String(c.id) === String(this.filter.courseId))) {
+                        this.filter.courseId = '';
+                    }
+                }
+            } catch (e) {
+                if (seq === this.courseSeq) {
+                    this.error = 'ارتباط با سرور برقرار نشد.';
+                }
+            }
+        },
+
+        courseLabel() {
+            const id = this.filter.courseId ? parseInt(this.filter.courseId, 10) : null;
+            const course = this.courses.find(c => c.id === id);
+            return course ? course.name : 'نمره‌ی کل';
+        },
+
         // همان تفکیک دولایه‌ی §5 که finance.js/expenses.js دارند - ACADEMIC
         // ماژول رایگان است (CLAUDE.md §11 Q10) ولی هنوز می‌تواند از طریق
         // facade پس گرفته شود، پس این تفکیک همچنان واقعی و لازم است
@@ -87,37 +182,123 @@ document.addEventListener('alpine:init', () => {
             }
         },
 
+        // سال‌های قابل‌انتخاب و سالِ جاریِ مدرسه (openspec/changes/academic-year.md): مدیر (ACADEMIC_YEAR_MANAGE)
+        // همه‌ی فهرست را از endpoint ادمین می‌گیرد و هر سال را می‌تواند باز کند؛ بقیه فقط سالِ جاری را
+        // می‌بینند. سالِ جاری پیش‌فرضِ انتخاب است و فقط وقتی پر می‌شود که خالی باشد و مدرسه عوض
+        // نشده باشد؛ بدون هیچ سالی، فیلد متنی می‌ماند و سرور سالِ ناشناخته را رد می‌کند.
+        async loadYears() {
+            const seq = ++this.yearSeq;
+            const schoolId = this.schoolId;
+            try {
+                let codes = [];
+                let current = null;
+                const adminResponse = await fetch(`/api/admin/schools/${schoolId}/academic-year`,
+                    { headers: { 'X-School-ID': schoolId } });
+                if (adminResponse.ok) {
+                    const settings = await adminResponse.json();
+                    codes = settings.years.map(y => y.code);
+                    current = settings.current ? settings.current.code : null;
+                } else {
+                    const response = await fetch(`/api/me/schools/${schoolId}/academic-year`);
+                    if (!response.ok) {
+                        return;
+                    }
+                    const settings = await response.json();
+                    current = settings.current ? settings.current.code : null;
+                    codes = current ? [current] : [];
+                }
+                if (seq !== this.yearSeq || schoolId !== this.schoolId) {
+                    return;
+                }
+                this.years = codes;
+                if (current && !this.filter.academicYear) {
+                    // پس از رندرِ گزینه‌ها، تا x-model روی select مقدار را از دست ندهد
+                    this.$nextTick(() => {
+                        if (seq === this.yearSeq && !this.filter.academicYear) {
+                            this.filter.academicYear = current;
+                        }
+                    });
+                }
+            } catch (e) {
+                // پیش‌فرض اختیاری است؛ نبودنش مانع کار نیست
+            }
+        },
+
         async loadClasses() {
+            const seq = ++this.schoolSeq;
+            const schoolId = this.schoolId;
             this.error = '';
             this.blocked = false;
             try {
                 const [classesResponse, studentsResponse, membershipsResponse] = await Promise.all([
-                    fetch(this.classesBase(), { headers: { 'X-School-ID': this.schoolId } }),
-                    fetch(this.studentsBase(), { headers: { 'X-School-ID': this.schoolId } }),
-                    fetch(this.membershipsBase(), { headers: { 'X-School-ID': this.schoolId } })
+                    fetch(this.classesBase(), { headers: { 'X-School-ID': schoolId } }),
+                    fetch(this.studentsBase(), { headers: { 'X-School-ID': schoolId } }),
+                    fetch(this.membershipsBase(), { headers: { 'X-School-ID': schoolId } })
                 ]);
                 if (!classesResponse.ok) {
                     const classified = await this.classifyError(classesResponse);
-                    this.error = classified.message;
-                    this.blocked = classified.blocking;
+                    if (seq === this.schoolSeq) {
+                        this.error = classified.message;
+                        this.blocked = classified.blocking;
+                    }
                     return;
                 }
-                this.classes = await classesResponse.json();
-                this.students = studentsResponse.ok ? await studentsResponse.json() : [];
+                const classes = await classesResponse.json();
+                const students = studentsResponse.ok ? await studentsResponse.json() : [];
+                let pupils;
                 if (membershipsResponse.ok) {
                     const memberships = await membershipsResponse.json();
-                    this.pupils = memberships.filter(m => m.active && m.roleCode === 'STUDENT');
+                    // نامِ دانش‌آموزِ ترک‌کرده (عضویتِ غیرفعال) هم برای دفترِ نمراتِ سالِ قبل لازم است
+                    pupils = memberships.filter(m => m.roleCode === 'STUDENT');
                 } else {
                     // TEACHER can manage grades but intentionally cannot read the
                     // complete membership directory. Resolve only the roster names
                     // through MEMBER_NAMES_VIEW so every grade row remains identifiable.
-                    this.pupils = await window.MemberNames.resolve(
-                        this.schoolId,
-                        this.students.map(student => student.userId)
+                    pupils = await window.MemberNames.resolve(
+                        schoolId,
+                        students.map(student => student.userId)
                     );
                 }
+                // اگر در این فاصله مدرسه عوض شده، پاسخِ مدرسه‌ی قبلی دور ریخته می‌شود
+                if (seq !== this.schoolSeq) {
+                    return;
+                }
+                this.classes = classes;
+                this.students = students;
+                this.pupils = pupils;
             } catch (e) {
-                this.error = 'ارتباط با سرور برقرار نشد.';
+                if (seq === this.schoolSeq) {
+                    this.error = 'ارتباط با سرور برقرار نشد.';
+                }
+            }
+        },
+
+        // کلاس‌های سالِ انتخاب‌شده (برای مدیر که سالِ دیگری را باز می‌کند)؛ اگر کلاسِ انتخاب‌شده در آن سال نبود
+        // انتخاب پاک می‌شود. شکست (کاربری که فقط سالِ جاری را می‌بیند) فهرستِ قبلی را نگه می‌دارد.
+        async reloadClassesForYear() {
+            const year = this.normalizeDigits(this.filter.academicYear || '').trim();
+            if (!year || this.years.length === 0) {
+                return;
+            }
+            const seq = ++this.classesSeq;
+            const schoolId = this.schoolId;
+            try {
+                const response = await fetch(`${this.classesBase()}?academicYear=${encodeURIComponent(year)}`,
+                    { headers: { 'X-School-ID': schoolId } });
+                if (!response.ok) {
+                    return;
+                }
+                const classes = await response.json();
+                if (seq !== this.classesSeq || schoolId !== this.schoolId
+                    || year !== this.normalizeDigits(this.filter.academicYear || '').trim()) {
+                    return;
+                }
+                this.classes = classes;
+                if (this.filter.classId && !classes.some(c => String(c.id) === String(this.filter.classId))) {
+                    this.filter.classId = '';
+                }
+            } catch (e) {
+                // فهرستِ قبلی می‌ماند
             }
         },
 
@@ -136,12 +317,13 @@ document.addEventListener('alpine:init', () => {
             return pupil ? pupil.fullName : 'نامشخص';
         },
 
-        rosterStudents() {
+        // دانش‌آموزانِ کلاس: فهرستِ سمتِ سرور (شاملِ کسانی که در سالی در آن بوده‌اند)، وگرنه دانش‌آموزانِ فعلیِ کلاس
+        rosterStudents(classStudents) {
             const classId = this.filter.classId ? parseInt(this.filter.classId, 10) : null;
             if (!classId) {
                 return [];
             }
-            return this.students.filter(s => s.classId === classId);
+            return classStudents || this.students.filter(s => s.classId === classId);
         },
 
         visibleRoster() {
@@ -157,6 +339,7 @@ document.addEventListener('alpine:init', () => {
                 return;
             }
             this.filter.academicYear = this.normalizeDigits(this.filter.academicYear).trim();
+            const seq = ++this.loadSeq;
             this.loading = true;
             this.error = '';
             this.notice = '';
@@ -169,17 +352,29 @@ document.addEventListener('alpine:init', () => {
                     academicYear: this.filter.academicYear,
                     term: this.filter.term
                 });
+                if (this.filter.courseId) {
+                    params.set('courseId', this.filter.courseId);
+                }
                 const response = await fetch(`${this.gradesBase()}?${params}`, {
                     headers: { 'X-School-ID': this.schoolId }
                 });
                 if (!response.ok) {
                     const classified = await this.classifyError(response);
+                    if (seq !== this.loadSeq) {
+                        return;
+                    }
                     this.error = classified.message;
                     this.blocked = classified.blocking;
                     return;
                 }
                 const existingGrades = await response.json();
-                this.roster = this.rosterStudents()
+                const rosterResponse = await fetch(`${this.studentsBase()}?classId=${classId}`,
+                    { headers: { 'X-School-ID': this.schoolId } });
+                const classStudents = rosterResponse.ok ? await rosterResponse.json() : null;
+                if (seq !== this.loadSeq) {
+                    return;
+                }
+                this.roster = this.rosterStudents(classStudents)
                     .map(student => {
                         const existing = existingGrades.find(g => g.studentId === student.studentId);
                         return {
@@ -197,9 +392,13 @@ document.addEventListener('alpine:init', () => {
                     .sort((a, b) => a.name.localeCompare(b.name, 'fa'));
                 this.loaded = true;
             } catch (e) {
-                this.error = 'ارتباط با سرور برقرار نشد.';
+                if (seq === this.loadSeq) {
+                    this.error = 'ارتباط با سرور برقرار نشد.';
+                }
             } finally {
-                this.loading = false;
+                if (seq === this.loadSeq) {
+                    this.loading = false;
+                }
             }
         },
 
@@ -221,6 +420,10 @@ document.addEventListener('alpine:init', () => {
             row.saving = true;
             this.error = '';
             this.notice = '';
+            // درس (و برچسبش) همان لحظه‌ی ارسال ثابت می‌شود: اگر کاربر وسط درخواست
+            // درس را عوض کند، پیام موفقیت باید نام درسی را بگوید که واقعاً ثبت شد.
+            const submittedCourseId = this.filter.courseId ? parseInt(this.filter.courseId, 10) : null;
+            const submittedCourseLabel = this.courseLabel();
             try {
                 const response = await fetch(this.gradesBase(), {
                     method: 'POST',
@@ -236,7 +439,8 @@ document.addEventListener('alpine:init', () => {
                         term: this.filter.term,
                         descriptiveLevel: scheme === 'DESCRIPTIVE' ? row.descriptiveLevel : null,
                         numericScore: scheme === 'NUMERIC' ? row.numericScore : null,
-                        comment: row.comment || null
+                        comment: row.comment || null,
+                        courseId: submittedCourseId
                     })
                 });
                 if (!response.ok) {
@@ -246,7 +450,7 @@ document.addEventListener('alpine:init', () => {
                 }
                 const saved = await response.json();
                 row.recordedAt = saved.recordedAt;
-                this.notice = `نمره‌ی ${row.name} با موفقیت ثبت شد.`;
+                this.notice = `نمره‌ی ${row.name} (${submittedCourseLabel}) با موفقیت ثبت شد.`;
             } catch (e) {
                 this.error = 'ارتباط با سرور برقرار نشد.';
             } finally {

@@ -2,6 +2,7 @@ package com.example.roshdeandishe.school.internal;
 
 import com.example.roshdeandishe.school.SchoolFacade.SchoolLevel;
 import com.example.roshdeandishe.school.SchoolFacade.SchoolStatus;
+import com.example.roshdeandishe.school.SchoolFacade.WeekStart;
 import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -46,6 +47,24 @@ class SchoolEntity {
      */
     @Column(unique = true, length = 63)
     private String slug;
+
+    /**
+     * «سال تحصیلی جاریِ» مدرسه (openspec/changes/academic-year.md): مدیرِ همین
+     * مدرسه از فهرست سراسریِ {@code AcademicYearEntity} انتخاب می‌کند. null =
+     * هنوز انتخاب نشده (مدرسه‌های موجود)؛ هیچ سالی حدس زده نمی‌شود.
+     */
+    @Column(name = "current_academic_year_id")
+    private Long currentAcademicYearId;
+
+    /**
+     * ارتقای خودکار هنگام تعویض سال جاری (academic-year.md فاز ۳)؛ پیش‌فرض خاموش (V11).
+     */
+    @Column(name = "auto_promotion", nullable = false)
+    private boolean autoPromotion;
+
+    /** کد ذخیره‌شده‌ی {@link WeekStart#code()}؛ ستون default 'SAT' دارد (V8). */
+    @Column(name = "week_start_day", nullable = false, length = 3)
+    private String weekStartDay = WeekStart.SATURDAY.code();
 
     SchoolEntity(String name, String timezone, String locale, SchoolLevel schoolLevel, String slug) {
         this.name = name;
