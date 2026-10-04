@@ -77,6 +77,8 @@ Answers to the first unresolved questions (numbering is the one the questions ha
 - **Leaving (decided 2026-10-03).** A student who moves to another school is marked as
   *leaving*: removed from the school's list for the next year, membership deactivated,
   nothing deleted.
+- **Phase 1 - a school without a current year (decided 2026-10-03, option c).** Not
+  restricted until it chooses a year; the page warns the admin before the first choice.
 - **Withdrawn / deferred (2026-10-03).** Identity data that outlives one school and
   transfers between schools were withdrawn. A school offering several levels was
   deferred: promotion uses today's single level per school (question 10).
@@ -294,10 +296,12 @@ Five slices, each with its own tests (all five are built; "As built" below):
    everyone else sees only the school's current year: `/api/me/schools/{id}/grades`
    returns only the current year's grades, and the grade-book endpoints
    (`GRADES_EDIT`, used by teachers) read and write only the current year, otherwise
-   `403 academic-year-not-allowed`. **Assumption:** a school that has not chosen a
-   current year yet is not restricted, because restricting would hide every existing
-   school's grades until the admin picks a year; the restriction starts the day a year
-   is chosen.
+   `403 academic-year-not-allowed`. **Decided 2026-10-03 (option c):** a school that has
+   not chosen a current year yet is not restricted, because restricting would hide every
+   existing school's grades until the admin picks a year; the restriction starts the day
+   a year is chosen, and the «سال تحصیلی» page shows a warning about exactly that while the
+   school has no current year (what non-admins will stop seeing, that years outside the
+   list stay visible to the admin only, and that earlier report cards come from the admin).
 4. **The current year is visible.** The navbar and the dashboard show the selected
    school's current year (or nothing if none is chosen). The `/grades` year field
    becomes a select of the listed years for the admin and a fixed current year for
@@ -360,6 +364,8 @@ Phase 1 (met 2026-10-03):
   with no current year is unrestricted.
 - The navbar and the dashboard show the selected school's current year, and show nothing
   when there is none.
+- While a school has no current year, the «سال تحصیلی» page shows a warning that the first
+  choice restricts non-admins to that year.
 
 Phases 2-3 (not built): year-scoped tuition and invoices, classes/enrollments and promotion.
 

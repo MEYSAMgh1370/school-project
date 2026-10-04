@@ -64,4 +64,16 @@ class AcademicYearPageRenderTest {
 
         assertThat(html).contains(":disabled=\"!canSave()\"");
     }
+
+    @Test
+    void theFirstChoiceWarningIsShownOnlyWhileTheSchoolHasNoCurrentYear() {
+        StringOutput output = new StringOutput();
+        TemplateEngine.createPrecompiled(ContentType.Html).render("academic-year.jte", Map.of("navbar", NAVBAR), output);
+        String html = output.toString();
+
+        // همان شرطِ پیامِ «هنوز سالی انتخاب نشده»؛ متنِ هشدار می‌گوید چه چیزی از غیرِ مدیر پنهان می‌شود
+        assertThat(html).contains("id=\"academicYearFirstChoiceWarning\"").contains("x-show=\"!current\"");
+        assertThat(html).contains("معلم، دانش‌آموز و ولی فقط اطلاعاتِ همان سال را می‌بینند")
+                .contains("کارنامه‌ی سال‌های قبل را مدیر تحویل می‌دهد");
+    }
 }
