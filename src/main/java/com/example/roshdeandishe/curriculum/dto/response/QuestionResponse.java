@@ -1,15 +1,17 @@
-package com.example.roshdeandishe.curriculum.dto;
+package com.example.roshdeandishe.curriculum.dto.response;
 
 import com.example.roshdeandishe.curriculum.QuestionDifficulty;
 
-public record CreateQuestionRequest(
+public record QuestionResponse(
+        Long id,
+        Long schoolId,
         Long topicId,
         String text,
         String choice1,
         String choice2,
         String choice3,
         String choice4,
-        Integer correctChoice,
+        int correctChoice,
         String answer,
         QuestionDifficulty difficulty,
         Double discriminationIndex

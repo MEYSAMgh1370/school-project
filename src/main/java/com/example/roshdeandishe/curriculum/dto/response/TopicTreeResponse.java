@@ -1,4 +1,4 @@
-package com.example.roshdeandishe.curriculum.dto;
+package com.example.roshdeandishe.curriculum.dto.response;
 
 import java.util.List;
 
