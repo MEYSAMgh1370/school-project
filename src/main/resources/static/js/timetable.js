@@ -13,6 +13,7 @@ document.addEventListener('alpine:init', () => {
 
         // سال، کلاس و داده‌های هر تب
         years: [],
+        classesSeq: 0,
         year: '',
         currentYear: null,
         classes: [],
@@ -332,6 +333,32 @@ document.addEventListener('alpine:init', () => {
             this.loadYear();
             // فهرست درس‌ها به بازه‌ی اعتبارِ درس وابسته است و برای سالِ دیگر فرق می‌کند
             this.loadCourses();
+            // کلاس‌ها هم به سال تعلق دارند (academic-year.md فاز ۳)
+            this.reloadClassesForYear();
+        },
+
+        // کلاس‌های سالِ انتخاب‌شده؛ اگر کلاسِ انتخاب‌شده در آن سال نبود به اولین کلاس می‌رود. شکست (مثلاً کاربری که
+        // فقط سالِ جاری را می‌بیند) فهرست قبلی را نگه می‌دارد.
+        async reloadClassesForYear() {
+            if (!this.year) {
+                return;
+            }
+            const seq = ++this.classesSeq;
+            const year = this.year;
+            let classes;
+            try {
+                classes = await this.getJson(`/classes?academicYear=${encodeURIComponent(year)}`);
+            } catch (e) {
+                return;
+            }
+            if (seq !== this.classesSeq || year !== this.year) {
+                return;
+            }
+            this.classes = classes;
+            if (!classes.some((c) => String(c.id) === String(this.classId))) {
+                this.classId = classes.length > 0 ? String(classes[0].id) : '';
+                this.onClassChange();
+            }
         },
 
         onClassChange() {

@@ -35,7 +35,26 @@ public interface AcademicFacade {
      */
     Optional<StudentInfo> findStudentInfo(Long studentId);
 
+    /**
+     * دانش‌آموزانِ فعالِ مدرسه ({@code ACTIVE} و {@code PENDING}؛ فارغ‌التحصیل و ترک‌کرده نه).
+     * {@link #findStudentInfo} هر وضعیتی را می‌دهد.
+     */
     List<StudentInfo> listStudents(Long schoolId);
+
+    /**
+     * دانش‌آموزانِ یک کلاس: کسانی که همین الان در آن‌اند، به‌علاوه‌ی کسانی که در سالی در آن ثبت‌نام داشته‌اند
+     * (با هر وضعیتِ فعلی) - برای دفتر نمراتِ کلاسِ یک سالِ قبل (academic-year.md فاز ۳). ClassNotFound اگر
+     * کلاس از این مدرسه نباشد.
+     */
+    List<StudentInfo> listStudentsInClass(Long schoolId, Long classId);
+
+    /**
+     * دانش‌آموزانی که در یک سال ثبت‌نام‌اند - مبنای «صدور فاکتورهای آن سال» (academic-year.md فاز ۳). در مدرسه‌ی
+     * «ردیاب‌شده» (سالِ جاری دارد و همه‌ی دانش‌آموزانش ردیفِ ثبت‌نام دارند) همه‌ی کسانی که در آن سال ردیف دارند
+     * (ENROLLED/PENDING، با هر وضعیتِ فعلی)؛ در هر مدرسه‌ی دیگر همه‌ی دانش‌آموزانِ فعال، مثل پیش از این.
+     * سالِ ناشناخته: InvalidAcademicYear.
+     */
+    List<StudentInfo> listStudentsEnrolledIn(Long schoolId, String academicYear);
 
     /**
      * gradeLevel باید در بازه‌ی مقطع تحصیلی همین مدرسه باشد (school.SchoolFacade.SchoolLevel،
@@ -50,7 +69,22 @@ public interface AcademicFacade {
      */
     ClassId createClass(Long schoolId, String name, Long teacherId, String section, int gradeLevel, GradingScheme gradingScheme);
 
+    /**
+     * مثل {@link #createClass(Long, String, Long, String, int, GradingScheme)} ولی برای یک سالِ مشخص
+     * (academic-year.md فاز ۳). {@code academicYear} تهی = سالِ جاریِ مدرسه، و اگر مدرسه سالِ جاری ندارد کلاس
+     * «بدون سال» ساخته می‌شود (رفتار پیشین). سالِ ناشناخته: InvalidAcademicYear.
+     */
+    ClassId createClass(Long schoolId, String name, Long teacherId, String section, int gradeLevel,
+                        GradingScheme gradingScheme, String academicYear);
+
+    /** همه‌ی کلاس‌های مدرسه در همه‌ی سال‌ها. */
     List<ClassInfo> listClasses(Long schoolId);
+
+    /**
+     * کلاس‌های یک سال به‌علاوه‌ی کلاس‌های «بدون سال» (هنوز به سالی نسبت داده نشده‌اند). سالِ ناشناخته:
+     * InvalidAcademicYear.
+     */
+    List<ClassInfo> listClasses(Long schoolId, String academicYear);
 
     /**
      * ثبت/به‌روزرسانیِ نمره‌ی یک دانش‌آموز در یک کلاس برای یک نوبتِ مشخص.
@@ -141,6 +175,9 @@ public interface AcademicFacade {
      * نیست» یک حالت عادی است (مثلاً یک SCHOOL_ADMIN یا TEACHER که اصلاً
      * StudentEntity ندارد)، نه یک خطای دامنه - همان قرارداد
      * issueInviteToken/NotificationFacade.sendMessageToUser.
+     * <p>
+     * دانش‌آموزِ بدونِ کلاس (PENDING، GRADUATED) هم برمی‌گردد - با {@code classId} تهی - تا خودخدمتی
+     * (فاکتورِ سالِ قبل، ...) کار کند؛ فقط {@code LEFT} خالی است.
      */
     Optional<EnrollmentInfo> findMyEnrollment(Long userId, Long schoolId);
 
@@ -162,10 +199,25 @@ public interface AcademicFacade {
     record CourseInfo(CourseId id, int gradeLevel, String name) {
     }
 
-    record StudentInfo(StudentId id, Long userId, Long schoolId, ClassId classId) {
+    /**
+     * {@code classId} همان «ثبت‌نامِ جاری» است و برای دانش‌آموزِ {@code PENDING}/{@code GRADUATED}/{@code LEFT}
+     * تهی است (academic-year.md فاز ۳).
+     */
+    record StudentInfo(StudentId id, Long userId, Long schoolId, ClassId classId, StudentStatus status) {
+
+        public StudentInfo(StudentId id, Long userId, Long schoolId, ClassId classId) {
+            this(id, userId, schoolId, classId, StudentStatus.ACTIVE);
+        }
     }
 
-    record ClassInfo(ClassId id, Long schoolId, String name, Long teacherId, String section, int gradeLevel, GradingScheme gradingScheme) {
+    /** {@code academicYear} تهی = به سالی نسبت داده نشده. */
+    record ClassInfo(ClassId id, Long schoolId, String name, Long teacherId, String section, int gradeLevel,
+                     GradingScheme gradingScheme, String academicYear) {
+
+        public ClassInfo(ClassId id, Long schoolId, String name, Long teacherId, String section, int gradeLevel,
+                         GradingScheme gradingScheme) {
+            this(id, schoolId, name, teacherId, section, gradeLevel, gradingScheme, null);
+        }
     }
 
     record GradeInfo(GradeId id, Long schoolId, StudentId studentId, ClassId classId, String academicYear,
@@ -174,6 +226,14 @@ public interface AcademicFacade {
                       Long courseId, String courseName) {
     }
 
-    record EnrollmentInfo(StudentId studentId, Long schoolId, ClassId classId, String className, String section) {
+    /**
+     * {@code classId}/{@code className}/{@code section} برای دانش‌آموزِ بدون کلاس (PENDING یا GRADUATED) تهی است.
+     */
+    record EnrollmentInfo(StudentId studentId, Long schoolId, ClassId classId, String className, String section,
+                          StudentStatus status) {
+
+        public EnrollmentInfo(StudentId studentId, Long schoolId, ClassId classId, String className, String section) {
+            this(studentId, schoolId, classId, className, section, StudentStatus.ACTIVE);
+        }
     }
 }

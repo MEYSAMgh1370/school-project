@@ -27,4 +27,8 @@ public sealed interface SchoolError {
     /** academicYearId ای که در فهرست سراسری سال‌های تحصیلی نیست. */
     record AcademicYearNotFound(Long academicYearId) implements SchoolError {
     }
+
+    /** مقدارِ تنظیمِ مدرسه ناقص یا نامعتبر است (مثلاً مقدارِ روشن/خاموش خالی). */
+    record InvalidSetting(String reason) implements SchoolError {
+    }
 }

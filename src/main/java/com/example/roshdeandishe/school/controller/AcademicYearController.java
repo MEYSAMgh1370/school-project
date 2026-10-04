@@ -13,6 +13,7 @@ import com.example.roshdeandishe.school.dto.AcademicYearResponse;
 import com.example.roshdeandishe.school.dto.AcademicYearSettingsResponse;
 import com.example.roshdeandishe.school.dto.MyAcademicYearResponse;
 import com.example.roshdeandishe.school.dto.SetAcademicYearRequest;
+import com.example.roshdeandishe.school.dto.SetAutoPromotionRequest;
 import com.example.roshdeandishe.school.shared.SchoolError;
 import com.example.roshdeandishe.school.shared.SchoolException;
 import org.springframework.web.bind.annotation.*;
@@ -78,6 +79,22 @@ public class AcademicYearController {
         return settingsFor(schoolId);
     }
 
+    /**
+     * ارتقای خودکار روشن/خاموش (academic-year.md فاز ۳). فقط بر تعویض‌های بعدیِ سال اثر دارد؛ چیزی را
+     * همین حالا ارتقا نمی‌دهد.
+     */
+    @PutMapping("/api/admin/schools/{schoolId}/academic-year/auto-promotion")
+    @RequiresPermission("ACADEMIC_YEAR_MANAGE")
+    public AcademicYearSettingsResponse setAutoPromotion(
+            @PathVariable Long schoolId, @RequestBody SetAutoPromotionRequest request) {
+        TenantContext.requireMatches(schoolId);
+        if (request == null || request.enabled() == null) {
+            throw new SchoolException(new SchoolError.InvalidSetting("مقدار روشن/خاموش الزامی است."));
+        }
+        schoolFacade.setAutoPromotion(new SchoolId(schoolId), request.enabled());
+        return settingsFor(schoolId);
+    }
+
     private AcademicYearResponse current(Long schoolId) {
         return schoolFacade.findCurrentAcademicYear(new SchoolId(schoolId))
                 .map(AcademicYearController::toResponse)
@@ -88,7 +105,8 @@ public class AcademicYearController {
         List<AcademicYearResponse> years = schoolFacade.listAcademicYears().stream()
                 .map(AcademicYearController::toResponse)
                 .toList();
-        return new AcademicYearSettingsResponse(current(schoolId), years);
+        return new AcademicYearSettingsResponse(current(schoolId), years,
+                schoolFacade.isAutoPromotion(new SchoolId(schoolId)));
     }
 
     private static AcademicYearResponse toResponse(AcademicYearInfo info) {

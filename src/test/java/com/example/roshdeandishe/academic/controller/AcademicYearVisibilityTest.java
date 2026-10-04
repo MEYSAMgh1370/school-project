@@ -85,4 +85,27 @@ class AcademicYearVisibilityTest {
         assertThatCode(() -> visibility.requireVisible(SCHOOL, null)).doesNotThrowAnyException();
         assertThatCode(() -> visibility.requireVisible(SCHOOL, "  ")).doesNotThrowAnyException();
     }
+
+    @Test
+    void theClassListDefaultsToTheCurrentYearAndAllIsOnlyForTheManager() {
+        givenCurrentYear("1405-1406");
+        givenManager(true);
+        assertThat(visibility.classListYear(SCHOOL, null)).contains("1405-1406");
+        assertThat(visibility.classListYear(SCHOOL, "all")).isEmpty();
+        assertThat(visibility.classListYear(SCHOOL, "۱۴۰۴-۱۴۰۵")).contains("1404-1405");
+
+        givenManager(false);
+        assertThat(visibility.classListYear(SCHOOL, " ")).contains("1405-1406");
+        assertThat(visibility.classListYear(SCHOOL, "1405-1406")).contains("1405-1406");
+        assertThatThrownBy(() -> visibility.classListYear(SCHOOL, "all")).isInstanceOf(AcademicException.class);
+        assertThatThrownBy(() -> visibility.classListYear(SCHOOL, "1404-1405")).isInstanceOf(AcademicException.class);
+    }
+
+    @Test
+    void aSchoolWithoutACurrentYearListsEveryClass() {
+        givenCurrentYear(null);
+
+        assertThat(visibility.classListYear(SCHOOL, null)).isEmpty();
+        assertThat(visibility.classListYear(SCHOOL, "all")).isEmpty();
+    }
 }

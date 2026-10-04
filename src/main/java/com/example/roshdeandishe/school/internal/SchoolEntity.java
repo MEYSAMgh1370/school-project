@@ -56,6 +56,12 @@ class SchoolEntity {
     @Column(name = "current_academic_year_id")
     private Long currentAcademicYearId;
 
+    /**
+     * ارتقای خودکار هنگام تعویض سال جاری (academic-year.md فاز ۳)؛ پیش‌فرض خاموش (V11).
+     */
+    @Column(name = "auto_promotion", nullable = false)
+    private boolean autoPromotion;
+
     /** کد ذخیره‌شده‌ی {@link WeekStart#code()}؛ ستون default 'SAT' دارد (V8). */
     @Column(name = "week_start_day", nullable = false, length = 3)
     private String weekStartDay = WeekStart.SATURDAY.code();

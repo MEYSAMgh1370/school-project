@@ -60,10 +60,13 @@ public class StudentController {
      */
     @GetMapping
     @RequiresPermission("STUDENT_VIEW")
-    public List<StudentResponse> listStudents(@PathVariable Long schoolId) {
+    public List<StudentResponse> listStudents(@PathVariable Long schoolId,
+                                              @RequestParam(required = false) Long classId) {
         TenantContext.requireMatches(schoolId);
 
-        return academicFacade.listStudents(schoolId).stream()
+        // با classId: دانش‌آموزانِ آن کلاس شاملِ کسانی که در سالی در آن بوده‌اند (دفتر نمراتِ سالِ قبل)
+        return (classId == null ? academicFacade.listStudents(schoolId)
+                : academicFacade.listStudentsInClass(schoolId, classId)).stream()
                 .map(StudentController::toResponse)
                 .toList();
     }
@@ -96,6 +99,7 @@ public class StudentController {
     }
 
     private static StudentResponse toResponse(StudentInfo info) {
-        return new StudentResponse(info.id().value(), info.userId(), info.schoolId(), info.classId().value());
+        return new StudentResponse(info.id().value(), info.userId(), info.schoolId(),
+                info.classId() == null ? null : info.classId().value(), info.status());
     }
 }

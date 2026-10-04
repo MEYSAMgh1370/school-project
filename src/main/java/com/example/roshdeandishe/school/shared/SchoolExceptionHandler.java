@@ -59,6 +59,11 @@ public class SchoolExceptionHandler {
                     "سال تحصیلی یافت نشد",
                     "سال تحصیلی‌ای با شناسه " + e.academicYearId() + " در فهرست سال‌ها نیست."
             );
+            case SchoolError.InvalidSetting e -> ProblemDetailFactory.problem(
+                    HttpStatus.BAD_REQUEST, "invalid-setting",
+                    "تنظیم نامعتبر است",
+                    e.reason()
+            );
         };
     }
 }

@@ -2,6 +2,7 @@ document.addEventListener('alpine:init', () => {
     Alpine.data('gradesPage', () => ({
         schoolId: null,
         classes: [],
+        classesSeq: 0,
         students: [],
         pupils: [],
         // درس‌های سراسریِ هم‌پایه‌ی کلاسِ انتخاب‌شده؛ courseId خالی = «نمره‌ی کل»
@@ -70,6 +71,8 @@ document.addEventListener('alpine:init', () => {
                 this.loaded = false;
                 this.roster = [];
                 this.loadCourses();
+                // کلاس‌ها به سال تعلق دارند (academic-year.md فاز ۳)
+                this.reloadClassesForYear();
             });
             if (this.schoolId) {
                 this.loadClasses();
@@ -245,7 +248,8 @@ document.addEventListener('alpine:init', () => {
                 let pupils;
                 if (membershipsResponse.ok) {
                     const memberships = await membershipsResponse.json();
-                    pupils = memberships.filter(m => m.active && m.roleCode === 'STUDENT');
+                    // نامِ دانش‌آموزِ ترک‌کرده (عضویتِ غیرفعال) هم برای دفترِ نمراتِ سالِ قبل لازم است
+                    pupils = memberships.filter(m => m.roleCode === 'STUDENT');
                 } else {
                     // TEACHER can manage grades but intentionally cannot read the
                     // complete membership directory. Resolve only the roster names
@@ -269,6 +273,35 @@ document.addEventListener('alpine:init', () => {
             }
         },
 
+        // کلاس‌های سالِ انتخاب‌شده (برای مدیر که سالِ دیگری را باز می‌کند)؛ اگر کلاسِ انتخاب‌شده در آن سال نبود
+        // انتخاب پاک می‌شود. شکست (کاربری که فقط سالِ جاری را می‌بیند) فهرستِ قبلی را نگه می‌دارد.
+        async reloadClassesForYear() {
+            const year = this.normalizeDigits(this.filter.academicYear || '').trim();
+            if (!year || this.years.length === 0) {
+                return;
+            }
+            const seq = ++this.classesSeq;
+            const schoolId = this.schoolId;
+            try {
+                const response = await fetch(`${this.classesBase()}?academicYear=${encodeURIComponent(year)}`,
+                    { headers: { 'X-School-ID': schoolId } });
+                if (!response.ok) {
+                    return;
+                }
+                const classes = await response.json();
+                if (seq !== this.classesSeq || schoolId !== this.schoolId
+                    || year !== this.normalizeDigits(this.filter.academicYear || '').trim()) {
+                    return;
+                }
+                this.classes = classes;
+                if (this.filter.classId && !classes.some(c => String(c.id) === String(this.filter.classId))) {
+                    this.filter.classId = '';
+                }
+            } catch (e) {
+                // فهرستِ قبلی می‌ماند
+            }
+        },
+
         selectedClassInfo() {
             const id = this.filter.classId ? parseInt(this.filter.classId, 10) : null;
             return this.classes.find(c => c.id === id) || null;
@@ -284,12 +317,13 @@ document.addEventListener('alpine:init', () => {
             return pupil ? pupil.fullName : 'نامشخص';
         },
 
-        rosterStudents() {
+        // دانش‌آموزانِ کلاس: فهرستِ سمتِ سرور (شاملِ کسانی که در سالی در آن بوده‌اند)، وگرنه دانش‌آموزانِ فعلیِ کلاس
+        rosterStudents(classStudents) {
             const classId = this.filter.classId ? parseInt(this.filter.classId, 10) : null;
             if (!classId) {
                 return [];
             }
-            return this.students.filter(s => s.classId === classId);
+            return classStudents || this.students.filter(s => s.classId === classId);
         },
 
         visibleRoster() {
@@ -334,10 +368,13 @@ document.addEventListener('alpine:init', () => {
                     return;
                 }
                 const existingGrades = await response.json();
+                const rosterResponse = await fetch(`${this.studentsBase()}?classId=${classId}`,
+                    { headers: { 'X-School-ID': this.schoolId } });
+                const classStudents = rosterResponse.ok ? await rosterResponse.json() : null;
                 if (seq !== this.loadSeq) {
                     return;
                 }
-                this.roster = this.rosterStudents()
+                this.roster = this.rosterStudents(classStudents)
                     .map(student => {
                         const existing = existingGrades.find(g => g.studentId === student.studentId);
                         return {

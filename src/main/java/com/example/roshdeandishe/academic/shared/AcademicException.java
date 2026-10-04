@@ -34,6 +34,16 @@ public final class AcademicException extends RuntimeException {
                     "درس " + e.courseId() + " برای سال «" + e.academicYear() + "» معتبر نیست.";
             case AcademicError.CourseNotGradable e -> "درس " + e.courseId() + " در کارنامه نمی‌آید و نمره‌پذیر نیست.";
             case AcademicError.InvalidAcademicYear e -> "سال تحصیلی «" + e.academicYear() + "» در فهرست سال‌ها نیست.";
+            case AcademicError.YearNotChosen e -> "مدرسه " + e.schoolId() + " هنوز سال تحصیلی جاری را انتخاب نکرده است.";
+            case AcademicError.InvalidRollover e -> e.reason();
+            case AcademicError.ClassNotInYear e ->
+                    "کلاس " + e.classId() + " برای سال «" + e.classYear() + "» است، نه «" + e.expectedYear() + "».";
+            case AcademicError.ClassGradeMismatch e ->
+                    "کلاس " + e.classId() + " پایه‌ی " + e.classGrade() + " است ولی دانش‌آموز پایه‌ی " + e.expectedGrade() + " می‌شود.";
+            case AcademicError.GradeYearNotClassYear e ->
+                    "کلاس " + e.classId() + " برای سال «" + e.classYear() + "» است و نمره‌ی سالِ «" + e.gradeYear() + "» در آن ثبت نمی‌شود.";
+            case AcademicError.PromotionRunNotFound e -> "اجرای ارتقای " + e.runId() + " یافت نشد.";
+            case AcademicError.PromotionRunNotUndoable e -> e.reason();
             case AcademicError.PeriodNotFound e -> "زنگی با شناسه " + e.periodId() + " یافت نشد.";
             case AcademicError.InvalidPeriod e -> e.reason();
             case AcademicError.PeriodOverlaps e -> "زنگ با زنگ " + e.otherPeriodId() + " هم‌پوشانی دارد.";

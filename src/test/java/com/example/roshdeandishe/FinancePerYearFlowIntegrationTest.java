@@ -181,9 +181,11 @@ class FinancePerYearFlowIntegrationTest {
     @Test
     void tuitionAndInvoicesArePerYearAndANewYearStartsWithoutTuition() throws Exception {
         Fixture f = newSchool();
-        setCurrentYear(f, CURRENT);
+        // دانش‌آموزان پیش از انتخابِ سالِ جاری ثبت‌نام شده‌اند (داده‌ی موجود، «ردیاب‌نشده»): «دانش‌آموزانِ هر سال»
+        // برایشان همه‌ی دانش‌آموزانِ فعال است (academic-year.md فاز ۳ بند ۱۳)
         enroll(f, unique("fy.a"), "دانش‌آموز الف");
         enroll(f, unique("fy.b"), "دانش‌آموز ب");
+        setCurrentYear(f, CURRENT);
 
         // سالِ جاری پیش‌فرض است؛ سالِ دیگر شهریه‌ی خودش را می‌خواهد
         setTuition(f, null, 100).andExpect(status().isOk()).andExpect(jsonPath("$.academicYear").value(CURRENT));
@@ -277,8 +279,8 @@ class FinancePerYearFlowIntegrationTest {
     @Test
     void aFamilySeesTheCurrentYearAndAnEarlierYearsInvoiceOnlyWhileItHasABalance() throws Exception {
         Fixture f = newSchool();
-        setCurrentYear(f, CURRENT);
         MockHttpSession student = enroll(f, unique("fy.fam"), "دانش‌آموز خانواده");
+        setCurrentYear(f, CURRENT); // داده‌ی موجود: مدرسه هنوز «ردیاب‌شده» نیست
         setTuition(f, OLD, 80).andExpect(status().isOk());
         setTuition(f, null, 100).andExpect(status().isOk());
         ensureInvoiced(f, OLD, 1);

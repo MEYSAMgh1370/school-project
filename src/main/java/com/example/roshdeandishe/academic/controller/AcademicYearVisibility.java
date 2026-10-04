@@ -43,6 +43,27 @@ public class AcademicYearVisibility {
         return decision.isGranted() ? Optional.empty() : Optional.of(current.get().code());
     }
 
+    /**
+     * سالِ فیلترِ فهرستِ کلاس‌ها (academic-year.md فاز ۳). {@code requested} تهی = سالِ جاریِ مدرسه؛
+     * {@code "all"} = همه‌ی سال‌ها (فقط کسی که هر سالی را می‌بیند)؛ سالِ مشخص = همان سال (برای بقیه فقط
+     * سالِ جاری، وگرنه AcademicYearNotAllowed). خالی در پاسخ یعنی «همه‌ی سال‌ها»، که برای مدرسه‌ی بدون سالِ
+     * جاری هم همین است.
+     */
+    public Optional<String> classListYear(Long schoolId, String requested) {
+        Optional<String> restricted = restrictedYear(schoolId);
+        if ("all".equals(requested)) {
+            if (restricted.isPresent()) {
+                throw new AcademicException(new AcademicError.AcademicYearNotAllowed(requested));
+            }
+            return Optional.empty();
+        }
+        if (requested == null || requested.isBlank()) {
+            return schoolFacade.findCurrentAcademicYear(new SchoolId(schoolId)).map(AcademicYearInfo::code);
+        }
+        requireVisible(schoolId, requested);
+        return Optional.of(AcademicYearCodes.canonical(requested));
+    }
+
     /** AcademicYearNotAllowed (403) اگر کاربر این سال را نمی‌بیند. */
     public void requireVisible(Long schoolId, String academicYear) {
         if (academicYear == null || academicYear.isBlank()) {

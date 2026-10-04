@@ -61,6 +61,57 @@
                                 خودکار، در تاریخِ تعیین‌شده در تنظیمات سیستم، به این فهرست اضافه می‌شود.
                             </p>
                         </form>
+
+                        <%-- داده‌ی موجود که هنوز به هیچ سالی نسبت داده نشده (academic-year.md فاز ۳): با یک اقدامِ صریح به یک سال
+                             نسبت داده می‌شود، هیچ سالی حدس زده نمی‌شود --%>
+                        <div class="notification is-warning is-light mt-4" id="academicYearUnattributed"
+                             x-cloak x-show="hasUnattributed()">
+                            <p class="mb-3">
+                                <span x-text="Calendar.digits(String(unattributed.classes))"></span> کلاس و
+                                <span x-text="Calendar.digits(String(unattributed.students))"></span> دانش‌آموزِ قبلی هنوز به هیچ سالی
+                                نسبت داده نشده‌اند. تا نسبت داده نشوند، ارتقای سالِ بعد و ثبت‌نامِ سال‌به‌سال برای این مدرسه شروع نمی‌شود.
+                                اگر مدرسه همین حالا از سالی گذشته به سالِ جاری رفته، آن‌ها را به سالِ قبل نسبت دهید و بعد ارتقا بدهید.
+                            </p>
+                            <div class="field is-grouped is-grouped-multiline">
+                                <div class="control">
+                                    <label class="label" for="academicYearAttributeYear">نسبت دادن به سال</label>
+                                    <div class="select">
+                                        <select id="academicYearAttributeYear" dir="ltr"
+                                                @change="attributeYear = $event.target.value">
+                                            <option value="" :selected="!attributeYear">یک سال را انتخاب کنید</option>
+                                            <template x-for="year in attributableYears" :key="'attr-' + year.id">
+                                                <option :value="year.code" x-text="Calendar.digits(year.code)"
+                                                        :selected="year.code === attributeYear"></option>
+                                            </template>
+                                        </select>
+                                    </div>
+                                </div>
+                                <div class="control app-control-align-end">
+                                    <button class="button is-warning" type="button" id="academicYearAttributeButton"
+                                            @click="attribute()" :disabled="!attributeYear || attributing"
+                                            :class="{ 'is-loading': attributing }">
+                                        نسبت دادن
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <%-- ارتقای خودکار: وقتی سالِ جاری به سالی بعدی عوض شود، همه‌ی دانش‌آموزان به پایه‌ی بعد می‌روند
+                             (کلاسِ آن‌ها بعداً مشخص می‌شود) --%>
+                        <div class="field mt-4" id="academicYearAutoPromotion">
+                            <label class="checkbox" for="academicYearAutoPromotionToggle">
+                                <input id="academicYearAutoPromotionToggle" type="checkbox"
+                                       :checked="autoPromotion" :disabled="autoSaving"
+                                       @change="setAutoPromotion($event.target.checked)">
+                                ارتقای خودکار دانش‌آموزان هنگام تعویض سال تحصیلی
+                            </label>
+                            <p class="help">
+                                با روشن بودن، هر بار که سالِ جاری به سالی بعدی عوض شود همه‌ی دانش‌آموزان به پایه‌ی بعد می‌روند
+                                و در «انتظار جا دادن در کلاس» می‌مانند تا کلاس‌های سالِ جدید را بسازید و آن‌ها را جا بدهید؛
+                                آخرین پایه‌ی مدرسه فارغ‌التحصیل می‌شود. تکرارِ پایه را خودتان تعیین می‌کنید و هر اجرا قابل برگرداندن است.
+                                خاموش بودن: ارتقا فقط دستی و از صفحه‌ی <a href="/promotion">ارتقای پایه</a>.
+                            </p>
+                        </div>
                     </div>
                 </template>
             `)

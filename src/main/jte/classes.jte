@@ -2,7 +2,7 @@
 
 @param NavbarModel navbar
 
-@template.layout.main(title = "کلاس‌های مدرسه", scripts = java.util.List.of("/js/navbar.js", "/js/member-names.js", "/js/classes.js"), content = @`
+@template.layout.main(title = "کلاس‌های مدرسه", scripts = java.util.List.of("/js/navbar.js", "/js/jalali.js", "/js/calendar.js", "/js/member-names.js", "/js/classes.js"), content = @`
 @template.layout.navbar(navbar = navbar)
 
 <section class="section" id="main-content" role="main" tabindex="-1"
@@ -44,6 +44,17 @@
                                     </select>
                                 </div>
                             </div>
+                            <div class="control" x-show="years.length > 0" x-cloak>
+                                <label class="label" for="classYear">سال تحصیلی</label>
+                                <div class="select">
+                                    <select id="classYear" x-model="form.academicYear">
+                                        <option value="" x-text="currentYear ? 'سال جاری (' + Calendar.digits(currentYear) + ')' : 'بدون سال'"></option>
+                                        <template x-for="year in years" :key="year.id">
+                                            <option :value="year.code" x-text="Calendar.digits(year.code)"></option>
+                                        </template>
+                                    </select>
+                                </div>
+                            </div>
                             <div class="control app-control-align-end">
                                 <button class="button is-link" type="submit" :class="{ 'is-loading': submitting }">
                                     افزودن
@@ -53,11 +64,24 @@
                     </form>
                 </div>
 
+                <div class="field" x-show="years.length > 0" x-cloak>
+                    <label class="label" for="classYearFilter">سالِ نمایش‌داده‌شده</label>
+                    <div class="select">
+                        <select id="classYearFilter" x-model="yearFilter" @change="$nextTick(() => load())">
+                            <option value="" x-text="currentYear ? 'سال جاری (' + Calendar.digits(currentYear) + ')' : 'همه‌ی کلاس‌ها'"></option>
+                            <template x-for="year in years" :key="year.id">
+                                <option :value="year.code" x-text="Calendar.digits(year.code)"></option>
+                            </template>
+                        </select>
+                    </div>
+                </div>
+
                 <div class="table-container">
                 <table class="table is-fullwidth is-striped">
                     <thead>
                     <tr>
                         <th scope="col">نام کلاس</th>
+                        <th scope="col">سال</th>
                         <th scope="col">پایه</th>
                         <th scope="col">بخش</th>
                         <th scope="col">معلم</th>
@@ -68,6 +92,7 @@
                     <template x-for="classItem in classes" :key="classItem.id">
                         <tr>
                             <td x-text="classItem.name"></td>
+                            <td x-text="yearLabel(classItem.academicYear)"></td>
                             <td x-text="classItem.gradeLevel"></td>
                             <td x-text="classItem.section || '—'"></td>
                             <td x-text="teacherName(classItem.teacherId)"></td>

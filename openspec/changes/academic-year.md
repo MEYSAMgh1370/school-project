@@ -358,7 +358,8 @@ be overturned.
    unattributed-invoices-exist` while the school still has year-less invoices and a specific year is
    asked (the student with an old invoice would be billed twice; attribute first). Classes and
    enrollments are not year-scoped before phase 3, so "enrolled in that year" means the
-   school's current students.
+   school's current students (since phase 3: the students with an enrollment in that year in a
+   "tracked" school, today's meaning in any other school).
 5. **Payments.** Recording a payment works on an invoice of any year (decision Q3); the
    balance rules are unchanged.
 6. **Attributing existing data (Q4 default).** `POST /api/admin/schools/{id}/finance/attribute-year`
@@ -408,6 +409,154 @@ because year lookups canonicalize the input and such rows are not found until no
 are not rewritten). Accepted as is: after a school's first current-year choice, its year-less
 tuition is not used for new enrollments (by the rule "no tuition for the year, no invoice";
 the finance page says so), and the extra school/year lookups per finance call.
+
+### Phase 3 design (2026-10-04) - implemented
+
+Built on the decisions of 2026-10-03 (promotion, graduation, leaving, undo, pending placement, new
+classes from scratch, the setting). Same guiding rule as phases 1-2: **a school that has not set
+up years behaves exactly as today.** Everything below that is not stated by the product owner is
+an assumption and is repeated in "Assumptions to confirm" so it can be overturned.
+
+1. **Classes belong to a year.** `academic.classes.academic_year` (`varchar(16)`, canonical code,
+   no cross-module foreign key), nullable: `NULL` = not attributed (every existing class, and
+   classes of a school with no current year). A class is created in the school's current year
+   unless the admin names another listed year; the year of a class never changes.
+2. **Students carry a status and a current class.** `academic.students.status`
+   (`ACTIVE`, `PENDING`, `GRADUATED`, `LEFT`; existing rows `ACTIVE`) and `class_id` becomes
+   nullable: `students.class_id` **is the "current enrollment" accessor** (what grades, the
+   dashboard, the Bale bot and `WardsAssembler` already read), so callers keep working.
+   `PENDING` = promoted, class not chosen yet (`class_id` null); `GRADUATED` and `LEFT` have
+   no class. `listStudents` returns `ACTIVE` and `PENDING` only; `findStudentInfo`/`getStudentInfo`
+   return every status (history, grades and invoices keep resolving). `StudentInfo` and
+   `EnrollmentInfo` get a nullable `classId` and a `status`; callers that dereferenced the class
+   are made null-safe.
+3. **Enrollments are the per-year history.** `academic.enrollments` (`school_id`, `student_id`,
+   `academic_year`, `class_id` nullable while pending, `grade_level`, `status` =
+   `ENROLLED`/`PENDING`, `promotion_run_id` nullable); unique `(student_id, academic_year)`.
+   A student keeps one row per year they were in the school; last year's row (class, grade
+   level) is never changed by a later year. `ENROLLED` rows get the class's grade level;
+   `PENDING` rows get the grade level promotion decided. Graduation and leaving create no
+   new-year row (decision: "no new-year enrollment"); the state lives on the student and the
+   run.
+4. **When enrollment rows are written ("tracked" schools).** A school is *tracked* when it has a
+   current year and every `ACTIVE`/`PENDING` student has at least one enrollment row. Only
+   tracked schools write a row when a student is enrolled or moved (`enrollStudent`, placement);
+   other schools write nothing, so nothing changes until the admin runs the attribution below.
+   A brand new school with a current year and no students is tracked from the start.
+5. **Attributing existing data (Q4).** `POST /api/admin/schools/{id}/academic-year/attribution`
+   (`ACADEMIC_YEAR_MANAGE`, body `{academicYear}`): in one transaction, sets that year on
+   every class with none and creates an `ENROLLED` row for every `ACTIVE` student that has
+   none (grade level from its class). The year must be listed and **not later than the
+   school's current year** (a school adopting the system at a year switch can attribute its
+   existing classes to the year that just ended and promote them, see below). Nothing
+   guessed: `409 year-not-chosen` if the school has no current year, `400
+   invalid-academic-year` otherwise. The year page shows a banner with the counts while
+   unattributed classes or students exist and a current year is set.
+6. **Listing classes by year.** `GET .../classes?academicYear=`: absent = the current year's
+   classes plus unattributed ones (a school with no current year: all); a given year = that
+   year's plus unattributed ones; `all` = every class of every year (admin pages that
+   resolve a class name). Holders without `ACADEMIC_YEAR_MANAGE` can only ask for the current
+   year (`403 academic-year-not-allowed`), as grades do.
+7. **Grades follow the class's year.** A grade can be recorded when the student **has an
+   enrollment in that class** (the current class, or a row from that year: the admin can
+   still correct last year) and, when the class has a year, the grade's year equals it
+   (`400 grade-year-not-class-year`). Classes without a year behave as before. *(A consequence
+   of "a class belongs to a year"; not asked for in so many words.)*
+8. **Promotion run.** `POST /api/admin/schools/{id}/promotion` (`ACADEMIC_YEAR_MANAGE`):
+   body `{fromYear, decisions: [{studentId, outcome}]}` (outcomes `PROMOTE`, `REPEAT`,
+   `GRADUATE`, `LEAVE`; students not listed get the default rule). **The target year is
+   always the school's current year** (promotion happens after the switch; `409
+   year-not-chosen` otherwise, and `400` if `fromYear` is not an earlier listed year). The
+   students considered are those with an `ENROLLED` row in `fromYear` who have no row in the
+   current year yet. The default rule: the next grade level, or `GRADUATE` if the student's
+   grade level is the **last grade of the school's level** (today's single `school_level`;
+   several levels per school is deferred, question 10). Effects, all in one transaction and
+   recorded in a **promotion run**:
+   - `PROMOTE`/`REPEAT`: a `PENDING` row in the current year (level + 1 / same level),
+     student `PENDING`, `class_id` null.
+   - `GRADUATE`: student `GRADUATED`, `class_id` null, no new row. History, grades, guardians
+     and invoices stay; the membership stays active (a family may still owe or read an
+     earlier invoice).
+   - `LEAVE`: student `LEFT`, `class_id` null, no new row, the STUDENT membership
+     deactivated (`IamFacade.setMembershipActive`). Nothing is deleted.
+   The run stores each student's previous status and class so it can be undone. A preview
+   (`GET .../promotion/preview?fromYear=`) returns the default outcomes without writing.
+9. **Automatic promotion.** A school setting `auto_promotion` (default **off**) is turned on and off from
+   the year page (`PUT .../academic-year/auto-promotion`). When the current year is changed
+   to a **later** year than before, and the setting is on, and the school has a previous current
+   year, the school module publishes `CurrentAcademicYearChangedEvent(schoolId, fromYear,
+   toYear)` and the academic module runs the default rule for the whole school (a listener
+   after the commit; failures are logged and leave the school in the manual state). Switching
+   back to an earlier year (Q6) never promotes.
+10. **Undo.** `POST .../promotion/runs/{runId}/undo`: restores every student of the run to the
+    state it had (status, class), deletes the run's rows, and reactivates memberships it
+    deactivated. Refused (`409 promotion-run-not-undoable`) when a later run exists or any
+    student of the run has already been placed in a class (the admin's placement work would
+    be lost) - the admin moves such students by hand instead. Invoices issued meanwhile for
+    the target year are not touched (finance is another module); they stay on the student.
+11. **Changing an outcome by hand.** `POST .../promotion/outcome` `{studentId, outcome}` for a
+    student of the **current year's** run who is `PENDING` or `GRADUATED`: `REPEAT` (same
+    level, `PENDING`) or `PROMOTE` (next level, `PENDING`); a placed student is moved with
+    the normal class change.
+12. **Placement.** `GET .../promotion/pending` lists `PENDING` students (and `GET .../promotion/graduates` the run's graduates, so a graduate can be set to repeat) with their target grade level
+    and the current year's classes of that level; `POST .../promotion/placements`
+    `{placements: [{studentId, classId}]}` places them. The class must belong to the school,
+    be in the current year (or unattributed) and have the student's target grade level
+    (`409 class-grade-mismatch`); it writes the class on the current-year row (`ENROLLED`)
+    and on the student (`ACTIVE`). Enrolling a pending student through the ordinary
+    student form does the same.
+13. **Invoices.** Promotion issues none. "Issue the year's invoices" now has a real meaning:
+    `AcademicFacade.listStudentsEnrolledIn(schoolId, year)` returns, in a tracked school,
+    the students with an `ENROLLED` or `PENDING` row in that year; in any other school all
+    current students (today). This settles the open point from phase 2 (the action may be run
+    for any listed year). Graduated and left students are never invoiced for a new year.
+14. **Permissions.** Attribution, promotion, undo, outcome changes, placement and the setting
+    all need `ACADEMIC_YEAR_MANAGE` (the school admin); no new permission.
+
+**Assumptions to confirm** (none was stated by the product owner): (a) the setting defaults to
+**off**; (b) promotion's target is always the current year and happens after the switch;
+(c) grades must match the class's year (item 7); (d) undo is refused once any promoted student
+is placed or a later run exists; (e) one permission (`ACADEMIC_YEAR_MANAGE`) covers the whole
+rollover; (f) attribution accepts any listed year up to the current one; (g) graduates keep
+an active membership; (h) a pending student keeps their guardians and sees (empty) self-service
+pages - no class-dependent screen breaks.
+
+**Not in phase 3:** several levels per school (question 10), transferring a student to
+another school, copying classes or timetables to a new year, grade-based promotion rules,
+year-aware guardians, printing report cards of earlier years.
+
+**As built.** `V11` adds `academic.classes.academic_year`, `students.status` (+ `class_id` nullable),
+`academic.enrollments` (unique `(student_id, academic_year)`), `academic.promotion_runs` and
+`promotion_run_students`, and `school.schools.auto_promotion` (default false). Public surface:
+`AcademicFacade` (`createClass(..., year)`, `listClasses(school, year)` = that year plus unattributed
+classes, `listStudents` = `ACTIVE`+`PENDING` only, `listStudentsEnrolledIn`, `listStudentsInClass`) and the new
+`PromotionFacade` (attribution, preview, run, automatic run, undo, outcome change, pending, graduates,
+placement); `EnrollmentLedger` (internal) is the single rule for "tracked school" and "place a student", used by
+the student form and by placement. `SchoolFacade.isAutoPromotion/setAutoPromotion` and the event
+`school.CurrentAcademicYearChangedEvent` (published only when a previous current year existed and changed);
+`AutoPromotionListener` (`@ApplicationModuleListener`, after commit, failures logged) calls
+`PromotionFacade.runAutomatic`. Endpoints (all `ACADEMIC_YEAR_MANAGE` + the ACADEMIC module):
+`GET/PUT /api/admin/schools/{id}/academic-year` now also return/set `autoPromotion`
+(`PUT .../academic-year/auto-promotion`), `GET .../academic-year/unattributed`,
+`POST .../academic-year/attribution`, `GET .../promotion/preview?fromYear=`, `POST .../promotion`,
+`GET .../promotion/runs`, `POST .../promotion/runs/{id}/undo`, `POST .../promotion/outcome`,
+`GET .../promotion/pending`, `GET .../promotion/graduates`, `POST .../promotion/placements`. Classes:
+`GET .../classes?academicYear=` (default the current year; `all` only for the year manager; others `403
+academic-year-not-allowed` for another year) and the same on `/timetable/classes`;
+`POST .../classes` takes an optional `academicYear`; `GET .../students?classId=` returns the class's current
+and past students. `GET /api/me/enrollment` answers `204` for a student without a class (the mobile app
+reads `classId` as non-null). Errors: `year-not-chosen` 409, `invalid-rollover` 400, `class-not-in-year` 409,
+`class-grade-mismatch` 409, `grade-year-not-class-year` 400, `promotion-run-not-found` 404,
+`promotion-run-not-undoable` 409. UI: `/promotion` (pending placement, graduates, the run with a
+per-student outcome, the run history with undo; run and undo ask for confirmation in a modal), the
+`/academic-year` page (attribution banner, auto-promotion switch), a year filter and year column on
+`/classes`, status text on `/students`, class lists that follow the year on `/grades` and `/timetable`;
+the grade book reads the roster from `students?classId=` so an earlier year's class shows its students.
+The phase-2 tests that invoice an earlier year now enroll their students before choosing the current year
+(existing data, not yet "tracked"): in a tracked school an earlier year has no enrollments, so "issue the
+year's invoices" for it is empty by design (item 13). Verified in a browser against mocked APIs (the
+promotion page end to end: preview, per-student outcome, confirm modal, placement, run list; the
+attribution banner and the setting; the classes year filter; the students page).
 
 ## Acceptance Criteria
 
@@ -461,7 +610,38 @@ Phase 2 (met 2026-10-03):
 - A family (and the dashboard counts, and the Bale bot) sees the current year's invoices,
   unattributed ones, and an earlier year's invoice only while it has a balance.
 
-Phase 3 (not built): classes/enrollments per year and promotion.
+Phase 3 (met 2026-10-04):
+
+- A school without a current year behaves exactly as before: classes carry no year, no enrollment rows
+  are written, and the class list is unfiltered.
+- Existing classes and students are attributed to a chosen year only by an explicit action
+  (`409 year-not-chosen` without a current year; the year must be listed and not after the current
+  year; transactional; repeating it changes nothing); nothing is guessed.
+- A class belongs to a year (default: the current year); the class list defaults to the current year plus
+  unattributed classes; `all` and other years are for the year manager only (`403` otherwise).
+- A tracked school writes one enrollment row per (student, year) when a student is enrolled or placed; last
+  year's row is never changed by a later year; a class of another year is refused for enrollment.
+- A grade is accepted only for a student who has an enrollment in that class, and (when the class has a
+  year) for that year; an admin can still correct an earlier year in the old class, including for a
+  graduate; `listStudentsInClass` includes the class's past students.
+- Promotion always targets the current year: the default rule moves everyone to the next grade level and
+  graduates the last grade of the school's level; per-student outcomes (repeat, graduate, leave) are
+  validated against the grade before anything is written; a promoted or repeating student is `PENDING`
+  with a target grade level and no class; a graduate keeps their membership; a leaver's membership is
+  deactivated and nothing is deleted; students already in the target year or not `ACTIVE` are not
+  touched, so running again finds no one.
+- A run can be undone while it is the latest and no student of it has been placed; undo restores status,
+  class and memberships and removes the run's enrollments; refused otherwise (`409`).
+- A pending student is placed only in a class of their target grade in the current year (or unattributed),
+  all or nothing, through the placement list or the ordinary enrollment form; a graduate or a promoted
+  student can be set to repeat/promote by hand until placed.
+- Automatic promotion runs after the commit of a change of the current year to a later year, only when the
+  school's setting is on and a previous year existed; switching back never promotes; failures are logged.
+- "Issue the year's invoices" in a tracked school goes to the students enrolled in that year only
+  (graduates and leavers get none); an untracked school keeps today's behavior.
+- A pending student has no class: self-service pages and the mobile enrollment endpoint do not fail
+  (`204` for "my class").
+
 
 ## Tests
 
@@ -501,7 +681,7 @@ Phase 3 (not built): classes/enrollments per year and promotion.
    classes are created from scratch (see question 8 for what follows from that).
 2. ~~Invoices when tuition is set late.~~ **Answered 2026-10-03:** a separate action.
 3. ~~Paying last year's invoice.~~ **Answered 2026-10-03:** yes, allowed.
-4. **Existing data.** When phases 1-3 are enabled, which year do all current
+4. **Existing data** (default implemented in phases 1-3: the admin attributes existing data to one year by an explicit action; unconfirmed). When phases 1-3 are enabled, which year do all current
    classes, enrollments, tuition and grades belong to? One year chosen by the
    admin (as proposed), and existing free-text grade years that match no listed
    year are reported, not guessed.

@@ -236,7 +236,12 @@ class FinanceFacadeImpl implements FinanceFacade {
                 : invoiceRepository.findDistinctStudentIdsBySchoolIdAndAcademicYear(schoolId, year));
 
         int issued = 0;
-        for (AcademicFacade.StudentInfo student : academicFacade.listStudents(schoolId)) {
+        // «دانش‌آموزانِ آن سال»: در مدرسه‌ی ردیاب‌شده ثبت‌نام‌های همان سال (academic-year.md فاز ۳)،
+        // وگرنه همه‌ی دانش‌آموزانِ فعال مثل پیش از این
+        List<AcademicFacade.StudentInfo> students = year == null
+                ? academicFacade.listStudents(schoolId)
+                : academicFacade.listStudentsEnrolledIn(schoolId, year);
+        for (AcademicFacade.StudentInfo student : students) {
             Long studentId = student.id().value();
             if (alreadyInvoiced.contains(studentId)) {
                 continue;

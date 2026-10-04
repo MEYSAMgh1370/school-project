@@ -1,8 +1,10 @@
 package com.example.roshdeandishe.school.internal;
 
+import com.example.roshdeandishe.school.CurrentAcademicYearChangedEvent;
 import com.example.roshdeandishe.school.SchoolFacade;
 import com.example.roshdeandishe.school.shared.SchoolError;
 import com.example.roshdeandishe.school.shared.SchoolException;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -35,10 +37,13 @@ class SchoolFacadeImpl implements SchoolFacade {
 
     private final SchoolRepository schoolRepository;
     private final AcademicYearRepository academicYearRepository;
+    private final ApplicationEventPublisher eventPublisher;
 
-    SchoolFacadeImpl(SchoolRepository schoolRepository, AcademicYearRepository academicYearRepository) {
+    SchoolFacadeImpl(SchoolRepository schoolRepository, AcademicYearRepository academicYearRepository,
+                     ApplicationEventPublisher eventPublisher) {
         this.schoolRepository = schoolRepository;
         this.academicYearRepository = academicYearRepository;
+        this.eventPublisher = eventPublisher;
     }
 
     @Override
@@ -115,6 +120,28 @@ class SchoolFacadeImpl implements SchoolFacade {
         if (updated == 0) {
             throw new SchoolException(new SchoolError.AcademicYearChanged(expected));
         }
+        // رویداد فقط وقتی که سالِ قبلی وجود داشته و واقعاً عوض شده؛ اولین انتخاب و انتخابِ دوباره‌ی همان سال نه
+        if (expected != null && !expected.equals(year.getId())) {
+            academicYearRepository.findById(expected).ifPresent(previous -> eventPublisher.publishEvent(
+                    new CurrentAcademicYearChangedEvent(schoolId.value(), previous.getCode(), previous.getStartYear(),
+                            year.getCode(), year.getStartYear())));
+        }
+    }
+
+    @Override
+    public boolean isAutoPromotion(SchoolId schoolId) {
+        return schoolRepository.findById(schoolId.value())
+                .orElseThrow(() -> new SchoolException(new SchoolError.SchoolNotFound(schoolId.value())))
+                .isAutoPromotion();
+    }
+
+    @Override
+    @Transactional
+    public void setAutoPromotion(SchoolId schoolId, boolean enabled) {
+        SchoolEntity school = schoolRepository.findById(schoolId.value())
+                .orElseThrow(() -> new SchoolException(new SchoolError.SchoolNotFound(schoolId.value())));
+        school.setAutoPromotion(enabled);
+        schoolRepository.save(school);
     }
 
     private static AcademicYearInfo toYearInfo(AcademicYearEntity entity) {

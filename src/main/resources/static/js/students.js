@@ -2,7 +2,10 @@ document.addEventListener('alpine:init', () => {
     Alpine.data('studentsPage', () => ({
         schoolId: null,
         students: [],
+        // کلاس‌های سالِ جاری (برای دراپ‌داونِ ثبت‌نام)
         classes: [],
+        // کلاس‌های همه‌ی سال‌ها فقط برای نمایش نام (مدیر)؛ برای بقیه همان classes
+        allClasses: [],
         pupils: [],
         parents: [],
         selectedStudentId: null,
@@ -65,8 +68,16 @@ document.addEventListener('alpine:init', () => {
         },
 
         className(classId) {
-            const classItem = this.classes.find(c => c.id === classId);
+            const classItem = this.allClasses.find(c => c.id === classId) || this.classes.find(c => c.id === classId);
             return classItem ? classItem.name : 'نامشخص';
+        },
+
+        // دانش‌آموزِ بدون کلاس (ارتقایافته و جا‌نشده) وضعیتش را نشان می‌دهد، نه «نامشخص»
+        classLabel(student) {
+            if (student.classId) {
+                return this.className(student.classId);
+            }
+            return student.status === 'PENDING' ? 'در انتظار جا دادن در کلاس' : '—';
         },
 
         studentName(userId) {
@@ -121,9 +132,11 @@ document.addEventListener('alpine:init', () => {
             this.loading = true;
             this.error = '';
             try {
-                const [studentsResponse, classesResponse, membershipsResponse] = await Promise.all([
+                const [studentsResponse, classesResponse, allClassesResponse, membershipsResponse] = await Promise.all([
                     fetch(this.studentsBase(), { headers: { 'X-School-ID': this.schoolId } }),
                     fetch(this.classesBase(), { headers: { 'X-School-ID': this.schoolId } }),
+                    // همه‌ی سال‌ها فقط برای مدیرِ سال؛ برای بقیه 403 است و همان فهرستِ سالِ جاری می‌ماند
+                    fetch(this.classesBase() + '?academicYear=all', { headers: { 'X-School-ID': this.schoolId } }),
                     fetch(this.membershipsBase(), { headers: { 'X-School-ID': this.schoolId } })
                 ]);
                 if (!studentsResponse.ok) {
@@ -136,6 +149,7 @@ document.addEventListener('alpine:init', () => {
                 // اگر در دسترس نبود (مثلاً نقش کاربر اجازه‌ی CLASS_MANAGE
                 // ندارد)، صفحه‌ی دانش‌آموزان را نمی‌شکند
                 this.classes = classesResponse.ok ? await classesResponse.json() : [];
+                this.allClasses = allClassesResponse.ok ? await allClassesResponse.json() : this.classes;
                 if (membershipsResponse.ok) {
                     const memberships = await membershipsResponse.json();
                     this.pupils = memberships.filter(m => m.active && m.roleCode === 'STUDENT');

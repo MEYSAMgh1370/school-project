@@ -62,7 +62,8 @@ class GradeCourseFacadeTest {
                 new SchoolFacade.AcademicYearInfo(new SchoolFacade.AcademicYearId(1L), "1404-1405", 1404),
                 new SchoolFacade.AcademicYearInfo(new SchoolFacade.AcademicYearId(2L), "1405-1406", 1405)));
         facade = new AcademicFacadeImpl(students, classes, mock(StudentGuardianRepository.class), grades, courses,
-                iam, school, mock(ApplicationEventPublisher.class));
+                mock(EnrollmentRepository.class), mock(EnrollmentLedger.class), iam, school,
+                mock(ApplicationEventPublisher.class));
 
         ClassEntity classEntity = new ClassEntity(SCHOOL, "پنجم الف", 9L, "الف", GRADE_LEVEL, GradingScheme.NUMERIC);
         ReflectionTestUtils.setField(classEntity, "id", CLASS_ID);

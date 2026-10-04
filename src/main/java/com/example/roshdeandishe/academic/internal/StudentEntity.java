@@ -1,5 +1,6 @@
 package com.example.roshdeandishe.academic.internal;
 
+import com.example.roshdeandishe.academic.StudentStatus;
 import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -34,8 +35,13 @@ class StudentEntity {
     @Column(name = "school_id", nullable = false)
     private Long schoolId;
 
-    @Column(name = "class_id", nullable = false)
+    /** «ثبت‌نام جاری»؛ تهی برای PENDING/GRADUATED/LEFT (academic-year.md فاز ۳). */
+    @Column(name = "class_id")
     private Long classId;
+
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false, length = 16)
+    private StudentStatus status = StudentStatus.ACTIVE;
 
     @Column(name = "enrolled_at", nullable = false)
     private Instant enrolledAt;
