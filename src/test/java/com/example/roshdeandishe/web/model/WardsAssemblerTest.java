@@ -15,8 +15,8 @@ import com.example.roshdeandishe.iam.IamFacade.UserProfile;
 import com.example.roshdeandishe.school.SchoolFacade;
 import com.example.roshdeandishe.school.SchoolFacade.SchoolId;
 import com.example.roshdeandishe.school.SchoolFacade.SchoolInfo;
-import com.example.roshdeandishe.web.dto.WardRef;
-import com.example.roshdeandishe.web.dto.WardRow;
+import com.example.roshdeandishe.web.model.WardRef;
+import com.example.roshdeandishe.web.model.WardRow;
 import org.junit.jupiter.api.Test;
 
 import java.math.BigDecimal;

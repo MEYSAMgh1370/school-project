@@ -1,6 +1,6 @@
 package com.example.roshdeandishe;
 
-import com.example.roshdeandishe.web.dto.DashboardModel;
+import com.example.roshdeandishe.web.model.DashboardModel;
 import com.example.roshdeandishe.web.model.NavCatalog;
 import com.example.roshdeandishe.web.model.NavbarModel;
 import gg.jte.ContentType;

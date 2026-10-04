@@ -34,7 +34,8 @@ Use these repository conventions, verified against current code and tests:
   <module>/
     <Module>Facade.java, enums, events    exposed module API
     controller/                           @RestController / @Controller
-    dto/                                  request/response records
+    dto/request/, dto/response/           request and response records
+    model/                                JTE page models and row types
     config/                               @Configuration, filters, aspects
     internal/                             entities, repositories, services — flat
     shared/                               @NamedInterface
@@ -42,7 +43,8 @@ Use these repository conventions, verified against current code and tests:
 
   `config/` exists only where a module has `@Configuration` classes, filters, or
   aspects to hold (currently `iam` and `platform`). `dto/` exists only where a
-  controller has request/response records to extract.
+  controller has request/response records to extract; `model/` only where a
+  page controller has page models or row types (not requests/responses) to hold.
 
 - Nothing moves into a base package. The base package is a module's exposed API;
   moving a class into it silently widens that module's contract, and

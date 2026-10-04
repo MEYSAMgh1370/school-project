@@ -37,7 +37,8 @@ Within each domain module, classes are grouped by type:
 <module>/
   <Module>Facade.java, enums, events    exposed module API
   controller/                           @RestController / @Controller
-  dto/                                  request/response records
+  dto/request/, dto/response/           request and response records
+  model/                                JTE page models and row types
   config/                               @Configuration, filters, aspects
   internal/                             entities, repositories, services — flat
   shared/                               @NamedInterface
@@ -47,8 +48,8 @@ Within each domain module, classes are grouped by type:
 `@Configuration` classes, filters, or aspects to hold. `dto/` exists only where
 a controller had nested request/response records to extract; `notification` has no
 `dto/`. `web` has no `internal/`/`shared/` split — it is a pure
-view-composition module with `controller/`, `dto/`, and `model/` (the shared
-navbar/role-label support classes) only.
+view-composition module with `controller/` and `model/` (page models, row types,
+and the shared navbar/role-label support classes) only.
 
 Two rules keep this shape from widening a module's exposed contract:
 

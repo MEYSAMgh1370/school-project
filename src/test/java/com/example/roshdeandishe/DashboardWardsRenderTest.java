@@ -1,8 +1,8 @@
 package com.example.roshdeandishe;
 
-import com.example.roshdeandishe.web.dto.DashboardModel;
-import com.example.roshdeandishe.web.dto.MembershipRow;
-import com.example.roshdeandishe.web.dto.WardRow;
+import com.example.roshdeandishe.web.model.DashboardModel;
+import com.example.roshdeandishe.web.model.MembershipRow;
+import com.example.roshdeandishe.web.model.WardRow;
 import com.example.roshdeandishe.web.model.NavbarModel;
 import gg.jte.ContentType;
 import gg.jte.TemplateEngine;

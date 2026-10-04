@@ -2,7 +2,8 @@ package com.example.roshdeandishe.academic.controller;
 
 import com.example.roshdeandishe.academic.PromotionFacade;
 import com.example.roshdeandishe.academic.PromotionOutcome;
-import com.example.roshdeandishe.academic.dto.PromotionDtos.*;
+import com.example.roshdeandishe.academic.dto.request.*;
+import com.example.roshdeandishe.academic.dto.response.*;
 import com.example.roshdeandishe.academic.shared.AcademicError;
 import com.example.roshdeandishe.academic.shared.AcademicException;
 import com.example.roshdeandishe.iam.shared.RequiresModule;

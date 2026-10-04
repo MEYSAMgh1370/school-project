@@ -1,4 +1,4 @@
-@import com.example.roshdeandishe.iam.dto.ActivatePageModel
+@import com.example.roshdeandishe.iam.model.ActivatePageModel
 
 @param ActivatePageModel model
 
