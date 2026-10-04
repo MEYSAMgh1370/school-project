@@ -46,6 +46,22 @@ class LoginDashboardFlowIntegrationTest {
     }
 
     @Test
+    void landingPageRendersSliderAndFooterNavigation() throws Exception {
+        // اسلایدر و پاورقی صفحه‌ی اول (۲۰۲۶-۰۹-۲۹). اسلایدها در سرور رندر
+        // می‌شوند - این تست همان چیزی را می‌بیند که بازدیدکننده‌ی بدون
+        // جاوااسکریپت می‌بیند، و اگر اسلایدی از قالب بیفتد شکست می‌خورد.
+        mockMvc.perform(get("/"))
+                .andExpect(status().isOk())
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("x-data=\"landingSlider(4)\"")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("aria-roledescription=\"اسلایدر\"")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("aria-label=\"۱ از ۴\"")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("aria-label=\"۴ از ۴\"")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("/js/landing.js")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("app-landing-footer-columns")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("href=\"#landing-faq-title\"")));
+    }
+
+    @Test
     void anonymousSchoolRegistrationCtaSurvivesLoginAndRegistration() throws Exception {
         mockMvc.perform(get("/"))
                 .andExpect(status().isOk())

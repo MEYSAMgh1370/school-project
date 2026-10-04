@@ -1,7 +1,7 @@
 # Split `dto/` Into `dto/request` And `dto/response`
 
 Status: implemented 2026-10-04. Current behavior is reflected in `conventions.md` and
-`architecture.md`. Both open questions were resolved with the proposed defaults.
+`architecture.md`.
 
 ## Current Behavior
 
@@ -71,7 +71,17 @@ Inside each module that has request/response records:
 end. As in the prior change, it cannot detect an accidental base-package
 addition, so review `git diff -M` for any file leaving `dto/`.
 
-## Open Questions
+## Outcome
+
+- `academic` was already split on master (PR #84, which also split `PromotionDtos`
+  and `TimetableDtos` into one record per file); this change moved the remaining
+  academic records and the other six modules, so no `*Request`/`*Response` is left
+  directly in a `dto/`.
+- Page models were not left in `dto/`: master moved `iam/dto/ActivatePageModel` and
+  `web/dto/*` to `model/` (PR #84), which settled open question 2 differently from
+  the default proposed here.
+
+## Open Questions (as proposed)
 
 1. Split the two aggregate holders into one file per record (proposed), or keep
    them and place the whole holder under one package?

@@ -1,12 +1,10 @@
 package com.example.roshdeandishe.academic.controller;
 
-import com.example.roshdeandishe.academic.dto.response.EntryResponse;
-import com.example.roshdeandishe.academic.dto.response.MyTimetableResponse;
-import com.example.roshdeandishe.academic.dto.response.MyTimetableView;
-import com.example.roshdeandishe.academic.dto.response.PeriodResponse;
 import com.example.roshdeandishe.academic.AcademicFacade;
 import com.example.roshdeandishe.academic.TimetableFacade;
 import com.example.roshdeandishe.academic.TimetableFacade.EntryInfo;
+import com.example.roshdeandishe.academic.dto.request.*;
+import com.example.roshdeandishe.academic.dto.response.*;
 import com.example.roshdeandishe.iam.IamFacade;
 import com.example.roshdeandishe.school.SchoolFacade;
 import com.example.roshdeandishe.school.SchoolFacade.AcademicYearInfo;

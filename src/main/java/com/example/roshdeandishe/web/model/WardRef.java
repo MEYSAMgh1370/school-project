@@ -1,4 +1,4 @@
-package com.example.roshdeandishe.web.dto;
+package com.example.roshdeandishe.web.model;
 
 /**
  * یک دانش‌آموزِ قابل‌انتخاب در «نمره‌های من»: فرزندِ لینک‌شده‌ی والد، یا خودِ

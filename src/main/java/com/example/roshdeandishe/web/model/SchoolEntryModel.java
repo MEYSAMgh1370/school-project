@@ -1,4 +1,4 @@
-package com.example.roshdeandishe.web.dto;
+package com.example.roshdeandishe.web.model;
 
 public record SchoolEntryModel(Long schoolId, String schoolName, boolean authenticated) {
 

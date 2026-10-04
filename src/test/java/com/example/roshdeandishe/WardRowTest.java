@@ -1,6 +1,6 @@
 package com.example.roshdeandishe;
 
-import com.example.roshdeandishe.web.dto.WardRow;
+import com.example.roshdeandishe.web.model.WardRow;
 import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
