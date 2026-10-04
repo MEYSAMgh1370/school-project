@@ -1,4 +1,4 @@
-package com.example.roshdeandishe.finance.dto;
+package com.example.roshdeandishe.finance.dto.response;
 
 import java.time.Instant;
 
