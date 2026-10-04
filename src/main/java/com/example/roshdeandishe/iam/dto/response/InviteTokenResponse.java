@@ -1,4 +1,4 @@
-package com.example.roshdeandishe.iam.dto;
+package com.example.roshdeandishe.iam.dto.response;
 
 /**
  * emailSent=false با issued=true یعنی توکن صادر شد اما ایمیل به مقصد

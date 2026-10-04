@@ -2,11 +2,11 @@ package com.example.roshdeandishe.iam.controller;
 
 import com.example.roshdeandishe.iam.IamFacade;
 import com.example.roshdeandishe.iam.IamFacade.MembershipInfo;
-import com.example.roshdeandishe.iam.dto.CreateMembershipRequest;
-import com.example.roshdeandishe.iam.dto.InviteTokenResponse;
-import com.example.roshdeandishe.iam.dto.MemberNameResponse;
-import com.example.roshdeandishe.iam.dto.MembershipResponse;
-import com.example.roshdeandishe.iam.dto.SetActiveRequest;
+import com.example.roshdeandishe.iam.dto.request.CreateMembershipRequest;
+import com.example.roshdeandishe.iam.dto.response.InviteTokenResponse;
+import com.example.roshdeandishe.iam.dto.response.MemberNameResponse;
+import com.example.roshdeandishe.iam.dto.response.MembershipResponse;
+import com.example.roshdeandishe.iam.dto.request.SetActiveRequest;
 import com.example.roshdeandishe.iam.shared.RequiresPermission;
 import com.example.roshdeandishe.platform.TenantContext;
 import org.springframework.web.bind.annotation.*;

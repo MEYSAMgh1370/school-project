@@ -1,4 +1,4 @@
-package com.example.roshdeandishe.iam.dto;
+package com.example.roshdeandishe.iam.dto.response;
 
 import com.example.roshdeandishe.iam.IamFacade.MembershipInfo;
 
