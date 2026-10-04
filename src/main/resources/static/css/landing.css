@@ -119,3 +119,185 @@
     flex-direction: column;
   }
 }
+
+/* --- نکته‌های کوتاه زیر متن معرفی ---------------------------------------- */
+.app-landing-facts {
+  display: grid;
+  gap: var(--space-4);
+  grid-template-columns: repeat(auto-fit, minmax(14rem, 1fr));
+  margin-block-start: var(--space-6);
+  padding: 0;
+  list-style: none;
+}
+
+.app-landing-facts li {
+  display: grid;
+  gap: var(--space-1);
+  padding-inline-start: var(--space-3);
+  border-inline-start: 2px solid var(--bulma-border);
+}
+
+.app-landing-fact-title {
+  font-weight: var(--bulma-weight-bold);
+}
+
+/* --- اسلایدر (فقط همین صفحه - DESIGN.md §5) ------------------------------
+   اسلاید فعال با x-show عوض می‌شود، نه با جابه‌جایی روی محور افقی: در
+   RTL هیچ حسابِ جهت‌داری نمی‌ماند که اشتباه از آب دربیاید. ارتفاع کمینه
+   می‌گذاریم تا با عوض‌شدن اسلاید، صفحه بالا و پایین نپرد. */
+.app-landing-slider-viewport {
+  min-block-size: calc(var(--space-8) * 4);
+  padding: var(--space-6);
+  box-shadow: var(--shadow-sm);
+}
+
+/* جداکننده‌ی میان اسلایدها فقط برای حالتی است که Alpine بالا نیامده و
+   هر چهار اسلاید پشت سر هم رندر شده‌اند. کلاس is-live را خودِ Alpine بعد
+   از init اضافه می‌کند، پس نبودِ آن یعنی «جاوااسکریپت اجرا نشد».
+
+   انتخابگر همسایه (+) بر اساس جای عنصر در DOM کار می‌کند و کاری ندارد که
+   اسلاید قبلی display:none است؛ بدون این حفاظ، اسلایدهای ۲ تا ۴ در حالت
+   عادی هم یک خط و یک فاصله‌ی بی‌جا بالای خودشان می‌انداختند. */
+.app-landing-slider:not(.is-live) .app-landing-slide + .app-landing-slide {
+  margin-block-start: var(--space-6);
+  padding-block-start: var(--space-6);
+  border-block-start: 1px solid var(--bulma-border);
+}
+
+.app-landing-slide p {
+  max-inline-size: 44rem;
+}
+
+.app-landing-slide-list {
+  display: grid;
+  gap: var(--space-2);
+  margin-block-start: var(--space-4);
+  padding: 0;
+  list-style: none;
+}
+
+.app-landing-slide-list li {
+  padding-inline-start: var(--space-4);
+  position: relative;
+}
+
+.app-landing-slide-list li::before {
+  content: "";
+  position: absolute;
+  inset-inline-start: 0;
+  inset-block-start: 0.7em;
+  inline-size: var(--space-2);
+  block-size: var(--space-2);
+  border-radius: var(--radius-sm);
+  background: var(--bulma-primary-on-scheme);
+}
+
+.app-landing-slider-controls {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+  margin-block-start: var(--space-4);
+}
+
+.app-landing-slider-dots {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+/* هدف لمسی ۴۴px از app.css می‌آید؛ نقطه‌ی دیداری کوچک‌تر است و داخل
+   همان سطح قابل فشردن می‌نشیند. */
+.app-landing-slider-dot {
+  padding: var(--space-3);
+  border: 0;
+  background: transparent;
+  cursor: pointer;
+  line-height: 0;
+}
+
+.app-landing-slider-dot::before {
+  content: "";
+  display: block;
+  inline-size: var(--space-3);
+  block-size: var(--space-3);
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--bulma-border);
+  background: var(--bulma-scheme-main);
+  transition: background var(--motion-fast) var(--motion-ease);
+}
+
+.app-landing-slider-dot.is-active::before {
+  border-color: var(--bulma-primary-on-scheme);
+  background: var(--bulma-primary-on-scheme);
+}
+
+/* --- پرسش‌های رایج -------------------------------------------------------- */
+/* چهار پرسش داریم، پس دو ستون می‌خواهیم نه سه: با سه ستون، پرسش چهارم
+   تنها در ردیف دوم می‌ماند و یک جای خالی بزرگ کنارش می‌افتد. min(100%,…)
+   باعث می‌شود روی صفحه‌ی باریک همان یک ستون شود. */
+.app-landing-faq {
+  display: grid;
+  gap: var(--space-4);
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 26rem), 1fr));
+}
+
+.app-landing-faq-item {
+  box-shadow: var(--shadow-sm);
+}
+
+.app-landing-faq-item p {
+  margin-block-end: 0;
+}
+
+/* --- پاورقی --------------------------------------------------------------- */
+.app-landing-footer-columns {
+  display: grid;
+  gap: var(--space-6);
+  grid-template-columns: 1.5fr repeat(3, 1fr);
+  padding-block-end: var(--space-5);
+}
+
+.app-landing-footer-column ul {
+  display: grid;
+  gap: var(--space-2);
+  margin-block-start: var(--space-3);
+  padding: 0;
+  list-style: none;
+}
+
+.app-landing-footer-column h2 + p {
+  margin-block-start: var(--space-3);
+}
+
+.app-landing-footer-inner {
+  padding-block-start: var(--space-5);
+  border-block-start: 1px solid var(--bulma-border);
+}
+
+@media screen and (max-width: 768px) {
+  /* نقصِ از پیش‌موجود، نه چیزی که با این صفحه آمده باشد: کلاس is-8 مقدار
+     --bulma-column-gap را ۲rem می‌کند و Bulma همان را منفی روی حاشیه‌ی
+     .columns می‌گذارد (margin ‎-32px‎)، ولی .section روی موبایل فقط ۲۴px
+     padding دارد. نتیجه ۸px لغزش افقی در کل صفحه بود. روی موبایل ستون‌ها
+     زیر هم می‌روند و این فاصله دیده هم نمی‌شود، پس کوچک‌کردنش چیزی از
+     چیدمان کم نمی‌کند. */
+  .app-landing .columns.is-variable {
+    --bulma-column-gap: var(--space-3);
+  }
+
+  .app-landing-footer-columns {
+    grid-template-columns: 1fr;
+    gap: var(--space-5);
+  }
+
+  .app-landing-slider-viewport {
+    padding: var(--space-5);
+    min-block-size: calc(var(--space-8) * 5);
+  }
+
+  .app-landing-slider-controls {
+    justify-content: center;
+  }
+}
