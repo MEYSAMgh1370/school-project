@@ -1,7 +1,7 @@
 package com.example.roshdeandishe.academic.controller;
 
 import com.example.roshdeandishe.academic.AcademicFacade;
-import com.example.roshdeandishe.academic.dto.MyGradeResponse;
+import com.example.roshdeandishe.academic.dto.response.MyGradeResponse;
 import com.example.roshdeandishe.iam.IamFacade;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;

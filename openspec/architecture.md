@@ -37,7 +37,7 @@ Within each domain module, classes are grouped by type:
 <module>/
   <Module>Facade.java, enums, events    exposed module API
   controller/                           @RestController / @Controller
-  dto/                                  request/response records
+  dto/request/, dto/response/           request and response records
   config/                               @Configuration, filters, aspects
   internal/                             entities, repositories, services — flat
   shared/                               @NamedInterface

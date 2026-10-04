@@ -1,4 +1,4 @@
-package com.example.roshdeandishe.academic.dto;
+package com.example.roshdeandishe.academic.dto.response;
 
 /**
  * {@code classId} برای دانش‌آموزِ PENDING/GRADUATED/LEFT تهی است؛ {@code status} همان

@@ -1,11 +1,18 @@
 package com.example.roshdeandishe.academic.controller;
 
+import com.example.roshdeandishe.academic.dto.request.ActivityRequest;
+import com.example.roshdeandishe.academic.dto.request.EntryRequest;
+import com.example.roshdeandishe.academic.dto.request.PeriodRequest;
+import com.example.roshdeandishe.academic.dto.response.ActivityResponse;
+import com.example.roshdeandishe.academic.dto.response.EntryResponse;
+import com.example.roshdeandishe.academic.dto.response.PeriodResponse;
+import com.example.roshdeandishe.academic.dto.response.TeacherResponse;
+import com.example.roshdeandishe.academic.dto.response.YearsResponse;
 import com.example.roshdeandishe.academic.AcademicFacade;
 import com.example.roshdeandishe.academic.TimetableDay;
 import com.example.roshdeandishe.academic.TimetableFacade;
-import com.example.roshdeandishe.academic.dto.ClassResponse;
-import com.example.roshdeandishe.academic.dto.CourseResponse;
-import com.example.roshdeandishe.academic.dto.TimetableDtos.*;
+import com.example.roshdeandishe.academic.dto.response.ClassResponse;
+import com.example.roshdeandishe.academic.dto.response.CourseResponse;
 import com.example.roshdeandishe.academic.shared.AcademicError;
 import com.example.roshdeandishe.academic.shared.AcademicException;
 import com.example.roshdeandishe.iam.IamFacade;

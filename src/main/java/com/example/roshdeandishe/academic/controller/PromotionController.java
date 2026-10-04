@@ -1,8 +1,18 @@
 package com.example.roshdeandishe.academic.controller;
 
+import com.example.roshdeandishe.academic.dto.request.AttributionRequest;
+import com.example.roshdeandishe.academic.dto.request.Decision;
+import com.example.roshdeandishe.academic.dto.request.OutcomeRequest;
+import com.example.roshdeandishe.academic.dto.request.PlacementRequest;
+import com.example.roshdeandishe.academic.dto.request.RunRequest;
+import com.example.roshdeandishe.academic.dto.response.AttributionResponse;
+import com.example.roshdeandishe.academic.dto.response.PendingResponse;
+import com.example.roshdeandishe.academic.dto.response.PlacementResponse;
+import com.example.roshdeandishe.academic.dto.response.PlanItemResponse;
+import com.example.roshdeandishe.academic.dto.response.RunResponse;
+import com.example.roshdeandishe.academic.dto.response.UnattributedResponse;
 import com.example.roshdeandishe.academic.PromotionFacade;
 import com.example.roshdeandishe.academic.PromotionOutcome;
-import com.example.roshdeandishe.academic.dto.PromotionDtos.*;
 import com.example.roshdeandishe.academic.shared.AcademicError;
 import com.example.roshdeandishe.academic.shared.AcademicException;
 import com.example.roshdeandishe.iam.shared.RequiresModule;

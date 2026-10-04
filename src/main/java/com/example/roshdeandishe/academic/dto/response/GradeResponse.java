@@ -1,4 +1,4 @@
-package com.example.roshdeandishe.academic.dto;
+package com.example.roshdeandishe.academic.dto.response;
 
 import com.example.roshdeandishe.academic.DescriptiveGradeLevel;
 import com.example.roshdeandishe.academic.GradingScheme;

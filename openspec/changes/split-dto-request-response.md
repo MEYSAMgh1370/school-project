@@ -1,6 +1,7 @@
 # Split `dto/` Into `dto/request` And `dto/response`
 
-Status: proposed 2026-10-04; not implemented.
+Status: implemented 2026-10-04. Current behavior is reflected in `conventions.md` and
+`architecture.md`. Both open questions were resolved with the proposed defaults.
 
 ## Current Behavior
 
