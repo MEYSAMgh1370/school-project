@@ -7,11 +7,11 @@ import com.example.roshdeandishe.studyplan.StudyPlanFacade;
 import com.example.roshdeandishe.studyplan.StudyPlanFacade.CopyResult;
 import com.example.roshdeandishe.studyplan.StudyPlanFacade.IntervalId;
 import com.example.roshdeandishe.studyplan.StudyPlanFacade.IntervalInfo;
-import com.example.roshdeandishe.studyplan.dto.CopyResultResponse;
-import com.example.roshdeandishe.studyplan.dto.CopyWeekRequest;
-import com.example.roshdeandishe.studyplan.dto.CreateIntervalRequest;
-import com.example.roshdeandishe.studyplan.dto.IntervalResponse;
-import com.example.roshdeandishe.studyplan.dto.UpdateIntervalRequest;
+import com.example.roshdeandishe.studyplan.dto.response.CopyResultResponse;
+import com.example.roshdeandishe.studyplan.dto.request.CopyWeekRequest;
+import com.example.roshdeandishe.studyplan.dto.request.CreateIntervalRequest;
+import com.example.roshdeandishe.studyplan.dto.response.IntervalResponse;
+import com.example.roshdeandishe.studyplan.dto.request.UpdateIntervalRequest;
 import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDate;

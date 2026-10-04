@@ -1,4 +1,4 @@
-package com.example.roshdeandishe.studyplan.dto;
+package com.example.roshdeandishe.studyplan.dto.request;
 
 import com.example.roshdeandishe.studyplan.StudyPlanFacade.CourseWeight;
 

@@ -1,4 +1,4 @@
-package com.example.roshdeandishe.studyplan.dto;
+package com.example.roshdeandishe.studyplan.dto.request;
 
 import java.time.LocalDateTime;
 import java.util.List;

@@ -1,4 +1,4 @@
-package com.example.roshdeandishe.studyplan.dto;
+package com.example.roshdeandishe.studyplan.dto.response;
 
 import com.example.roshdeandishe.studyplan.StudyPlanFacade.TimeRange;
 import com.example.roshdeandishe.studyplan.StudyPlanFacade.Weekday;

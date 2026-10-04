@@ -8,10 +8,10 @@ import com.example.roshdeandishe.studyplan.StudyPlanFacade.AssignmentInfo;
 import com.example.roshdeandishe.studyplan.StudyPlanFacade.CourseWeight;
 import com.example.roshdeandishe.studyplan.StudyPlanFacade.PlanId;
 import com.example.roshdeandishe.studyplan.StudyPlanFacade.PlanInfo;
-import com.example.roshdeandishe.studyplan.dto.AssignPlanRequest;
-import com.example.roshdeandishe.studyplan.dto.AssignmentResponse;
-import com.example.roshdeandishe.studyplan.dto.CreatePlanRequest;
-import com.example.roshdeandishe.studyplan.dto.PlanResponse;
+import com.example.roshdeandishe.studyplan.dto.request.AssignPlanRequest;
+import com.example.roshdeandishe.studyplan.dto.response.AssignmentResponse;
+import com.example.roshdeandishe.studyplan.dto.request.CreatePlanRequest;
+import com.example.roshdeandishe.studyplan.dto.response.PlanResponse;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
