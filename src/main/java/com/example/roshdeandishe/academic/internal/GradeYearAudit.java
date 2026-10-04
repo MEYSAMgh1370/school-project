@@ -1,5 +1,6 @@
 package com.example.roshdeandishe.academic.internal;
 
+import com.example.roshdeandishe.academic.shared.AcademicYearCodes;
 import com.example.roshdeandishe.school.SchoolFacade;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -14,7 +15,9 @@ import java.util.Set;
  * گزارشِ نمره‌هایی که سالِ تحصیلی‌شان در فهرستِ سال‌ها نیست (openspec/changes/academic-year.md،
  * فاز ۱): سالِ نمره پیش‌تر متنِ آزاد بود. هیچ ردیفی تغییر نمی‌کند یا حذف نمی‌شود و هیچ سالی حدس زده
  * نمی‌شود؛ فقط یک WARNING با شمارِ هر (مدرسه، سال) تا مدیرِ پلتفرم بداند چه چیزی با فهرست نمی‌خواند.
- * مدیرِ مدرسه همچنان این ردیف‌ها را با نوشتنِ همان سال در دفتر نمرات می‌بیند.
+ * سالِ نامعتبرِ ASCII (مثلاً «1404») را مدیر با نوشتنِ همان سال در دفتر نمرات می‌بیند؛ سالی که فقط به‌خاطرِ
+ * ارقام فارسی/عربی یا فاصله با فهرست نمی‌خواند جداگانه گزارش می‌شود، چون جستجوها سال را canonical می‌کنند و
+ * آن ردیف‌ها تا نرمال‌شدن پیدا نمی‌شوند.
  */
 @Component
 class GradeYearAudit implements ApplicationRunner {
@@ -43,8 +46,16 @@ class GradeYearAudit implements ApplicationRunner {
             String year = (String) row[1];
             if (!listed.contains(year)) {
                 unmatched++;
-                log.warn("نمره‌هایی با سالِ تحصیلیِ خارج از فهرست: مدرسه {}، سال «{}»، {} ردیف (تغییری داده نشد)",
-                        row[0], year, row[2]);
+                String canonical = AcademicYearCodes.canonical(year);
+                if (!year.equals(canonical) && listed.contains(canonical)) {
+                    // سالِ درست ولی با ارقام فارسی/عربی یا فاصله ذخیره شده: جستجوها سال را canonical می‌کنند، پس
+                    // این ردیف‌ها با هیچ سالی پیدا نمی‌شوند تا شکلشان نرمال شود (و نوشتنِ دوباره ردیفِ تازه می‌ساخت)
+                    log.warn("نمره‌هایی با سالِ تحصیلی به شکلِ غیرِ canonical: مدرسه {}، سال «{}» (= «{}»)، {} ردیف؛"
+                            + " با جستجوی سال پیدا نمی‌شوند تا نرمال شوند (تغییری داده نشد)", row[0], year, canonical, row[2]);
+                } else {
+                    log.warn("نمره‌هایی با سالِ تحصیلیِ خارج از فهرست: مدرسه {}، سال «{}»، {} ردیف (تغییری داده نشد)",
+                            row[0], year, row[2]);
+                }
             }
         }
         return unmatched;

@@ -345,6 +345,9 @@ class TimetableFacadeTest {
 
         assertThat(facade.listCoursesForTimetable(SCHOOL, CLASS_ID, YEAR)).extracting(c -> c.id().value())
                 .containsExactly(30L, 33L);
+        // ارقام فارسی همان سال را می‌دهد (مثل انتخابگرِ دفتر نمرات)
+        assertThat(facade.listCoursesForTimetable(SCHOOL, CLASS_ID, " ۱۴۰۵-۱۴۰۶ ")).extracting(c -> c.id().value())
+                .containsExactly(30L, 33L);
         // بدونِ سال: همه، بازه نادیده (رفتارِ پیشین)
         assertThat(facade.listCoursesForTimetable(SCHOOL, CLASS_ID)).hasSize(4);
         assertThatThrownBy(() -> facade.listCoursesForTimetable(SCHOOL, CLASS_ID, "1999-2000"))

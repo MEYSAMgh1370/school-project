@@ -45,6 +45,10 @@ public class AcademicYearVisibility {
 
     /** AcademicYearNotAllowed (403) اگر کاربر این سال را نمی‌بیند. */
     public void requireVisible(Long schoolId, String academicYear) {
+        if (academicYear == null || academicYear.isBlank()) {
+            // سالِ خالی خطای خودِ facade است (400 «سال تحصیلی الزامی است»)، نه «دسترسی ممنوع» برای سالِ «null»
+            return;
+        }
         restrictedYear(schoolId).ifPresent(currentCode -> {
             if (!currentCode.equals(AcademicYearCodes.canonical(academicYear))) {
                 throw new AcademicException(new AcademicError.AcademicYearNotAllowed(academicYear));

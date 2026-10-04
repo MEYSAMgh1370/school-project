@@ -81,7 +81,8 @@ class AcademicYearVisibilityTest {
         assertThatThrownBy(() -> visibility.requireVisible(SCHOOL, "1404-1405"))
                 .isInstanceOfSatisfying(AcademicException.class, e ->
                         assertThat(e.error()).isEqualTo(new AcademicError.AcademicYearNotAllowed("1404-1405")));
-        assertThatThrownBy(() -> visibility.requireVisible(SCHOOL, null))
-                .isInstanceOf(AcademicException.class);
+        // سالِ خالی/تهی خطای خودِ facade است (400)، نه «دسترسی ممنوع»
+        assertThatCode(() -> visibility.requireVisible(SCHOOL, null)).doesNotThrowAnyException();
+        assertThatCode(() -> visibility.requireVisible(SCHOOL, "  ")).doesNotThrowAnyException();
     }
 }

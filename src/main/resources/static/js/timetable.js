@@ -330,6 +330,8 @@ document.addEventListener('alpine:init', () => {
             this.cell = null;
             this.resetPeriodForm();
             this.loadYear();
+            // فهرست درس‌ها به بازه‌ی اعتبارِ درس وابسته است و برای سالِ دیگر فرق می‌کند
+            this.loadCourses();
         },
 
         onClassChange() {

@@ -38,12 +38,14 @@
                                 اطلاعاتِ مالیِ قبلی هنوز به هیچ سالی نسبت داده نشده است
                                 (<span x-show="unattributed.tuitionFee">شهریه و </span><span x-text="Calendar.digits(String(unattributed.invoices))"></span> فاکتور).
                                 تا نسبت داده نشود، «صدور فاکتور» برای یک سال انجام نمی‌شود، چون دانش‌آموزِ دارای فاکتورِ قدیمی دوباره فاکتور می‌گرفت.
+                                ثبت‌نام‌های تازه هم تا وقتی شهریه‌ی سالِ جاری ثبت نشده (یا شهریه‌ی قدیمی به سالِ جاری نسبت داده نشده) فاکتور نمی‌گیرند.
                             </p>
                             <div class="field is-grouped is-grouped-multiline">
                                 <div class="control">
                                     <label class="label" for="financeAttributeYear">نسبت دادن به سال</label>
                                     <div class="select">
                                         <select id="financeAttributeYear" dir="ltr" x-model="attributeYear">
+                                            <option value="" disabled>یک سال را انتخاب کنید</option>
                                             <template x-for="y in years" :key="'attr-' + y">
                                                 <option :value="y" x-text="Calendar.digits(y)"></option>
                                             </template>

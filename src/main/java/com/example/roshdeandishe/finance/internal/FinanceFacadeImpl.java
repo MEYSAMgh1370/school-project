@@ -263,9 +263,16 @@ class FinanceFacadeImpl implements FinanceFacade {
                     conflicts + " دانش‌آموز هم فاکتورِ بدون سال و هم فاکتورِ سالِ «" + year
                             + "» دارند؛ نسبت دادن فاکتورِ تکراری می‌ساخت."));
         }
-        int tuition = tuitionFeeRepository.attributeToYear(schoolId, year);
-        int invoices = invoiceRepository.attributeToYear(schoolId, year);
-        return new AttributionResult(tuition > 0, invoices);
+        try {
+            int tuition = tuitionFeeRepository.attributeToYear(schoolId, year);
+            int invoices = invoiceRepository.attributeToYear(schoolId, year);
+            return new AttributionResult(tuition > 0, invoices);
+        } catch (org.springframework.dao.DataIntegrityViolationException e) {
+            // فاکتور/شهریه‌ی همان سال بعد از بررسیِ بالا و هم‌زمان ساخته شد (ثبت‌نام یا صدور): ایندکس‌های یکتای
+            // جزئیِ V10 جلوی تکرار را می‌گیرند؛ تراکنش برمی‌گردد و ادمین پاسخِ تداخل می‌گیرد، نه 500
+            throw new FinanceException(new FinanceError.AttributionConflict(year,
+                    "هم‌زمان با نسبت دادن، شهریه یا فاکتورِ سالِ «" + year + "» ساخته شد؛ دوباره تلاش کنید."));
+        }
     }
 
     @Override

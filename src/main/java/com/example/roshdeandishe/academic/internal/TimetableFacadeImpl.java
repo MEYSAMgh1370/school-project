@@ -335,8 +335,10 @@ class TimetableFacadeImpl implements TimetableFacade {
 
     /** سالِ شروعِ سالِ فهرست‌شده؛ سالِ ناشناخته InvalidAcademicYear. */
     private int startYearOf(String academicYear) {
+        // مثل دفتر نمرات: ارقامِ فارسی/عربی و فاصله پیش از مقایسه با فهرست canonical می‌شوند
+        String canonical = com.example.roshdeandishe.academic.shared.AcademicYearCodes.canonical(academicYear);
         return schoolFacade.listAcademicYears().stream()
-                .filter(y -> y.code().equals(academicYear))
+                .filter(y -> y.code().equals(canonical))
                 .findFirst()
                 .orElseThrow(() -> new AcademicException(new AcademicError.InvalidAcademicYear(academicYear)))
                 .startYear();

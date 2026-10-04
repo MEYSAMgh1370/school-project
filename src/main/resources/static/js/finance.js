@@ -39,6 +39,7 @@ document.addEventListener('alpine:init', () => {
                 this.years = [];
                 this.year = '';
                 this.currentYear = null;
+                this.attributeYear = '';
                 this.unattributed = { tuitionFee: false, invoices: 0 };
                 this.load();
             });
@@ -233,9 +234,8 @@ document.addEventListener('alpine:init', () => {
                 const response = await fetch(`${this.financeBase()}/unattributed`, { headers: { 'X-School-ID': schoolId } });
                 if (response.ok && schoolId === this.schoolId) {
                     this.unattributed = await response.json();
-                    if (!this.attributeYear && this.years.length > 0) {
-                        this.attributeYear = this.years[0];
-                    }
+                    // سالِ نسبت‌دادن عمداً پیش‌فرض ندارد: مدیر باید خودش انتخاب کند (پیش‌فرضِ اشتباه، کلِ
+                    // اطلاعاتِ قبلی را با یک کلیک به سالِ غلط می‌برد)
                 }
             } catch (e) {
                 // هشدار اختیاری است

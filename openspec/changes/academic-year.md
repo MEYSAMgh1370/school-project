@@ -397,6 +397,18 @@ while unattributed rows exist, a «بدون سال» tag on such invoices, and t
 the selected year. Verified in a browser against mocked APIs in both modes (a school with a
 current year and unattributed data; a school without one).
 
+*Self-review (2026-10-04, `/code-review` at high effort over this PR, findings verified before
+fixing).* Fixed: the timetable's course picker now reloads when the year changes; the
+attribution year has no default (a default would move all legacy data to the oldest year with
+one click) and resets with the school; the grade-book year check lets a blank year reach the
+facade's own `400`; the timetable course picker canonicalizes the year like the grade book;
+a concurrent write during attribution answers `409 attribution-conflict` instead of a raw
+`500`; the startup audit reports a listed year stored with Persian digits or spaces separately,
+because year lookups canonicalize the input and such rows are not found until normalized (they
+are not rewritten). Accepted as is: after a school's first current-year choice, its year-less
+tuition is not used for new enrollments (by the rule "no tuition for the year, no invoice";
+the finance page says so), and the extra school/year lookups per finance call.
+
 ## Acceptance Criteria
 
 Phase 0 (met; later phases are refined when scheduled):
