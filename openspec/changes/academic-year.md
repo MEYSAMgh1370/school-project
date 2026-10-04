@@ -329,7 +329,7 @@ navbar is on pages without `calendar.js`). Verified: unit and real-database test
 Tests), and the `/grades` page in a browser against mocked APIs in three modes (admin,
 teacher, school without a current year).
 
-### Phase 2 design (2026-10-03)
+### Phase 2 design (2026-10-03) - implemented
 
 Built on the decisions above (Q2 invoices by a separate action, Q3 old invoices stay
 payable, Q4 existing data attributed by the admin). Guiding rule, the same as phase 1: **a
@@ -352,7 +352,9 @@ be overturned.
    tuition is set (a school with no current year: the `NULL` tuition, as today). The
    existing backfill becomes "issue the year's invoices" (decision Q2): for the chosen year it
    issues one invoice to every current student of the school who has none for that year, at
-   that year's tuition; `409 tuition-fee-not-set` if that year has no tuition. Classes and
+   that year's tuition; `404 tuition-fee-not-set` if that year has no tuition, and `409
+   unattributed-invoices-exist` while the school still has year-less invoices and a specific year is
+   asked (the student with an old invoice would be billed twice; attribute first). Classes and
    enrollments are not year-scoped before phase 3, so "enrolled in that year" means the
    school's current students.
 5. **Payments.** Recording a payment works on an invoice of any year (decision Q3); the
@@ -372,6 +374,25 @@ be overturned.
    never hidden)? Not built.
 8. **Not in phase 2:** classes/enrollments per year and promotion (phase 3), invoice
    history of tuition amounts, per-grade tuition, discounts.
+
+**As built.** `V10` adds the nullable `academic_year` columns and the four partial unique
+indexes (the old `unique (school_id)` on tuition is dropped by its columns, as `V5` does).
+`FinanceFacadeImpl.resolveYear` is the single rule for "which year": the requested year (canonical,
+listed, else `400 invalid-academic-year`), else the school's current year, else `NULL`; a school id
+with no school row counts as "no current year" (finance used to treat it as an opaque id).
+The insert uses `on conflict do nothing` without a target, since uniqueness is now two partial
+indexes. The year-less overloads (`setTuitionFee(school, amount)`, `getTuitionFee(school)`,
+`backfillInvoices(school)`) live in the implementation, not as interface defaults: a default
+method called through the Spring proxy runs the two-argument method on the target and skips
+`@Transactional`. Endpoints: `GET/PUT /tuition-fee?academicYear=`, `GET /invoices?academicYear=`
+(the school-wide list returns the year plus unattributed invoices; a parent still gets the
+family view), `POST /invoices/backfill?academicYear=`, `GET /finance/years` (`FINANCE_VIEW`),
+`GET /finance/unattributed` and `POST /finance/attribute-year` (`FINANCE_MANAGE`). The Bale bot's
+per-child invoice count now uses the family view. The `/finance` page has a year select (current
+year default, hidden when there is no current year), a warning with an "attribute to year" action
+while unattributed rows exist, a «بدون سال» tag on such invoices, and the backfill button works on
+the selected year. Verified in a browser against mocked APIs in both modes (a school with a
+current year and unattributed data; a school without one).
 
 ## Acceptance Criteria
 
@@ -411,7 +432,21 @@ Phase 1 (met 2026-10-03):
 - While a school has no current year, the «سال تحصیلی» page shows a warning that the first
   choice restricts non-admins to that year.
 
-Phases 2-3 (not built): year-scoped tuition and invoices, classes/enrollments and promotion.
+Phase 2 (met 2026-10-03):
+
+- A school without a current year behaves exactly as before: tuition and invoices carry no year.
+- With a current year, tuition is set and read per year (a new year has none: `404
+  tuition-fee-not-set`), the backfill issues one invoice per current student per year at that
+  year's tuition (idempotent), and an enrollment issues the current year's invoice when that year
+  has tuition.
+- A payment can be recorded on an invoice of any year; the finance admin lists any year.
+- Existing year-less tuition and invoices are attributed to one year by an explicit action
+  (transactional; refused when it would duplicate that year's tuition or a student's invoice);
+  the backfill for a specific year is refused until then.
+- A family (and the dashboard counts, and the Bale bot) sees only the current year's invoices
+  plus unattributed ones.
+
+Phase 3 (not built): classes/enrollments per year and promotion.
 
 ## Tests
 
@@ -427,6 +462,10 @@ Phases 2-3 (not built): year-scoped tuition and invoices, classes/enrollments an
   invalid year, the database check), `AcademicYearVisibilityFlowIntegrationTest`
   (teacher/admin/student, the unrestricted school, the dashboard year),
   `GradesCoursePickerRenderTest`, `NavSharedSourceRenderTest`.
+- Phase 2: `FinancePerYearFlowIntegrationTest` (year-less school, per-year tuition and
+  backfill, the enrollment event, attribution and its conflicts, the family view and an old
+  year's payment), `FinancePageRenderTest`; the existing finance, expense, Bale and
+  `WardsAssemblerTest` suites run unchanged.
 - Integration: `AcademicYearFlowIntegrationTest` (list, choose, the two views,
   permission and stranger negatives, an unknown year, and that the application
   created the years itself without gaps or duplicates). Verified locally against

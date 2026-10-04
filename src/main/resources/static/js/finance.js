@@ -17,6 +17,16 @@ document.addEventListener('alpine:init', () => {
         paymentsLoading: false,
         paymentForm: { amount: '', method: 'CASH', note: '' },
         backfilling: false,
+        // شهریه و فاکتور به‌تفکیک سال (academic-year.md فاز ۲): سال‌های قابل‌انتخاب و سالِ انتخاب‌شده؛
+        // مدرسه‌ای که سالِ جاری ندارد فهرست خالی دارد و مثل پیش از فاز ۲ بدون سال کار می‌کند
+        years: [],
+        year: '',
+        currentYear: null,
+        // شهریه/فاکتورهایی که هنوز به سالی نسبت داده نشده‌اند (فقط ادمینِ دارای FINANCE_MANAGE می‌بیند)
+        unattributed: { tuitionFee: false, invoices: 0 },
+        attributeYear: '',
+        attributing: false,
+        yearSeq: 0,
 
         init() {
             const saved = parseInt(localStorage.getItem('selectedSchoolId') || '', 10);
@@ -25,6 +35,11 @@ document.addEventListener('alpine:init', () => {
                 this.schoolId = e.detail.id;
                 this.error = '';
                 this.notice = '';
+                // سالِ مدرسه‌ی قبلی برای مدرسه‌ی تازه معنا ندارد
+                this.years = [];
+                this.year = '';
+                this.currentYear = null;
+                this.unattributed = { tuitionFee: false, invoices: 0 };
                 this.load();
             });
             if (this.schoolId) {
@@ -43,6 +58,15 @@ document.addEventListener('alpine:init', () => {
 
         invoicesBase() {
             return `/api/admin/schools/${this.schoolId}/invoices`;
+        },
+
+        financeBase() {
+            return `/api/admin/schools/${this.schoolId}/finance`;
+        },
+
+        // «?academicYear=…» برای سالِ انتخاب‌شده؛ بدون فهرست سال (مدرسه‌ای که سالِ جاری ندارد) خالی
+        yearQuery() {
+            return this.year ? `?academicYear=${encodeURIComponent(this.year)}` : '';
         },
 
         studentsBase() {
@@ -125,7 +149,8 @@ document.addEventListener('alpine:init', () => {
             this.error = '';
             this.blocked = false;
             try {
-                const feeResponse = await fetch(this.tuitionFeeBase(), { headers: { 'X-School-ID': this.schoolId } });
+                await this.loadYears();
+                const feeResponse = await fetch(this.tuitionFeeBase() + this.yearQuery(), { headers: { 'X-School-ID': this.schoolId } });
                 if (feeResponse.status === 404) {
                     this.tuitionFee = null;
                 } else if (!feeResponse.ok) {
@@ -137,7 +162,7 @@ document.addEventListener('alpine:init', () => {
                     this.tuitionFee = (await feeResponse.json()).amount;
                 }
 
-                const invoicesResponse = await fetch(this.invoicesBase(), { headers: { 'X-School-ID': this.schoolId } });
+                const invoicesResponse = await fetch(this.invoicesBase() + this.yearQuery(), { headers: { 'X-School-ID': this.schoolId } });
                 if (!invoicesResponse.ok) {
                     const classified = await this.classifyError(invoicesResponse);
                     this.error = classified.message;
@@ -145,6 +170,7 @@ document.addEventListener('alpine:init', () => {
                     return;
                 }
                 this.invoices = await invoicesResponse.json();
+                this.loadUnattributed();
 
                 // بهترین تلاش برای نام دانش‌آموز - studentsBase به STUDENT_VIEW
                 // نیاز دارد (نه دیگر STUDENT_ENROLL - UX_ROADMAP.md §6.4)، پس
@@ -168,6 +194,98 @@ document.addEventListener('alpine:init', () => {
                 this.error = 'ارتباط با سرور برقرار نشد.';
             } finally {
                 this.loading = false;
+            }
+        },
+
+        // سال‌های قابل‌انتخاب (FINANCE_VIEW؛ مدیر مالی ACADEMIC_YEAR_MANAGE ندارد) و سالِ جاری. سالِ جاری پیش‌فرض است
+        // و فقط وقتی پر می‌شود که سالی انتخاب نشده باشد؛ بدون فهرست، فیلد سال نمایش داده نمی‌شود.
+        async loadYears() {
+            const seq = ++this.yearSeq;
+            const schoolId = this.schoolId;
+            try {
+                const response = await fetch(`${this.financeBase()}/years`, { headers: { 'X-School-ID': schoolId } });
+                if (!response.ok || seq !== this.yearSeq || schoolId !== this.schoolId) {
+                    return;
+                }
+                const body = await response.json();
+                this.currentYear = body.currentYear;
+                // مدرسه‌ای که سالِ جاری ندارد بدون سال کار می‌کند: فهرست خالی می‌ماند
+                this.years = body.currentYear ? body.years : [];
+                if (!this.years.includes(this.year)) {
+                    // x-model روی select بعد از رندرِ گزینه‌ها مقدار را می‌گیرد
+                    this.year = '';
+                    await this.$nextTick();
+                    this.year = body.currentYear || '';
+                }
+            } catch (e) {
+                // بدون فهرستِ سال، صفحه مثل پیش از فاز ۲ کار می‌کند
+            }
+        },
+
+        // شهریه/فاکتورِ بدون سال - فقط برای ادمینِ دارای FINANCE_MANAGE (بقیه 403 می‌گیرند و هشدار نمی‌بینند)
+        async loadUnattributed() {
+            if (!this.currentYear) {
+                this.unattributed = { tuitionFee: false, invoices: 0 };
+                return;
+            }
+            const schoolId = this.schoolId;
+            try {
+                const response = await fetch(`${this.financeBase()}/unattributed`, { headers: { 'X-School-ID': schoolId } });
+                if (response.ok && schoolId === this.schoolId) {
+                    this.unattributed = await response.json();
+                    if (!this.attributeYear && this.years.length > 0) {
+                        this.attributeYear = this.years[0];
+                    }
+                }
+            } catch (e) {
+                // هشدار اختیاری است
+            }
+        },
+
+        hasUnattributed() {
+            return !!this.currentYear && (this.unattributed.tuitionFee || this.unattributed.invoices > 0);
+        },
+
+        async onYearChange() {
+            this.expandedInvoiceId = null;
+            this.payments = [];
+            this.error = '';
+            this.notice = '';
+            await this.load();
+        },
+
+        // اقدامِ صریحِ ادمین: شهریه و فاکتورهای «بدون سال» را به یک سال نسبت می‌دهد
+        async attribute() {
+            if (!this.attributeYear) {
+                return;
+            }
+            this.attributing = true;
+            this.error = '';
+            this.notice = '';
+            try {
+                const response = await fetch(`${this.financeBase()}/attribute-year`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-School-ID': this.schoolId,
+                        'X-XSRF-TOKEN': this.csrfToken()
+                    },
+                    body: JSON.stringify({ academicYear: this.attributeYear })
+                });
+                if (!response.ok) {
+                    const classified = await this.classifyError(response);
+                    this.error = classified.message;
+                    return;
+                }
+                const result = await response.json();
+                this.notice = `اطلاعاتِ مالیِ قبلی به سالِ ${Calendar.digits(this.attributeYear)} نسبت داده شد `
+                    + `(${Calendar.digits(String(result.invoicesAttributed))} فاکتور`
+                    + `${result.tuitionAttributed ? ' و شهریه' : ''}).`;
+                await this.load();
+            } catch (e) {
+                this.error = 'ارتباط با سرور برقرار نشد.';
+            } finally {
+                this.attributing = false;
             }
         },
 
@@ -242,7 +360,7 @@ document.addEventListener('alpine:init', () => {
             this.error = '';
             this.notice = '';
             try {
-                const response = await fetch(`${this.invoicesBase()}/backfill`, {
+                const response = await fetch(`${this.invoicesBase()}/backfill${this.yearQuery()}`, {
                     method: 'POST',
                     headers: {
                         'X-School-ID': this.schoolId,
@@ -257,7 +375,7 @@ document.addEventListener('alpine:init', () => {
                 const result = await response.json();
                 this.notice = result.issuedCount > 0
                     ? `${result.issuedCount} فاکتور جدید صادر شد.`
-                    : 'همه‌ی دانش‌آموزان از قبل فاکتور دارند - چیزی صادر نشد.';
+                    : 'همه‌ی دانش‌آموزان برای این سال از قبل فاکتور دارند - چیزی صادر نشد.';
                 await this.load();
             } catch (e) {
                 this.error = 'ارتباط با سرور برقرار نشد.';
@@ -271,7 +389,7 @@ document.addEventListener('alpine:init', () => {
             this.error = '';
             this.notice = '';
             try {
-                const response = await fetch(this.tuitionFeeBase(), {
+                const response = await fetch(this.tuitionFeeBase() + this.yearQuery(), {
                     method: 'PUT',
                     headers: {
                         'Content-Type': 'application/json',
