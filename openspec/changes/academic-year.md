@@ -329,6 +329,50 @@ navbar is on pages without `calendar.js`). Verified: unit and real-database test
 Tests), and the `/grades` page in a browser against mocked APIs in three modes (admin,
 teacher, school without a current year).
 
+### Phase 2 design (2026-10-03)
+
+Built on the decisions above (Q2 invoices by a separate action, Q3 old invoices stay
+payable, Q4 existing data attributed by the admin). Guiding rule, the same as phase 1: **a
+school without a current year behaves exactly as today** (year-less tuition and invoices);
+once it has one, tuition and invoices are scoped by year. Assumptions are listed so they can
+be overturned.
+
+1. **Data (`V10`).** `finance.tuition_fees.academic_year` and `finance.invoices.academic_year`
+   (`varchar(16)`, the canonical year code like grades and the timetable, no cross-module
+   foreign key), nullable: `NULL` = "not attributed to a year" (every existing row, and rows
+   of a school with no current year). Uniqueness: tuition one per (school, year) and one
+   `NULL` per school; invoices one per (school, student, year) and one `NULL` per (school,
+   student) - partial unique indexes replace `uq_invoices_school_student`.
+2. **Which year an operation uses.** The finance admin endpoints take an optional
+   `academicYear`; absent means the school's current year, and when the school has none,
+   `NULL` (today's behavior). A given year must be a listed year (`400 invalid-academic-year`).
+3. **Tuition per year.** Set and read per year; a new year has no tuition until the admin
+   sets it ("no fee, no invoice" is unchanged); not per grade level.
+4. **Invoices.** Enrolling a student issues an invoice for the *current* year if that year's
+   tuition is set (a school with no current year: the `NULL` tuition, as today). The
+   existing backfill becomes "issue the year's invoices" (decision Q2): for the chosen year it
+   issues one invoice to every current student of the school who has none for that year, at
+   that year's tuition; `409 tuition-fee-not-set` if that year has no tuition. Classes and
+   enrollments are not year-scoped before phase 3, so "enrolled in that year" means the
+   school's current students.
+5. **Payments.** Recording a payment works on an invoice of any year (decision Q3); the
+   balance rules are unchanged.
+6. **Attributing existing data (Q4 default).** `POST /api/admin/schools/{id}/finance/attribute-year`
+   (`FINANCE_MANAGE`, body `{academicYear}`) sets `NULL` to that year on the school's tuition
+   and invoices in one transaction; `409 year-already-has-tuition` if legacy tuition exists
+   and that year already has its own; nothing legacy means nothing changes. The finance page
+   shows a banner offering it while unattributed rows exist and the school has a current year.
+7. **Who sees which year in finance.** Holders of `FINANCE_VIEW` (finance admin, school
+   admin) see any year - they need earlier years' invoices to record payments (Q3), which is
+   a narrowing of "only whoever holds `ACADEMIC_YEAR_MANAGE`" for administrative finance
+   endpoints. Self-service `/api/me/schools/{id}/invoices` (and the dashboard's per-child
+   counts) return the **current year's** invoices plus unattributed (`NULL`) ones;
+   earlier years' invoices are hidden from families (decision Q5). *Open:* should a family
+   see an earlier year's invoice that still has a balance (proposed: yes, so a debt is
+   never hidden)? Not built.
+8. **Not in phase 2:** classes/enrollments per year and promotion (phase 3), invoice
+   history of tuition amounts, per-grade tuition, discounts.
+
 ## Acceptance Criteria
 
 Phase 0 (met; later phases are refined when scheduled):
