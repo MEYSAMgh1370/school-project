@@ -207,10 +207,18 @@
   gap: var(--space-2);
 }
 
-/* هدف لمسی ۴۴px از app.css می‌آید؛ نقطه‌ی دیداری کوچک‌تر است و داخل
-   همان سطح قابل فشردن می‌نشیند. */
+/* کفِ ۴۴px را اینجا خودمان می‌گذاریم. قانون سراسری app.css روی
+   .button:not(.is-small) است و این دکمه‌ها کلاس .button ندارند، پس
+   شاملشان نمی‌شد: با ۱۲px فاصله در هر طرف و نقطه‌ی ۱۲px، سطح فشردنی
+   ۳۶px می‌شد. عدد ۴۴ مثل خود app.css خام نوشته می‌شود، چون کفِ
+   دسترسی‌پذیری است نه یک گام از مقیاس فاصله‌گذاری (DESIGN.md §7).
+   نقطه‌ی دیداری کوچک می‌ماند و وسطِ همان سطح می‌نشیند. */
 .app-landing-slider-dot {
-  padding: var(--space-3);
+  display: inline-grid;
+  place-items: center;
+  min-inline-size: 44px;
+  min-block-size: 44px;
+  padding: 0;
   border: 0;
   background: transparent;
   cursor: pointer;
