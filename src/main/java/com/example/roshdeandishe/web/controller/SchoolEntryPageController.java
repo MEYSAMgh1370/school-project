@@ -3,7 +3,7 @@ package com.example.roshdeandishe.web.controller;
 import com.example.roshdeandishe.school.SchoolFacade;
 import com.example.roshdeandishe.school.SchoolFacade.SchoolInfo;
 import com.example.roshdeandishe.school.SchoolFacade.SchoolStatus;
-import com.example.roshdeandishe.web.dto.SchoolEntryModel;
+import com.example.roshdeandishe.web.model.SchoolEntryModel;
 import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;

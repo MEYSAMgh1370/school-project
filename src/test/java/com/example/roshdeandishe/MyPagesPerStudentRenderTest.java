@@ -1,6 +1,6 @@
 package com.example.roshdeandishe;
 
-import com.example.roshdeandishe.web.dto.WardRef;
+import com.example.roshdeandishe.web.model.WardRef;
 import com.example.roshdeandishe.web.model.NavbarModel;
 import gg.jte.ContentType;
 import gg.jte.TemplateEngine;

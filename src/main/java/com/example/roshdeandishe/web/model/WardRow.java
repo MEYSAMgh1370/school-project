@@ -1,4 +1,4 @@
-package com.example.roshdeandishe.web.dto;
+package com.example.roshdeandishe.web.model;
 
 /**
  * یک فرزندِ لینک‌شده‌ی والد برای بخش «فرزندان من» داشبورد.

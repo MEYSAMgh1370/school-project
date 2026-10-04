@@ -1,4 +1,4 @@
-@import com.example.roshdeandishe.web.dto.WardRef
+@import com.example.roshdeandishe.web.model.WardRef
 @import com.example.roshdeandishe.web.model.NavbarModel
 
 @param NavbarModel navbar

@@ -12,8 +12,6 @@ import com.example.roshdeandishe.iam.IamFacade.UserId;
 import com.example.roshdeandishe.iam.IamFacade.UserProfile;
 import com.example.roshdeandishe.school.SchoolFacade;
 import com.example.roshdeandishe.school.SchoolFacade.SchoolId;
-import com.example.roshdeandishe.web.dto.WardRef;
-import com.example.roshdeandishe.web.dto.WardRow;
 import org.springframework.stereotype.Component;
 
 import java.util.ArrayList;
