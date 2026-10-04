@@ -24,26 +24,44 @@ public interface FinanceFacade {
     void issueTuitionInvoice(Long schoolId, Long studentId);
 
     /**
-     * تنظیم شهریه‌ی مصوب مدرسه (idempotent - ردیف موجود upsert می‌شود).
+     * تنظیم شهریه‌ی مصوبِ یک سالِ تحصیلی (idempotent - ردیف موجودِ همان سال upsert می‌شود). سالِ
+     * خالی = سالِ جاریِ مدرسه و اگر مدرسه سالِ جاری ندارد، «بدون سال» (رفتارِ پیش از فاز ۲).
      *
      * @throws com.example.roshdeandishe.finance.shared.FinanceException با
-     * FinanceError.InvalidTuitionFee اگر مبلغ null یا نامثبت باشد
+     * FinanceError.InvalidTuitionFee اگر مبلغ null یا نامثبت باشد، InvalidAcademicYear اگر سال
+     * در فهرست نباشد
      */
+    void setTuitionFee(Long schoolId, String academicYear, BigDecimal amount);
+
+    /** شهریه‌ی یک سال (سالِ خالی مثل {@link #setTuitionFee}). */
+    Optional<TuitionFeeInfo> getTuitionFee(Long schoolId, String academicYear);
+
+    /** شهریه‌ی سالِ جاری (مدرسه‌ای که سالِ جاری ندارد: «بدون سال»). */
     void setTuitionFee(Long schoolId, BigDecimal amount);
 
+    /** شهریه‌ی سالِ جاری (مدرسه‌ای که سالِ جاری ندارد: «بدون سال»). */
     Optional<TuitionFeeInfo> getTuitionFee(Long schoolId);
 
+    /** صدورِ فاکتورهای سالِ جاری ({@link #backfillInvoices(Long, String)} با سالِ خالی). */
+    int backfillInvoices(Long schoolId);
+
     /**
-     * فاکتورهای یک مدرسه، جدیدترین اول - برای صفحه/گزارش مالی ادمین.
+     * همه‌ی فاکتورهای یک مدرسه در همه‌ی سال‌ها، جدیدترین اول (گزارش‌ها).
      */
     List<InvoiceInfo> listInvoices(Long schoolId);
 
     /**
-     * فاکتورهای زیرمجموعه‌ای از دانش‌آموزانِ یک مدرسه - پشتیبان endpoint
-     * خودسرویس {@code GET /api/me/schools/{schoolId}/invoices}
-     * (MyInvoicesController): ترکیبِ «این کاربر کدام دانش‌آموزهاست/ولیِ
-     * کدام‌هاست» در کنترلر و از روی AcademicFacade انجام می‌شود، این متد
-     * فقط داده‌ی مالی را برمی‌گرداند. لیست خالی برای مجموعه‌ی خالی.
+     * فاکتورهای یک سال به‌علاوه‌ی فاکتورهای «بدون سال» (تا نسبت داده شوند)، جدیدترین اول - برای صفحه‌ی
+     * مالیِ ادمین. سالِ خالی = سالِ جاری؛ مدرسه‌ای که سالِ جاری ندارد همه را می‌گیرد.
+     */
+    List<InvoiceInfo> listInvoices(Long schoolId, String academicYear);
+
+    /**
+     * فاکتورهای زیرمجموعه‌ای از دانش‌آموزانِ یک مدرسه، آن‌گونه که خانواده می‌بیند - پشتیبان endpoint
+     * خودسرویس {@code GET /api/me/schools/{schoolId}/invoices}: <b>فقط سالِ جاری</b> به‌علاوه‌ی فاکتورهای
+     * «بدون سال»؛ سال‌های قبل از خانواده پنهان است (academic-year.md تصمیم ۵) و مدرسه‌ای که سالِ جاری
+     * ندارد محدود نمی‌شود. ترکیبِ «این کاربر کدام دانش‌آموزهاست/ولیِ کدام‌هاست» در کنترلر و از روی
+     * AcademicFacade انجام می‌شود. لیست خالی برای مجموعه‌ی خالی.
      */
     List<InvoiceInfo> listInvoicesForStudents(Long schoolId, List<Long> studentIds);
 
@@ -66,22 +84,37 @@ public interface FinanceFacade {
     List<PaymentInfo> listPayments(Long schoolId, Long invoiceId);
 
     /**
-     * صدور فاکتور برای دانش‌آموزانی که هیچ فاکتوری ندارند (مثلاً قبل از
-     * تنظیم شهریه ثبت‌نام شده‌اند) - به مبلغ شهریه‌ی *فعلی* مدرسه، نه نرخ
-     * تاریخی (تاریخچه‌ی شهریه نگه داشته نمی‌شود). Idempotent: اجرای دوباره
-     * چیزی صادر نمی‌کند. برخلاف issueTuitionInvoice که بدون شهریه فقط warn
-     * می‌کند، اینجا TuitionFeeNotSet پرتاب می‌شود - این یک اقدام صریح ادمین
-     * است و سکوت گمراه‌کننده بود.
+     * «صدورِ فاکتورهای سال»: برای هر دانش‌آموزِ فعلیِ مدرسه که برای این سال فاکتور ندارد، به مبلغ شهریه‌ی
+     * <i>همان سال</i> فاکتور می‌دهد (سالِ خالی مثل {@link #setTuitionFee}). Idempotent. برخلاف
+     * issueTuitionInvoice که بدون شهریه فقط warn می‌کند، اینجا TuitionFeeNotSet پرتاب می‌شود - اقدامِ
+     * صریح ادمین است. اگر برای یک سالِ مشخص فاکتورِ «بدون سال» هست، UnattributedInvoicesExist (اول
+     * {@link #attributeToYear}): وگرنه دانش‌آموزِ دارای فاکتورِ قدیمی دوباره فاکتور می‌گرفت.
      *
      * @return تعداد فاکتورهای صادرشده
      */
-    int backfillInvoices(Long schoolId);
+    int backfillInvoices(Long schoolId, String academicYear);
 
-    record TuitionFeeInfo(Long schoolId, BigDecimal amount) {
+    /**
+     * نسبت دادنِ شهریه و فاکتورهای «بدون سال» به یک سالِ فهرست‌شده، در یک تراکنش (تصمیمِ مدیر برای داده‌ی
+     * موجود، academic-year.md فاز ۲). چیزی «بدون سال» نبود: هیچ تغییری. AttributionConflict اگر آن سال
+     * از قبل شهریه/فاکتورِ همان دانش‌آموز را دارد؛ InvalidAcademicYear اگر سال در فهرست نباشد.
+     */
+    AttributionResult attributeToYear(Long schoolId, String academicYear);
+
+    /** آنچه هنوز به سالی نسبت داده نشده - برای هشدارِ صفحه‌ی مالی. */
+    UnattributedSummary unattributedSummary(Long schoolId);
+
+    record AttributionResult(boolean tuitionAttributed, int invoicesAttributed) {
+    }
+
+    record UnattributedSummary(boolean tuitionFee, int invoices) {
+    }
+
+    record TuitionFeeInfo(Long schoolId, BigDecimal amount, String academicYear) {
     }
 
     record InvoiceInfo(Long id, Long schoolId, Long studentId, BigDecimal amount, BigDecimal amountPaid,
-                       Instant issuedAt, Instant dueDate, InvoiceStatus status) {
+                       Instant issuedAt, Instant dueDate, InvoiceStatus status, String academicYear) {
     }
 
     record PaymentInfo(Long id, Long invoiceId, BigDecimal amount, PaymentMethod method, String note,

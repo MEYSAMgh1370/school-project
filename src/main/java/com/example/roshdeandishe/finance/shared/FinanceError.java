@@ -11,6 +11,21 @@ public sealed interface FinanceError {
     record InvalidTuitionFee(String reason) implements FinanceError {
     }
 
+    /** کدِ سال تحصیلی در فهرستِ سال‌ها نیست. */
+    record InvalidAcademicYear(String academicYear) implements FinanceError {
+    }
+
+    /**
+     * صدورِ فاکتورهای یک سال وقتی هنوز فاکتورِ «بدون سال» هست: دانش‌آموزی که فاکتورِ قدیمی دارد دوباره
+     * فاکتور می‌گرفت. اول باید اطلاعاتِ قبلی به یک سال نسبت داده شود.
+     */
+    record UnattributedInvoicesExist(Long schoolId) implements FinanceError {
+    }
+
+    /** نسبت دادنِ اطلاعاتِ قبلی به یک سال با داده‌ی همان سال تداخل دارد (شهریه یا فاکتورِ تکراری). */
+    record AttributionConflict(String academicYear, String reason) implements FinanceError {
+    }
+
     /**
      * فاکتوری با این شناسه در این مدرسه وجود ندارد - عمداً برای شناسه‌ای که
      * متعلق به مدرسه‌ی دیگری است هم همین برمی‌گردد (وجود فاکتور مدرسه‌ی

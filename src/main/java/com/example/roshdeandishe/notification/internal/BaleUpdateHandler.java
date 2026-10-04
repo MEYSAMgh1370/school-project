@@ -182,9 +182,8 @@ class BaleUpdateHandler {
                 String wardName = iamFacade.findUser(new UserId(ward.userId()))
                         .map(UserProfile::fullName)
                         .orElse("دانش‌آموز #" + ward.userId());
-                long invoiceCount = financeFacade.listInvoices(schoolId).stream()
-                        .filter(inv -> inv.studentId().equals(ward.id().value()))
-                        .count();
+                // همان دیدِ خانواده (سالِ جاری + «بدون سال»)، نه همه‌ی سال‌ها
+                long invoiceCount = financeFacade.listInvoicesForStudents(schoolId, List.of(ward.id().value())).size();
                 sb.append("- ").append(wardName).append(" (").append(schoolName).append("): ")
                         .append(invoiceCount).append(" فاکتور صادرشده\n");
             }

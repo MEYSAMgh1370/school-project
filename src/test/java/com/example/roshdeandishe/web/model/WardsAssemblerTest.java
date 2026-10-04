@@ -49,7 +49,7 @@ class WardsAssemblerTest {
     }
 
     private static InvoiceInfo invoice(Long studentId, InvoiceStatus status) {
-        return new InvoiceInfo(1L, 5L, studentId, BigDecimal.TEN, BigDecimal.ZERO, null, null, status);
+        return new InvoiceInfo(1L, 5L, studentId, BigDecimal.TEN, BigDecimal.ZERO, null, null, status, null);
     }
 
     private void givenWard(Long schoolId, Long studentId, Long wardUserId, String name) {

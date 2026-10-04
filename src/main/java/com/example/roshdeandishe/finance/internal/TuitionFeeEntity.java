@@ -11,16 +11,13 @@ import java.math.BigDecimal;
  * شهریه‌ی مصوب یک مدرسه - منبع قیمت‌گذاری واقعی که issueTuitionInvoice از
  * آن مبلغ فاکتور را می‌خواند (جایگزین مقدار صفر hardcode شده‌ی قبلی).
  * <p>
- * عمداً یک ردیف به‌ازای هر مدرسه (unique روی school_id)، نه به‌ازای هر
- * کلاس/پایه - قیمت‌گذاری پیچیده‌تر (per-class, per-grade، تخفیف) هنوز
- * توسط هیچ‌کس خواسته نشده و طبق YAGNI ساخته نمی‌شود.
+ * یک ردیف به‌ازای هر (مدرسه، سال تحصیلی) - نه به‌ازای هر کلاس/پایه؛ قیمت‌گذاری پیچیده‌تر
+ * (per-class, per-grade، تخفیف) هنوز توسط هیچ‌کس خواسته نشده و طبق YAGNI ساخته نمی‌شود.
+ * {@code academicYear} خالی = «به سالی نسبت داده نشده» (ردیف‌های قبل از فاز ۲ و مدرسه‌ای که سالِ
+ * جاری ندارد)؛ یکتایی با ایندکس‌های جزئیِ V10 است (academic-year.md فاز ۲).
  */
 @Entity
-@Table(
-        name = "tuition_fees",
-        schema = "finance",
-        uniqueConstraints = @UniqueConstraint(columnNames = {"school_id"})
-)
+@Table(name = "tuition_fees", schema = "finance")
 @Getter
 @Setter
 @NoArgsConstructor
@@ -36,8 +33,12 @@ class TuitionFeeEntity {
     @Column(nullable = false, precision = 12, scale = 2)
     private BigDecimal amount;
 
-    TuitionFeeEntity(Long schoolId, BigDecimal amount) {
+    @Column(name = "academic_year", length = 16)
+    private String academicYear;
+
+    TuitionFeeEntity(Long schoolId, String academicYear, BigDecimal amount) {
         this.schoolId = schoolId;
+        this.academicYear = academicYear;
         this.amount = amount;
     }
 }
