@@ -93,7 +93,37 @@ public interface SchoolFacade {
 
     void setAutoPromotion(SchoolId schoolId, boolean enabled);
 
+    /**
+     * ورودی‌های تقویم مدرسه در بازه‌ی بسته‌ی [from, to] به ترتیب روز. هر دو الزامی‌اند و
+     * {@code from} نباید بعد از {@code to} باشد (SchoolError.InvalidCalendarEntry).
+     * SchoolError.SchoolNotFound اگر مدرسه نباشد.
+     */
+    List<CalendarEntryInfo> listCalendar(SchoolId schoolId, LocalDate from, LocalDate to);
+
+    /**
+     * افزودنِ ورودی به تقویم مدرسه. عنوان غیرخالی و حداکثر ۱۲۸ نویسه (پس از trim)؛
+     * SchoolError.InvalidCalendarEntry برای روز/نوع/عنوانِ نامعتبر، SchoolError.SchoolNotFound
+     * اگر مدرسه نباشد. یک روز می‌تواند چند ورودی داشته باشد.
+     */
+    CalendarEntryInfo addCalendarEntry(SchoolId schoolId, LocalDate day, CalendarKind kind, String title);
+
+    /**
+     * حذفِ ورودی. ورودیِ مدرسه‌ی دیگر همان SchoolError.CalendarEntryNotFound است (وجودش لو نمی‌رود).
+     */
+    void removeCalendarEntry(SchoolId schoolId, Long entryId);
+
+    /** آیا در این روز دست‌کم یک ورودیِ {@link CalendarKind#CLOSED} هست؟ (حضور و غیاب فقط همین را می‌پرسد.) */
+    boolean isClosedDay(SchoolId schoolId, LocalDate day);
+
     record SchoolId(Long value) {
+    }
+
+    record CalendarEntryInfo(Long id, LocalDate day, CalendarKind kind, String title) {
+    }
+
+    /** CLOSED = روز تعطیل؛ EVENT برای «برنامه‌ی سالانه»ی آینده (هنوز کسی استفاده نمی‌کند). */
+    enum CalendarKind {
+        CLOSED, EVENT
     }
 
     record AcademicYearId(Long value) {

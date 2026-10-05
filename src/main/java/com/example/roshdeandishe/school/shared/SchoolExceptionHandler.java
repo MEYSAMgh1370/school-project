@@ -64,6 +64,16 @@ public class SchoolExceptionHandler {
                     "تنظیم نامعتبر است",
                     e.reason()
             );
+            case SchoolError.InvalidCalendarEntry e -> ProblemDetailFactory.problem(
+                    HttpStatus.BAD_REQUEST, "invalid-calendar-entry",
+                    "ورودی تقویم نامعتبر است",
+                    e.reason()
+            );
+            case SchoolError.CalendarEntryNotFound e -> ProblemDetailFactory.problem(
+                    HttpStatus.NOT_FOUND, "calendar-entry-not-found",
+                    "ورودی تقویم یافت نشد",
+                    "ورودی‌ای با شناسه " + e.entryId() + " در تقویم این مدرسه نیست."
+            );
         };
     }
 }

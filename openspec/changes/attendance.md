@@ -213,6 +213,8 @@ and a table; an empty result teaches («در این بازه حضور و غیا�
 ## Phases
 
 0. The school calendar (`school.calendar_entries`, `CALENDAR_MANAGE`, `/calendar`).
+   **Backend built 2026-10-05** (migration `V12`, `SchoolFacade` calendar methods, the
+   four REST endpoints, the permission); the `/calendar` page is not built yet.
 1. Module, migration, permissions, free entitlement and backfill, record/read
    endpoints, the `/attendance` recording page.
 2. Absentees endpoint and page, the report, the summary endpoint and the dashboard box.

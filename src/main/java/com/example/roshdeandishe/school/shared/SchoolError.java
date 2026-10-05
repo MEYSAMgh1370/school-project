@@ -31,4 +31,12 @@ public sealed interface SchoolError {
     /** مقدارِ تنظیمِ مدرسه ناقص یا نامعتبر است (مثلاً مقدارِ روشن/خاموش خالی). */
     record InvalidSetting(String reason) implements SchoolError {
     }
+
+    /** ورودیِ تقویم مدرسه ناقص یا نامعتبر است (روز، نوع یا عنوان، یا بازه‌ی نادرست). */
+    record InvalidCalendarEntry(String reason) implements SchoolError {
+    }
+
+    /** ورودیِ تقویمی با این شناسه در این مدرسه نیست (ورودیِ مدرسه‌ی دیگر هم همین است). */
+    record CalendarEntryNotFound(Long entryId) implements SchoolError {
+    }
 }

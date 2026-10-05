@@ -8,6 +8,7 @@ import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDate;
 import java.util.List;
 import java.util.Locale;
 import java.util.Optional;
@@ -37,12 +38,14 @@ class SchoolFacadeImpl implements SchoolFacade {
 
     private final SchoolRepository schoolRepository;
     private final AcademicYearRepository academicYearRepository;
+    private final CalendarEntryRepository calendarEntryRepository;
     private final ApplicationEventPublisher eventPublisher;
 
     SchoolFacadeImpl(SchoolRepository schoolRepository, AcademicYearRepository academicYearRepository,
-                     ApplicationEventPublisher eventPublisher) {
+                     CalendarEntryRepository calendarEntryRepository, ApplicationEventPublisher eventPublisher) {
         this.schoolRepository = schoolRepository;
         this.academicYearRepository = academicYearRepository;
+        this.calendarEntryRepository = calendarEntryRepository;
         this.eventPublisher = eventPublisher;
     }
 
@@ -142,6 +145,58 @@ class SchoolFacadeImpl implements SchoolFacade {
                 .orElseThrow(() -> new SchoolException(new SchoolError.SchoolNotFound(schoolId.value())));
         school.setAutoPromotion(enabled);
         schoolRepository.save(school);
+    }
+
+    @Override
+    public List<CalendarEntryInfo> listCalendar(SchoolId schoolId, LocalDate from, LocalDate to) {
+        if (from == null || to == null || from.isAfter(to)) {
+            throw new SchoolException(new SchoolError.InvalidCalendarEntry(
+                    "بازه‌ی تقویم باید با «از» و «تا» مشخص شود و «از» بعد از «تا» نباشد."));
+        }
+        requireSchool(schoolId);
+        return calendarEntryRepository.findBySchoolIdAndDayBetweenOrderByDayAscIdAsc(schoolId.value(), from, to)
+                .stream()
+                .map(SchoolFacadeImpl::toCalendarInfo)
+                .toList();
+    }
+
+    @Override
+    @Transactional
+    public CalendarEntryInfo addCalendarEntry(SchoolId schoolId, LocalDate day, CalendarKind kind, String title) {
+        if (day == null || kind == null) {
+            throw new SchoolException(new SchoolError.InvalidCalendarEntry("روز و نوع ورودی تقویم الزامی است."));
+        }
+        String normalizedTitle = title == null ? "" : title.trim();
+        if (normalizedTitle.isEmpty() || normalizedTitle.length() > 128) {
+            throw new SchoolException(new SchoolError.InvalidCalendarEntry(
+                    "عنوان ورودی تقویم الزامی است و حداکثر ۱۲۸ نویسه می‌تواند باشد."));
+        }
+        requireSchool(schoolId);
+        return toCalendarInfo(calendarEntryRepository.save(
+                new CalendarEntryEntity(schoolId.value(), day, kind, normalizedTitle)));
+    }
+
+    @Override
+    @Transactional
+    public void removeCalendarEntry(SchoolId schoolId, Long entryId) {
+        CalendarEntryEntity entry = calendarEntryRepository.findByIdAndSchoolId(entryId, schoolId.value())
+                .orElseThrow(() -> new SchoolException(new SchoolError.CalendarEntryNotFound(entryId)));
+        calendarEntryRepository.delete(entry);
+    }
+
+    @Override
+    public boolean isClosedDay(SchoolId schoolId, LocalDate day) {
+        return calendarEntryRepository.existsBySchoolIdAndDayAndKind(schoolId.value(), day, CalendarKind.CLOSED);
+    }
+
+    private void requireSchool(SchoolId schoolId) {
+        if (!schoolRepository.existsById(schoolId.value())) {
+            throw new SchoolException(new SchoolError.SchoolNotFound(schoolId.value()));
+        }
+    }
+
+    private static CalendarEntryInfo toCalendarInfo(CalendarEntryEntity entity) {
+        return new CalendarEntryInfo(entity.getId(), entity.getDay(), entity.getKind(), entity.getTitle());
     }
 
     private static AcademicYearInfo toYearInfo(AcademicYearEntity entity) {

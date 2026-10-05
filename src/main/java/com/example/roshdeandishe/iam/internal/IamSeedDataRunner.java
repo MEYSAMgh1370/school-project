@@ -204,6 +204,7 @@ class IamSeedDataRunner implements ApplicationRunner {
         permission(permissions, "EXAM_MANAGE", "تألیف/تخصیص آزمون و ساخت بخش‌های آن");
         permission(permissions, "ACADEMIC_YEAR_MANAGE", "انتخاب سال تحصیلی جاریِ مدرسه");
         permission(permissions, "TIMETABLE_MANAGE", "مدیریت برنامهٔ کلاسی (زنگ‌ها، فعالیت‌ها و جدول کلاس‌ها)");
+        permission(permissions, "CALENDAR_MANAGE", "مدیریت تقویم مدرسه");
         return permissions;
     }
 
@@ -268,6 +269,7 @@ class IamSeedDataRunner implements ApplicationRunner {
         grant(roles.get("SCHOOL_ADMIN"), permissions.get("MEMBERSHIP_MANAGE"));
         grant(roles.get("SCHOOL_ADMIN"), permissions.get("ACADEMIC_YEAR_MANAGE"));
         grant(roles.get("SCHOOL_ADMIN"), permissions.get("TIMETABLE_MANAGE"));
+        grant(roles.get("SCHOOL_ADMIN"), permissions.get("CALENDAR_MANAGE"));
         // MEMBERSHIP_MANAGE از قبل هر آنچه MEMBER_NAMES_VIEW می‌دهد را پوشش
         // می‌دهد، اما این را هم صریحاً می‌گیرد تا SCHOOL_ADMIN هرگز به یک
         // Permission نیازمندِ endpointِ محدودترِ نام‌ها 403 نگیرد
