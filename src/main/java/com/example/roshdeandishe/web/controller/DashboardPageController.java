@@ -9,6 +9,8 @@ import com.example.roshdeandishe.iam.IamFacade.UserProfile;
 import com.example.roshdeandishe.school.SchoolFacade;
 import com.example.roshdeandishe.school.SchoolFacade.SchoolId;
 import com.example.roshdeandishe.school.SchoolFacade.SchoolInfo;
+import com.example.roshdeandishe.web.model.AttendanceTodayAssembler;
+import com.example.roshdeandishe.web.model.AttendanceTodayRow;
 import com.example.roshdeandishe.web.model.DashboardModel;
 import com.example.roshdeandishe.web.model.MembershipRow;
 import com.example.roshdeandishe.web.model.SchoolEntryRow;
@@ -62,11 +64,13 @@ public class DashboardPageController {
     private final NavbarModelAssembler navbarModelAssembler;
     private final WardsAssembler wardsAssembler;
     private final FinanceFacade financeFacade;
+    private final AttendanceTodayAssembler attendanceTodayAssembler;
 
     public DashboardPageController(IamFacade iamFacade, SchoolFacade schoolFacade,
                                    NavbarModelAssembler navbarModelAssembler, WardsAssembler wardsAssembler,
-                                   FinanceFacade financeFacade) {
+                                   FinanceFacade financeFacade, AttendanceTodayAssembler attendanceTodayAssembler) {
         this.financeFacade = financeFacade;
+        this.attendanceTodayAssembler = attendanceTodayAssembler;
         this.iamFacade = iamFacade;
         this.schoolFacade = schoolFacade;
         this.navbarModelAssembler = navbarModelAssembler;
@@ -93,7 +97,8 @@ public class DashboardPageController {
 
         model.addAttribute("model", new DashboardModel(profile.fullName(), profile.email(), profile.phoneNumber(),
                 rows, schoolEntries(memberships, schools), WardsAssembler.isParent(memberships),
-                wardsAssembler.forParent(userId, memberships), tuitionRows(memberships, schools)));
+                wardsAssembler.forParent(userId, memberships), tuitionRows(memberships, schools),
+                attendanceTodayRows(userId, memberships, schools)));
         model.addAttribute("navbar", navbarModelAssembler.assemble(profile, memberships));
         return "dashboard";
     }
@@ -147,6 +152,28 @@ public class DashboardPageController {
             rows.add(TuitionRow.of(membership.schoolId(),
                     schoolName(schools.getOrDefault(membership.schoolId(), Optional.empty()), membership.schoolId()),
                     invoices.size(), billed, paid));
+        }
+        return rows;
+    }
+
+    /**
+     * «حضور و غیاب امروز» برای مدرسه‌هایی که کاربر در آن‌ها مدیرِ فعال است (همان چکِ literal
+     * {@code SCHOOL_ADMIN} و همان دامنه‌ی {@link #tuitionRows}). مدرسه‌ای که ماژول حضور و غیاب را ندارد
+     * ردیفی نمی‌گیرد؛ جزئیاتِ آن در {@link AttendanceTodayAssembler}.
+     */
+    private List<AttendanceTodayRow> attendanceTodayRows(UserId userId, List<MembershipInfo> memberships,
+                                                         Map<Long, Optional<SchoolInfo>> schools) {
+        List<AttendanceTodayRow> rows = new ArrayList<>();
+        Set<Long> seen = new LinkedHashSet<>();
+        for (MembershipInfo membership : memberships) {
+            if (!membership.active() || !SCHOOL_ADMIN_ROLE.equals(membership.roleCode())
+                    || !seen.add(membership.schoolId())) {
+                continue;
+            }
+            Optional<SchoolInfo> school = schools.getOrDefault(membership.schoolId(), Optional.empty());
+            attendanceTodayAssembler
+                    .forAdminSchool(userId, membership.schoolId(), schoolName(school, membership.schoolId()), school)
+                    .ifPresent(rows::add);
         }
         return rows;
     }

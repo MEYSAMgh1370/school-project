@@ -32,7 +32,8 @@ class NavSharedSourceRenderTest {
     private static final NavbarModel NAVBAR = new NavbarModel("سارا احمدی",
             List.of(new NavbarModel.SchoolOption(1L, "مدرسه‌ی نمونه", List.of("SCHOOL_ADMIN", "TEACHER"))));
 
-    private static final Pattern HREF = Pattern.compile("href=\"(/[a-z-]+)\"");
+    // «/» هم مجاز است: /attendance/report یک مسیر دوبخشی است
+    private static final Pattern HREF = Pattern.compile("href=\"(/[a-z/-]+)\"");
 
     private final TemplateEngine engine = TemplateEngine.createPrecompiled(ContentType.Html);
 
@@ -128,7 +129,7 @@ class NavSharedSourceRenderTest {
         String sidebar = render("layout/navbar.jte", Map.of("navbar", NAVBAR));
 
         List<String> shortcutHrefs = new ArrayList<>();
-        Matcher card = Pattern.compile("class=\"box app-shortcut\" href=\"(/[a-z-]+)\"").matcher(dashboard);
+        Matcher card = Pattern.compile("class=\"box app-shortcut\" href=\"(/[a-z/-]+)\"").matcher(dashboard);
         while (card.find()) {
             shortcutHrefs.add(card.group(1));
         }

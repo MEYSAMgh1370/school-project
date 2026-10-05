@@ -113,6 +113,51 @@ class NavCatalogTest {
         assertThat(permissionsOf("/grades")).containsExactlyInAnyOrder("GRADES_EDIT", "CLASS_VIEW");
     }
 
+    @Test
+    void attendanceAndCalendarPagesJoinTheirGroupsWithTheRightRolesAndPermissions() {
+        Link record = linkOf("/attendance");
+        Link report = linkOf("/attendance/report");
+        Link calendar = linkOf("/calendar");
+
+        assertThat(record.roles()).containsExactly("SCHOOL_ADMIN", "TEACHER");
+        assertThat(record.shortcutRoles()).containsExactly("SCHOOL_ADMIN", "TEACHER");
+        assertThat(report.roles()).containsExactly("SCHOOL_ADMIN");
+        assertThat(report.shortcutRoles()).containsExactly("SCHOOL_ADMIN");
+        assertThat(calendar.roles()).containsExactly("SCHOOL_ADMIN");
+        assertThat(calendar.shortcutRoles()).containsExactly("SCHOOL_ADMIN");
+        assertThat(permissionsOf("/attendance/report")).containsExactly("ATTENDANCE_VIEW_ALL");
+        assertThat(permissionsOf("/calendar")).containsExactly("CALENDAR_MANAGE");
+
+        assertThat(groupOf("/attendance")).isEqualTo("education");
+        assertThat(groupOf("/attendance/report")).isEqualTo("education");
+        assertThat(groupOf("/calendar")).isEqualTo("school");
+    }
+
+    @Test
+    void recordingAttendanceAcceptsEitherRecordPermissionForACustomRole() {
+        Link record = linkOf("/attendance");
+
+        // معلم ATTENDANCE_RECORD و مدیر ATTENDANCE_RECORD_ANY دارد: هر دو مجموعه‌ی «همه» جدا و با «یا»
+        assertThat(record.permissionSets()).containsExactly(
+                List.of("ATTENDANCE_RECORD"), List.of("ATTENDANCE_RECORD_ANY"));
+        assertThat(record.visibleWhen("role", "perms")).isEqualTo(
+                "['SCHOOL_ADMIN', 'TEACHER'].includes(role) || ['ATTENDANCE_RECORD'].every(p => perms.includes(p))"
+                        + " || ['ATTENDANCE_RECORD_ANY'].every(p => perms.includes(p))");
+        assertThat(record.shortcutVisibleWhen("role", "perms")).contains("['ATTENDANCE_RECORD'].every(", "['ATTENDANCE_RECORD_ANY'].every(");
+        // لینک‌های بدونِ جایگزین دقیقاً مثل قبل‌اند
+        assertThat(linkOf("/timetable").permissionSets()).containsExactly(List.of("TIMETABLE_MANAGE"));
+    }
+
+    private static Link linkOf(String href) {
+        return allLinks().stream().filter(l -> l.href().equals(href)).findFirst().orElseThrow();
+    }
+
+    private static String groupOf(String href) {
+        return NavCatalog.groups().stream()
+                .filter(g -> g.links().stream().anyMatch(l -> l.href().equals(href)))
+                .findFirst().orElseThrow().id();
+    }
+
     private static java.util.List<String> permissionsOf(String href) {
         return allLinks().stream().filter(l -> l.href().equals(href)).findFirst().orElseThrow().permissions();
     }

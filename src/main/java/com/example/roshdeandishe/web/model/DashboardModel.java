@@ -4,11 +4,18 @@ import java.util.List;
 
 public record DashboardModel(String fullName, String email, String phoneNumber, List<MembershipRow> memberships,
                              List<SchoolEntryRow> schoolEntries, boolean parent, List<WardRow> wards,
-                             List<TuitionRow> tuition) {
+                             List<TuitionRow> tuition, List<AttendanceTodayRow> attendanceToday) {
+
+    /** بدونِ بخش‌های حضور و غیابِ امروز (کاربرِ غیرمدیر یا مدرسه‌ی بدونِ ماژول حضور و غیاب). */
+    public DashboardModel(String fullName, String email, String phoneNumber, List<MembershipRow> memberships,
+                          List<SchoolEntryRow> schoolEntries, boolean parent, List<WardRow> wards,
+                          List<TuitionRow> tuition) {
+        this(fullName, email, phoneNumber, memberships, schoolEntries, parent, wards, tuition, List.of());
+    }
 
     /** بدونِ بخشِ شهریه‌ی مدیر (کاربرِ غیرمدیر). */
     public DashboardModel(String fullName, String email, String phoneNumber, List<MembershipRow> memberships,
                           List<SchoolEntryRow> schoolEntries, boolean parent, List<WardRow> wards) {
-        this(fullName, email, phoneNumber, memberships, schoolEntries, parent, wards, List.of());
+        this(fullName, email, phoneNumber, memberships, schoolEntries, parent, wards, List.of(), List.of());
     }
 }

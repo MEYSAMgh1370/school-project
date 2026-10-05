@@ -253,3 +253,5 @@ These are not bugs unless a change proposal says otherwise:
 - slug editing, custom domains, and subdomain routing are not implemented;
 - school status changes are facade-only;
 - native Android app is read-only and local-development oriented.
+
+Attendance and calendar pages: `/calendar` (admin, `CALENDAR_MANAGE`: add and remove closed days by Jalali date), `/attendance` (teachers record their own classes, admins any class: present by default, absent with an optional «موجه» flag and note, late; past days need `ATTENDANCE_EDIT_PAST`) and `/attendance/report` (admin, `ATTENDANCE_VIEW_ALL`: the day's absentees per class with the present-percent figure, and a period report by date range, class and student name). The admin پیشخوان shows a «حضور و غیاب امروز» box for the literal `SCHOOL_ADMIN` of an entitled school. `NavCatalog` links can require any one of several permission sets (`orPermissions`). Not built yet: the student/parent absence view and the admin excuses screen (the excuse endpoints exist).

@@ -54,7 +54,10 @@ class NavPermissionsFlowIntegrationTest {
                     continue;
                 }
                 for (String role : SYSTEM_ROLES) {
-                    boolean byPermission = permissionsByRole.get(role).containsAll(link.permissions());
+                    // «همه‌ی یک مجموعه» یا «همه‌ی یکی از جایگزین‌ها» (مثلاً حضور و غیاب: RECORD یا RECORD_ANY)
+                    boolean byPermission = link.permissionSets().stream()
+                            .filter(set -> !set.isEmpty())
+                            .anyMatch(set -> permissionsByRole.get(role).containsAll(set));
                     assertThat(byPermission)
                             .as("%s for %s: link roles %s, link permissions %s, role permissions %s",
                                     link.href(), role, link.roles(), link.permissions(), permissionsByRole.get(role))

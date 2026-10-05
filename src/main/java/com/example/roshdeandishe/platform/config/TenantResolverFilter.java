@@ -91,6 +91,10 @@ public class TenantResolverFilter extends OncePerRequestFilter {
             // /my-grades برای صفحه‌ی «برنامه‌ی کلاسی من» (fetch آن /api/me است)
             "/timetable",
             "/my-timetable",
+            // حضور و غیاب (/attendance و /attendance/report) و تقویم مدرسه (/calendar): همان استدلال /people
+            // برای خودِ صفحه؛ fetchهای آن‌ها به /api/admin/schools/{id}/attendance و .../calendar هدر را می‌فرستند
+            "/attendance",
+            "/calendar",
             // صفحه‌ی ثبت مدرسه: مدرسه هنوز وجود ندارد که schoolId داشته باشد
             "/schools/new",
             // درِ ورودی برنددار مدرسه (/s/{slug}): صفحه‌ی عمومی، بازدیدکننده

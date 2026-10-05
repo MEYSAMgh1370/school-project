@@ -1,7 +1,9 @@
 # Attendance (حضور و غیاب)
 
 Status: proposed 2026-10-05; **the product owner answered all nine questions the same
-day (recorded in "Decisions") and implementation started** (phases below). Check each
+day (recorded in "Decisions"); phases 0-2 and the phase-3 backend are built, with the
+pages `/calendar`, `/attendance`, `/attendance/report` and the admin dashboard box.
+Not yet built: the student/parent «غیبت» view and the admin excuses screen** (phases below). Check each
 phase's note for what is built; the current behavior of a built phase belongs to
 `specs/current-system.md`.
 
@@ -73,7 +75,7 @@ roster, enrollments, wards), `SchoolFacade` (current year, school days) and
 
 The unit is **a class on a school day**, not a period. A teacher "takes the roll"
 once; every student of the class is then PRESENT unless marked otherwise.
-(Per-period attendance is open question 1.)
+(Per-period attendance was declined: decision 1.)
 
 ### Data (Flyway migration, next free version)
 

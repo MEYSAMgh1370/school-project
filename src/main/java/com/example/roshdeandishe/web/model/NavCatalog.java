@@ -39,7 +39,9 @@ public final class NavCatalog {
                     new Link("/academic-year", "سال تحصیلی", "انتخاب سال تحصیلی جاریِ مدرسه",
                             List.of(ADMIN), List.of(ADMIN)).withPermissions("ACADEMIC_YEAR_MANAGE"),
                     new Link("/promotion", "ارتقای پایه", "ارتقای دانش‌آموزان به سال جدید و جا دادن در کلاس‌ها",
-                            List.of(ADMIN), List.of()).withPermissions("ACADEMIC_YEAR_MANAGE"))),
+                            List.of(ADMIN), List.of()).withPermissions("ACADEMIC_YEAR_MANAGE"),
+                    new Link("/calendar", "تقویم مدرسه", "روزهای تعطیل مدرسه؛ در این روزها حضور و غیاب گرفته نمی‌شود",
+                            List.of(ADMIN), List.of(ADMIN)).withPermissions("CALENDAR_MANAGE"))),
             new Group("education", "آموزش", List.of(
                     new Link("/classes", "کلاس‌ها", "کلاس‌ها و ثبت‌نام دانش‌آموزان",
                             List.of(ADMIN, TEACHER), List.of(ADMIN, TEACHER)).withPermissions("CLASS_VIEW"),
@@ -47,6 +49,12 @@ public final class NavCatalog {
                             List.of(ADMIN), List.of(ADMIN)).withPermissions("TIMETABLE_MANAGE"),
                     new Link("/my-timetable", "برنامه‌ی کلاسی من", "برنامه‌ی هفتگیِ شما",
                             List.of(STUDENT, PARENT, TEACHER), List.of(STUDENT, PARENT, TEACHER)),
+                    // ثبت: «یکی از دو مجوز» (معلم ATTENDANCE_RECORD، مدیر ATTENDANCE_RECORD_ANY)
+                    new Link("/attendance", "حضور و غیاب", "ثبت حضور و غیاب کلاس‌ها",
+                            List.of(ADMIN, TEACHER), List.of(ADMIN, TEACHER))
+                            .withPermissions("ATTENDANCE_RECORD").orPermissions("ATTENDANCE_RECORD_ANY"),
+                    new Link("/attendance/report", "گزارش حضور و غیاب", "غایبین روز و گزارش بازه‌ای",
+                            List.of(ADMIN), List.of(ADMIN)).withPermissions("ATTENDANCE_VIEW_ALL"),
                     new Link("/curriculum", "سرفصل‌ها و بانک سؤال", "سرفصل‌های درسی و بانک سؤال",
                             List.of(ADMIN, TEACHER), List.of()).withPermissions("CURRICULUM_VIEW"),
                     new Link("/study-plans", "برنامه‌های مطالعه", "برنامه‌های مطالعه‌ی کلاس‌ها",
@@ -109,7 +117,7 @@ public final class NavCatalog {
         Set<List<String>> permissionSets = new LinkedHashSet<>();
         shortcuts().forEach(link -> {
             roles.addAll(link.shortcutRoles());
-            permissionSets.add(link.permissions());
+            permissionSets.addAll(link.permissionSets());
         });
         return anyOf(includes(roles, roleExpression), permissionSets, customRolePermissions(roleExpression,
                 permissionsExpression));
@@ -153,7 +161,7 @@ public final class NavCatalog {
             Set<List<String>> permissionSets = new LinkedHashSet<>();
             links.forEach(link -> {
                 roles.addAll(link.roles());
-                permissionSets.add(link.permissions());
+                permissionSets.addAll(link.permissionSets());
             });
             return anyOf(includes(roles, roleExpression), permissionSets, permissionsExpression);
         }
@@ -172,21 +180,46 @@ public final class NavCatalog {
      *                      FINANCE_VIEW تنها). برای نقش‌های سیستمی باید با {@code roles} هم‌خوان باشد
      *                      (NavPermissionsFlowIntegrationTest). خالی = فقط بر اساس نقش (صفحه‌های «من»).
      *                      کارتِ «دسترسی سریع» همچنان فقط بر اساس نقش است.
+     * @param alternativePermissions مجموعه‌های جایگزین: صفحه‌ای که «یکی از چند مجوز» می‌پذیرد (ثبت حضور و
+     *                      غیاب: معلم ATTENDANCE_RECORD یا مدیر ATTENDANCE_RECORD_ANY) به‌ازای هر جایگزین یک
+     *                      مجموعه‌ی «همه» دارد؛ لینک وقتی دیده می‌شود که همه‌ی {@code permissions} <b>یا</b> همه‌ی
+     *                      یکی از جایگزین‌ها را نقش داشته باشد. معمولاً خالی است.
      */
     public record Link(String href, String label, String description,
-                       List<String> roles, List<String> shortcutRoles, List<String> permissions) {
+                       List<String> roles, List<String> shortcutRoles, List<String> permissions,
+                       List<List<String>> alternativePermissions) {
 
         public Link(String href, String label, String description, List<String> roles, List<String> shortcutRoles) {
-            this(href, label, description, roles, shortcutRoles, List.of());
+            this(href, label, description, roles, shortcutRoles, List.of(), List.of());
+        }
+
+        public Link(String href, String label, String description,
+                    List<String> roles, List<String> shortcutRoles, List<String> permissions) {
+            this(href, label, description, roles, shortcutRoles, permissions, List.of());
         }
 
         Link withPermissions(String... codes) {
-            return new Link(href, label, description, roles, shortcutRoles, List.of(codes));
+            return new Link(href, label, description, roles, shortcutRoles, List.of(codes), alternativePermissions);
         }
 
-        /** نمایش در سایدبار: نقشِ انتخاب‌شده در {@code roles} باشد یا همه‌ی {@code permissions} را داشته باشد. */
+        /** یک مجموعه‌ی جایگزین (همه‌ی این مجوزها) کنارِ {@code permissions}؛ «یا» بین مجموعه‌ها. */
+        Link orPermissions(String... codes) {
+            List<List<String>> alternatives = new ArrayList<>(alternativePermissions);
+            alternatives.add(List.of(codes));
+            return new Link(href, label, description, roles, shortcutRoles, permissions, List.copyOf(alternatives));
+        }
+
+        /** {@code permissions} و جایگزین‌ها، هرکدام یک مجموعه‌ی «همه»؛ مجموعه‌ی خالی نادیده گرفته می‌شود. */
+        public List<List<String>> permissionSets() {
+            List<List<String>> sets = new ArrayList<>();
+            sets.add(permissions);
+            sets.addAll(alternativePermissions);
+            return List.copyOf(sets);
+        }
+
+        /** نمایش در سایدبار: نقشِ انتخاب‌شده در {@code roles} باشد یا همه‌ی {@code permissions} (یا یک جایگزین) را داشته باشد. */
         public String visibleWhen(String roleExpression, String permissionsExpression) {
-            return anyOf(includes(roles, roleExpression), List.of(permissions), permissionsExpression);
+            return anyOf(includes(roles, roleExpression), permissionSets(), permissionsExpression);
         }
 
         public String visibleWhen(String roleExpression) {
@@ -202,7 +235,7 @@ public final class NavCatalog {
          * {@code permissions} را داشته باشد (همان قاعده‌ی سایدبار؛ نقش‌های سیستمی همچنان فقط بر اساس نقش).
          */
         public String shortcutVisibleWhen(String roleExpression, String permissionsExpression) {
-            return anyOf(includes(shortcutRoles, roleExpression), List.of(permissions),
+            return anyOf(includes(shortcutRoles, roleExpression), permissionSets(),
                     customRolePermissions(roleExpression, permissionsExpression));
         }
     }
