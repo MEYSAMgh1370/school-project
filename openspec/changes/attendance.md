@@ -1,8 +1,28 @@
 # Attendance (حضور و غیاب)
 
-Status: **proposed 2026-10-05, not implemented.** Nothing here is current behavior.
-Every product choice below is a *proposed default* for the product owner to confirm
-or change; the open questions at the end are not decided and are not invented here.
+Status: proposed 2026-10-05; **the product owner answered all nine questions the same
+day (recorded in "Decisions") and implementation started** (phases below). Check each
+phase's note for what is built; the current behavior of a built phase belongs to
+`specs/current-system.md`.
+
+## Decisions (product owner, 2026-10-05)
+
+1. **Granularity: once per day** per class (not per period).
+2. **Statuses:** present (implied), absent, late, plus an excused flag on absent: accepted.
+3. **Holidays: a school calendar**, which the future «برنامه‌ی سالانه» (yearly plan)
+   feature must be able to reuse. So the calendar is its own shared piece in the
+   `school` module (see "School calendar"), not an attendance-private table.
+4. **Admin records for any class** with **its own permission** (`ATTENDANCE_RECORD_ANY`);
+   a teacher records only for their own class (`ATTENDANCE_RECORD`).
+5. **Editing a past day** needs a separate permission, **`ATTENDANCE_EDIT_PAST`**,
+   granted by default only to `SCHOOL_ADMIN`; others may edit only the current day.
+6. **Entitlement: free.** New schools get `ATTENDANCE` at creation (with `ACADEMIC` and
+   `FINANCE`), and existing schools are backfilled.
+7. **Parents are notified** of an absence (Bale, through the existing channel).
+8. **Excuses:** not required, but included because it is small: a parent submits a
+   short note on a child's absence; an admin approves or rejects it.
+9. **Report:** a table where the admin queries by **time period** and **student name**
+   (optionally class) and gets, per student, the number of absent, late and present days.
 
 ## Verified Baseline
 
@@ -39,7 +59,7 @@ roster, enrollments, wards), `SchoolFacade` (current year, school days) and
 `IamFacade` (user/permission checks). Nothing depends on it except `web`
 (dashboard assembler) and, later, `notification` through an event.
 
-### Granularity: one roll per class per school day
+### Granularity: one roll per class per school day (decided)
 
 The unit is **a class on a school day**, not a period. A teacher "takes the roll"
 once; every student of the class is then PRESENT unless marked otherwise.
@@ -63,9 +83,10 @@ once; every student of the class is then PRESENT unless marked otherwise.
 
 ### Rules
 
-1. A roll can be taken only for a **school day** of the school (`SAT`–`WED` for a
-   `SAT` school, `MON`–`FRI` for a `MON` school; same source as the timetable), and
-   not for a future day (`400 invalid-attendance-day`). Holidays are open question 3.
+1. A roll can be taken only for a **school day** of the school: a weekday of the
+   school's pattern (`SAT`–`WED` for a `SAT` school, `MON`–`FRI` for a `MON` school;
+   same source as the timetable) that is **not a closed day in the school calendar**,
+   and not for a future day (`400 invalid-attendance-day`).
 2. The class must belong to the school and to the school's current academic year
    (or be unattributed, as for classes today).
 3. A mark's student must be **enrolled in that class** that year at that time
@@ -74,12 +95,13 @@ once; every student of the class is then PRESENT unless marked otherwise.
 4. Saving a roll is **one idempotent replace** of the class-day: the request lists
    the absent/late students; the previous marks of that class-day are replaced in
    one transaction, `rolls` is upserted.
-5. Who may record: a new permission **`ATTENDANCE_RECORD`**, granted to `TEACHER`
-   and `SCHOOL_ADMIN`; a teacher may record only for a class they teach (the class's
-   `teacher_id`, or a teacher placed in that class by the timetable) unless they
-   also hold `ATTENDANCE_VIEW_ALL`. A same-day-only edit window for teachers is
-   open question 5; the admin can always correct.
-6. Who may read: new permission **`ATTENDANCE_VIEW_ALL`** (`SCHOOL_ADMIN`,
+5. Who may record: **`ATTENDANCE_RECORD`** (granted to `TEACHER`) records only for a
+   class the teacher teaches (the class's `teacher_id`, or a teacher placed in that
+   class by the timetable); **`ATTENDANCE_RECORD_ANY`** (granted to `SCHOOL_ADMIN`)
+   records for any class. Without **`ATTENDANCE_EDIT_PAST`** (granted by default only
+   to `SCHOOL_ADMIN`) a roll can be saved only for **today**; with it, for any past
+   school day.
+6. Who may read: permission **`ATTENDANCE_VIEW_ALL`** (`SCHOOL_ADMIN`,
    assignable to custom roles, e.g. a deputy) for the school-wide views. A student
    sees only their own absences and a parent only their linked children's, through
    self-service endpoints with no permission, like `/api/me/**`.
@@ -144,12 +166,57 @@ A non-school day: no figure.
 turn an `ABSENT` mark into a Bale message to the child's linked parents through
 the existing `NotificationChannel`. Not part of phases 1-2.
 
+### School calendar (shared with the yearly plan)
+
+In the `school` module, because the school's week start and current year already live
+there. `school.calendar_entries`: `school_id`, `id`, `day` (date), `kind` (`CLOSED`;
+`EVENT` is reserved for the yearly plan and is not used by attendance), `title`
+(≤ 128). Unique `(school_id, day, kind, title)` is not required; a day may carry
+several entries. `SchoolFacade` exposes `listCalendar(schoolId, from, to)` and
+`isClosedDay(schoolId, day)`; attendance asks only the second. New permission
+`CALENDAR_MANAGE` (`SCHOOL_ADMIN`) for `POST/DELETE
+/api/admin/schools/{id}/calendar`; `GET /api/admin/.../calendar` and
+`GET /api/me/schools/{id}/calendar` (any active member) list a date range. A page
+`/calendar` lets the admin add and remove closed days by Jalali date. No national
+holidays are shipped: the admin enters them (a platform default list would be a
+separate decision). The yearly plan will add its own `kind` and pages on this table
+without a schema change.
+
+### Excuses
+
+An `ABSENT` mark may carry an excuse: `attendance.excuses` (`school_id`, `class_id`,
+`day`, `student_id`, `note` ≤ 500, `submitted_by_user_id`, `submitted_at`, `status`
+`PENDING`/`APPROVED`/`REJECTED`, `decided_by_user_id`, `decided_at`). A parent (active
+`PARENT` of the child) submits through
+`POST /api/me/schools/{id}/attendance/excuses`; the admin lists pending excuses and
+approves or rejects (`ATTENDANCE_VIEW_ALL` to see, `ATTENDANCE_RECORD_ANY` to
+decide). Approving sets the mark's `excused` flag; rejecting leaves it. One excuse per
+(student, day); resubmitting while pending replaces the note.
+
+### Notifications
+
+Saving a roll publishes `AbsenceRecordedEvent` for each student **newly** marked
+`ABSENT` (not for an unchanged re-save). `notification` listens and sends the linked
+parents of that student a Bale message through the existing channel; a parent
+without a linked Bale account is skipped silently. No opt-out in this version.
+
+### Report (admin)
+
+`GET /api/admin/schools/{schoolId}/attendance/report?from=&to=&classId=&name=`
+(`ATTENDANCE_VIEW_ALL`): one row per student: name, class, **absent days, late days,
+present days** over the period, where the base is the school days in the period on
+which that student's class had a roll taken; present = base − absent (late counts as
+present and is also shown separately). The page `/attendance/report` (the same page
+as the per-class absentees, as a second tab) has date-range, class and name filters
+and a table; an empty result teaches («در این بازه حضور و غیابی ثبت نشده است»).
+
 ## Phases
 
-1. Module, migration, permissions, entitlement, record/read endpoints, the
-   `/attendance` recording page.
-2. Absentees endpoint and page, the summary endpoint and the dashboard box.
-3. Student and parent views, optional parent notification.
+0. The school calendar (`school.calendar_entries`, `CALENDAR_MANAGE`, `/calendar`).
+1. Module, migration, permissions, free entitlement and backfill, record/read
+   endpoints, the `/attendance` recording page.
+2. Absentees endpoint and page, the report, the summary endpoint and the dashboard box.
+3. Student and parent views, excuses, and the parent notification.
 
 ## Acceptance Criteria
 
@@ -179,25 +246,12 @@ scoping (student, parent, unlinked parent); a render test of the dashboard box
 ## Compatibility And Migration
 
 Purely additive: one migration, no change to existing tables or endpoints. The
-`ATTENDANCE` module row already exists. Schools get access only through an
-entitlement (question 6).
+`ATTENDANCE` module row already exists. Existing schools are granted `ATTENDANCE`
+by a backfill (decision 6).
 
-## Open Questions (not decided)
+## Remaining Open Points
 
-1. **Granularity:** once per day (proposed) or per period using the timetable?
-2. **Statuses:** is `PRESENT` / `ABSENT` / `LATE` plus an excused flag the right
-   set? Is "leave early" needed? Does lateness count toward absences after a limit?
-3. **Holidays:** school days follow only the weekly pattern today. Is there a
-   holiday calendar, or may an admin mark a day as closed?
-4. **Who records:** only the class's own teacher, or any teacher of the school
-   (e.g. a substitute)? Should an admin be able to record for any class?
-5. **Edit window:** may a teacher correct yesterday's roll, or only the same day?
-6. **Entitlement:** `ATTENDANCE` is not in the free tier. Grant it free at school
-   creation (like `ACADEMIC` and `FINANCE`), keep it paid, or backfill existing
-   schools? The dashboard box and pages depend on this.
-7. **Parent notification:** should a parent be messaged about an absence, at what
-   time of day, and may a parent opt out?
-8. **Excuse workflow:** can a parent submit an excuse (note or document) for the
-   admin to approve, or does the admin only flag it?
-9. **Reports:** a monthly or per-student absence report and its threshold for
-   alerts. Not part of this proposal.
+- Notification wording and time of day: sent immediately when the roll is saved.
+- Excuse attachments (a document or photo): not in this version.
+- Absence thresholds and alerts: not in this version.
+- A platform-shipped list of national holidays: not in this version.
