@@ -15,7 +15,7 @@ import org.springframework.web.bind.annotation.RestController;
 import java.util.List;
 
 /**
- * «من کی هستم و کجا عضوم» - برای داشبورد و سوییچر آینده‌ی مدرسه/نقش
+ * «من کی هستم و کجا عضوم» - برای پیشخوان و سوییچر آینده‌ی مدرسه/نقش
  * (Open Question 2 در CLAUDE.md همین endpoint را پیش‌بینی کرده بود).
  * <p>
  * عمداً هیچ {@code @RequiresPermission}/{@code @RequiresModule} ندارد:

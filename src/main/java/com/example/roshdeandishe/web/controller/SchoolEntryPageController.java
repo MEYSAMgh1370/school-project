@@ -24,8 +24,8 @@ import java.util.Optional;
  * presentation «مدرسه‌ی معلق را تبلیغ نکن»، اینجا نه در Facade.
  * <p>
  * برخلاف LandingPageController، کاربر احرازشده ری‌دایرکت *نمی‌شود*: باید
- * اول همین صفحه کلیک «ادامه به داشبورد» را ببیند تا localStorage
- * (selectedSchoolId) با کلیک ست شود و داشبورد با همین مدرسه بالا بیاید -
+ * اول همین صفحه کلیک «ادامه به پیشخوان» را ببیند تا localStorage
+ * (selectedSchoolId) با کلیک ست شود و پیشخوان با همین مدرسه بالا بیاید -
  * ری‌دایرکت سمت سرور دستش به localStorage نمی‌رسد.
  */
 @Controller

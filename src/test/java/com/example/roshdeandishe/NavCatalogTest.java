@@ -12,7 +12,7 @@ import java.util.Set;
 import static org.assertj.core.api.Assertions.assertThat;
 
 /**
- * منبع واحدِ لینک‌ها (سایدبار + «دسترسی سریع» داشبورد) را بدون Spring و
+ * منبع واحدِ لینک‌ها (سایدبار + «دسترسی سریع» پیشخوان) را بدون Spring و
  * Docker قفل می‌کند: ثبت لینکِ تکراری یا کارتی برای نقشی که لینکش را
  * نمی‌بیند، همین‌جا می‌شکند - نه در مرورگر.
  */
@@ -55,7 +55,7 @@ class NavCatalogTest {
 
     @Test
     void everyRoleThatSeesTheSidebarHasAtLeastOneShortcut() {
-        // وگرنه داشبوردِ آن نقش بخش «دسترسی سریع» خالی نشان می‌دهد
+        // وگرنه پیشخوانِ آن نقش بخش «دسترسی سریع» خالی نشان می‌دهد
         Set<String> roles = new HashSet<>();
         allLinks().forEach(link -> roles.addAll(link.roles()));
         roles.forEach(role -> assertThat(NavCatalog.shortcuts().stream()

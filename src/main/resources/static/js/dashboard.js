@@ -1,5 +1,5 @@
 document.addEventListener('alpine:init', () => {
-    // فیلد شماره تلفن روی داشبورد - قدم اول برای اتصال ربات بله و ورود با
+    // فیلد شماره تلفن روی پیشخوان - قدم اول برای اتصال ربات بله و ورود با
     // کد پیامکی (UX_ROADMAP.md §6.6 مورد ۳). مقدار اولیه از رندر سمت سرور
     // می‌آید (profile.phoneNumber از IamFacade.findUser، از طریق data-phone-number
     // + x-init - نه یک آرگومان JS، چون setPhoneNumber نویسه‌ها را اعتبارسنجی

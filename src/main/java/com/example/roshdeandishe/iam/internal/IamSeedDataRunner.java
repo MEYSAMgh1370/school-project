@@ -355,7 +355,7 @@ class IamSeedDataRunner implements ApplicationRunner {
     /**
      * ادمین نمونه بدون Membership در مدرسه‌ی نمونه عملاً هیچ API مدرسه‌محوری
      * را نمی‌تواند صدا بزند (PermissionDecisionService عضویت فعال می‌خواهد) -
-     * شکافی که تا قبل از ساخت داشبورد به چشم نیامده بود، چون مدرسه‌ی نمونه
+     * شکافی که تا قبل از ساخت پیشخوان به چشم نیامده بود، چون مدرسه‌ی نمونه
      * مستقیم با Repository ساخته می‌شود نه از مسیر خودسرویسی SchoolController
      * (که سازنده را خودکار SCHOOL_ADMIN می‌کند). فقط seed مخصوص dev.
      */

@@ -26,7 +26,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  * سایدبار برای نقش سفارشی (مثلاً معاون با TIMETABLE_MANAGE) روی داده‌ی واقعی:
  * (۱) نگهبانِ بی‌تغییری: برای هر نقشِ سیستمیِ seed، «Permissionِ لینک» دقیقاً همان نتیجه‌ی
  * «نقشِ لینک» را می‌دهد - یعنی افزودنِ شرطِ Permission به NavCatalog هیچ لینکی را برای
- * مدیر/معلم/دانش‌آموز/ولی/مدیر مالی کم یا زیاد نمی‌کند؛ (۲) ناوبارِ صفحه‌ی داشبورد Permissionهای
+ * مدیر/معلم/دانش‌آموز/ولی/مدیر مالی کم یا زیاد نمی‌کند؛ (۲) ناوبارِ صفحه‌ی پیشخوان Permissionهای
  * نقشِ سفارشی را به Alpine می‌دهد.
  */
 @SpringBootTest

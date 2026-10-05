@@ -201,7 +201,7 @@ class LoginDashboardFlowIntegrationTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$[?(@.schoolId == 1 && @.roleCode == 'SCHOOL_ADMIN' && @.active == true)]").exists());
 
-        // داشبورد حالا نام مدرسه را (از ماژول school، از طریق ماژول web)
+        // پیشخوان حالا نام مدرسه را (از ماژول school، از طریق ماژول web)
         // به‌جای schoolId خام نشان می‌دهد + سوییچر مدرسه/نقش را رندر می‌کند.
         // نقش با برچسب فارسی (RoleLabels) نمایش داده می‌شود نه کد خام، و
         // navbar باید لینک صفحه‌ها را داشته باشد (UX_ROADMAP.md §2: هیچ
@@ -238,7 +238,7 @@ class LoginDashboardFlowIntegrationTest {
                         .content("{\"phoneNumber\":\"09121234567\"}"))
                 .andExpect(status().isOk());
 
-        // بعد از ذخیره، رندر بعدیِ داشبورد باید مقدار را در data-attribute
+        // بعد از ذخیره، رندر بعدیِ پیشخوان باید مقدار را در data-attribute
         // پیش‌آماده کند (IamFacade.findUser اکنون phoneNumber را برمی‌گرداند)
         mockMvc.perform(get("/dashboard").session(session))
                 .andExpect(status().isOk())

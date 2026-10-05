@@ -2,7 +2,7 @@ document.addEventListener('alpine:init', () => {
     Alpine.data('myInvoicesPage', () => ({
         schoolId: null,
         invoices: [],
-        // فیلتر یک فرزند از لینک داشبورد (?student=<id>)؛ null یعنی همه. فقط
+        // فیلتر یک فرزند از لینک پیشخوان (?student=<id>)؛ null یعنی همه. فقط
         // نمایش است: API همه‌ی فرزندانِ لینک‌شده را می‌دهد و دسترسی سمت سرور
         // می‌ماند. شناسه‌ی نامعتبر یا ناآشنا فقط فهرستِ خالی می‌دهد.
         studentFilter: null,

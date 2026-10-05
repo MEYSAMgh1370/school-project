@@ -36,7 +36,7 @@ public class TenantResolverFilter extends OncePerRequestFilter {
             // می‌شود و مرورگر برای آن X-School-ID نمی‌فرستد - همان استدلال /css و /js
             "/fonts",
             "/swagger-ui", "/v3/api-docs", "/activate", "/register", "/webjars",
-            // «من» و داشبورد درباره‌ی خودِ کاربرند، نه یک مدرسه‌ی خاص -
+            // «من» و پیشخوان درباره‌ی خودِ کاربرند، نه یک مدرسه‌ی خاص -
             // schoolId ای وجود ندارد که در هدر بیاید
             "/api/me", "/dashboard",
             // صفحه‌ی مدیریتیِ /people خودش یک route است نه یک API؛ فراخوانی‌های

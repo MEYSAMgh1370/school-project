@@ -41,14 +41,14 @@ public class NavbarModelAssembler {
     }
 
     /**
-     * برای صفحه‌هایی (مثل داشبورد) که خودشان profile و memberships را
+     * برای صفحه‌هایی (مثل پیشخوان) که خودشان profile و memberships را
      * برای محتوای صفحه گرفته‌اند - از واکشی دوباره جلوگیری می‌کند.
      */
     public NavbarModel assemble(UserProfile profile, List<MembershipInfo> memberships) {
         // گزینه‌های سوییچر: فقط عضویت‌های فعال، گروه‌شده per-school با
         // فهرست نقش‌های فعالِ همان مدرسه (برای دراپ‌داون نقش).
         Map<Long, List<String>> rolesBySchool = new LinkedHashMap<>();
-        // کدِ همه‌ی نقش‌های هر مدرسه (فعال و غیرفعال): جدولِ داشبورد هم برچسبِ نقش‌های غیرفعال را نشان می‌دهد
+        // کدِ همه‌ی نقش‌های هر مدرسه (فعال و غیرفعال): جدولِ پیشخوان هم برچسبِ نقش‌های غیرفعال را نشان می‌دهد
         Map<Long, Set<String>> allRolesBySchool = new LinkedHashMap<>();
         for (MembershipInfo membership : memberships) {
             allRolesBySchool.computeIfAbsent(membership.schoolId(), id -> new LinkedHashSet<>())

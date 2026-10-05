@@ -18,7 +18,7 @@
 
                 <p x-show="loading">در حال بارگذاری...</p>
 
-                <%-- فیلتر یک فرزند (از لینک داشبورد): همیشه دیده می‌شود و راه برگشت دارد. --%>
+                <%-- فیلتر یک فرزند (از لینک پیشخوان): همیشه دیده می‌شود و راه برگشت دارد. --%>
                 <div class="notification is-light" x-cloak x-show="studentFilter !== null">
                     فقط فاکتورهای دانش‌آموز #<span x-text="studentFilter"></span> نمایش داده می‌شود.
                     <a href="/my-invoices">نمایش همه</a>

@@ -10,7 +10,7 @@
      static/js/navbar.js (قاعده‌ی جانمایی کد ۲۰۲۶-۰۷-۰۵: fetch/regex در
      فایل استاتیک، نه inline).
      لینک‌های صفحه‌ها در سایدبار (aside.app-sidebar) زندگی می‌کنند و از منبع
-     واحدِ NavCatalog رندر می‌شوند (کارت‌های «دسترسی سریع» داشبورد هم از
+     واحدِ NavCatalog رندر می‌شوند (کارت‌های «دسترسی سریع» پیشخوان هم از
      همان) - هر صفحه‌ی مدیریتی جدید باید لینکش را در NavCatalog به گروه
      مناسب اضافه کند، نه اینجا (UX_ROADMAP.md §2: هیچ URL یتیمی وجود ندارد). نمایش لینک (و برچسبِ
      گروه) می‌تواند تابع نقشِ انتخاب‌شده باشد (فقط نمایش - کنترل دسترسی
@@ -81,7 +81,7 @@
             <button type="button" class="delete app-sidebar-close" aria-label="بستن منو" @click="menuOpen = false"></button>
         </div>
         <ul class="menu-list">
-            <li><a href="/dashboard">داشبورد</a></li>
+            <li><a href="/dashboard">پیشخوان</a></li>
         </ul>
         @if(!navbar.schools().isEmpty())
             @for(var group : NavCatalog.groups())

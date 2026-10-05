@@ -76,7 +76,7 @@ public interface IamFacade {
     /**
      * همه‌ی Membershipهای یک کاربر در همه‌ی مدرسه‌ها (شامل غیرفعال‌ها) -
      * همان endpointی که Open Question 2 در CLAUDE.md پیش‌بینی کرده بود
-     * («list my memberships» برای داشبورد/سوییچر). خودِ UX سوییچ بین
+     * («list my memberships» برای پیشخوان/سوییچر). خودِ UX سوییچ بین
      * مدرسه‌ها هنوز Open Question است؛ این متد فقط داده‌ی لازم را می‌دهد.
      */
     List<MembershipInfo> findMembershipsByUser(UserId userId);

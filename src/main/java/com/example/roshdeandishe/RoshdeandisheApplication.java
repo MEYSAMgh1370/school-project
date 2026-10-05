@@ -11,7 +11,7 @@ import org.springframework.modulith.Modulithic;
  * یک Modular Monolith است و مرز هر ماژول از روی پکیج‌های زیرِ
  * {@code com.example.roshdeandishe} (مثل iam, academic, finance) تشخیص داده می‌شود.
  * <p>
- * displayName صرفاً برای خوانایی بهتر در داشبورد Observability/Actuator استفاده می‌شود.
+ * displayName صرفاً برای خوانایی بهتر در پیشخوان Observability/Actuator استفاده می‌شود.
  */
 @SpringBootApplication
 @Modulithic(systemName = "Roshdeandishe School Management System")

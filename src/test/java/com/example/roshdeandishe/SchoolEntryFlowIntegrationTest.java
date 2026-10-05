@@ -173,7 +173,7 @@ class SchoolEntryFlowIntegrationTest {
 
         mockMvc.perform(get("/s/ehraz-shode").session(session))
                 .andExpect(status().isOk())
-                .andExpect(content().string(containsString("ادامه به داشبورد")))
+                .andExpect(content().string(containsString("ادامه به پیشخوان")))
                 .andExpect(content().string(containsString("href=\"/dashboard\"")));
     }
 }

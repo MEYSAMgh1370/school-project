@@ -5,7 +5,7 @@
 @param DashboardModel model
 @param NavbarModel navbar
 
-@template.layout.main(title = "داشبورد", scripts = java.util.List.of("/js/navbar.js", "/js/jalali.js", "/js/calendar.js", "/js/timetable-grid.js", "/js/dashboard.js", "/js/dashboard-timetable.js"),
+@template.layout.main(title = "پیشخوان", scripts = java.util.List.of("/js/navbar.js", "/js/jalali.js", "/js/calendar.js", "/js/timetable-grid.js", "/js/dashboard.js", "/js/dashboard-timetable.js"),
         styles = java.util.List.of("/css/dashboard.css", "/css/timetable.css"), content = @`
 @template.layout.navbar(navbar = navbar)
 
@@ -43,6 +43,31 @@
                 @endfor
             </div>
         </section>
+
+        <%-- «وضعیت شهریه»: فقط برای مدیرِ مدرسه (چکِ literal SCHOOL_ADMIN در کنترلر) و فقط
+             وقتی نقشِ انتخاب‌شده «مدیر» و مدرسه‌ی انتخاب‌شده همین مدرسه است (نمایشی، مثل
+             بقیه‌ی بخش‌ها). فقط درصدِ پرداخت به صورت‌حساب است، نه مبلغ (واحد پولی
+             تصمیم‌نگرفته). «آمار غیبت» عمداً نیست: ماژول حضور و غیاب هنوز ساخته نشده. --%>
+        @for(var row : model.tuition())
+            <section class="mb-5" aria-labelledby="dashboard-tuition-title-${row.schoolId()}" x-data
+                     x-cloak x-show="$store.nav.selectedRole === 'SCHOOL_ADMIN' && $store.nav.selectedSchoolId === ${row.schoolId()}">
+                <div class="box">
+                    <h2 class="title is-5 mb-1" id="dashboard-tuition-title-${row.schoolId()}">وضعیت شهریه</h2>
+                    <p class="is-size-7 has-text-grey mb-3">${row.schoolName()}</p>
+                    @if(row.hasInvoices())
+                        <p class="mb-2">
+                            <strong><span x-text="Calendar.digits('${row.percentPaid()}')">${row.percentPaid()}</span>٪</strong>
+                            از شهریه‌ی صادرشده پرداخت شده است.
+                        </p>
+                        <progress class="progress is-primary" value="${row.percentPaid()}" max="100"
+                                  aria-label="درصد پرداخت شهریه">${row.percentPaid()}٪</progress>
+                    @else
+                        <p class="mb-0">هنوز فاکتور شهریه‌ای صادر نشده است؛ بعد از صدور، درصد پرداخت اینجا می‌آید.</p>
+                    @endif
+                    <p class="mt-3 mb-0"><a href="/finance">امور مالی</a></p>
+                </div>
+            </section>
+        @endfor
 
         <%-- «برنامه‌ی امروز»: فقط برای نقشِ انتخاب‌شده‌ی «دانش‌آموز» (تصمیمِ محصول: دانش‌آموز
              برنامه را در صفحه‌ی اول می‌بیند؛ معلم و والد در /my-timetable). داده کاملاً

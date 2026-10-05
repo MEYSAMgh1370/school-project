@@ -646,7 +646,7 @@ class TimetableFlowIntegrationTest {
         mockMvc.perform(get("/my-timetable").session(admin))
                 .andExpect(status().isOk())
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("x-data=\"myTimetablePage()\"")));
-        // لینک‌های سایدبار/داشبورد
+        // لینک‌های سایدبار/پیشخوان
         mockMvc.perform(get("/dashboard").session(admin))
                 .andExpect(status().isOk())
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("href=\"/timetable\"")))

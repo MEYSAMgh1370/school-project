@@ -1,5 +1,7 @@
 package com.example.roshdeandishe.web.controller;
 
+import com.example.roshdeandishe.finance.FinanceFacade;
+import com.example.roshdeandishe.finance.FinanceFacade.InvoiceInfo;
 import com.example.roshdeandishe.iam.IamFacade;
 import com.example.roshdeandishe.iam.IamFacade.MembershipInfo;
 import com.example.roshdeandishe.iam.IamFacade.UserId;
@@ -10,12 +12,14 @@ import com.example.roshdeandishe.school.SchoolFacade.SchoolInfo;
 import com.example.roshdeandishe.web.model.DashboardModel;
 import com.example.roshdeandishe.web.model.MembershipRow;
 import com.example.roshdeandishe.web.model.SchoolEntryRow;
+import com.example.roshdeandishe.web.model.TuitionRow;
 import com.example.roshdeandishe.web.model.NavbarModelAssembler;
 import com.example.roshdeandishe.web.model.WardsAssembler;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;
 
+import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
@@ -25,7 +29,7 @@ import java.util.Optional;
 import java.util.Set;
 
 /**
- * داشبورد بعد از لاگین: «من کی‌ام و کجا عضوم» + سوییچر مدرسه/نقش
+ * پیشخوان بعد از لاگین: «من کی‌ام و کجا عضوم» + سوییچر مدرسه/نقش
  * (Open Question 2 - حل‌شده: دراپ‌داون روی نام مدرسه برای انتخاب مدرسه،
  * دراپ‌داون روی نام شخص برای نقش در همان مدرسه).
  * <p>
@@ -57,9 +61,12 @@ public class DashboardPageController {
     private final SchoolFacade schoolFacade;
     private final NavbarModelAssembler navbarModelAssembler;
     private final WardsAssembler wardsAssembler;
+    private final FinanceFacade financeFacade;
 
     public DashboardPageController(IamFacade iamFacade, SchoolFacade schoolFacade,
-                                   NavbarModelAssembler navbarModelAssembler, WardsAssembler wardsAssembler) {
+                                   NavbarModelAssembler navbarModelAssembler, WardsAssembler wardsAssembler,
+                                   FinanceFacade financeFacade) {
+        this.financeFacade = financeFacade;
         this.iamFacade = iamFacade;
         this.schoolFacade = schoolFacade;
         this.navbarModelAssembler = navbarModelAssembler;
@@ -86,7 +93,7 @@ public class DashboardPageController {
 
         model.addAttribute("model", new DashboardModel(profile.fullName(), profile.email(), profile.phoneNumber(),
                 rows, schoolEntries(memberships, schools), WardsAssembler.isParent(memberships),
-                wardsAssembler.forParent(userId, memberships)));
+                wardsAssembler.forParent(userId, memberships), tuitionRows(memberships, schools)));
         model.addAttribute("navbar", navbarModelAssembler.assemble(profile, memberships));
         return "dashboard";
     }
@@ -118,6 +125,30 @@ public class DashboardPageController {
                     school.map(SchoolInfo::slug).orElse(null)));
         }
         return entries;
+    }
+
+    /**
+     * درصدِ پرداختِ شهریه‌ی سالِ جاری برای مدرسه‌هایی که کاربر در آن‌ها مدیرِ فعال است (همان چکِ literal
+     * {@code SCHOOL_ADMIN} و همان دامنه‌ی {@link #schoolEntries}؛ مدیرِ مالی/نقش‌های سفارشی چیزی نمی‌گیرند).
+     * فقط نسبتِ پرداخت به صورت‌حساب است، نه مبلغ (واحد پولی هنوز تصمیم‌نگرفته).
+     */
+    private List<TuitionRow> tuitionRows(List<MembershipInfo> memberships,
+                                         Map<Long, Optional<SchoolInfo>> schools) {
+        List<TuitionRow> rows = new ArrayList<>();
+        Set<Long> seen = new LinkedHashSet<>();
+        for (MembershipInfo membership : memberships) {
+            if (!membership.active() || !SCHOOL_ADMIN_ROLE.equals(membership.roleCode())
+                    || !seen.add(membership.schoolId())) {
+                continue;
+            }
+            List<InvoiceInfo> invoices = financeFacade.listInvoices(membership.schoolId(), null);
+            BigDecimal billed = invoices.stream().map(InvoiceInfo::amount).reduce(BigDecimal.ZERO, BigDecimal::add);
+            BigDecimal paid = invoices.stream().map(InvoiceInfo::amountPaid).reduce(BigDecimal.ZERO, BigDecimal::add);
+            rows.add(TuitionRow.of(membership.schoolId(),
+                    schoolName(schools.getOrDefault(membership.schoolId(), Optional.empty()), membership.schoolId()),
+                    invoices.size(), billed, paid));
+        }
+        return rows;
     }
 
     /**
