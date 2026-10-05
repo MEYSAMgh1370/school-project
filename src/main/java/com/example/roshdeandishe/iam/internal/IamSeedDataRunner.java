@@ -3,6 +3,7 @@ package com.example.roshdeandishe.iam.internal;
 import com.example.roshdeandishe.iam.internal.ModuleEntity.ModuleScope;
 import org.springframework.boot.ApplicationArguments;
 import org.springframework.boot.ApplicationRunner;
+import org.springframework.core.annotation.Order;
 import org.springframework.core.env.Environment;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Component;
@@ -46,6 +47,8 @@ import java.util.Map;
  * هم profile ست می‌کرد و فراموش کردنش بی‌سروصدا تست‌ها را می‌شکست.
  */
 @Component
+// قبل از backfillِ entitlementِ مدرسه‌های موجود (school.internal، @Order(20)) که ردیفِ ماژول را لازم دارد
+@Order(10)
 class IamSeedDataRunner implements ApplicationRunner {
 
     private static final String DEMO_ADMIN_EMAIL = "admin@roshdeandishe.test";
@@ -205,6 +208,10 @@ class IamSeedDataRunner implements ApplicationRunner {
         permission(permissions, "ACADEMIC_YEAR_MANAGE", "انتخاب سال تحصیلی جاریِ مدرسه");
         permission(permissions, "TIMETABLE_MANAGE", "مدیریت برنامهٔ کلاسی (زنگ‌ها، فعالیت‌ها و جدول کلاس‌ها)");
         permission(permissions, "CALENDAR_MANAGE", "مدیریت تقویم مدرسه");
+        permission(permissions, "ATTENDANCE_RECORD", "ثبت حضور و غیاب کلاس‌های خود");
+        permission(permissions, "ATTENDANCE_RECORD_ANY", "ثبت حضور و غیاب همه‌ی کلاس‌ها");
+        permission(permissions, "ATTENDANCE_EDIT_PAST", "ویرایش حضور و غیاب روزهای گذشته");
+        permission(permissions, "ATTENDANCE_VIEW_ALL", "مشاهده‌ی حضور و غیاب همه‌ی کلاس‌ها و گزارش آن");
         return permissions;
     }
 
@@ -252,6 +259,9 @@ class IamSeedDataRunner implements ApplicationRunner {
         // (MyExamsController/ExamTakeController)، نه این دو Permission.
         grant(roles.get("TEACHER"), permissions.get("EXAM_VIEW"));
         grant(roles.get("TEACHER"), permissions.get("EXAM_MANAGE"));
+        // حضور و غیابِ کلاسِ خودش کارِ روزمره‌ی معلم است؛ برای کلاسِ دیگران
+        // ATTENDANCE_RECORD_ANY (فقط SCHOOL_ADMIN) لازم است (attendance.md قاعده ۵)
+        grant(roles.get("TEACHER"), permissions.get("ATTENDANCE_RECORD"));
 
         grant(roles.get("PARENT"), permissions.get("GRADES_VIEW"));
         grant(roles.get("PARENT"), permissions.get("FINANCE_VIEW"));
@@ -296,6 +306,10 @@ class IamSeedDataRunner implements ApplicationRunner {
         grant(roles.get("SCHOOL_ADMIN"), permissions.get("STUDYPLAN_MANAGE"));
         grant(roles.get("SCHOOL_ADMIN"), permissions.get("EXAM_VIEW"));
         grant(roles.get("SCHOOL_ADMIN"), permissions.get("EXAM_MANAGE"));
+        // ویرایشِ روزهای گذشته فقط SCHOOL_ADMIN (به نقش سفارشی قابل‌تخصیص)؛ معلم فقط امروز را ثبت می‌کند
+        grant(roles.get("SCHOOL_ADMIN"), permissions.get("ATTENDANCE_RECORD_ANY"));
+        grant(roles.get("SCHOOL_ADMIN"), permissions.get("ATTENDANCE_EDIT_PAST"));
+        grant(roles.get("SCHOOL_ADMIN"), permissions.get("ATTENDANCE_VIEW_ALL"));
 
         // FINANCE_ADMIN: فقط دسترسی مالی - نمونه‌ی واقعی "نقش متفاوت با سطح دسترسی متفاوت".
         // عمداً بدون EXPENSE_APPROVE: تفکیک وظایف - کسی که هزینه را ثبت/پرداخت
@@ -340,7 +354,7 @@ class IamSeedDataRunner implements ApplicationRunner {
      * هرگز به دیتابیس dev از قبل seed شده نمی‌رسید. فقط seed مخصوص dev.
      */
     private void seedDemoSchoolEntitlements() {
-        for (String moduleCode : new String[]{"ACADEMIC", "FINANCE", "CURRICULUM", "STUDY_PLANNER", "EXAM"}) {
+        for (String moduleCode : new String[]{"ACADEMIC", "FINANCE", "ATTENDANCE", "CURRICULUM", "STUDY_PLANNER", "EXAM"}) {
             moduleRepository.findByCode(moduleCode).ifPresent(module -> {
                 boolean exists = schoolEntitlementRepository
                         .findBySchoolIdAndModuleId(DEMO_SCHOOL_ID, module.getId())

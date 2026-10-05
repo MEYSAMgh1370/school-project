@@ -87,6 +87,18 @@ public interface AcademicFacade {
     List<ClassInfo> listClasses(Long schoolId, String academicYear);
 
     /**
+     * یک کلاسِ مدرسه با شناسه؛ خالی اگر کلاس نباشد یا از مدرسه‌ی دیگری باشد (وجودش لو نمی‌رود) -
+     * پشتوانه‌ی حضور و غیاب (openspec/changes/attendance.md).
+     */
+    Optional<ClassInfo> findClass(Long schoolId, Long classId);
+
+    /**
+     * دانش‌آموزانِ چند کلاس با یک بار خواندن، با همان معنای {@link #listStudentsInClass} (اکنون در کلاس‌اند یا
+     * در آن ثبت‌نام داشته‌اند، با هر وضعیتِ فعلی). کلاسی که از این مدرسه نباشد کلیدِ خالی دارد، نه خطا.
+     */
+    java.util.Map<Long, List<StudentInfo>> listStudentsByClass(Long schoolId, java.util.Collection<Long> classIds);
+
+    /**
      * ثبت/به‌روزرسانیِ نمره‌ی یک دانش‌آموز در یک کلاس برای یک نوبتِ مشخص.
      * Idempotent است: نمره‌ی همان (studentId, classId, academicYear, term) به‌جای
      * ثبتِ تکراری به‌روزرسانی می‌شود - همان الگوی setTuitionFee/assignPlanToStudent.

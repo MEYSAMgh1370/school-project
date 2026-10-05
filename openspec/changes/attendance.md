@@ -24,6 +24,13 @@ phase's note for what is built; the current behavior of a built phase belongs to
 9. **Report:** a table where the admin queries by **time period** and **student name**
    (optionally class) and gets, per student, the number of absent, late and present days.
 
+Built so far (details in `specs/current-system.md`): the phase 1-2 backend. `attendance.excuses`
+was created by `V13` but nothing uses it; excuses, the parent notification, the self-service
+endpoint, every page and the dashboard box are still to do. Two readings the backend took where
+this document is silent: a roll for a class of an earlier academic year is refused
+(`409 class-not-in-current-year`, from rule 2), and the report lists only classes with at least
+one roll in the range.
+
 ## Verified Baseline
 
 From code and docs:
@@ -217,7 +224,13 @@ and a table; an empty result teaches («در این بازه حضور و غیا�
    four REST endpoints, the permission); the `/calendar` page is not built yet.
 1. Module, migration, permissions, free entitlement and backfill, record/read
    endpoints, the `/attendance` recording page.
+   **Backend built 2026-10-05** (migration `V13`, module `attendance`, `ATTENDANCE_*`
+   permissions, free entitlement at school creation plus a per-school idempotent startup
+   backfill, `GET /classes`, `GET|PUT /classes/{classId}/days/{day}`); the `/attendance`
+   page is not built yet.
 2. Absentees endpoint and page, the report, the summary endpoint and the dashboard box.
+   **Backend built 2026-10-05** (`GET /days/{day}/absentees`, `/summary`, `/report`; the
+   report range is capped at 366 days); the pages and the dashboard box are not built yet.
 3. Student and parent views, excuses, and the parent notification.
 
 ## Acceptance Criteria

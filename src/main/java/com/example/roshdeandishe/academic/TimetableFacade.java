@@ -83,6 +83,13 @@ public interface TimetableFacade {
     /** خانه‌هایی که این کاربر معلمِ آن‌هاست، در یک سال. */
     List<EntryInfo> listEntriesForTeacher(Long schoolId, String academicYear, Long teacherUserId);
 
+    /**
+     * کلاس‌هایی که این کاربر در آن‌ها معلم است: {@code teacherId} خودِ کلاس، یا معلمِ یک خانه‌ی برنامه در
+     * آن کلاس، در همه‌ی سال‌ها و بدون تکرار. حضور و غیاب (openspec/changes/attendance.md) معلم را فقط برای
+     * همین کلاس‌ها می‌پذیرد.
+     */
+    List<AcademicFacade.ClassInfo> listClassesTaughtBy(Long schoolId, Long teacherUserId);
+
     record PeriodInfo(Long id, Long schoolId, String academicYear, int position, String label,
                       LocalTime startTime, LocalTime endTime) {
     }

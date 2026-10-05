@@ -429,11 +429,27 @@ class IamFacadeImpl implements IamFacade {
         schoolEntitlementRepository.save(entitlement);
     }
 
+    @Override
+    @Transactional
+    public boolean ensureSchoolEntitlement(Long schoolId, ModuleCode module) {
+        if (schoolEntitlementRepository.findBySchoolIdAndModuleId(schoolId, requireSchoolModule(module).getId())
+                .isPresent()) {
+            return false;
+        }
+        setSchoolEntitlement(schoolId, module, true);
+        return true;
+    }
+
+    private ModuleEntity requireSchoolModule(ModuleCode module) {
+        return moduleRepository.findByCode(module.value())
+                .orElseThrow(() -> new IamException(new IamError.ModuleNotFound(module.value())));
+    }
+
     /**
-     * بسته‌ی رایگان (CLAUDE.md §11 Q10): فقط ACADEMIC و FINANCE.
+     * بسته‌ی رایگان (CLAUDE.md §11 Q10): ACADEMIC و FINANCE، و ATTENDANCE (تصمیم ۶ حضور و غیاب).
      * CURRICULUM/STUDY_PLANNER/EXAM پولی می‌مانند و اینجا اعطا نمی‌شوند.
      */
-    private static final String[] FREE_TIER_MODULES = {"ACADEMIC", "FINANCE"};
+    private static final String[] FREE_TIER_MODULES = {"ACADEMIC", "FINANCE", "ATTENDANCE"};
 
     @Override
     @Transactional

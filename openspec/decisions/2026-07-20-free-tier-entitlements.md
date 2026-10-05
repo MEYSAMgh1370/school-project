@@ -16,14 +16,14 @@ When an authenticated user creates a school:
 
 - create the school;
 - make the creator an active `SCHOOL_ADMIN`;
-- grant the school free entitlements for `ACADEMIC` and `FINANCE`;
+- grant the school free entitlements for `ACADEMIC`, `FINANCE` and, since 2026-10-05, `ATTENDANCE` (product owner decision 6 in [`changes/attendance.md`](../changes/attendance.md); existing schools are backfilled at startup, once per school and only if they have no `ATTENDANCE` entitlement row);
 - do not grant paid modules such as `CURRICULUM`, `STUDY_PLANNER`, or `EXAM` automatically.
 
 Paid or platform-controlled grants remain facade-only until platform/billing infrastructure exists.
 
 ## Consequences
 
-- New schools can manage academic basics and finance immediately.
+- New schools can manage academic basics, finance and attendance immediately.
 - Platform-only operations are not exposed over REST prematurely.
 - Tests for paid-module endpoints must set up entitlement explicitly.
 - Any future billing/operator work must define actor identity, permission checks, audit behavior, and failure cases before exposing REST endpoints.

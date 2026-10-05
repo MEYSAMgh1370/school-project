@@ -185,9 +185,19 @@ public interface IamFacade {
     void setSchoolEntitlement(Long schoolId, ModuleCode module, boolean active);
 
     /**
+     * فعال‌کردنِ یک ماژول SCHOOL-scoped برای مدرسه <b>فقط اگر هیچ ردیف entitlementی ندارد</b>؛
+     * ردیفِ موجود، حتی غیرفعال‌شده، دست نمی‌خورد (برخلاف {@link #setSchoolEntitlement} که
+     * همیشه {@code active} را می‌نویسد). برای backfillِ مدرسه‌های موجود هنگام رایگان‌شدنِ یک
+     * ماژولِ تازه (حضور و غیاب، openspec/changes/attendance.md تصمیم ۶): مدیری که عمداً ماژول
+     * را خاموش کرده با ریستارتِ بعدی دوباره روشن نمی‌شود. idempotent؛ {@code true} یعنی ردیف
+     * همین الان ساخته شد.
+     */
+    boolean ensureSchoolEntitlement(Long schoolId, ModuleCode module);
+
+    /**
      * اعطای بسته‌ی رایگان ماژول‌ها به یک مدرسه‌ی تازه‌ساخته - تصمیم صریح
      * محصول (CLAUDE.md §11 Q10، حل‌شده 2026-07-20): ACADEMIC و FINANCE
-     * رایگان‌اند و در همان لحظه‌ی ساخت خودسرویسی مدرسه فعال می‌شوند؛
+     * (و از 2026-10-05 ATTENDANCE) رایگان‌اند و در همان لحظه‌ی ساخت خودسرویسی مدرسه فعال می‌شوند؛
      * CURRICULUM/STUDY_PLANNER/EXAM پولی‌اند و تا وقتی billing واقعی ساخته
      * نشده فقط از طریق همین facade (setSchoolEntitlement، بدون REST -
      * CLAUDE.md §10) قابل اعطا هستند.
