@@ -60,6 +60,31 @@ public class AttendanceProblemResolver {
                     "ویرایش روزهای گذشته مجاز نیست",
                     "حضور و غیابِ " + e.day() + " گذشته است و فقط روزِ جاری را می‌توانید ثبت یا ویرایش کنید."
             );
+            case AttendanceError.NotYourChild e -> ProblemDetailFactory.problem(
+                    HttpStatus.FORBIDDEN, "attendance-not-your-child",
+                    "این دانش‌آموز فرزند شما نیست",
+                    "فقط ولیِ لینک‌شده‌ی دانش‌آموز می‌تواند برای غیبتش عذر ثبت کند."
+            );
+            case AttendanceError.InvalidExcuse e -> ProblemDetailFactory.problem(
+                    HttpStatus.BAD_REQUEST, "invalid-excuse",
+                    "عذر نامعتبر است",
+                    e.reason()
+            );
+            case AttendanceError.NoAbsenceToExcuse e -> ProblemDetailFactory.problem(
+                    HttpStatus.CONFLICT, "no-absence-to-excuse",
+                    "غیبتی برای عذر وجود ندارد",
+                    "دانش‌آموز " + e.studentId() + " در " + e.day() + " غایب ثبت نشده است."
+            );
+            case AttendanceError.ExcuseAlreadyDecided e -> ProblemDetailFactory.problem(
+                    HttpStatus.CONFLICT, "excuse-already-decided",
+                    "عذر قبلاً بررسی شده است",
+                    "عذر " + e.excuseId() + " قبلاً تأیید یا رد شده و دیگر تغییر نمی‌کند."
+            );
+            case AttendanceError.ExcuseNotFound e -> ProblemDetailFactory.problem(
+                    HttpStatus.NOT_FOUND, "excuse-not-found",
+                    "عذر یافت نشد",
+                    "عذری با شناسه " + e.excuseId() + " یافت نشد."
+            );
         };
     }
 }

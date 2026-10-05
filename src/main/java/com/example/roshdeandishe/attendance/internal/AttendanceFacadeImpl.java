@@ -4,14 +4,17 @@ import com.example.roshdeandishe.academic.AcademicFacade;
 import com.example.roshdeandishe.academic.AcademicFacade.ClassInfo;
 import com.example.roshdeandishe.academic.AcademicFacade.StudentInfo;
 import com.example.roshdeandishe.academic.TimetableFacade;
+import com.example.roshdeandishe.attendance.AbsenceRecordedEvent;
 import com.example.roshdeandishe.attendance.AttendanceFacade;
 import com.example.roshdeandishe.attendance.AttendanceStatus;
+import com.example.roshdeandishe.attendance.ExcuseStatus;
 import com.example.roshdeandishe.attendance.shared.AttendanceError;
 import com.example.roshdeandishe.attendance.shared.AttendanceException;
 import com.example.roshdeandishe.iam.IamFacade;
 import com.example.roshdeandishe.school.SchoolFacade;
 import com.example.roshdeandishe.school.SchoolFacade.SchoolId;
 import com.example.roshdeandishe.school.SchoolFacade.SchoolInfo;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -40,25 +43,31 @@ class AttendanceFacadeImpl implements AttendanceFacade {
 
     private final RollRepository rollRepository;
     private final MarkRepository markRepository;
+    private final ExcuseRepository excuseRepository;
     private final AcademicFacade academicFacade;
     private final TimetableFacade timetableFacade;
     private final SchoolFacade schoolFacade;
     private final IamFacade iamFacade;
+    private final ApplicationEventPublisher eventPublisher;
 
     AttendanceFacadeImpl(
             RollRepository rollRepository,
             MarkRepository markRepository,
+            ExcuseRepository excuseRepository,
             AcademicFacade academicFacade,
             TimetableFacade timetableFacade,
             SchoolFacade schoolFacade,
-            IamFacade iamFacade
+            IamFacade iamFacade,
+            ApplicationEventPublisher eventPublisher
     ) {
         this.rollRepository = rollRepository;
         this.markRepository = markRepository;
+        this.excuseRepository = excuseRepository;
         this.academicFacade = academicFacade;
         this.timetableFacade = timetableFacade;
         this.schoolFacade = schoolFacade;
         this.iamFacade = iamFacade;
+        this.eventPublisher = eventPublisher;
     }
 
     // ---- ثبت ----
@@ -81,7 +90,13 @@ class AttendanceFacadeImpl implements AttendanceFacade {
         Set<Long> allowed = new HashSet<>();
         academicFacade.listStudentsByClass(schoolId, List.of(classId)).getOrDefault(classId, List.of())
                 .forEach(s -> allowed.add(s.id().value()));
-        markRepository.findByClassIdAndDay(classId, day).forEach(m -> allowed.add(m.getStudentId()));
+        Set<Long> previouslyAbsent = new HashSet<>();
+        markRepository.findByClassIdAndDay(classId, day).forEach(m -> {
+            allowed.add(m.getStudentId());
+            if (m.getStatus() == AttendanceStatus.ABSENT) {
+                previouslyAbsent.add(m.getStudentId());
+            }
+        });
         for (MarkInput mark : clean) {
             if (!allowed.contains(mark.studentId())) {
                 throw new AttendanceException(new AttendanceError.StudentNotInClass(mark.studentId(), classId));
@@ -96,10 +111,35 @@ class AttendanceFacadeImpl implements AttendanceFacade {
         roll.setTakenByUserId(actorUserId);
         roll.setTakenAt(now);
         rollRepository.save(roll);
+
+        // عذرها با جایگزینیِ مُهرها نه گم می‌شوند و نه یتیم: عذرِ PENDINGِ دانش‌آموزی که دیگر غایب نیست حذف
+        // می‌شود (APPROVED/REJECTED به‌عنوان تاریخچه می‌ماند ولی نادیده است) و غیبتِ دارای عذرِ APPROVED
+        // «موجه» می‌ماند، حتی اگر ورودی excused=false بگوید (عذرِ تأییدشده بر پرچمِ ورودی می‌چربد).
+        Set<Long> absentNow = clean.stream().filter(m -> m.status() == AttendanceStatus.ABSENT)
+                .map(MarkInput::studentId).collect(Collectors.toSet());
+        Set<Long> approved = new HashSet<>();
+        List<ExcuseEntity> orphaned = new ArrayList<>();
+        for (ExcuseEntity excuse : excuseRepository.findByClassIdAndDay(classId, day)) {
+            boolean stillAbsent = absentNow.contains(excuse.getStudentId());
+            if (stillAbsent && excuse.getStatus() == ExcuseStatus.APPROVED) {
+                approved.add(excuse.getStudentId());
+            } else if (!stillAbsent && excuse.getStatus() == ExcuseStatus.PENDING) {
+                orphaned.add(excuse);
+            }
+        }
+        if (!orphaned.isEmpty()) {
+            excuseRepository.deleteAll(orphaned);
+        }
+
         markRepository.saveAll(clean.stream()
-                .map(m -> new MarkEntity(schoolId, classId, day, m.studentId(), m.status(), m.excused(), m.note(),
-                        actorUserId, now))
+                .map(m -> new MarkEntity(schoolId, classId, day, m.studentId(), m.status(),
+                        m.excused() || approved.contains(m.studentId()), m.note(), actorUserId, now))
                 .toList());
+
+        // پس از موفقیت (Modulith listenerها بعد از commit اجرا می‌شوند): فقط برای غیبتِ تازه
+        for (Long studentId : AttendanceRules.newlyAbsent(previouslyAbsent, clean)) {
+            eventPublisher.publishEvent(new AbsenceRecordedEvent(schoolId, classId, studentId, day, actorUserId, now));
+        }
         return getClassDay(schoolId, classId, day);
     }
 
@@ -336,6 +376,189 @@ class AttendanceFacadeImpl implements AttendanceFacade {
         if (day.isBefore(today(requireSchool(schoolId)))) {
             throw new AttendanceException(new AttendanceError.PastEditNotAllowed(day));
         }
+    }
+
+    // ---- عذر ----
+
+    @Override
+    @Transactional
+    public ExcuseRow submitExcuse(Long schoolId, Long studentId, LocalDate day, Long submitterUserId, String note) {
+        requireSchool(schoolId);
+        if (studentId == null) {
+            throw new AttendanceException(new AttendanceError.InvalidExcuse("شناسه‌ی دانش‌آموز الزامی است."));
+        }
+        // ولیِ فعالِ همین دانش‌آموز: هم نقشِ فعالِ PARENT و هم لینکِ واقعی
+        boolean parent = iamFacade.findActiveRoleCodes(new IamFacade.UserId(submitterUserId), schoolId)
+                .contains("PARENT")
+                && academicFacade.listWards(submitterUserId, schoolId).stream()
+                .anyMatch(w -> studentId.equals(w.id().value()));
+        if (!parent) {
+            throw new AttendanceException(new AttendanceError.NotYourChild(studentId));
+        }
+        requireDay(day);
+        String noteProblem = AttendanceRules.excuseNoteProblem(note);
+        if (noteProblem != null) {
+            throw new AttendanceException(new AttendanceError.InvalidExcuse(noteProblem));
+        }
+        MarkEntity absence = markRepository.findByStudentIdAndDay(studentId, day).stream()
+                .filter(m -> schoolId.equals(m.getSchoolId()) && m.getStatus() == AttendanceStatus.ABSENT)
+                .findFirst()
+                .orElseThrow(() -> new AttendanceException(new AttendanceError.NoAbsenceToExcuse(studentId, day)));
+
+        Instant now = Instant.now();
+        String clean = note.strip();
+        ExcuseEntity excuse = excuseRepository.findByStudentIdAndDay(studentId, day).orElse(null);
+        if (excuse == null) {
+            excuse = new ExcuseEntity(schoolId, absence.getClassId(), day, studentId, clean, submitterUserId, now);
+        } else if (excuse.getStatus() != ExcuseStatus.PENDING) {
+            throw new AttendanceException(new AttendanceError.ExcuseAlreadyDecided(excuse.getId()));
+        } else {
+            excuse.setNote(clean);
+            excuse.setSubmittedByUserId(submitterUserId);
+            excuse.setSubmittedAt(now);
+        }
+        return excuseRows(schoolId, List.of(excuseRepository.save(excuse))).get(0);
+    }
+
+    @Override
+    public List<MyStudentAttendance> listMyAttendance(Long schoolId, Long userId, LocalDate from, LocalDate to) {
+        requireSchool(schoolId);
+        String rangeProblem = AttendanceRules.rangeProblem(from, to);
+        if (rangeProblem != null) {
+            throw new AttendanceException(new AttendanceError.InvalidRange(rangeProblem));
+        }
+        // هر منبع به نقشِ فعالِ خودش بسته است (عضوِ سابق یا نقشِ دیگر چیزی نمی‌گیرد)
+        Set<String> roles = iamFacade.findActiveRoleCodes(new IamFacade.UserId(userId), schoolId);
+        Map<Long, Boolean> ownByStudent = new LinkedHashMap<>();
+        Map<Long, Long> userByStudent = new HashMap<>();
+        if (roles.contains("STUDENT")) {
+            academicFacade.findMyEnrollment(userId, schoolId).ifPresent(e -> {
+                ownByStudent.put(e.studentId().value(), true);
+                userByStudent.put(e.studentId().value(), userId);
+            });
+        }
+        if (roles.contains("PARENT")) {
+            for (StudentInfo ward : academicFacade.listWards(userId, schoolId)) {
+                if (ownByStudent.putIfAbsent(ward.id().value(), false) == null) {
+                    userByStudent.put(ward.id().value(), ward.userId());
+                }
+            }
+        }
+        if (ownByStudent.isEmpty()) {
+            return List.of();
+        }
+
+        Set<Long> ids = ownByStudent.keySet();
+        Map<Long, List<MarkEntity>> marksByStudent = markRepository.findByStudentIdInAndDayBetween(ids, from, to)
+                .stream()
+                .filter(m -> schoolId.equals(m.getSchoolId()))
+                .collect(Collectors.groupingBy(MarkEntity::getStudentId));
+        Map<String, ExcuseEntity> excuseByStudentDay = new HashMap<>();
+        for (ExcuseEntity e : excuseRepository.findByStudentIdInAndDayBetween(ids, from, to)) {
+            if (schoolId.equals(e.getSchoolId())) {
+                excuseByStudentDay.put(e.getStudentId() + "|" + e.getDay(), e);
+            }
+        }
+        Map<Long, String> names = namesByUser(schoolId);
+
+        List<MyStudentAttendance> result = new ArrayList<>();
+        for (Map.Entry<Long, Boolean> entry : ownByStudent.entrySet()) {
+            Long studentId = entry.getKey();
+            List<MyDayAttendance> days = marksByStudent.getOrDefault(studentId, List.of()).stream()
+                    .sorted(Comparator.comparing(MarkEntity::getDay))
+                    .map(m -> {
+                        // عذر فقط برای غیبتِ فعلی معنا دارد؛ عذرِ باقی‌مانده‌ی روزی که دیگر غایب نیست نادیده است
+                        ExcuseEntity e = m.getStatus() == AttendanceStatus.ABSENT
+                                ? excuseByStudentDay.get(studentId + "|" + m.getDay()) : null;
+                        return new MyDayAttendance(m.getDay(), m.getStatus(), m.isExcused(),
+                                e == null ? null : new MyExcuse(e.getId(), e.getStatus(), e.getNote()));
+                    })
+                    .toList();
+            result.add(new MyStudentAttendance(studentId, names.get(userByStudent.get(studentId)), entry.getValue(),
+                    days));
+        }
+        result.sort(Comparator.comparing(MyStudentAttendance::own).reversed()
+                .thenComparing(MyStudentAttendance::studentName, Comparator.nullsLast(Comparator.<String>naturalOrder())));
+        return result;
+    }
+
+    @Override
+    public List<ExcuseRow> listExcuses(Long schoolId, ExcuseStatus status, LocalDate from, LocalDate to) {
+        requireSchool(schoolId);
+        if (from != null && to != null) {
+            String rangeProblem = AttendanceRules.rangeProblem(from, to);
+            if (rangeProblem != null) {
+                throw new AttendanceException(new AttendanceError.InvalidRange(rangeProblem));
+            }
+        }
+        LocalDate lo = from == null ? LocalDate.of(1900, 1, 1) : from;
+        LocalDate hi = to == null ? LocalDate.of(9999, 12, 31) : to;
+        List<ExcuseEntity> excuses = status == null
+                ? excuseRepository.findBySchoolIdAndDayBetweenOrderByDayDescIdDesc(schoolId, lo, hi)
+                : excuseRepository.findBySchoolIdAndStatusAndDayBetweenOrderByDayDescIdDesc(schoolId, status, lo, hi);
+        return excuseRows(schoolId, excuses);
+    }
+
+    @Override
+    @Transactional
+    public ExcuseRow decideExcuse(Long schoolId, Long excuseId, ExcuseStatus decision, Long deciderUserId) {
+        requireSchool(schoolId);
+        if (decision != ExcuseStatus.APPROVED && decision != ExcuseStatus.REJECTED) {
+            throw new AttendanceException(new AttendanceError.InvalidExcuse(
+                    "تصمیم باید APPROVED یا REJECTED باشد."));
+        }
+        ExcuseEntity found = excuseRepository.findByIdAndSchoolId(excuseId, schoolId)
+                .orElseThrow(() -> new AttendanceException(new AttendanceError.ExcuseNotFound(excuseId)));
+        // هم‌زمان با ذخیره‌ی حضور و غیابِ همان کلاس-روز پشتِ سر هم اجرا شود (همان قفلِ saveRoll)
+        rollRepository.lockClassDay(LOCK_NAMESPACE, Objects.hash(found.getClassId(), found.getDay()));
+        ExcuseEntity excuse = excuseRepository.findByIdAndSchoolId(excuseId, schoolId)
+                .orElseThrow(() -> new AttendanceException(new AttendanceError.ExcuseNotFound(excuseId)));
+        if (excuse.getStatus() != ExcuseStatus.PENDING) {
+            throw new AttendanceException(new AttendanceError.ExcuseAlreadyDecided(excuseId));
+        }
+        excuse.setStatus(decision);
+        excuse.setDecidedByUserId(deciderUserId);
+        excuse.setDecidedAt(Instant.now());
+        if (decision == ExcuseStatus.APPROVED) {
+            // تأیید مُهرِ غیبتِ همان روز را در همین تراکنش «موجه» می‌کند؛ ردّ مُهر را دست نمی‌زند
+            markRepository.findByClassIdAndDay(excuse.getClassId(), excuse.getDay()).stream()
+                    .filter(m -> m.getStudentId().equals(excuse.getStudentId())
+                            && m.getStatus() == AttendanceStatus.ABSENT)
+                    .forEach(m -> {
+                        m.setExcused(true);
+                        markRepository.save(m);
+                    });
+        }
+        return excuseRows(schoolId, List.of(excuseRepository.save(excuse))).get(0);
+    }
+
+    /** ردیف‌های عذر با نامِ دانش‌آموز و کلاس، با خواندنِ گروهیِ فهرستِ کلاس‌ها. */
+    private List<ExcuseRow> excuseRows(Long schoolId, List<ExcuseEntity> excuses) {
+        if (excuses.isEmpty()) {
+            return List.of();
+        }
+        Set<Long> classIds = excuses.stream().map(ExcuseEntity::getClassId).collect(Collectors.toCollection(HashSet::new));
+        Map<Long, String> classNames = new HashMap<>();
+        for (Long id : classIds) {
+            academicFacade.findClass(schoolId, id).ifPresent(c -> classNames.put(id, c.name()));
+        }
+        Map<Long, StudentInfo> students = new HashMap<>();
+        academicFacade.listStudentsByClass(schoolId, classIds).values()
+                .forEach(list -> list.forEach(s -> students.putIfAbsent(s.id().value(), s)));
+        Map<Long, String> names = namesByUser(schoolId);
+        List<ExcuseRow> rows = new ArrayList<>();
+        for (ExcuseEntity e : excuses) {
+            StudentInfo student = students.get(e.getStudentId());
+            if (student == null) {
+                // دانش‌آموزی که دیگر در فهرستِ کلاس نیست (ارتقا/ترک)
+                student = academicFacade.findStudentInfo(e.getStudentId())
+                        .filter(s -> schoolId.equals(s.schoolId())).orElse(null);
+            }
+            rows.add(new ExcuseRow(e.getId(), e.getStudentId(), student == null ? null : names.get(student.userId()),
+                    e.getClassId(), classNames.get(e.getClassId()), e.getDay(), e.getNote(), e.getStatus(),
+                    e.getSubmittedAt(), e.getDecidedAt()));
+        }
+        return rows;
     }
 
     // ---- کمکی‌ها ----

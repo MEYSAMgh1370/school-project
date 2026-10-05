@@ -41,4 +41,23 @@ public sealed interface AttendanceError {
     /** بدون ATTENDANCE_EDIT_PAST فقط روزِ جاری قابل ثبت/ویرایش است. */
     record PastEditNotAllowed(LocalDate day) implements AttendanceError {
     }
+
+    /** عذر فقط توسط ولیِ فعالِ همان دانش‌آموز ثبت می‌شود. */
+    record NotYourChild(Long studentId) implements AttendanceError {
+    }
+
+    /** عذرِ نامعتبر: یادداشتِ خالی یا بیش از ۵۰۰ نویسه، دانش‌آموزِ خالی، تصمیمِ نامعتبر. */
+    record InvalidExcuse(String reason) implements AttendanceError {
+    }
+
+    /** دانش‌آموز آن روز مُهرِ ABSENT ندارد، پس چیزی برای عذر نیست. */
+    record NoAbsenceToExcuse(Long studentId, LocalDate day) implements AttendanceError {
+    }
+
+    /** عذر قبلاً تأیید یا رد شده است. */
+    record ExcuseAlreadyDecided(Long excuseId) implements AttendanceError {
+    }
+
+    record ExcuseNotFound(Long excuseId) implements AttendanceError {
+    }
 }

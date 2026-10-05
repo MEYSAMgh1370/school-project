@@ -85,7 +85,8 @@ class AttendanceFacadeTest {
         timetable = mock(TimetableFacade.class);
         school = mock(SchoolFacade.class);
         iam = mock(IamFacade.class);
-        facade = new AttendanceFacadeImpl(rolls, marks, academic, timetable, school, iam);
+        facade = new AttendanceFacadeImpl(rolls, marks, mock(ExcuseRepository.class), academic, timetable, school, iam,
+                mock(org.springframework.context.ApplicationEventPublisher.class));
 
         when(school.findSchool(new SchoolId(SCHOOL))).thenReturn(Optional.of(schoolInfo()));
         when(school.findCurrentAcademicYear(new SchoolId(SCHOOL))).thenReturn(Optional.empty());

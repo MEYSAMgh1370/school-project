@@ -1,16 +1,21 @@
 package com.example.roshdeandishe.attendance.internal;
 
 import com.example.roshdeandishe.attendance.AttendanceFacade;
+import com.example.roshdeandishe.attendance.AttendanceStatus;
 import com.example.roshdeandishe.school.SchoolFacade.WeekStart;
 
 import java.time.LocalDate;
 import java.time.temporal.ChronoUnit;
+import java.util.List;
+import java.util.Set;
 
 /**
  * قوانینِ خالصِ «روز» و «بازه» (attendance.md قاعده ۱) بدونِ وابستگی به Spring/پایگاه‌داده، تا مستقیم تست شوند.
  * نتیجه یا {@code null} (روا) یا دلیلِ فارسیِ رد.
  */
 final class AttendanceRules {
+
+    static final int MAX_EXCUSE_NOTE = 500;
 
     private AttendanceRules() {
     }
@@ -33,6 +38,29 @@ final class AttendanceRules {
         }
         if (closedInCalendar) {
             return "این روز در تقویم مدرسه تعطیل است.";
+        }
+        return null;
+    }
+
+    /**
+     * دانش‌آموزانی که در این ذخیره <b>تازه</b> غایب شده‌اند: ABSENT در ورودی و نه ABSENT در مُهرهای قبلیِ همان
+     * (کلاس، روز). ذخیره‌ی دوباره‌ی بی‌تغییر و دیرآمده چیزی نمی‌دهد؛ «غایب ← حاضر ← غایب» دوباره می‌دهد.
+     */
+    static List<Long> newlyAbsent(Set<Long> previouslyAbsent, List<AttendanceFacade.MarkInput> incoming) {
+        return incoming.stream()
+                .filter(m -> m.status() == AttendanceStatus.ABSENT)
+                .map(AttendanceFacade.MarkInput::studentId)
+                .filter(id -> !previouslyAbsent.contains(id))
+                .toList();
+    }
+
+    /** دلیلِ نامعتبر بودنِ یادداشتِ عذر یا {@code null}: غیرخالی و حداکثر {@value #MAX_EXCUSE_NOTE} نویسه. */
+    static String excuseNoteProblem(String note) {
+        if (note == null || note.isBlank()) {
+            return "یادداشتِ عذر الزامی است.";
+        }
+        if (note.strip().length() > MAX_EXCUSE_NOTE) {
+            return "یادداشتِ عذر حداکثر " + MAX_EXCUSE_NOTE + " نویسه می‌تواند باشد.";
         }
         return null;
     }

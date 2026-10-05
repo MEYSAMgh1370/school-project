@@ -1,5 +1,6 @@
 package com.example.roshdeandishe.attendance;
 
+import java.time.Instant;
 import java.time.LocalDate;
 import java.util.List;
 
@@ -77,6 +78,36 @@ public interface AttendanceFacade {
     /** بدون {@code editPast} فقط امروز (به وقتِ مدرسه) قابل ثبت است، وگرنه {@code PastEditNotAllowed}. */
     void requireMayEditDay(Long schoolId, LocalDate day, boolean editPast);
 
+    // ---- عذر (attendance.md «Excuses») ----
+
+    /**
+     * ثبتِ عذرِ ولی برای غیبتِ فرزند. فراخوان باید ولیِ <b>فعالِ</b> همین دانش‌آموز در همین مدرسه باشد
+     * ({@code NotYourChild}) و دانش‌آموز همان روز مُهرِ ABSENT داشته باشد ({@code NoAbsenceToExcuse})؛ یادداشت
+     * غیرخالی و حداکثر ۵۰۰ نویسه ({@code InvalidExcuse}). برای هر (دانش‌آموز، روز) یک عذر: ثبتِ دوباره تا وقتی
+     * PENDING است یادداشت را عوض می‌کند، پس از تأیید/ردّ {@code ExcuseAlreadyDecided}.
+     */
+    ExcuseRow submitExcuse(Long schoolId, Long studentId, LocalDate day, Long submitterUserId, String note);
+
+    /**
+     * غیبت و دیرآمدنِ دانش‌آموزِ خودِ کاربر (نقشِ فعالِ STUDENT) و فرزندانِ لینک‌شده‌اش (نقشِ فعالِ PARENT) در
+     * بازه‌ی بسته‌ی [from, to] (حداکثر {@link #MAX_REPORT_DAYS} روز، {@code InvalidRange}). فقط استثناها می‌آید؛
+     * کسی که هیچ‌کدام از دو نقش را ندارد فهرستِ خالی می‌گیرد و دانش‌آموزِ بیگانه هرگز دیده نمی‌شود.
+     */
+    List<MyStudentAttendance> listMyAttendance(Long schoolId, Long userId, LocalDate from, LocalDate to);
+
+    /**
+     * عذرهای مدرسه، تازه‌ترین روز اول. {@code status} و هر دو سرِ بازه اختیاری‌اند؛ اگر هر دو سر آمده باشد
+     * مثل گزارش اعتبارسنجی می‌شود ({@code InvalidRange}).
+     */
+    List<ExcuseRow> listExcuses(Long schoolId, ExcuseStatus status, LocalDate from, LocalDate to);
+
+    /**
+     * تأییدِ ({@code APPROVED}) یا ردِّ ({@code REJECTED}) یک عذرِ PENDING. تأیید در همان تراکنش مُهرِ غیبتِ آن روز
+     * را «موجه» می‌کند؛ ردّ مُهر را دست‌نخورده می‌گذارد. {@code ExcuseNotFound}، {@code ExcuseAlreadyDecided}،
+     * و برای تصمیمِ PENDING یا تهی {@code InvalidExcuse}.
+     */
+    ExcuseRow decideExcuse(Long schoolId, Long excuseId, ExcuseStatus decision, Long deciderUserId);
+
     /** سقفِ بازه‌ی گزارش (روز، شاملِ دو سر). */
     int MAX_REPORT_DAYS = 366;
 
@@ -112,5 +143,21 @@ public interface AttendanceFacade {
     }
 
     record RecordableClass(Long classId, String name, String section, int gradeLevel, boolean taken) {
+    }
+
+    /** یک عذر با نامِ دانش‌آموز و کلاس (نام‌ها ممکن است تهی باشند اگر دیگر در مدرسه نیست). */
+    record ExcuseRow(Long id, Long studentId, String studentName, Long classId, String className, LocalDate day,
+                     String note, ExcuseStatus status, Instant submittedAt, Instant decidedAt) {
+    }
+
+    record MyExcuse(Long id, ExcuseStatus status, String note) {
+    }
+
+    /** {@code excuse} تهی = عذری ثبت نشده؛ {@code status} ABSENT یا LATE. */
+    record MyDayAttendance(LocalDate day, AttendanceStatus status, boolean excused, MyExcuse excuse) {
+    }
+
+    /** {@code own}: دانش‌آموزِ خودِ کاربر (نه فرزند). */
+    record MyStudentAttendance(Long studentId, String studentName, boolean own, List<MyDayAttendance> days) {
     }
 }

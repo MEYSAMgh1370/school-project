@@ -3,10 +3,13 @@ package com.example.roshdeandishe.attendance.controller;
 import com.example.roshdeandishe.attendance.AttendanceFacade;
 import com.example.roshdeandishe.attendance.AttendanceFacade.MarkInput;
 import com.example.roshdeandishe.attendance.AttendanceStatus;
+import com.example.roshdeandishe.attendance.ExcuseStatus;
+import com.example.roshdeandishe.attendance.dto.request.DecideExcuseRequest;
 import com.example.roshdeandishe.attendance.dto.request.SaveRollRequest;
 import com.example.roshdeandishe.attendance.dto.response.ClassAbsenteesResponse;
 import com.example.roshdeandishe.attendance.dto.response.ClassDayResponse;
 import com.example.roshdeandishe.attendance.dto.response.DaySummaryResponse;
+import com.example.roshdeandishe.attendance.dto.response.ExcuseResponse;
 import com.example.roshdeandishe.attendance.dto.response.RecordableClassResponse;
 import com.example.roshdeandishe.attendance.dto.response.ReportRowResponse;
 import com.example.roshdeandishe.attendance.shared.AttendanceError;
@@ -22,6 +25,7 @@ import com.example.roshdeandishe.platform.TenantContext;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -131,6 +135,46 @@ public class AttendanceController {
         TenantContext.requireMatches(schoolId);
 
         return attendanceFacade.report(schoolId, from, to, classId, name).stream().map(ReportRowResponse::from).toList();
+    }
+
+    // ---- عذرها (مدیر) ----
+
+    /** عذرهای مدرسه با نامِ دانش‌آموز و کلاس؛ {@code status}/{@code from}/{@code to} اختیاری‌اند. */
+    @GetMapping("/excuses")
+    @RequiresPermission("ATTENDANCE_VIEW_ALL")
+    public List<ExcuseResponse> excuses(
+            @PathVariable Long schoolId,
+            @RequestParam(required = false) String status,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate from,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to) {
+        TenantContext.requireMatches(schoolId);
+
+        ExcuseStatus parsed = null;
+        if (status != null && !status.isBlank()) {
+            parsed = parseExcuseStatus(status, "وضعیت باید PENDING، APPROVED یا REJECTED باشد.");
+        }
+        return attendanceFacade.listExcuses(schoolId, parsed, from, to).stream().map(ExcuseResponse::from).toList();
+    }
+
+    /** تأیید (مُهرِ غیبت «موجه» می‌شود) یا ردِّ یک عذر. */
+    @PostMapping("/excuses/{excuseId}/decision")
+    @RequiresPermission("ATTENDANCE_RECORD_ANY")
+    public ExcuseResponse decide(
+            @PathVariable Long schoolId, @PathVariable Long excuseId, @RequestBody DecideExcuseRequest request) {
+        TenantContext.requireMatches(schoolId);
+
+        ExcuseStatus decision = request.decision() == null ? null
+                : parseExcuseStatus(request.decision(), "تصمیم باید APPROVED یا REJECTED باشد.");
+        return ExcuseResponse.from(attendanceFacade.decideExcuse(
+                schoolId, excuseId, decision, iamFacade.currentUserId().value()));
+    }
+
+    private static ExcuseStatus parseExcuseStatus(String value, String message) {
+        try {
+            return ExcuseStatus.valueOf(value.strip());
+        } catch (IllegalArgumentException e) {
+            throw new AttendanceException(new AttendanceError.InvalidExcuse(message));
+        }
     }
 
     // ---- «ثبت‌کننده»: یکی از دو مجوز ----

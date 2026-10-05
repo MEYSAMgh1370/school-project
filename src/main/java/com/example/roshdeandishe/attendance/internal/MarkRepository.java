@@ -14,6 +14,11 @@ interface MarkRepository extends JpaRepository<MarkEntity, Long> {
 
     List<MarkEntity> findBySchoolIdAndDay(Long schoolId, LocalDate day);
 
+    List<MarkEntity> findByStudentIdAndDay(Long studentId, LocalDate day);
+
+    List<MarkEntity> findByStudentIdInAndDayBetween(java.util.Collection<Long> studentIds, LocalDate from,
+                                                    LocalDate to);
+
     List<MarkEntity> findBySchoolIdAndDayBetween(Long schoolId, LocalDate from, LocalDate to);
 
     /**

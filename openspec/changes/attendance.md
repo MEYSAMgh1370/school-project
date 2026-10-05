@@ -24,9 +24,12 @@ phase's note for what is built; the current behavior of a built phase belongs to
 9. **Report:** a table where the admin queries by **time period** and **student name**
    (optionally class) and gets, per student, the number of absent, late and present days.
 
-Built so far (details in `specs/current-system.md`): the phase 1-2 backend. `attendance.excuses`
-was created by `V13` but nothing uses it; excuses, the parent notification, the self-service
-endpoint, every page and the dashboard box are still to do. Two readings the backend took where
+Built so far (details in `specs/current-system.md`): the phase 1-3 backend (excuses, the
+parent notification and the self-service endpoint included); every page and the dashboard box
+are still to do. Phase 3 readings where this document is silent: an `APPROVED` excuse wins over
+an incoming `excused=false` when a roll is re-saved; a `PENDING` excuse is deleted when its
+absence is removed; the notification date is ISO (no public server-side Jalali formatter); the
+`/api/me` endpoints check the `ATTENDANCE` entitlement in the controller. Two readings the backend took where
 this document is silent: a roll for a class of an earlier academic year is refused
 (`409 class-not-in-current-year`, from rule 2), and the report lists only classes with at least
 one roll in the range.
@@ -232,6 +235,10 @@ and a table; an empty result teaches («در این بازه حضور و غیا�
    **Backend built 2026-10-05** (`GET /days/{day}/absentees`, `/summary`, `/report`; the
    report range is capped at 366 days); the pages and the dashboard box are not built yet.
 3. Student and parent views, excuses, and the parent notification.
+   **Backend built 2026-10-05** (no new migration: `GET /api/me/schools/{id}/attendance`, excuse
+   submit/list/decide endpoints, `AbsenceRecordedEvent` and the Bale listener in `notification`);
+   the pages (parent/student views, excuse form, admin excuse list) and the dashboard
+   «غیبت امروز» card are not built yet.
 
 ## Acceptance Criteria
 

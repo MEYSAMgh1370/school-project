@@ -27,6 +27,12 @@ public final class AttendanceException extends RuntimeException {
             case AttendanceError.NotYourClass e -> "کلاس " + e.classId() + " از کلاس‌های شما نیست.";
             case AttendanceError.PastEditNotAllowed e ->
                     "ثبت یا ویرایشِ حضور و غیابِ روزِ گذشته (" + e.day() + ") مجاز نیست.";
+            case AttendanceError.NotYourChild e -> "دانش‌آموز " + e.studentId() + " فرزندِ شما نیست.";
+            case AttendanceError.InvalidExcuse e -> e.reason();
+            case AttendanceError.NoAbsenceToExcuse e ->
+                    "دانش‌آموز " + e.studentId() + " در " + e.day() + " غیبتی ندارد که عذر داشته باشد.";
+            case AttendanceError.ExcuseAlreadyDecided e -> "عذر " + e.excuseId() + " قبلاً بررسی شده است.";
+            case AttendanceError.ExcuseNotFound e -> "عذری با شناسه " + e.excuseId() + " یافت نشد.";
         };
     }
 }

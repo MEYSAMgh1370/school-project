@@ -28,7 +28,12 @@ class AttendanceProblemResolverTest {
                 new Expected(new AttendanceError.InvalidMark("دلیل"), 400, "invalid-attendance-mark"),
                 new Expected(new AttendanceError.InvalidRange("دلیل"), 400, "invalid-attendance-range"),
                 new Expected(new AttendanceError.NotYourClass(1L), 403, "attendance-not-your-class"),
-                new Expected(new AttendanceError.PastEditNotAllowed(day), 403, "attendance-past-edit-not-allowed"));
+                new Expected(new AttendanceError.PastEditNotAllowed(day), 403, "attendance-past-edit-not-allowed"),
+                new Expected(new AttendanceError.NotYourChild(2L), 403, "attendance-not-your-child"),
+                new Expected(new AttendanceError.InvalidExcuse("دلیل"), 400, "invalid-excuse"),
+                new Expected(new AttendanceError.NoAbsenceToExcuse(2L, day), 409, "no-absence-to-excuse"),
+                new Expected(new AttendanceError.ExcuseAlreadyDecided(3L), 409, "excuse-already-decided"),
+                new Expected(new AttendanceError.ExcuseNotFound(3L), 404, "excuse-not-found"));
 
         for (Expected e : expected) {
             ProblemDetail problem = resolver.resolve(e.error());
