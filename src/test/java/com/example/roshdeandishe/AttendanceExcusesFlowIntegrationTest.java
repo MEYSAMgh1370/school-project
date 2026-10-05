@@ -300,7 +300,8 @@ class AttendanceExcusesFlowIntegrationTest {
         submit(f, f.parent(), f.s1(), today, "دوباره").andExpect(status().isConflict())
                 .andExpect(jsonPath("$.type").value(endsWith("excuse-already-decided")));
         send(f.admin(), f.school(), post(attendance(f) + "/excuses/" + excuseId + "/decision"),
-                "{\"decision\":\"PENDING\"}").andExpect(status().isConflict());
+                "{\"decision\":\"PENDING\"}").andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.type").value(endsWith("invalid-excuse")));
     }
 
     // ---- قواعدِ ثبت ----
