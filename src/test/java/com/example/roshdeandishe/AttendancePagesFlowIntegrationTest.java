@@ -99,7 +99,8 @@ class AttendancePagesFlowIntegrationTest {
         try {
             iamFacade.setSchoolEntitlement(1L, attendance, false);
             String unentitled = page(admin, "/dashboard");
-            assertThat(unentitled).doesNotContain("حضور و غیاب امروز").doesNotContain("غایبین امروز");
+            // فقط بخشِ مدرسه‌ی ۱: مدیرِ نمونه مدرسه‌های دیگری هم دارد (از تست‌های دیگر) که ماژول را دارند
+            assertThat(unentitled).doesNotContain("dashboard-attendance-title-1\"");
         } finally {
             iamFacade.setSchoolEntitlement(1L, attendance, true);
         }
