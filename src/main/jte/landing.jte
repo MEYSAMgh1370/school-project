@@ -4,74 +4,128 @@
      متن این صفحه فقط چیزهایی را می‌گوید که واقعاً ساخته شده‌اند
      (openspec/specs/current-system.md و decisions/2026-07-20-free-tier-
      entitlements.md). هیچ آمار، مشتری نمونه، قیمت یا راه ارتباطی ساختگی
-     اینجا نیست، و هر پیوند به مسیری می‌رود که وجود دارد. --%>
+     اینجا نیست، و هر پیوند به مسیری می‌رود که وجود دارد. تنها استثنا
+     پیشخوان نمایشیِ هیرو است که صریحاً «نمونه‌ی نمایشی» برچسب خورده. --%>
 @template.layout.main(title = "رشدِاندیشه", styles = java.util.List.of("/css/landing.css"), scripts = java.util.List.of("/js/landing.js"), content = @`
 <div class="app-landing">
     <header class="app-marketing-header">
         <div class="container app-marketing-header-inner">
-            <a class="app-landing-brand" href="/">رشدِاندیشه</a>
+            <div class="app-marketing-header-start">
+                <a class="app-landing-brand" href="/">
+                    <span class="app-landing-brand-mark" aria-hidden="true"></span>
+                    <span>رشدِاندیشه</span>
+                </a>
+                <nav class="app-marketing-nav" aria-label="بخش‌های صفحه">
+                    <a href="#landing-features-title">امکانات</a>
+                    <a href="#landing-steps-title">مراحل شروع</a>
+                    <a href="#landing-faq-title">پرسش‌ها</a>
+                </nav>
+            </div>
             <nav class="buttons mb-0" aria-label="ناوبری عمومی">
                 <a class="button is-light" href="/login">ورود</a>
-                <a class="button is-light" href="/register">ایجاد حساب کاربری</a>
+                <a class="button is-primary app-marketing-header-cta" href="/register?next=/schools/new">شروع رایگان</a>
             </nav>
         </div>
     </header>
 
     <main id="main-content" tabindex="-1">
+        <%-- هیرو (بازطراحی پیشنهادی، ۲۰۲۶-۱۰-۰۵): نشان، تیتر با یک عبارت
+             تأکیدی، یک کنش اصلی، سه نکته‌ی اعتماد، و نمونه‌ی نمایشی پیشخوان.
+             پیشخوان فقط تصویرسازی است: aria-hidden، با برچسب «نمونه‌ی نمایشی»،
+             و اعدادش ساختگی‌اند و ادعای آماری نیستند. --%>
         <section class="section app-landing-hero">
             <div class="container">
                 <div class="columns is-variable is-8 is-vcentered">
-                    <div class="column is-7-desktop">
+                    <div class="column is-5-desktop">
                         <span class="tag is-light mb-4">برای مدرسه‌هایی که با دقت رشد می‌کنند</span>
-                        <h1 class="title is-4">مدرسه را با یک تصویر روشن از امروز و فردا اداره کنید.</h1>
+                        <h1 class="title is-4">مدرسه را با یک <span class="app-landing-emphasis">تصویر روشن</span> از امروز و فردا اداره کنید.</h1>
                         <p class="app-landing-intro">
                             رشدِاندیشه، کارهای روزمره‌ی مدرسه را از اعضا و کلاس‌ها تا امور مالی و مسیر آموزشی،
                             در یک فضای منظم کنار هم می‌آورد.
                         </p>
                         <div class="buttons mt-5">
-                            <a class="button is-primary" href="/login?next=/schools/new">ثبت مدرسه</a>
-                            <a class="button is-light" href="/register?next=/schools/new">ابتدا حساب کاربری بسازید</a>
+                            <a class="button is-primary is-medium" href="/register?next=/schools/new">شروع رایگان</a>
+                            <a class="app-landing-text-link" href="#landing-steps-title">مراحل شروع را ببینید</a>
                         </div>
                         <p class="is-size-7 has-text-grey mt-4">
-                            از همین‌جا شروع کنید؛ پس از ورود، می‌توانید مدرسه‌تان را ثبت و کار را ادامه دهید.
+                            ساخت مدرسه رایگان است؛ بعد از ساخت حساب، مستقیم به ثبت مدرسه می‌روید.
+                            حساب دارید؟ <a href="/login?next=/schools/new">ثبت مدرسه</a>
                         </p>
                         <ul class="app-landing-facts">
                             <li>
                                 <span class="app-landing-fact-title">یک حساب، چند مدرسه</span>
-                                <span class="is-size-7 has-text-grey">نقش شما در هر مدرسه جداگانه است.</span>
+                                <span class="is-size-7 has-text-grey">نقش جداگانه در هر مدرسه</span>
                             </li>
                             <li>
                                 <span class="app-landing-fact-title">نقش‌های روشن</span>
-                                <span class="is-size-7 has-text-grey">مدیر، معلم، مسئول مالی، دانش‌آموز و والد.</span>
+                                <span class="is-size-7 has-text-grey">مدیر، معلم، مالی، دانش‌آموز و والد</span>
                             </li>
                             <li>
                                 <span class="app-landing-fact-title">فارسی از پایه</span>
-                                <span class="is-size-7 has-text-grey">تقویم جلالی، اعداد فارسی، هفته از شنبه.</span>
+                                <span class="is-size-7 has-text-grey">تقویم جلالی، هفته از شنبه</span>
                             </li>
                         </ul>
                     </div>
-                    <div class="column is-5-desktop">
-                        <aside class="box app-landing-preview" aria-label="نمایی از بخش‌های رشدِاندیشه">
-                            <div class="app-landing-preview-heading">
-                                <div>
-                                    <p class="is-size-7 has-text-grey mb-1">یک نمای ساده و قابل پیگیری</p>
-                                    <h2 class="title is-6 mb-0">امروز در مدرسه</h2>
+                    <div class="column is-7-desktop">
+                        <figure class="app-landing-stage" role="img"
+                                aria-label="نمونه‌ی نمایشی پیشخوان مدیر در رشدِاندیشه: تعداد دانش‌آموزان، حضور امروز، شهریه‌ی ماه و برنامه‌ی امروز">
+                            <div class="app-landing-window" aria-hidden="true">
+                                <div class="app-landing-window-bar">
+                                    <span class="app-landing-window-dots"><span></span><span></span><span></span></span>
+                                    <span class="is-size-7 has-text-grey">پیشخوان مدیر · نمونه‌ی نمایشی</span>
                                 </div>
-                                <span class="tag is-light">مرتب</span>
+                                <div class="app-landing-window-body">
+                                    <div class="app-landing-window-side">
+                                        <span class="is-active">پیشخوان</span>
+                                        <span>اعضا</span>
+                                        <span>کلاس‌ها</span>
+                                        <span>امور مالی</span>
+                                        <span>آموزش</span>
+                                    </div>
+                                    <div class="app-landing-window-main">
+                                        <div class="app-landing-window-top">
+                                            <span class="app-landing-window-school">دبستان مهر</span>
+                                            <span class="tag is-light">نقش: مدیر</span>
+                                        </div>
+                                        <div class="app-landing-stats">
+                                            <div class="app-landing-stat">
+                                                <span class="is-size-7 has-text-grey">دانش‌آموزان</span>
+                                                <strong class="app-landing-stat-value">۴۸۶</strong>
+                                                <span class="is-size-7 has-text-grey">در ۱۸ کلاس</span>
+                                            </div>
+                                            <div class="app-landing-stat">
+                                                <span class="is-size-7 has-text-grey">حضور امروز</span>
+                                                <strong class="app-landing-stat-value">۹۶٪</strong>
+                                                <span class="is-size-7 has-text-grey">۱۹ غیبت ثبت شد</span>
+                                            </div>
+                                            <div class="app-landing-stat">
+                                                <span class="is-size-7 has-text-grey">شهریه‌ی مهر</span>
+                                                <strong class="app-landing-stat-value">۷۲٪</strong>
+                                                <progress class="progress is-primary app-landing-stat-bar" value="72" max="100"></progress>
+                                            </div>
+                                        </div>
+                                        <div class="app-landing-agenda">
+                                            <div class="app-landing-agenda-heading">
+                                                <strong>برنامه‌ی امروز</strong>
+                                                <span class="is-size-7 has-text-grey">۳ مورد</span>
+                                            </div>
+                                            <div class="app-landing-agenda-item">
+                                                <span class="is-size-7 has-text-grey">۸:۰۰</span>
+                                                <span><strong>ریاضی · پنجم الف</strong><span class="is-size-7 has-text-grey">خانم احمدی · کلاس ۲</span></span>
+                                            </div>
+                                            <div class="app-landing-agenda-item">
+                                                <span class="is-size-7 has-text-grey">۱۰:۳۰</span>
+                                                <span><strong>آزمون علوم · پایه‌ی ششم</strong><span class="is-size-7 has-text-grey">ثبت نمره تا پنجشنبه</span></span>
+                                            </div>
+                                            <div class="app-landing-agenda-item">
+                                                <span class="is-size-7 has-text-grey">۱۲:۱۵</span>
+                                                <span><strong>جلسه‌ی اولیا · پایه‌ی چهارم</strong><span class="is-size-7 has-text-grey">سالن اجتماعات</span></span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
                             </div>
-                            <div class="app-landing-preview-item">
-                                <p class="is-size-7 has-text-grey mb-1">اعضا و کلاس‌ها</p>
-                                <p>نقش‌ها، دانش‌آموزان و کلاس‌ها در دسترس‌اند.</p>
-                            </div>
-                            <div class="app-landing-preview-item">
-                                <p class="is-size-7 has-text-grey mb-1">امور مالی</p>
-                                <p>شهریه، پرداخت‌ها و هزینه‌ها را کنار هم ببینید.</p>
-                            </div>
-                            <div class="app-landing-preview-item">
-                                <p class="is-size-7 has-text-grey mb-1">مسیر آموزشی</p>
-                                <p>برنامه، آزمون و نمره‌ها برای پیگیری آماده‌اند.</p>
-                            </div>
-                        </aside>
+                        </figure>
                     </div>
                 </div>
             </div>
