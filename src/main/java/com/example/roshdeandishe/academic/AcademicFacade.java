@@ -91,8 +91,10 @@ public interface AcademicFacade {
      * Idempotent است: نمره‌ی همان (studentId, classId, academicYear, term) به‌جای
      * ثبتِ تکراری به‌روزرسانی می‌شود - همان الگوی setTuitionFee/assignPlanToStudent.
      * <p>
-     * دانش‌آموز باید همین الان عضو همین کلاس باشد
-     * (AcademicError.StudentNotInClass وگرنه)، و دقیقاً یکی از
+     * دانش‌آموز باید همین الان عضو همین کلاس باشد، یا در همان سالِ نمره در آن کلاس
+     * ثبت‌نام داشته باشد (اصلاحِ نمره‌ی سالِ قبل در کلاسِ قبلی؛ AcademicError.StudentNotInClass
+     * وگرنه). سالِ نمره باید در فهرست سال‌ها باشد (InvalidAcademicYear) ولی با سالِ خودِ کلاس
+     * هم‌خوانی لازم ندارد - نمره‌ها کلاسی‌اند (academic-year.md، تصمیم ۲۰۲۶-۱۰-۰۴). دقیقاً یکی از
      * descriptiveLevel/numericScore باید متناظر با شِمای واقعیِ کلاس
      * (ClassEntity.gradingScheme) پر باشد (AcademicError.GradingSchemeMismatch
      * وگرنه) - شِما پارامتر جداگانه نمی‌گیرد چون قابل استنتاج از خودِ کلاس است.
