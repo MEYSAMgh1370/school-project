@@ -58,10 +58,25 @@ window.YearlyPlanLogic = (function () {
             + DateInput.formatLong(eff.startDate) + ' تا ' + DateInput.formatLong(eff.endDate) + ' مجاز است.';
     }
 
-    // راهنمای modal تنظیم بازه: پیش‌فرض حداقل است
+    // سقفِ گسترش: حداکثر یک ماهِ تقویمِ صفحه از هر طرف (برای fa: ۱ شهریور تا ۳۱ تیر). سرور مرجعِ نهایی
+    // است و همین قاعده را با ماه‌های جلالی می‌سنجد؛ اینجا فقط برای پیامِ زودهنگام است.
+    function rangeLimits(year) {
+        const s = DateInput.civil(year.startDate);
+        const e = DateInput.civil(year.endDate);
+        const before = s.m === 1 ? { y: s.y - 1, m: 12 } : { y: s.y, m: s.m - 1 };
+        const after = e.m === 12 ? { y: e.y + 1, m: 1 } : { y: e.y, m: e.m + 1 };
+        return {
+            earliestStart: DateInput.monthRange(before.y, before.m).from,
+            latestEnd: DateInput.monthRange(after.y, after.m).to
+        };
+    }
+
+    // راهنمای modal تنظیم بازه: پیش‌فرض حداقل است و تا یک ماه از هر طرف گسترش‌پذیر
     function defaultRangeHelp(year) {
+        const limits = rangeLimits(year);
         return 'بازه‌ی پیش‌فرض (از ' + DateInput.formatLong(year.startDate) + ' تا ' + DateInput.formatLong(year.endDate)
-            + ') حداقل بازه است؛ فقط می‌توانید آن را گسترش دهید.';
+            + ') حداقل بازه است؛ فقط می‌توانید آن را گسترش دهید، حداکثر یک ماه از هر طرف (از '
+            + DateInput.formatLong(limits.earliestStart) + ' تا ' + DateInput.formatLong(limits.latestEnd) + ').';
     }
 
     // بازه‌ی بسته‌ی [startDate, endDate]؛ ISO با ارقام ASCII مقایسه‌پذیر است
@@ -85,6 +100,12 @@ window.YearlyPlanLogic = (function () {
                 return 'شروع نباید بعد از ' + DateInput.formatLong(year.startDate) + ' باشد؛ بازه را فقط می‌توانید گسترش دهید.';
             case 'endBeforeDefault':
                 return 'پایان نباید پیش از ' + DateInput.formatLong(year.endDate) + ' باشد؛ بازه را فقط می‌توانید گسترش دهید.';
+            case 'startTooEarly':
+                return 'شروع نباید پیش از ' + DateInput.formatLong(rangeLimits(year).earliestStart)
+                    + ' باشد؛ بازه را حداکثر یک ماه می‌توانید گسترش دهید.';
+            case 'endTooLate':
+                return 'پایان نباید بعد از ' + DateInput.formatLong(rangeLimits(year).latestEnd)
+                    + ' باشد؛ بازه را حداکثر یک ماه می‌توانید گسترش دهید.';
             case 'startAfterEnd':
                 return 'شروع باید پیش از پایان باشد.';
             default:
@@ -93,10 +114,11 @@ window.YearlyPlanLogic = (function () {
     }
 
     // اعتبارسنجیِ «فقط گسترش»: متنِ دو ورودی + بازه‌ی پیش‌فرضِ سال → { startDate, endDate, startError, endError }
-    // که خطاها کلیدِ پیام‌اند ('' = درست): required | invalid | startAfterDefault | endBeforeDefault | startAfterEnd
+    // که خطاها کلیدِ پیام‌اند ('' = درست): required | invalid | startAfterDefault | endBeforeDefault | startTooEarly | endTooLate | startAfterEnd
     function validateRange(startText, endText, year) {
         const startDate = DateInput.parse(startText || '');
         const endDate = DateInput.parse(endText || '');
+        const limits = rangeLimits(year);
         let startError = '';
         let endError = '';
         if (!(startText || '').trim()) {
@@ -105,6 +127,8 @@ window.YearlyPlanLogic = (function () {
             startError = 'invalid';
         } else if (startDate > year.startDate) {
             startError = 'startAfterDefault';
+        } else if (startDate < limits.earliestStart) {
+            startError = 'startTooEarly';
         }
         if (!(endText || '').trim()) {
             endError = 'required';
@@ -112,6 +136,8 @@ window.YearlyPlanLogic = (function () {
             endError = 'invalid';
         } else if (endDate < year.endDate) {
             endError = 'endBeforeDefault';
+        } else if (endDate > limits.latestEnd) {
+            endError = 'endTooLate';
         }
         if (!startError && !endError && startDate > endDate) {
             endError = 'startAfterEnd';
@@ -121,6 +147,6 @@ window.YearlyPlanLogic = (function () {
 
     return {
         itemKey, groupByMonth, effectiveRange, yearLine, isCustom, CUSTOM_TAG, rangeHelp, defaultRangeHelp,
-        inRange, exampleDate, rangeMessage, validateRange
+        inRange, exampleDate, rangeMessage, validateRange, rangeLimits
     };
 })();

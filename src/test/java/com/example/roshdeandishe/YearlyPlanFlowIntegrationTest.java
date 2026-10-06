@@ -336,6 +336,23 @@ class YearlyPlanFlowIntegrationTest {
     }
 
     @Test
+    void extendingMoreThanOneMonthOnEitherSideIsRejected() throws Exception {
+        MockHttpSession admin = login("admin@roshdeandishe.test", "password");
+        AcademicYearInfo year = year();
+        long yearId = year.id().value();
+
+        // سقف: ۱ شهریور (۳۱ روز پیش از ۱ مهر) تا ۳۱ تیر (۳۱ روز پس از ۳۱ خرداد)؛ یک روز بیشتر رد می‌شود
+        for (String body : new String[]{
+                rangeBody(yearId, year.startDate().minusDays(32), year.endDate()),
+                rangeBody(yearId, year.startDate(), year.endDate().plusDays(32))}) {
+            putRange(admin, body)
+                    .andExpect(status().isBadRequest())
+                    .andExpect(jsonPath("$.type").value(org.hamcrest.Matchers.endsWith("invalid-year-range")));
+        }
+        assertThat(schoolFacade.yearlyPlan(new SchoolId(1L), year.id()).range().custom()).isFalse();
+    }
+
+    @Test
     void narrowingOrBrokenRangesAreRejectedWithInvalidYearRange() throws Exception {
         MockHttpSession admin = login("admin@roshdeandishe.test", "password");
         AcademicYearInfo year = year();

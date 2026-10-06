@@ -82,7 +82,8 @@ test('effective range falls back to the year defaults and the custom tag follows
 
 test('the range modal help states that the default is the minimum', () => {
     assert.equal(YearlyPlanLogic.defaultRangeHelp(YEAR),
-        'بازه‌ی پیش‌فرض (از ۱ مهر ۱۴۰۵ تا ۳۱ خرداد ۱۴۰۶) حداقل بازه است؛ فقط می‌توانید آن را گسترش دهید.');
+        'بازه‌ی پیش‌فرض (از ۱ مهر ۱۴۰۵ تا ۳۱ خرداد ۱۴۰۶) حداقل بازه است؛ فقط می‌توانید آن را گسترش دهید، '
+        + 'حداکثر یک ماه از هر طرف (از ۱ شهریور ۱۴۰۵ تا ۳۱ تیر ۱۴۰۶).');
 });
 
 test('range validation is extend-only and returns message keys', () => {
@@ -91,11 +92,11 @@ test('range validation is extend-only and returns message keys', () => {
     // دقیقاً پیش‌فرض و گسترش، هر دو درست‌اند؛ ارقام فارسی هم پذیرفته می‌شود
     assert.deepEqual(v('۱۴۰۵/۰۷/۰۱', '1406/03/31'),
         { startDate: YEAR.startDate, endDate: YEAR.endDate, startError: '', endError: '' });
-    const wide = v('1405/05/20', '۱۴۰۶/۰۵/۳۱');
+    const wide = v('1405/06/15', '۱۴۰۶/۰۴/۲۰');
     assert.equal(wide.startError, '');
     assert.equal(wide.endError, '');
-    assert.equal(wide.startDate, iso('1405/05/20'));
-    assert.equal(wide.endDate, iso('1406/05/31'));
+    assert.equal(wide.startDate, iso('1405/06/15'));
+    assert.equal(wide.endDate, iso('1406/04/20'));
 
     assert.equal(v('', '1406/03/31').startError, 'required');
     assert.equal(v('1405/07/01', '  ').endError, 'required');
@@ -124,4 +125,25 @@ test('range check is inclusive and the example date always lies inside the year'
 
     assert.equal(YearlyPlanLogic.exampleDate(YEAR, iso('1405/09/10')), '۱۴۰۵/۰۹/۱۰');
     assert.equal(YearlyPlanLogic.exampleDate(YEAR, iso('1407/01/01')), '۱۴۰۵/۰۷/۰۱');
+});
+
+test('the extension is capped at one Jalali month on each side', () => {
+    const limits = YearlyPlanLogic.rangeLimits(YEAR);
+    assert.equal(limits.earliestStart, iso('1405/06/01'));
+    assert.equal(limits.latestEnd, iso('1406/04/31'));
+
+    const v = (a, b) => YearlyPlanLogic.validateRange(a, b, YEAR);
+    // دقیقاً روی سقف مجاز است
+    const atCap = v('1405/06/01', '1406/04/31');
+    assert.equal(atCap.startError, '');
+    assert.equal(atCap.endError, '');
+    // یک روز بیرونِ سقف
+    assert.equal(v('1405/05/31', '1406/03/31').startError, 'startTooEarly');
+    assert.equal(v('1405/07/01', '1406/05/01').endError, 'endTooLate');
+    // گسترشِ کوچک‌تر از سقف مجاز است و «کوچک‌کردن» همچنان پیامِ خودش را دارد
+    assert.equal(v('1405/06/15', '1406/04/10').startError, '');
+    assert.equal(v('1405/07/02', '1406/03/31').startError, 'startAfterDefault');
+
+    assert.ok(YearlyPlanLogic.rangeMessage('startTooEarly', YEAR).includes('۱ شهریور ۱۴۰۵'));
+    assert.ok(YearlyPlanLogic.rangeMessage('endTooLate', YEAR).includes('۳۱ تیر ۱۴۰۶'));
 });
