@@ -22,6 +22,9 @@ Status: proposed 2026-10-06; not implemented. Product-owner answers recorded the
 6. **Platform-wide holidays**: a platform administrator adds holidays per academic year; they appear in every school's plan and **close the day** for attendance in every school (`isClosedDay` true; schools cannot override).
 7. **A minimal platform-admin path is built now** (not deferred, not seed-only).
 
+8. **Provisioning** (answers question 1): `PLATFORM_ADMIN_EMAILS` (environment variable) lists emails; at startup a listed email matching an existing, activated user is added to `iam.platform_admins`. Unknown emails are ignored; no register/invite/seed path creates one.
+9. **Delivery** (answers question 3): Phases A and B ship first; Phase C ships as a separate PR reviewed for security on its own. Until C lands, platform holidays can be loaded only by the facade/tests.
+
 ## Phases
 
 ### Phase A - per-school yearly plan
