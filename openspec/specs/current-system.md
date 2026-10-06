@@ -116,7 +116,7 @@ The current web UI is server-rendered JTE with page-level Alpine.js components a
 
 Built page areas include:
 
-- public landing (with login, account-registration, and school-registration entry paths that preserve the approved post-authentication destination), login, registration, account activation, school entry, and exam-take; direct anonymous `/schools/new` entry preserves the same approved destination;
+- public landing (with login, account-registration, and school-registration entry paths that preserve the approved post-authentication destination), login, registration, account activation, school entry, and exam-take; direct anonymous `/schools/new` entry preserves the same approved destination. The landing page carries a four-slide product slider, a questions section and a multi-column footer; the slider is the one carousel in the app and is confined to this page (`DESIGN.md` §5), rendering all four slides stacked and readable when JavaScript does not run;
 - dashboard (role-gated «دسترسی سریع» shortcut cards, «فرزندان من» for parents, memberships, school-entry box for admins, phone box) and shared navbar with a grouped sidebar;
 - people, roles, classes, students, and grades;
 - curriculum, study plans, and exams;
