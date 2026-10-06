@@ -47,13 +47,14 @@ Status: proposed 2026-10-06; **phases A and B implemented 2026-10-06** (year dat
 
 ### Phase C - minimal platform-admin path (security-sensitive)
 
-Proposed shape, pending the questions below:
+Status: being implemented on its own branch/PR. Design:
 
-- Model: a separate `iam.platform_admins (user_id primary key references iam.users)` table, **not** a school membership, so school-scoped permission derivation can never be satisfied by a platform grant. The reserved `PLATFORM_ADMIN` role code and the membership guard stay as they are.
-- Permission path: `PermissionDecisionService` gains a `PlatformContext` branch that grants only a fixed platform permission set (initially `PLATFORM_HOLIDAY_MANAGE`) to users in `platform_admins`; it never applies to `SchoolContext`.
-- Provisioning: out of band only, never via register, invite or the demo seed. See question 1.
-- API: `/api/platform/holidays` (list by year, add, remove), `@RequiresPermission("PLATFORM_HOLIDAY_MANAGE")`; `/api/platform/**` is excluded from the `X-School-ID` requirement and must reject a request that carries school context in a way that could confuse the aspect.
-- Page `/platform/holidays` for a user with no school membership: needs a navbar/nav surface for platform users (today every link is keyed on school roles; a zero-membership user renders only `/dashboard` and `/schools/new`).
+- **Model**: `iam.platform_admins (user_id primary key references iam.users, created_at)` (migration `V17`). It is **not** a school membership and **not** the reserved `PLATFORM_ADMIN` role: that role code, its `RoleNotFound` guard at the membership boundary and its absence from every role listing stay exactly as they are, so no legacy `PLATFORM_ADMIN` membership row can ever grant anything. (Whether such rows exist in a deployed DB is therefore irrelevant to this path.)
+- **Provisioning (out of band only)**: `roshdeandishe.platform-admin.emails` (environment variable `PLATFORM_ADMIN_EMAILS`, comma separated, default empty). A startup runner makes `platform_admins` equal to the listed emails that match an **existing, ACTIVE, activated** user (non-null password hash). It never creates a user, never runs from register/invite/OTP/seed code and never logs an email. The variable is the single source of truth: an email removed from it (or a user later suspended) loses the row at the next start. An unset or empty variable therefore means no platform admins. **Operator procedure and risk** (recorded in `DEPLOYMENT.md`): self-registration is open and unverified, so the operator must register their own account first and only then list its email; listing an email nobody has registered yet lets whoever registers it first become platform admin.
+- **Permission path**: `PermissionDecisionService` gains a `PlatformContext` branch that grants a fixed platform permission set, initially only `PLATFORM_HOLIDAY_MANAGE`, to a user in `platform_admins`, and denies everything else. The branch never applies to `SchoolContext`: platform-admin status never satisfies a school-scoped permission, and no school role ever holds a platform permission (the `PLATFORM_HOLIDAY_MANAGE` catalog row is granted to no role). `IamFacade.isPlatformAdmin(userId)` exposes the state for the navbar.
+- **Tenant handling**: `/api/platform/**` and `/platform/**` are outside the `X-School-ID` requirement and a school header sent to them never turns the request into a school context for a school permission.
+- **API** (in `school`, `@RequiresPermission("PLATFORM_HOLIDAY_MANAGE")`): `GET /api/platform/academic-years` (all years with default dates), `GET /api/platform/academic-years/{yearId}/holidays`, `POST /api/platform/academic-years/{yearId}/holidays` `{day, title}`, `DELETE /api/platform/holidays/{id}`; the facade methods from phase B do the validation (day within the year's default range).
+- **Page** `/platform/holidays` («تعطیلی‌های سراسری»): year selector, list, add/confirm-delete modals, same conventions as `/yearly-plan`; reachable by a user with zero school memberships through a platform link the navbar shows only when `isPlatformAdmin` is true (display only; the API is the enforcement).
 
 ## Acceptance criteria
 
@@ -75,9 +76,9 @@ Proposed shape, pending the questions below:
 
 ## Unresolved questions
 
-1. How is the first platform admin provisioned in production (for example an environment variable listing emails, applied at startup to an existing activated user; or a one-time CLI/runner)? Self-registration is open and unverified, so a bootstrap rule that trusts an email string alone is a privilege-escalation risk.
-2. Do existing databases contain `PLATFORM_ADMIN` membership rows? Not verified; a check or cleanup may be needed.
-3. Should Phase C ship in the same PR as A and B, or as a separate PR reviewed for security on its own?
+1. ~~How is the first platform admin provisioned in production~~ **Resolved:** env var of emails, applied at startup with the safeguards in Phase C; originally: how is the first platform admin provisioned in production (for example an environment variable listing emails, applied at startup to an existing activated user; or a one-time CLI/runner)? Self-registration is open and unverified, so a bootstrap rule that trusts an email string alone is a privilege-escalation risk.
+2. ~~Do existing databases contain `PLATFORM_ADMIN` membership rows?~~ **Moot:** the new path does not read memberships or the reserved role. Originally: do existing databases contain `PLATFORM_ADMIN` membership rows? Not verified; a check or cleanup may be needed.
+3. ~~Should Phase C ship in the same PR as A and B~~ **Resolved:** separate PR (branch `claude/platform-admin-holidays`). Originally: should Phase C ship in the same PR as A and B, or as a separate PR reviewed for security on its own?
 4. Should `CALENDAR_MANAGE` stop accepting `EVENT`, so each kind has one owner?
 5. ~~Confirm the summer-window consequence in Phase A.~~ **Resolved 2026-10-06:** the product owner kept 1 Mehr - 31 Khordad although pre-start activities begin on 1 Mordad. The new year is current from 1 Mordad, so its plan can be written then, but an event dated before 1 Mehr is rejected (`400 invalid-calendar-entry`).
 6. National holidays are not pre-loaded; the platform admin enters them.
