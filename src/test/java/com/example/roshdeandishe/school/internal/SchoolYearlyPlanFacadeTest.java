@@ -247,6 +247,23 @@ class SchoolYearlyPlanFacadeTest {
     }
 
     @Test
+    void extensionIsCappedAtOneJalaliMonthOnEachSide() {
+        // پیش‌فرض ۱ مهر ۱۴۰۵ تا ۳۱ خرداد ۱۴۰۶ ⇒ سقف: ۱ شهریور ۱۴۰۵ تا ۳۱ تیر ۱۴۰۶
+        LocalDate earliest = SolarCalendar.toGregorian(1405, 6, 1);
+        LocalDate latest = SolarCalendar.toGregorian(1406, 4, 31);
+
+        assertThat(facade.setYearlyPlanRange(SCHOOL, YEAR, earliest, latest))
+                .isEqualTo(new YearlyPlanRange(earliest, latest, true));
+
+        assertInvalidRange(() -> facade.setYearlyPlanRange(SCHOOL, YEAR, earliest.minusDays(1), last));
+        assertInvalidRange(() -> facade.setYearlyPlanRange(SCHOOL, YEAR, first, latest.plusDays(1)));
+        assertThatThrownBy(() -> facade.setYearlyPlanRange(SCHOOL, YEAR, earliest.minusDays(1), latest.plusDays(1)))
+                .hasMessageContaining("یک ماه");
+        // فقط یک بار ذخیره شد؛ درخواست‌های بالاتر از سقف چیزی ننوشتند
+        verify(ranges, times(1)).save(any());
+    }
+
+    @Test
     void narrowingEitherSideIsRejectedWithTheMinimumInTheMessage() {
         assertInvalidRange(() -> facade.setYearlyPlanRange(SCHOOL, YEAR, first.plusDays(1), last));
         assertInvalidRange(() -> facade.setYearlyPlanRange(SCHOOL, YEAR, first, last.minusDays(1)));

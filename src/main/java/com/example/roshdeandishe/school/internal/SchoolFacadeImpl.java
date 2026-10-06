@@ -232,6 +232,16 @@ class SchoolFacadeImpl implements SchoolFacade {
                             + "فقط می‌توان آن را گسترش داد (شروع در یا پیش از شروعِ پیش‌فرض و پایان در یا پس از "
                             + "پایانِ پیش‌فرض)."));
         }
+        // سقفِ گسترش: حداکثر یک ماهِ جلالی از هر طرف، یعنی از ۱ شهریور تا ۳۱ تیر (بازه‌ی پیش‌فرض ۱ مهر تا ۳۱ خرداد)
+        LocalDate earliestStart = SolarCalendar.toGregorian(year.startYear(), 6, 1);
+        LocalDate latestEnd = SolarCalendar.toGregorian(year.startYear() + 1, 4, 31);
+        if (startDate.isBefore(earliestStart) || endDate.isAfter(latestEnd)) {
+            throw new SchoolException(new SchoolError.InvalidYearRange(
+                    "بازه را فقط تا یک ماه از هر طرف می‌توان گسترش داد: شروع نه پیش از "
+                            + SolarCalendar.format(earliestStart) + " و پایان نه پس از "
+                            + SolarCalendar.format(latestEnd) + " (بازه‌ی پیش‌فرض از "
+                            + SolarCalendar.format(year.startDate()) + " تا " + SolarCalendar.format(year.endDate()) + ")."));
+        }
         Optional<SchoolYearRangeEntity> existing = schoolYearRangeRepository
                 .findBySchoolIdAndAcademicYearId(schoolId.value(), year.id().value());
         if (startDate.equals(year.startDate()) && endDate.equals(year.endDate())) {
