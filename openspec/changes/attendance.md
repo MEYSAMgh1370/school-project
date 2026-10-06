@@ -30,7 +30,7 @@ Built so far (details in `specs/current-system.md`): the phase 1-3 backend (excu
 parent notification and the self-service endpoint included); every page and the dashboard box
 are still to do. Phase 3 readings where this document is silent: an `APPROVED` excuse wins over
 an incoming `excused=false` when a roll is re-saved; a `PENDING` excuse is deleted when its
-absence is removed; the notification date is ISO (no public server-side Jalali formatter); the
+absence is removed; the notification date is Jalali with a month name (`SchoolFacade.formatSolarDate`); the
 `/api/me` endpoints check the `ATTENDANCE` entitlement in the controller. Two readings the backend took where
 this document is silent: a roll for a class of an earlier academic year is refused
 (`409 class-not-in-current-year`, from rule 2), and the report lists only classes with at least

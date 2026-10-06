@@ -13,7 +13,6 @@ import org.slf4j.LoggerFactory;
 import org.springframework.modulith.events.ApplicationModuleListener;
 import org.springframework.stereotype.Component;
 
-import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
 
@@ -24,8 +23,7 @@ import java.util.Optional;
  * شکستِ ارسال هرگز ذخیره را خراب یا rollback نمی‌کند؛ هر خطایی همین‌جا گرفته و لاگ می‌شود تا یک ولیِ
  * خراب مانع بقیه نشود. {@code TenantContext} مثل بقیه‌ی listenerها در ابتدا ست و در finally پاک می‌شود.
  * <p>
- * تاریخ در پیام ISO (yyyy-MM-dd) است: روی سرور فرمت‌کننده‌ی شمسیِ عمومی‌ای نیست ({@code SolarCalendar}
- * داخلیِ school است و تقویمِ شمسی سمتِ کلاینت است).
+ * تاریخ در پیام شمسی است (SchoolFacade.formatSolarDate، مثل «۱۴ مهر ۱۴۰۵»).
  */
 @Component
 class AbsenceRecordedEventListener {
@@ -65,7 +63,7 @@ class AbsenceRecordedEventListener {
                     .map(IamFacade.UserProfile::fullName).orElse(null);
             String schoolName = schoolFacade.findSchool(new SchoolId(event.schoolId()))
                     .map(SchoolFacade.SchoolInfo::name).orElse(null);
-            String text = buildMessage(studentName, schoolName, event.day());
+            String text = buildMessage(studentName, schoolName, schoolFacade.formatSolarDate(event.day()));
 
             for (Long parentUserId : parents) {
                 try {
@@ -81,13 +79,13 @@ class AbsenceRecordedEventListener {
         }
     }
 
-    /** متنِ پیام: نامِ دانش‌آموز، نامِ مدرسه و تاریخِ ISO؛ نامِ ناشناخته به «فرزند شما» برمی‌گردد. */
-    static String buildMessage(String studentName, String schoolName, LocalDate day) {
+    /** متنِ پیام: نامِ دانش‌آموز، نامِ مدرسه و تاریخِ شمسی (مثل «۱۴ مهر ۱۴۰۵»)؛ نامِ ناشناخته به «فرزند شما» برمی‌گردد. */
+    static String buildMessage(String studentName, String schoolName, String solarDate) {
         String who = studentName == null || studentName.isBlank() ? "فرزند شما" : studentName.strip();
         StringBuilder text = new StringBuilder("غیبت: ").append(who);
         if (schoolName != null && !schoolName.isBlank()) {
             text.append(" در مدرسه‌ی ").append(schoolName.strip());
         }
-        return text.append(" در تاریخ ").append(day).append(" غایب ثبت شد.").toString();
+        return text.append(" در تاریخ ").append(solarDate).append(" غایب ثبت شد.").toString();
     }
 }

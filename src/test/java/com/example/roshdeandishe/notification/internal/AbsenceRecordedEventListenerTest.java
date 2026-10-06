@@ -44,6 +44,7 @@ class AbsenceRecordedEventListenerTest {
     private static final Long STUDENT = 11L;
     private static final Long STUDENT_USER = 1011L;
     private static final LocalDate DAY = LocalDate.of(2024, 10, 7);
+    private static final String SOLAR = "۱۶ مهر ۱۴۰۳";
 
     private AcademicFacade academic;
     private IamFacade iam;
@@ -58,6 +59,7 @@ class AbsenceRecordedEventListenerTest {
                 new StudentInfo(new StudentId(STUDENT), STUDENT_USER, SCHOOL, new ClassId(7L))));
         when(iam.findUser(new UserId(STUDENT_USER))).thenReturn(Optional.of(
                 new UserProfile(new UserId(STUDENT_USER), "s@x.test", "علی رضایی", null)));
+        when(school.formatSolarDate(DAY)).thenReturn(SOLAR);
         when(school.findSchool(new SchoolId(SCHOOL))).thenReturn(Optional.of(new SchoolInfo(new SchoolId(SCHOOL),
                 "دبستان رشد", SchoolStatus.ACTIVE, "Asia/Tehran", "fa-IR", SchoolLevel.ELEMENTARY, null,
                 WeekStart.SATURDAY)));
@@ -68,12 +70,12 @@ class AbsenceRecordedEventListenerTest {
     }
 
     @Test
-    void theMessageNamesTheStudentTheSchoolAndTheIsoDate() {
-        assertThat(AbsenceRecordedEventListener.buildMessage("علی رضایی", "دبستان رشد", DAY))
-                .isEqualTo("غیبت: علی رضایی در مدرسه‌ی دبستان رشد در تاریخ 2024-10-07 غایب ثبت شد.");
+    void theMessageNamesTheStudentTheSchoolAndTheSolarDate() {
+        assertThat(AbsenceRecordedEventListener.buildMessage("علی رضایی", "دبستان رشد", SOLAR))
+                .isEqualTo("غیبت: علی رضایی در مدرسه‌ی دبستان رشد در تاریخ ۱۶ مهر ۱۴۰۳ غایب ثبت شد.");
         // نامِ ناشناخته و مدرسه‌ی بی‌نام: متن همچنان معنا دارد
-        assertThat(AbsenceRecordedEventListener.buildMessage(null, " ", DAY))
-                .isEqualTo("غیبت: فرزند شما در تاریخ 2024-10-07 غایب ثبت شد.");
+        assertThat(AbsenceRecordedEventListener.buildMessage(null, " ", SOLAR))
+                .isEqualTo("غیبت: فرزند شما در تاریخ ۱۶ مهر ۱۴۰۳ غایب ثبت شد.");
     }
 
     @Test
@@ -93,7 +95,7 @@ class AbsenceRecordedEventListenerTest {
         new AbsenceRecordedEventListener(academic, iam, school, notifications).onAbsenceRecorded(event());
 
         assertThat(delivered).containsExactly("500:" + AbsenceRecordedEventListener
-                .buildMessage("علی رضایی", "دبستان رشد", DAY));
+                .buildMessage("علی رضایی", "دبستان رشد", SOLAR));
         assertThat(TenantContext.isSet()).isFalse();
     }
 

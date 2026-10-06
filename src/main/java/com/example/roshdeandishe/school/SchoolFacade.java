@@ -72,6 +72,12 @@ public interface SchoolFacade {
     Optional<AcademicYearInfo> findCurrentAcademicYear(SchoolId schoolId);
 
     /**
+     * تاریخِ شمسی برای متنِ پیام‌های سرور، مثل «۱۴ مهر ۱۴۰۵» (رقم فارسی). صفحه‌ها تاریخ را سمت کلاینت
+     * با jalali.js نشان می‌دهند؛ این فقط برای پیام‌هایی است که روی سرور ساخته می‌شود (مثلاً اطلاع‌رسانی غیبت).
+     */
+    String formatSolarDate(java.time.LocalDate date);
+
+    /**
      * انتخاب سال تحصیلی جاریِ مدرسه از فهرست سراسری. فقط همین یک مقدار عوض
      * می‌شود - هیچ داده‌ای حذف یا تغییر نمی‌کند، و شروع/پایانِ سال همین انتخابِ
      * مدیرِ مدرسه است (نه تاریخِ ثابت). SchoolError.AcademicYearNotFound اگر سال

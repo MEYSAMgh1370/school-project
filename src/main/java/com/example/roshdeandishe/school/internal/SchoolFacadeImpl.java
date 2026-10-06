@@ -234,4 +234,9 @@ class SchoolFacadeImpl implements SchoolFacade {
                 WeekStart.fromCode(entity.getWeekStartDay())
         );
     }
+
+    @Override
+    public String formatSolarDate(java.time.LocalDate date) {
+        return SolarCalendar.format(date);
+    }
 }
