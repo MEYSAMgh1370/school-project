@@ -27,6 +27,7 @@ import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -43,6 +44,7 @@ class AttendanceFacadeImpl implements AttendanceFacade {
 
     private final RollRepository rollRepository;
     private final MarkRepository markRepository;
+    private final RollStudentRepository rollStudentRepository;
     private final ExcuseRepository excuseRepository;
     private final AcademicFacade academicFacade;
     private final TimetableFacade timetableFacade;
@@ -53,6 +55,7 @@ class AttendanceFacadeImpl implements AttendanceFacade {
     AttendanceFacadeImpl(
             RollRepository rollRepository,
             MarkRepository markRepository,
+            RollStudentRepository rollStudentRepository,
             ExcuseRepository excuseRepository,
             AcademicFacade academicFacade,
             TimetableFacade timetableFacade,
@@ -62,6 +65,7 @@ class AttendanceFacadeImpl implements AttendanceFacade {
     ) {
         this.rollRepository = rollRepository;
         this.markRepository = markRepository;
+        this.rollStudentRepository = rollStudentRepository;
         this.excuseRepository = excuseRepository;
         this.academicFacade = academicFacade;
         this.timetableFacade = timetableFacade;
@@ -85,11 +89,16 @@ class AttendanceFacadeImpl implements AttendanceFacade {
         }
         List<MarkInput> clean = validateMarks(marks);
 
+        // قفل پیش از هر خواندنی که در «غیبتِ تازه» یا فهرستِ ذخیره‌شده اثر دارد: دو ذخیره‌ی هم‌زمانِ همین
+        // (کلاس، روز) پشت سر هم می‌شوند، پس دومی مُهرهای اولی را به‌عنوان «قبلی» می‌بیند و رویدادِ تکراری نمی‌رود.
+        rollRepository.lockClassDay(LOCK_NAMESPACE, Objects.hash(classId, day));
+
         // عضوِ کلاس: فهرستِ کلاس، یا کسی که همین حالا هم در همین (کلاس، روز) مُهر دارد (ذخیره‌ی دوباره‌ی
         // یک روزِ دارای دانش‌آموزِ ارتقایافته/ترک‌کرده idempotent می‌ماند)
-        Set<Long> allowed = new HashSet<>();
+        Set<Long> liveRoster = new LinkedHashSet<>();
         academicFacade.listStudentsByClass(schoolId, List.of(classId)).getOrDefault(classId, List.of())
-                .forEach(s -> allowed.add(s.id().value()));
+                .forEach(s -> liveRoster.add(s.id().value()));
+        Set<Long> allowed = new HashSet<>(liveRoster);
         Set<Long> previouslyAbsent = new HashSet<>();
         markRepository.findByClassIdAndDay(classId, day).forEach(m -> {
             allowed.add(m.getStudentId());
@@ -103,8 +112,14 @@ class AttendanceFacadeImpl implements AttendanceFacade {
             }
         }
 
-        rollRepository.lockClassDay(LOCK_NAMESPACE, Objects.hash(classId, day));
         markRepository.deleteByClassAndDay(classId, day);
+        // فهرستِ همین لحظه جایگزینِ فهرستِ قبلیِ roll می‌شود؛ مُهردارِ این ذخیره همیشه در آن هست
+        Set<Long> snapshot = new LinkedHashSet<>(liveRoster);
+        clean.forEach(m -> snapshot.add(m.studentId()));
+        rollStudentRepository.deleteByClassAndDay(classId, day);
+        rollStudentRepository.saveAll(snapshot.stream()
+                .map(studentId -> new RollStudentEntity(schoolId, classId, day, studentId))
+                .toList());
         Instant now = Instant.now();
         RollEntity roll = rollRepository.findByClassIdAndDay(classId, day)
                 .orElseGet(() -> new RollEntity(schoolId, classId, day, actorUserId, now));
@@ -190,8 +205,14 @@ class AttendanceFacadeImpl implements AttendanceFacade {
         List<MarkEntity> marks = markRepository.findByClassIdAndDay(classId, day);
         Map<Long, MarkEntity> markByStudent = marks.stream()
                 .collect(Collectors.toMap(MarkEntity::getStudentId, Function.identity(), (a, b) -> a));
-        List<StudentInfo> students = withMarkedStudents(schoolId,
-                academicFacade.listStudentsByClass(schoolId, List.of(classId)).getOrDefault(classId, List.of()), marks);
+        // rollِ گرفته‌شده: فهرستِ ذخیره‌شده‌ی همان لحظه؛ روزِ ثبت‌نشده (یا rollِ پیش از V14): فهرستِ زنده‌ی کلاس
+        Set<Long> snapshot = taken
+                ? rollStudentRepository.findByClassIdAndDay(classId, day).stream()
+                        .map(RollStudentEntity::getStudentId).collect(Collectors.toSet())
+                : Set.of();
+        List<StudentInfo> students = membersOf(schoolId,
+                academicFacade.listStudentsByClass(schoolId, List.of(classId)).getOrDefault(classId, List.of()),
+                snapshot, marks);
         Map<Long, String> names = namesByUser(schoolId);
 
         List<StudentMark> rows = new ArrayList<>();
@@ -289,14 +310,20 @@ class AttendanceFacadeImpl implements AttendanceFacade {
         if (rolls.isEmpty()) {
             return List.of();
         }
-        Map<Long, Long> rollDaysByClass = rolls.stream()
-                .collect(Collectors.groupingBy(RollEntity::getClassId, Collectors.counting()));
+        Map<Long, List<RollEntity>> rollsByClass = rolls.stream()
+                .collect(Collectors.groupingBy(RollEntity::getClassId));
         Map<Long, List<MarkEntity>> marksByClass = markRepository.findBySchoolIdAndDayBetween(schoolId, from, to)
                 .stream()
-                .filter(m -> rollDaysByClass.containsKey(m.getClassId()))
+                .filter(m -> rollsByClass.containsKey(m.getClassId()))
                 .collect(Collectors.groupingBy(MarkEntity::getClassId));
+        // فهرستِ ذخیره‌شده‌ی هر roll؛ rollِ بدونِ ردیف (پیش از V14) با فهرستِ زنده‌ی کلاس حساب می‌شود
+        Map<Long, Map<LocalDate, Set<Long>>> snapshots = rollStudentRepository
+                .findBySchoolIdAndDayBetween(schoolId, from, to).stream()
+                .collect(Collectors.groupingBy(RollStudentEntity::getClassId,
+                        Collectors.groupingBy(RollStudentEntity::getDay,
+                                Collectors.mapping(RollStudentEntity::getStudentId, Collectors.toSet()))));
         Map<Long, ClassInfo> classes = new LinkedHashMap<>();
-        for (Long id : rollDaysByClass.keySet()) {
+        for (Long id : rollsByClass.keySet()) {
             academicFacade.findClass(schoolId, id).ifPresent(c -> classes.put(id, c));
         }
         Map<Long, List<StudentInfo>> rosters = academicFacade.listStudentsByClass(schoolId, classes.keySet());
@@ -306,7 +333,26 @@ class AttendanceFacadeImpl implements AttendanceFacade {
         for (ClassInfo cls : classes.values()) {
             Long id = cls.id().value();
             List<MarkEntity> classMarks = marksByClass.getOrDefault(id, List.of());
-            for (StudentInfo student : withMarkedStudents(schoolId, rosters.getOrDefault(id, List.of()), classMarks)) {
+            List<StudentInfo> liveRoster = rosters.getOrDefault(id, List.of());
+            Set<Long> liveIds = liveRoster.stream().map(s -> s.id().value()).collect(Collectors.toSet());
+            Map<LocalDate, Set<Long>> snapshotByDay = snapshots.getOrDefault(id, Map.of());
+            Map<LocalDate, Set<Long>> markedByDay = classMarks.stream()
+                    .collect(Collectors.groupingBy(MarkEntity::getDay,
+                            Collectors.mapping(MarkEntity::getStudentId, Collectors.toSet())));
+            List<Set<Long>> rollRosters = new ArrayList<>();
+            for (RollEntity roll : rollsByClass.get(id)) {
+                Set<Long> members = new HashSet<>(snapshotByDay.getOrDefault(roll.getDay(), Set.of()));
+                if (members.isEmpty()) {
+                    members.addAll(liveIds);
+                }
+                members.addAll(markedByDay.getOrDefault(roll.getDay(), Set.of()));
+                rollRosters.add(members);
+            }
+            Map<Long, Integer> baseDays = AttendanceMath.baseDaysByStudent(rollRosters);
+            if (baseDays.isEmpty()) {
+                continue;
+            }
+            for (StudentInfo student : membersOf(schoolId, liveRoster, baseDays.keySet(), List.of())) {
                 String name = names.get(student.userId());
                 if (!AttendanceMath.nameMatches(name, nameFilter)) {
                     continue;
@@ -323,7 +369,7 @@ class AttendanceFacadeImpl implements AttendanceFacade {
                     }
                 }
                 rows.add(AttendanceMath.reportRow(student.id().value(), name, id, cls.name(),
-                        rollDaysByClass.get(id).intValue(), absent, late));
+                        baseDays.get(student.id().value()), absent, late));
             }
         }
         rows.sort(Comparator.comparing(ReportRow::className, Comparator.nullsLast(Comparator.<String>naturalOrder()))
@@ -584,15 +630,49 @@ class AttendanceFacadeImpl implements AttendanceFacade {
         }
         Map<Long, List<MarkEntity>> marksByClass = markRepository.findBySchoolIdAndDay(schoolId, day).stream()
                 .collect(Collectors.groupingBy(MarkEntity::getClassId));
+        Map<Long, Set<Long>> snapshots = rollStudentRepository.findBySchoolIdAndDay(schoolId, day).stream()
+                .collect(Collectors.groupingBy(RollStudentEntity::getClassId,
+                        Collectors.mapping(RollStudentEntity::getStudentId, Collectors.toSet())));
         Map<Long, List<StudentInfo>> rosters = academicFacade.listStudentsByClass(schoolId, classes.keySet());
         List<DayClass> result = new ArrayList<>();
         for (ClassInfo cls : classes.values()) {
             Long id = cls.id().value();
             List<MarkEntity> marks = marksByClass.getOrDefault(id, List.of());
-            result.add(new DayClass(cls, takenIds.contains(id),
-                    withMarkedStudents(schoolId, rosters.getOrDefault(id, List.of()), marks), marks));
+            boolean taken = takenIds.contains(id);
+            result.add(new DayClass(cls, taken,
+                    membersOf(schoolId, rosters.getOrDefault(id, List.of()),
+                            taken ? snapshots.getOrDefault(id, Set.of()) : Set.of(), marks),
+                    marks));
         }
         return result;
+    }
+
+    /**
+     * اعضای یک (کلاس، روز): اگر rollِ آن روز فهرستِ ذخیره‌شده (snapshot) دارد همان (به‌علاوه‌ی مُهرداران)، وگرنه
+     * (روزِ ثبت‌نشده یا rollِ پیش از V14) فهرستِ زنده‌ی کلاس به‌علاوه‌ی مُهرداران. نامِ دانش‌آموزی که دیگر در
+     * کلاس نیست از {@code findStudentInfo} می‌آید.
+     */
+    private List<StudentInfo> membersOf(Long schoolId, List<StudentInfo> liveRoster, Set<Long> snapshot,
+                                        List<MarkEntity> marks) {
+        if (snapshot.isEmpty()) {
+            return withMarkedStudents(schoolId, liveRoster, marks);
+        }
+        Map<Long, StudentInfo> live = new HashMap<>();
+        liveRoster.forEach(s -> live.put(s.id().value(), s));
+        Set<Long> ids = new LinkedHashSet<>(snapshot);
+        marks.forEach(m -> ids.add(m.getStudentId()));
+        List<StudentInfo> members = new ArrayList<>();
+        for (Long studentId : ids) {
+            StudentInfo student = live.get(studentId);
+            if (student == null) {
+                student = academicFacade.findStudentInfo(studentId)
+                        .filter(s -> schoolId.equals(s.schoolId())).orElse(null);
+            }
+            if (student != null) {
+                members.add(student);
+            }
+        }
+        return members;
     }
 
     /** فهرستِ کلاس به‌علاوه‌ی دانش‌آموزی که مُهر دارد ولی دیگر در فهرست نیست (تاریخچه می‌ماند). */

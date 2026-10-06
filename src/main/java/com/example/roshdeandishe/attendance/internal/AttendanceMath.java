@@ -4,8 +4,12 @@ import com.example.roshdeandishe.attendance.AttendanceFacade.DaySummary;
 import com.example.roshdeandishe.attendance.AttendanceFacade.ReportRow;
 
 import java.time.LocalDate;
+import java.util.Collection;
+import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 
 /**
  * حساب‌های خالصِ «رقمِ مدیر» و گزارش (attendance.md) بدونِ Spring/پایگاه‌داده، تا مستقیم تست شوند.
@@ -64,6 +68,20 @@ final class AttendanceMath {
                                int absentDays, int lateDays) {
         return new ReportRow(studentId, studentName, classId, className, absentDays, lateDays,
                 Math.max(0, rollDays - absentDays));
+    }
+
+    /**
+     * مبنای گزارش برای یک کلاس: هر عضوِ فهرستِ هر roll یک روز می‌گیرد ({@code studentId ← شمارِ rollهایی که
+     * فهرستشان او را دارد}). دانش‌آموزی که بعد از یک roll ثبت‌نام شده آن roll را نمی‌گیرد.
+     */
+    static Map<Long, Integer> baseDaysByStudent(Collection<? extends Collection<Long>> rollRosters) {
+        Map<Long, Integer> base = new HashMap<>();
+        for (Collection<Long> roster : rollRosters) {
+            for (Long studentId : new HashSet<>(roster)) {
+                base.merge(studentId, 1, Integer::sum);
+            }
+        }
+        return base;
     }
 
     /**

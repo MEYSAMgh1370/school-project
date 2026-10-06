@@ -38,6 +38,9 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.stream.Collectors;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -71,6 +74,7 @@ class AttendanceFacadeTest {
 
     private RollRepository rolls;
     private MarkRepository marks;
+    private RollStudentRepository rollStudents;
     private AcademicFacade academic;
     private TimetableFacade timetable;
     private SchoolFacade school;
@@ -81,11 +85,12 @@ class AttendanceFacadeTest {
     void setUp() {
         rolls = mock(RollRepository.class);
         marks = mock(MarkRepository.class);
+        rollStudents = mock(RollStudentRepository.class);
         academic = mock(AcademicFacade.class);
         timetable = mock(TimetableFacade.class);
         school = mock(SchoolFacade.class);
         iam = mock(IamFacade.class);
-        facade = new AttendanceFacadeImpl(rolls, marks, mock(ExcuseRepository.class), academic, timetable, school, iam,
+        facade = new AttendanceFacadeImpl(rolls, marks, rollStudents, mock(ExcuseRepository.class), academic, timetable, school, iam,
                 mock(org.springframework.context.ApplicationEventPublisher.class));
 
         when(school.findSchool(new SchoolId(SCHOOL))).thenReturn(Optional.of(schoolInfo()));
@@ -444,7 +449,159 @@ class AttendanceFacadeTest {
         assertThat(facade.report(SCHOOL, from, from.plusDays(365), null, null)).isEmpty();
     }
 
+    // ---- فهرستِ ذخیره‌شده‌ی هر roll (snapshot) ----
+
+    @Test
+    void aStudentEnrolledAfterARollIsNotExpectedInThatRollsSummaryOrClassDay() {
+        // فهرستِ زنده‌ی کلاس اکنون ۴ نفر است، ولی roll با ۳ نفر گرفته شده
+        when(academic.listStudentsByClass(eq(SCHOOL), any())).thenReturn(Map.of(CLASS_A, students(CLASS_A, 1, 4)));
+        when(academic.listClasses(SCHOOL)).thenReturn(List.of(classInfo(CLASS_A, "الف", null)));
+        when(rolls.findBySchoolIdAndDay(SCHOOL, MONDAY)).thenReturn(List.of(roll(CLASS_A, MONDAY)));
+        when(rolls.findByClassIdAndDay(CLASS_A, MONDAY)).thenReturn(Optional.of(roll(CLASS_A, MONDAY)));
+        when(marks.findBySchoolIdAndDay(SCHOOL, MONDAY)).thenReturn(List.of());
+        List<RollStudentEntity> snapshot = snap(CLASS_A, MONDAY, 1, 2, 3);
+        when(rollStudents.findBySchoolIdAndDay(SCHOOL, MONDAY)).thenReturn(snapshot);
+        when(rollStudents.findByClassIdAndDay(CLASS_A, MONDAY)).thenReturn(snapshot);
+
+        assertThat(facade.summaryForDay(SCHOOL, MONDAY).expected()).isEqualTo(3);
+        assertThat(byClass(facade.absenteesForDay(SCHOOL, MONDAY), CLASS_A).expected()).isEqualTo(3);
+        assertThat(facade.getClassDay(SCHOOL, CLASS_A, MONDAY).students())
+                .extracting(s -> s.studentId()).containsExactlyInAnyOrder(1L, 2L, 3L);
+    }
+
+    @Test
+    void aClassDayWithoutARollStillUsesTheLiveRoster() {
+        when(academic.listStudentsByClass(eq(SCHOOL), any())).thenReturn(Map.of(CLASS_A, students(CLASS_A, 1, 4)));
+
+        assertThat(facade.getClassDay(SCHOOL, CLASS_A, MONDAY).students()).hasSize(4);
+    }
+
+    @Test
+    void aRollWithoutSnapshotRowsFallsBackToTheLiveRoster() {
+        // rollِ پیش از V14: ردیفی در roll_students ندارد
+        when(academic.listStudentsByClass(eq(SCHOOL), any())).thenReturn(Map.of(CLASS_A, students(CLASS_A, 1, 4)));
+        when(academic.listClasses(SCHOOL)).thenReturn(List.of(classInfo(CLASS_A, "الف", null)));
+        when(rolls.findBySchoolIdAndDay(SCHOOL, MONDAY)).thenReturn(List.of(roll(CLASS_A, MONDAY)));
+        when(rolls.findByClassIdAndDay(CLASS_A, MONDAY)).thenReturn(Optional.of(roll(CLASS_A, MONDAY)));
+        when(marks.findBySchoolIdAndDay(SCHOOL, MONDAY)).thenReturn(List.of());
+
+        assertThat(facade.summaryForDay(SCHOOL, MONDAY).expected()).isEqualTo(4);
+        assertThat(facade.getClassDay(SCHOOL, CLASS_A, MONDAY).students()).hasSize(4);
+    }
+
+    @Test
+    void theReportBaseOfAStudentExcludesRollsTakenBeforeTheyJoinedTheClass() {
+        LocalDate d1 = LocalDate.of(2024, 10, 5);
+        LocalDate d2 = LocalDate.of(2024, 10, 6);
+        when(academic.listStudentsByClass(eq(SCHOOL), any())).thenReturn(Map.of(CLASS_A, students(CLASS_A, 1, 4)));
+        when(rolls.findBySchoolIdAndDayBetween(SCHOOL, d1, d2)).thenReturn(List.of(
+                roll(CLASS_A, d1), roll(CLASS_A, d2)));
+        when(marks.findBySchoolIdAndDayBetween(SCHOOL, d1, d2)).thenReturn(List.of());
+        List<RollStudentEntity> snapshots = new ArrayList<>(snap(CLASS_A, d1, 1, 2, 3));
+        snapshots.addAll(snap(CLASS_A, d2, 1, 2, 3, 4));
+        when(rollStudents.findBySchoolIdAndDayBetween(SCHOOL, d1, d2)).thenReturn(snapshots);
+
+        List<ReportRow> rows = facade.report(SCHOOL, d1, d2, null, null);
+
+        assertThat(rows).hasSize(4);
+        assertThat(rows.stream().filter(r -> r.studentId().equals(1L)).findFirst().orElseThrow().presentDays())
+                .isEqualTo(2);
+        // دانش‌آموزِ ۴ فقط در roll دومِ بعد از ثبت‌نامش حساب می‌شود
+        assertThat(rows.stream().filter(r -> r.studentId().equals(4L)).findFirst().orElseThrow().presentDays())
+                .isEqualTo(1);
+    }
+
+    @Test
+    void aTransferredStudentKeepsTheEarlierUnmarkedDayInTheOldClassAndAppearsUnderBothClasses() {
+        LocalDate d1 = LocalDate.of(2024, 10, 5);
+        LocalDate d2 = LocalDate.of(2024, 10, 6);
+        when(academic.findClass(SCHOOL, CLASS_B)).thenReturn(Optional.of(classInfo(CLASS_B, "ششم", null)));
+        // دانش‌آموزِ ۳ پس از roll روزِ اول به کلاس B منتقل شده است
+        when(academic.listStudentsByClass(eq(SCHOOL), any())).thenReturn(Map.of(
+                CLASS_A, students(CLASS_A, 1, 2),
+                CLASS_B, List.of(studentIn(3, CLASS_B), studentIn(4, CLASS_B))));
+        when(academic.findStudentInfo(3L)).thenReturn(Optional.of(studentIn(3, CLASS_B)));
+        when(rolls.findBySchoolIdAndDayBetween(SCHOOL, d1, d2)).thenReturn(List.of(
+                roll(CLASS_A, d1), roll(CLASS_B, d2)));
+        when(marks.findBySchoolIdAndDayBetween(SCHOOL, d1, d2)).thenReturn(List.of());
+        // rollِ B بدونِ snapshot (پیش از V14) و با فهرستِ زنده حساب می‌شود
+        when(rollStudents.findBySchoolIdAndDayBetween(SCHOOL, d1, d2)).thenReturn(snap(CLASS_A, d1, 1, 2, 3));
+
+        List<ReportRow> rows = facade.report(SCHOOL, d1, d2, null, null);
+
+        ReportRow inOld = rows.stream()
+                .filter(r -> r.studentId().equals(3L) && r.classId().equals(CLASS_A)).findFirst().orElseThrow();
+        ReportRow inNew = rows.stream()
+                .filter(r -> r.studentId().equals(3L) && r.classId().equals(CLASS_B)).findFirst().orElseThrow();
+        assertThat(inOld.presentDays()).isEqualTo(1);
+        assertThat(inOld.studentName()).isEqualTo("رضا علوی");
+        assertThat(inNew.presentDays()).isEqualTo(1);
+        assertThat(rows).hasSize(5);
+    }
+
+    @Test
+    void savingARollReplacesItsSnapshotWithTheLiveRosterPlusEveryMarkedStudent() {
+        // دانش‌آموزِ ۹۹ دیگر در فهرستِ کلاس نیست ولی مُهر دارد
+        MarkEntity old = new MarkEntity(SCHOOL, CLASS_A, MONDAY, 99L, AttendanceStatus.ABSENT, false, null,
+                TEACHER, Instant.EPOCH);
+        when(marks.findByClassIdAndDay(CLASS_A, MONDAY)).thenReturn(List.of(old));
+
+        facade.saveRoll(SCHOOL, CLASS_A, MONDAY, TEACHER,
+                List.of(new MarkInput(99L, AttendanceStatus.ABSENT, false, null)));
+
+        InOrder order = inOrder(rolls, rollStudents);
+        order.verify(rolls).lockClassDay(anyInt(), anyInt());
+        order.verify(rollStudents).deleteByClassAndDay(CLASS_A, MONDAY);
+        @SuppressWarnings("unchecked")
+        ArgumentCaptor<List<RollStudentEntity>> captor = ArgumentCaptor.forClass(List.class);
+        order.verify(rollStudents).saveAll(captor.capture());
+        assertThat(captor.getValue().stream().map(RollStudentEntity::getStudentId).collect(Collectors.toSet()))
+                .isEqualTo(Set.of(1L, 2L, 3L, 99L));
+        assertThat(captor.getValue()).allSatisfy(r -> {
+            assertThat(r.getClassId()).isEqualTo(CLASS_A);
+            assertThat(r.getDay()).isEqualTo(MONDAY);
+            assertThat(r.getSchoolId()).isEqualTo(SCHOOL);
+        });
+    }
+
+    @Test
+    void theLockIsTakenBeforeAnyReadThatFeedsTheDiffOrTheSnapshot() {
+        AtomicBoolean locked = new AtomicBoolean();
+        List<Boolean> lockedAtRead = new ArrayList<>();
+        when(rolls.lockClassDay(anyInt(), anyInt())).thenAnswer(inv -> {
+            locked.set(true);
+            return 1;
+        });
+        when(marks.findByClassIdAndDay(CLASS_A, MONDAY)).thenAnswer(inv -> {
+            lockedAtRead.add(locked.get());
+            return List.of();
+        });
+        when(academic.listStudentsByClass(eq(SCHOOL), any())).thenAnswer(inv -> {
+            lockedAtRead.add(locked.get());
+            return Map.of(CLASS_A, students(CLASS_A, 1, 3));
+        });
+
+        facade.saveRoll(SCHOOL, CLASS_A, MONDAY, TEACHER, List.of());
+
+        assertThat(lockedAtRead).isNotEmpty().containsOnly(true);
+        InOrder order = inOrder(rolls, marks);
+        order.verify(rolls).lockClassDay(anyInt(), anyInt());
+        order.verify(marks).deleteByClassAndDay(CLASS_A, MONDAY);
+    }
+
     // ---- کمکی‌ها ----
+
+    private static List<RollStudentEntity> snap(Long classId, LocalDate day, long... studentIds) {
+        List<RollStudentEntity> list = new ArrayList<>();
+        for (long id : studentIds) {
+            list.add(new RollStudentEntity(SCHOOL, classId, day, id));
+        }
+        return list;
+    }
+
+    private static StudentInfo studentIn(long id, Long classId) {
+        return new StudentInfo(new StudentId(id), 1000 + id, SCHOOL, new ClassId(classId));
+    }
 
     private void stubThreeClassesWithTwoTaken() {
         when(academic.listClasses(SCHOOL)).thenReturn(List.of(

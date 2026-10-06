@@ -7,6 +7,8 @@ import org.junit.jupiter.api.Test;
 
 import java.time.LocalDate;
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -98,6 +100,16 @@ class AttendanceMathTest {
     @Test
     void reportPresentDaysNeverGoNegative() {
         assertThat(AttendanceMath.reportRow(1L, "علی", 7L, "کلاس", 1, 2, 0).presentDays()).isZero();
+    }
+
+    @Test
+    void reportBaseCountsOnlyTheRollsWhoseRosterContainsTheStudent() {
+        // دانش‌آموزِ ۴ بعد از roll اول ثبت‌نام شده؛ ۳ پس از roll دوم رفته است
+        Map<Long, Integer> base = AttendanceMath.baseDaysByStudent(List.of(
+                Set.of(1L, 2L, 3L), Set.of(1L, 2L, 3L, 4L), Set.of(1L, 2L, 4L)));
+
+        assertThat(base).containsEntry(1L, 3).containsEntry(2L, 3).containsEntry(3L, 2).containsEntry(4L, 2);
+        assertThat(AttendanceMath.baseDaysByStudent(List.of())).isEmpty();
     }
 
     @Test

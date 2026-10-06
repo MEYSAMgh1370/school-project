@@ -511,6 +511,43 @@ class AttendanceFlowIntegrationTest {
     }
 
     @Test
+    void aStudentEnrolledAfterTheRollIsNotCountedInThatRollsNumbers() throws Exception {
+        Fixture f = fixture();
+        LocalDate today = today();
+
+        putRoll(f, f.teacher1(), f.classA(), today, marks(mark(f.s1(), "ABSENT", false, null)))
+                .andExpect(status().isOk());
+        assertThat(count("roll_students", f.classA())).isEqualTo(3);
+
+        // دانش‌آموزِ چهارم بعد از ثبتِ roll وارد کلاس می‌شود
+        long late = enroll(f.admin(), f.school(), unique("att.late"), "ثبت‌نامِ دیرهنگام", f.classA());
+
+        // رقم و غایبین: هنوز ۳ نفر انتظار می‌رفت، نه ۴
+        send(f.admin(), f.school(), get(attendance(f) + "/days/" + today + "/summary"), null)
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.expected").value(3))
+                .andExpect(jsonPath("$.absent").value(1));
+        JsonNode absentees = json(send(f.admin(), f.school(), get(attendance(f) + "/days/" + today + "/absentees"), null)
+                .andExpect(status().isOk()));
+        assertThat(byClass(absentees, f.classA()).get("expected").asInt()).isEqualTo(3);
+
+        // بازکردنِ همان روز: فهرستِ لحظه‌ی ثبت؛ گزارش: ردیفی برای دانش‌آموزِ تازه نیست
+        JsonNode classDay = json(getClassDay(f, f.teacher1(), f.classA(), today).andExpect(status().isOk()));
+        assertThat(classDay.get("students")).hasSize(3);
+        JsonNode report = json(send(f.admin(), f.school(), get(attendance(f) + "/report")
+                .param("from", today.toString()).param("to", today.toString())
+                .param("classId", String.valueOf(f.classA())), null).andExpect(status().isOk()));
+        assertThat(report).hasSize(3);
+        for (JsonNode r : report) {
+            assertThat(r.get("studentId").asLong()).isNotEqualTo(late);
+        }
+
+        // ذخیره‌ی دوباره (مثلاً ویرایش) فهرست را به لحظه‌ی ذخیره به‌روز می‌کند
+        putRoll(f, f.teacher1(), f.classA(), today, marks()).andExpect(status().isOk());
+        assertThat(count("roll_students", f.classA())).isEqualTo(4);
+    }
+
+    @Test
     void theReportRangeIsRequiredOrderedAndCapped() throws Exception {
         Fixture f = fixture();
         LocalDate today = today();

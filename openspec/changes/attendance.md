@@ -89,6 +89,17 @@ once; every student of the class is then PRESENT unless marked otherwise.
   `(class_id, day, student_id)`. **Only exceptions are stored**; a student of a
   taken roll with no mark is present. This keeps the table small and makes
   "who was absent" a direct query.
+- `attendance.roll_students` (V14): `school_id`, `class_id`, `day`, `student_id`,
+  primary key `(class_id, day, student_id)`. **The roster is snapshotted per roll**:
+  saving a roll replaces the class-day's rows with the class roster at that moment
+  plus every student marked in that save, so enrolling or moving a student later
+  never changes the `expected`/base of earlier rolls (a transferred student's
+  earlier unmarked days stay with the old class; the report may show one student
+  under two classes). A past-day edit by an admin snapshots the roster as of the
+  save. A roll with no snapshot rows (taken before V14) and a class-day with no roll
+  yet fall back to the live roster. Saving takes the per-class-day advisory lock
+  **before** reading the previous marks, so concurrent saves cannot both publish
+  `AbsenceRecordedEvent` for the same student.
 - Dates are ISO Gregorian on the wire and in the database; display is Jalali with
   Persian digits (DESIGN.md §8). Students and classes are referenced by opaque id,
   not by foreign key across the module boundary.

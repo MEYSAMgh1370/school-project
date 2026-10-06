@@ -79,7 +79,7 @@ class AttendanceExcuseTest {
         iam = mock(IamFacade.class);
         events = mock(ApplicationEventPublisher.class);
         SchoolFacade school = mock(SchoolFacade.class);
-        facade = new AttendanceFacadeImpl(rolls, marks, excuses, academic, mock(TimetableFacade.class), school, iam,
+        facade = new AttendanceFacadeImpl(rolls, marks, mock(RollStudentRepository.class), excuses, academic, mock(TimetableFacade.class), school, iam,
                 events);
 
         when(school.findSchool(new SchoolId(SCHOOL))).thenReturn(Optional.of(new SchoolInfo(new SchoolId(SCHOOL),
