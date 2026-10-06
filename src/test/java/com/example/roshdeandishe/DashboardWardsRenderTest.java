@@ -53,7 +53,7 @@ class DashboardWardsRenderTest {
 
         // مدرسه در خودِ URL است تا «باز کردن در تب جدید»/کلیک میانی هم درست کار کند
         assertThat(html).contains("href=\"/my-grades?student=100&school=5\"",
-                "href=\"/my-invoices?student=100&school=5\"");
+                "href=\"/my-invoices?student=100&school=5\"", "href=\"/my-attendance?school=5\">غیبت‌ها</a>");
         assertThat(html).doesNotContain("rememberSchool");
         // نام فرزند نباید در URL برود
         assertThat(html).doesNotContain("student=آرین").doesNotContain("?name=").doesNotContain("&name=");

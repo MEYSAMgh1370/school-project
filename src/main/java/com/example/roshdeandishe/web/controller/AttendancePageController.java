@@ -27,6 +27,13 @@ public class AttendancePageController {
         return "attendance";
     }
 
+    /** «غیبت‌های من» (دانش‌آموز و والد): داده از {@code attendance.MyAttendanceController} (/api/me، بدون مجوز). */
+    @GetMapping("/my-attendance")
+    public String myAttendancePage(Model model) {
+        model.addAttribute("navbar", navbarModelAssembler.forCurrentUser());
+        return "my-attendance";
+    }
+
     @GetMapping("/attendance/report")
     public String attendanceReportPage(Model model) {
         model.addAttribute("navbar", navbarModelAssembler.forCurrentUser());

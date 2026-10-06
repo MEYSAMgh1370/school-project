@@ -49,6 +49,9 @@ public final class NavCatalog {
                             List.of(ADMIN), List.of(ADMIN)).withPermissions("TIMETABLE_MANAGE"),
                     new Link("/my-timetable", "برنامه‌ی کلاسی من", "برنامه‌ی هفتگیِ شما",
                             List.of(STUDENT, PARENT, TEACHER), List.of(STUDENT, PARENT, TEACHER)),
+                    // خودسرویسِ حضور و غیاب: دانش‌آموز غیبت/تأخیرِ خودش را می‌بیند و والد برای فرزندش عذر می‌فرستد
+                    new Link("/my-attendance", "غیبت‌های من", "غیبت و تأخیرِ شما یا فرزندانتان و ارسال عذر",
+                            List.of(STUDENT, PARENT), List.of(STUDENT, PARENT)),
                     // ثبت: «یکی از دو مجوز» (معلم ATTENDANCE_RECORD، مدیر ATTENDANCE_RECORD_ANY)
                     new Link("/attendance", "حضور و غیاب", "ثبت حضور و غیاب کلاس‌ها",
                             List.of(ADMIN, TEACHER), List.of(ADMIN, TEACHER))

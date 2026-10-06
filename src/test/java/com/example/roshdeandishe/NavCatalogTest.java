@@ -134,6 +134,17 @@ class NavCatalogTest {
     }
 
     @Test
+    void myAttendanceIsARoleOnlyEducationLinkWithAShortcutForStudentsAndParents() {
+        Link mine = linkOf("/my-attendance");
+
+        assertThat(mine.roles()).containsExactly("STUDENT", "PARENT");
+        assertThat(mine.shortcutRoles()).containsExactly("STUDENT", "PARENT");
+        assertThat(mine.permissions()).isEmpty();
+        assertThat(mine.visibleWhen("role", "perms")).isEqualTo("['STUDENT', 'PARENT'].includes(role)");
+        assertThat(groupOf("/my-attendance")).isEqualTo("education");
+    }
+
+    @Test
     void recordingAttendanceAcceptsEitherRecordPermissionForACustomRole() {
         Link record = linkOf("/attendance");
 

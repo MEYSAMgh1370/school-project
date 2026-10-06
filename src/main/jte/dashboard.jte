@@ -200,6 +200,7 @@
                                     <div class="buttons mt-3 mb-0">
                                         <a class="button is-light" href="/my-grades?student=${ward.studentId()}&school=${ward.schoolId()}">نمره‌ها</a>
                                         <a class="button is-light" href="/my-invoices?student=${ward.studentId()}&school=${ward.schoolId()}">فاکتورها</a>
+                                        <a class="button is-light" href="/my-attendance?school=${ward.schoolId()}">غیبت‌ها</a>
                                     </div>
                                 </article>
                             </div>

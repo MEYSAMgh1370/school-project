@@ -117,17 +117,48 @@ class AttendancePagesRenderTest {
     // ------------------------------------------------------------------ /attendance/report
 
     @Test
-    void theReportPageHasTwoTabsAndTheQueryButtonAsItsPrimaryAction() {
+    void theReportPageHasThreeTabsAndTheQueryButtonAsItsPrimaryAction() {
         String html = render("attendance-report.jte");
 
         assertThat(html).contains("x-data=\"attendanceReportPage()\"");
-        assertThat(html).contains("id=\"attTabDay\"", "id=\"attTabRange\"", "id=\"attPanelDay\"", "id=\"attPanelRange\"");
-        assertThat(html).contains("غایبین روز", "گزارش بازه‌ای");
+        assertThat(html).contains("id=\"attTabDay\"", "id=\"attTabRange\"", "id=\"attTabExcuses\"",
+                "id=\"attPanelDay\"", "id=\"attPanelRange\"", "id=\"attPanelExcuses\"");
+        assertThat(html).contains("غایبین روز", "گزارش بازه‌ای", "عذرخواهی‌ها");
         assertThat(html).contains("id=\"attendanceRun\"").contains("نمایش گزارش</button>");
         assertThat(count(html, "button is-link")).isEqualTo(1);
         assertThat(html.indexOf("id=\"attendanceRun\"")).isLessThan(html.indexOf("id=\"attTabDay\""));
-        // خواندنی است: ناحیه‌ی پیامِ موفقیت ندارد (کامپوننت `notice` ندارد)
-        assertThat(html).doesNotContain("x-show=\"notice\"");
+        // تأیید/ردِ عذر می‌نویسد: ناحیه‌ی پیامِ موفقیتِ مشترک (کامپوننت `notice` دارد)
+        assertThat(html).contains("x-show=\"notice\"");
+    }
+
+    @Test
+    void theExcusesTabHasAStatusFilterOptionalDatesAndTheDecisionTable() {
+        String html = render("attendance-report.jte");
+
+        assertThat(html).contains("id=\"attExcStatus\"", "x-model=\"excStatus\"", "value=\"PENDING\"", "value=\"APPROVED\"",
+                "value=\"REJECTED\"", "در انتظار", "تأیید شده", "رد شده");
+        assertThat(html).contains("id=\"attExcFrom\"", "id=\"attExcTo\"", "x-model=\"excFromText\"", "x-model=\"excToText\"");
+        assertThat(html).contains("id=\"attExcTable\"");
+        assertThat(html).contains(">دانش‌آموز</th>", ">روزِ غیبت</th>", ">یادداشت</th>", ">وضعیت</th>");
+        // «تأیید» و «رد» مستقیم و بدونِ modal، هر دو روی ردیفِ در انتظار، با is-loading؛ هیچ modalی در صفحه نیست
+        assertThat(html).contains("@click=\"decide(row, 'APPROVED')\">تأیید</button>", "@click=\"decide(row, 'REJECTED')\">رد</button>");
+        assertThat(html).contains("x-if=\"row.status === 'PENDING'\"", "'is-loading': isDeciding(row, 'APPROVED')");
+        assertThat(html).doesNotContain("class=\"modal\"");
+        // هنوز تنها یک دکمه‌ی اصلی (نمایش گزارش)
+        assertThat(count(html, "button is-link")).isEqualTo(1);
+        // حالت خالیِ هر وضعیت از state می‌آید و صفحه‌بندیِ ۲۵ ردیفی دارد
+        assertThat(html).contains("id=\"attExcEmpty\"");
+        assertThat(HtmlUtils.htmlUnescape(html)).contains("excusesLoaded && !excusesLoading && excuses.length === 0");
+        assertThat(html).contains("id=\"attExcPagination\"", "x-show=\"excPaginated()\"");
+    }
+
+    @Test
+    void theExcusesTabScriptSendsTheDecisionAndShowsTheSuccessWording() throws IOException {
+        String script = resource("/static/js/attendance-report.js");
+
+        assertThat(script).contains("/excuses/${row.id}/decision", "{ decision }", "'عذر تأیید شد.'", "'عذر رد شد.'",
+                "عذر در انتظاری وجود ندارد.");
+        assertThat(script).contains("status=${encodeURIComponent(status)}");
     }
 
     @Test
@@ -169,6 +200,7 @@ class AttendancePagesRenderTest {
 
     @Test
     void theReportPageLoadsItsScriptsAndStyles() {
+        // (بخشِ عذرخواهی‌ها هم از همین فایل‌ها می‌خواند و فایلِ تازه‌ای نمی‌خواهد)
         String html = render("attendance-report.jte");
 
         assertThat(html).contains("/js/date-input.js", "/js/school-api.js", "/js/attendance-report.js", "/css/attendance.css");
@@ -216,7 +248,7 @@ class AttendancePagesRenderTest {
 
     @Test
     void noPageOrStyleUsesPhysicalLeftRight() throws IOException {
-        for (String template : List.of("attendance.jte", "attendance-report.jte", "calendar.jte")) {
+        for (String template : List.of("attendance.jte", "attendance-report.jte", "calendar.jte", "my-attendance.jte")) {
             assertThat(render(template)).as(template)
                     .doesNotContainPattern("(?i)(margin|padding|border)-(left|right)")
                     .doesNotContainPattern("(?i)text-align:\\s*(left|right)")

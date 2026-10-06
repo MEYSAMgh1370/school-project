@@ -3,7 +3,7 @@
 Status: proposed 2026-10-05; **the product owner answered all nine questions the same
 day (recorded in "Decisions"); phases 0-2 and the phase-3 backend are built, with the
 pages `/calendar`, `/attendance`, `/attendance/report` and the admin dashboard box.
-Not yet built: the student/parent «غیبت» view and the admin excuses screen** (phases below). Check each
+The student/parent «غیبت‌های من» page (`/my-attendance`, with the excuse form) and the admin excuses tab on `/attendance/report` are built too, so all phases are implemented.** (phases below). Check each
 phase's note for what is built; the current behavior of a built phase belongs to
 `specs/current-system.md`.
 

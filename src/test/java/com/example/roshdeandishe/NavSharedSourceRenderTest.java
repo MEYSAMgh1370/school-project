@@ -80,7 +80,8 @@ class NavSharedSourceRenderTest {
                 "href=\"/students\" x-show=\"['SCHOOL_ADMIN', 'TEACHER'].includes(selectedRole) "
                         + "|| ['STUDENT_ENROLL', 'STUDENT_VIEW'].every(p => permissions.includes(p))\"",
                 // صفحه‌های «من» فقط بر اساس نقش‌اند (Permissionِ خودسرویس مثل GRADES_VIEW معیار نیست)
-                "href=\"/my-grades\" x-show=\"['STUDENT', 'PARENT'].includes(selectedRole)\"");
+                "href=\"/my-grades\" x-show=\"['STUDENT', 'PARENT'].includes(selectedRole)\"",
+                "href=\"/my-attendance\" x-show=\"['STUDENT', 'PARENT'].includes(selectedRole)\"");
     }
 
     @Test

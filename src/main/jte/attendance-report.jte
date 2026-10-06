@@ -4,8 +4,8 @@
 
 <%-- «گزارش حضور و غیاب» (openspec/changes/attendance.md «Report (admin)» و «The admin figure»): دو بخش روی یک
      صفحه. اقدامِ اصلیِ صفحه «نمایش گزارش» در inline-end هدر است و بخشِ فعال را (دوباره) می‌خواند. روز و بازه در
-     ورودی جلالی با ارقام فارسی‌اند و ISO به سرور می‌رود (date-input.js). خواندنی است: هیچ نوشتنی ندارد، پس
-     ناحیه‌ی پیامِ موفقیت (successNotice) لازم نیست. --%>
+     ورودی جلالی با ارقام فارسی‌اند و ISO به سرور می‌رود (date-input.js). دو بخشِ اول خواندنی‌اند؛ بخشِ سومِ
+     «عذرخواهی‌ها» تأیید/ردِ عذر را می‌نویسد، پس ناحیه‌ی پیامِ موفقیتِ مشترک (notice) فعال است. --%>
 @template.layout.main(title = "گزارش حضور و غیاب",
         scripts = java.util.List.of("/js/navbar.js", "/js/jalali.js", "/js/calendar.js", "/js/date-input.js", "/js/school-api.js", "/js/attendance-report.js"),
         styles = java.util.List.of("/css/attendance.css"), content = @`
@@ -23,13 +23,12 @@
             </div>
             <div class="level-right" x-cloak x-show="schoolId">
                 <button class="button is-link" type="button" id="attendanceRun"
-                        :class="{ 'is-loading': dayLoading || rangeLoading }" @click="run">نمایش گزارش</button>
+                        :class="{ 'is-loading': dayLoading || rangeLoading || excusesLoading }" @click="run">نمایش گزارش</button>
             </div>
         </div>
 
         @template.layout.school-scope(
             noSchoolMessage = "برای دیدنِ گزارش، یک مدرسه از سوییچر بالا انتخاب کنید.",
-            successNotice = false,
             content = @`
 
                 <div x-show="!blocked">
@@ -42,6 +41,10 @@
                             <li :class="{ 'is-active': tab === 'range' }" role="presentation">
                                 <a href="#" role="tab" id="attTabRange" :aria-selected="tab === 'range'"
                                    @click.prevent="showTab('range')">گزارش بازه‌ای</a>
+                            </li>
+                            <li :class="{ 'is-active': tab === 'excuses' }" role="presentation">
+                                <a href="#" role="tab" id="attTabExcuses" :aria-selected="tab === 'excuses'"
+                                   @click.prevent="showTab('excuses')">عذرخواهی‌ها</a>
                             </li>
                         </ul>
                     </div>
@@ -220,6 +223,102 @@
                                     <li>
                                         <span class="pagination-link is-current" aria-current="page">
                                             صفحه <span x-text="Calendar.digits(page)"></span> از <span x-text="Calendar.digits(pageCount())"></span>
+                                        </span>
+                                    </li>
+                                </ul>
+                            </nav>
+                        </div>
+                    </div>
+
+                    <%-- ------------------------------------------------ عذرخواهی‌ها
+                         تأیید/ردّ مستقیم و بدونِ modal (ردّ مخرب نیست)؛ دکمه‌ها برای هر نقش دیده می‌شوند و بدون
+                         ATTENDANCE_RECORD_ANY با 403 به ناحیه‌ی پیامِ مشترک می‌روند. --%>
+                    <div x-show="tab === 'excuses'" id="attPanelExcuses">
+                        <div class="box">
+                            <div class="field is-grouped is-grouped-multiline">
+                                <div class="control">
+                                    <label class="label" for="attExcStatus">وضعیت</label>
+                                    <div class="select">
+                                        <select id="attExcStatus" x-model="excStatus" @change="loadExcuses()">
+                                            <option value="PENDING">در انتظار</option>
+                                            <option value="APPROVED">تأیید شده</option>
+                                            <option value="REJECTED">رد شده</option>
+                                        </select>
+                                    </div>
+                                </div>
+                                <div class="control">
+                                    <label class="label" for="attExcFrom">از تاریخ</label>
+                                    <input class="input app-input-w-8" id="attExcFrom" type="text" dir="ltr" inputmode="numeric"
+                                           autocomplete="off" :placeholder="exampleDate()" x-model="excFromText"
+                                           :class="{ 'is-danger': excFromError }" @keydown.enter.prevent="loadExcuses()">
+                                    <p class="help is-danger" id="attExcFromError" x-show="excFromError" x-text="excFromError"></p>
+                                </div>
+                                <div class="control">
+                                    <label class="label" for="attExcTo">تا تاریخ</label>
+                                    <input class="input app-input-w-8" id="attExcTo" type="text" dir="ltr" inputmode="numeric"
+                                           autocomplete="off" :placeholder="exampleDate()" x-model="excToText"
+                                           :class="{ 'is-danger': excToError }" @keydown.enter.prevent="loadExcuses()">
+                                    <p class="help is-danger" id="attExcToError" x-show="excToError" x-text="excToError"></p>
+                                </div>
+                            </div>
+                            <p class="help">تاریخ‌ها اختیاری‌اند و روزِ غیبت را فیلتر می‌کنند؛ ارقام فارسی هم پذیرفته می‌شود.</p>
+                        </div>
+
+                        <p x-show="excusesLoading && !excusesLoaded">در حال بارگذاری...</p>
+
+                        @template.layout.empty-state(
+                            show = "excusesLoaded && !excusesLoading && excuses.length === 0",
+                            art = "list",
+                            message = @`<span id="attExcEmpty" x-text="excusesEmptyText()"></span> عذرها را والدین از صفحه‌ی «غیبت‌های من» می‌فرستند.`)
+
+                        <div x-show="excuses.length > 0">
+                            <div class="table-container">
+                                <table class="table is-fullwidth is-striped" id="attExcTable">
+                                    <caption class="is-sr-only">عذرخواهی‌های غیبت</caption>
+                                    <thead>
+                                    <tr>
+                                        <th scope="col">دانش‌آموز</th>
+                                        <th scope="col">کلاس</th>
+                                        <th scope="col">روزِ غیبت</th>
+                                        <th scope="col">یادداشت</th>
+                                        <th scope="col">وضعیت</th>
+                                        <th scope="col"><span class="is-sr-only">عملیات</span></th>
+                                    </tr>
+                                    </thead>
+                                    <tbody>
+                                    <template x-for="row in pagedExcuses()" :key="row.id">
+                                        <tr>
+                                            <td x-text="row.studentName"></td>
+                                            <td x-text="row.className"></td>
+                                            <td x-text="dayShort(row.day)"></td>
+                                            <td x-text="row.note"></td>
+                                            <td><span class="tag is-light" x-text="excuseLabel(row.status)"></span></td>
+                                            <td>
+                                                <template x-if="row.status === 'PENDING'">
+                                                    <div class="buttons">
+                                                        <button class="button is-light" type="button"
+                                                                :class="{ 'is-loading': isDeciding(row, 'APPROVED') }"
+                                                                :aria-label="'تأیید عذر ' + row.studentName"
+                                                                @click="decide(row, 'APPROVED')">تأیید</button>
+                                                        <button class="button is-light" type="button"
+                                                                :class="{ 'is-loading': isDeciding(row, 'REJECTED') }"
+                                                                :aria-label="'رد عذر ' + row.studentName"
+                                                                @click="decide(row, 'REJECTED')">رد</button>
+                                                    </div>
+                                                </template>
+                                            </td>
+                                        </tr>
+                                    </template>
+                                    </tbody>
+                                </table>
+                            </div>
+                            <nav class="pagination is-centered" role="navigation" aria-label="صفحه‌بندی عذرها" x-show="excPaginated()" id="attExcPagination">
+                                <button class="pagination-previous" type="button" :disabled="excPage <= 1" @click="previousExcPage">قبلی</button>
+                                <button class="pagination-next" type="button" :disabled="excPage >= excPageCount()" @click="nextExcPage">بعدی</button>
+                                <ul class="pagination-list">
+                                    <li>
+                                        <span class="pagination-link is-current" aria-current="page">
+                                            صفحه <span x-text="Calendar.digits(excPage)"></span> از <span x-text="Calendar.digits(excPageCount())"></span>
                                         </span>
                                     </li>
                                 </ul>
