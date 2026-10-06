@@ -1,6 +1,6 @@
 # Yearly plan (برنامه‌ی سالانه)
 
-Status: proposed 2026-10-06; **phases A and B implemented 2026-10-06** (year date range, the per-school extend-only range `V16`, yearly-plan API, `YEARLY_PLAN_MANAGE`, the `/yearly-plan` page, platform-holiday storage `V15` and its effect on `isClosedDay`); current behavior is in `specs/current-system.md`. **Phase C (the platform-admin path) is not implemented**, so no actor can create a platform holiday yet. Phase C's provisioning and security questions below remain to be reviewed in its own PR.
+Status: proposed 2026-10-06; **phases A and B implemented 2026-10-06** (year date range, the per-school extend-only range `V16`, yearly-plan API, `YEARLY_PLAN_MANAGE`, the `/yearly-plan` page, platform-holiday storage `V15` and its effect on `isClosedDay`); current behavior is in `specs/current-system.md`. **Phase C (the platform-admin path: `V17`, the env-var provisioner, the platform permission branch, `/api/platform/**`, `/platform/holidays`) implemented 2026-10-06 on its own branch/PR**; current behavior is in `specs/current-system.md`.
 
 ## Current behavior (evidence)
 
@@ -47,7 +47,7 @@ Status: proposed 2026-10-06; **phases A and B implemented 2026-10-06** (year dat
 
 ### Phase C - minimal platform-admin path (security-sensitive)
 
-Status: being implemented on its own branch/PR. Design:
+Status: implemented 2026-10-06. Design:
 
 - **Model**: `iam.platform_admins (user_id primary key references iam.users, created_at)` (migration `V17`). It is **not** a school membership and **not** the reserved `PLATFORM_ADMIN` role: that role code, its `RoleNotFound` guard at the membership boundary and its absence from every role listing stay exactly as they are, so no legacy `PLATFORM_ADMIN` membership row can ever grant anything. (Whether such rows exist in a deployed DB is therefore irrelevant to this path.)
 - **Provisioning (out of band only)**: `roshdeandishe.platform-admin.emails` (environment variable `PLATFORM_ADMIN_EMAILS`, comma separated, default empty). A startup runner makes `platform_admins` equal to the listed emails that match an **existing, ACTIVE, activated** user (non-null password hash). It never creates a user, never runs from register/invite/OTP/seed code and never logs an email. The variable is the single source of truth: an email removed from it (or a user later suspended) loses the row at the next start. An unset or empty variable therefore means no platform admins. **Operator procedure and risk** (recorded in `DEPLOYMENT.md`): self-registration is open and unverified, so the operator must register their own account first and only then list its email; listing an email nobody has registered yet lets whoever registers it first become platform admin.

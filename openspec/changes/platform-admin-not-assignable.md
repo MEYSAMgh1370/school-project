@@ -5,6 +5,8 @@ statement lives in [`specs/current-system.md`](../specs/current-system.md) under
 Current Limitations. Raised as issue #75, which followed from the documentation
 correction in #74.
 
+**Update 2026-10-06:** a minimal platform-scoped path now exists (`iam.platform_admins`, env-var provisioning, a `PlatformContext` permission branch; see [`yearly-plan.md`](yearly-plan.md) phase C). It deliberately does **not** use this reserved role or any membership, so the reservation described here is unchanged and still applies.
+
 ## Verified Baseline
 
 `PLATFORM_ADMIN` is a seeded system role with no permission grants and no

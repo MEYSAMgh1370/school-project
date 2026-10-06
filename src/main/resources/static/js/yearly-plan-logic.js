@@ -119,8 +119,19 @@ window.YearlyPlanLogic = (function () {
         return { startDate, endDate, startError, endError };
     }
 
+    // سالِ پیش‌فرضِ «تعطیلی‌های سراسری» (/platform/holidays): آخرین سالی که بازه‌اش امروز را دربرمی‌گیرد، وگرنه
+    // آخرین سالِ فهرست (فهرست از قدیمی به جدید است)؛ بدونِ سال null
+    function pickYear(years, todayIso) {
+        for (let i = years.length - 1; i >= 0; i--) {
+            if (inRange(todayIso, years[i])) {
+                return years[i];
+            }
+        }
+        return years.length ? years[years.length - 1] : null;
+    }
+
     return {
-        itemKey, groupByMonth, effectiveRange, yearLine, isCustom, CUSTOM_TAG, rangeHelp, defaultRangeHelp,
+        itemKey, groupByMonth, pickYear, effectiveRange, yearLine, isCustom, CUSTOM_TAG, rangeHelp, defaultRangeHelp,
         inRange, exampleDate, rangeMessage, validateRange
     };
 })();

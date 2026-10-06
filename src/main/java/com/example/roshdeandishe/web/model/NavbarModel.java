@@ -13,12 +13,20 @@ import java.util.Map;
  *
  * @param roleNames عنوانِ نقش‌های <b>سفارشی</b> (شناسه‌ی مدرسه ← کدِ نقش ← عنوان) برای هر عضویتِ کاربر، فعال یا
  *                  غیرفعال؛ نقش‌های سیستمی در آن نیستند ({@link RoleLabels})
+ * @param platformAdmin کاربر در {@code iam.platform_admins} است؛ فقط برای نمایشِ لینکِ «تعطیلی‌های سراسری»
+ *                      (فقط نمایش - اجرای دسترسی با API پلتفرم است)
  */
-public record NavbarModel(String fullName, List<SchoolOption> schools, Map<Long, Map<String, String>> roleNames) {
+public record NavbarModel(String fullName, List<SchoolOption> schools, Map<Long, Map<String, String>> roleNames,
+                          boolean platformAdmin) {
+
+    /** مدیر پلتفرم نیست (صفحه‌هایی که فقط نقش‌های مدرسه‌ای دارند و در تست‌ها). */
+    public NavbarModel(String fullName, List<SchoolOption> schools, Map<Long, Map<String, String>> roleNames) {
+        this(fullName, schools, roleNames, false);
+    }
 
     /** بدون عنوانِ نقش‌های سفارشی (صفحه‌هایی که فقط نقش‌های سیستمی دارند و در تست‌ها). */
     public NavbarModel(String fullName, List<SchoolOption> schools) {
-        this(fullName, schools, Map.of());
+        this(fullName, schools, Map.of(), false);
     }
 
     /**
