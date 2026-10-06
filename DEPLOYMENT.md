@@ -117,11 +117,34 @@ This is intentional. An application that boots with a public signing key or a
 | `SWAGGER_ENABLED` | `false` | API docs are **off** in production. `/swagger-ui.html` and `/v3/api-docs` are `permitAll` in `SecurityConfig`, so enabling this publishes your whole API surface publicly |
 | `SESSION_COOKIE_SECURE` | `true` | Session cookie `Secure` flag. Leave on; only turn off if you deliberately serve plain HTTP |
 | `HEALTH_CHECK_MAIL` | `false` | Whether SMTP reachability counts toward `/actuator/health` (see §7) |
+| `PLATFORM_ADMIN_EMAILS` | *(empty)* | Comma-separated emails of platform administrators (who manage platform-wide holidays). Empty = **no** platform admin. See "Platform administrators" below before setting it |
 
 **Email is optional by design.** Invite/activation email is best-effort
 throughout this codebase: if SMTP is unset or fails, issuing an invite still
 succeeds and returns `emailSent: false`, and the admin hands the activation link
 over manually. Missing SMTP degrades one feature; it never blocks startup.
+
+### Platform administrators
+
+A platform administrator can add platform-wide holidays (`/platform/holidays`);
+nothing else. There is no sign-up, invite or seed path for them: the only way is
+`PLATFORM_ADMIN_EMAILS`, applied at every startup.
+
+1. **Register your own account first** through the normal `/register` page.
+2. Then set `PLATFORM_ADMIN_EMAILS` to that account's email and restart.
+
+Why the order matters: registration is open and does not verify email ownership.
+If you list an email nobody has registered yet, **whoever registers it first
+becomes a platform administrator.** Never list an address you do not control.
+
+How it behaves: the variable is the single source of truth. At each start the
+platform-admin table is set to exactly the listed emails that belong to an
+existing, active, activated (has a password) account. Removing an email, or
+suspending the account, removes the access at the next restart; an empty or unset
+variable means no platform administrators. Matching ignores letter case, and an
+email that matches more than one account (for example `a@x` and `A@x`) is
+rejected for everyone. The app never creates the account and never logs the
+addresses.
 
 ---
 

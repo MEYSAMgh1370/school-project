@@ -133,6 +133,9 @@ roshdeandishe:
     # برمی‌دارد و دستی تحویل می‌دهد، و یک لینک localhost:8080 دقیقاً همان
     # «بی‌سروصدا خراب» است که این فایل جلویش را می‌گیرد.
     activation-base-url: ${APP_BASE_URL}
+  platform-admin:
+    # اختیاری (پیش‌فرض خالی = هیچ مدیر پلتفرمی)؛ معنا و هشدار ثبت‌نامِ باز در application.yml
+    emails: ${PLATFORM_ADMIN_EMAILS:}
   jwt:
     # کلید HMAC-SHA256 (حداقل ۲۵۶ بیت). مقدار dev در application.yml در گیت
     # است، پس در production حتماً باید یک کلید تازه باشد.

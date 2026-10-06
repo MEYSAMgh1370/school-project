@@ -113,6 +113,12 @@ roshdeandishe:
     start-month: ${ACADEMIC_YEAR_START_MONTH:5}
     start-day: ${ACADEMIC_YEAR_START_DAY:1}
     timezone: ${ACADEMIC_YEAR_TIMEZONE:Asia/Tehran}
+  platform-admin:
+    # فهرست ایمیل‌های مدیر پلتفرم، جداشده با کاما (iam.internal.PlatformAdminProvisioner، openspec/changes/yearly-plan.md فاز C).
+    # در هر بالا آمدن، جدول iam.platform_admins برابر ایمیل‌هایی می‌شود که با یک کاربرِ موجود، ACTIVE و
+    # فعال‌سازی‌شده (دارای رمز) تطبیق دارند؛ کاربر ساخته نمی‌شود و ایمیل لاگ نمی‌شود. پیش‌فرض خالی = هیچ
+    # مدیر پلتفرمی. فقط ایمیلِ حسابی را بنویسید که خودتان قبلاً ثبت‌نام کرده‌اید (ثبت‌نام باز و بدون تأیید ایمیل است).
+    emails: ${PLATFORM_ADMIN_EMAILS:}
   finance:
     # سررسید پیش‌فرض فاکتور شهریه: صدور + این تعداد روز. عمداً سراسری، نه
     # per-school - سررسید مدرسه‌به‌مدرسه هنوز توسط کسی خواسته نشده (YAGNI).

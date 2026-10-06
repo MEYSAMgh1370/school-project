@@ -29,6 +29,13 @@ public interface IamFacade {
      */
     AccessDecision checkPermission(UserId userId, PermissionCode permission, AccessContext context);
 
+    /**
+     * آیا این کاربر مدیر پلتفرم است (ردیف در iam.platform_admins)؟ فقط برای نمایش (ناوبار) -
+     * اجرای واقعی همیشه از {@link #checkPermission} با {@link AccessContext.PlatformContext}
+     * می‌گذرد. مدیر پلتفرم بودن هیچ مجوز مدرسه‌ای نمی‌دهد.
+     */
+    boolean isPlatformAdmin(UserId userId);
+
     Optional<UserProfile> findUser(UserId userId);
 
     /**
