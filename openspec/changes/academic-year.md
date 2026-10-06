@@ -46,14 +46,6 @@ decision is a question below, not invented here.
    automatic mode can be switched on or off** (a school setting).
 7. **Build order**: phase 0, then the class timetable, then phases 1-3.
 
-## Decision Taken By The Product Owner (2026-10-04)
-
-- **Grades are not to be taken too seriously.** In Iran the Ministry of Education has its own
-  system for official grades; the grades here are mostly for classroom exams. So no extra strictness
-  is added around grades beyond what was already decided (listed years, who sees which year); in
-  particular a grade's year need not match its class's year, and no grade-based promotion rule or
-  report-card printing is planned.
-
 ## Decisions Taken By The Product Owner (2026-10-03)
 
 Answers to the first unresolved questions (numbering is the one the questions had).
@@ -98,6 +90,14 @@ objects): Q4 existing data is attributed to one year chosen by the admin when th
 feature is enabled, unmatched free-text grade years are reported not guessed; Q6 the
 admin may switch the current year back to an earlier year; Q7 no platform-operator
 work is needed for years; the "ABA" question is closed (below).
+
+## Decision Taken By The Product Owner (2026-10-04)
+
+- **Grades are not to be taken too seriously.** In Iran the Ministry of Education has its own
+  system for official grades; the grades here are mostly for classroom exams. So no extra strictness
+  is added around grades beyond what was already decided (listed years, who sees which year); in
+  particular a grade's year need not match its class's year, and no grade-based promotion rule or
+  report-card printing is planned.
 
 ## Verified Baseline (before phase 0)
 
@@ -465,13 +465,16 @@ an assumption and is repeated in "Assumptions to confirm" so it can be overturne
    year's plus unattributed ones; `all` = every class of every year (admin pages that
    resolve a class name). Holders without `ACADEMIC_YEAR_MANAGE` can only ask for the current
    year (`403 academic-year-not-allowed`), as grades do.
-7. **Grades need an enrollment in the class.** A grade can be recorded when the student **has
-   an enrollment in that class** (the current class, or a row from that year: the admin can
-   still correct last year). The grade's year is *not* required to equal the class's year:
-   the product owner said on 2026-10-04 that grades are not to be taken seriously, because the
-   Ministry of Education has its own system for official grades and these are mostly for
-   classroom exams. (The first version of phase 3 enforced the match, `400
-   grade-year-not-class-year`; it was removed the same day.)
+7. **Grades need an enrollment in the class in that year.** A grade for (student, class, year)
+   is accepted when the class is the student's **current class**, or the student **has an
+   enrollment row in that class for that year** (so an admin can still correct last year in the
+   old class, also for a graduate); a student who left a class gets no grade for a later year
+   in it (`409 student-not-in-class`). The grade's year is *not* required to equal the class's
+   own year, and the year must still be a listed year: the product owner said on 2026-10-04
+   that grades are not to be taken seriously (see "Decision ... 2026-10-04"). The year checks
+   on grades that remain are therefore: the year is listed and canonical, a course must be
+   valid for it, and only holders of `ACADEMIC_YEAR_MANAGE` may use a year other than the
+   current one.
 8. **Promotion run.** `POST /api/admin/schools/{id}/promotion` (`ACADEMIC_YEAR_MANAGE`):
    body `{fromYear, decisions: [{studentId, outcome}]}` (outcomes `PROMOTE`, `REPEAT`,
    `GRADUATE`, `LEAVE`; students not listed get the default rule). **The target year is
@@ -525,7 +528,7 @@ an assumption and is repeated in "Assumptions to confirm" so it can be overturne
 
 **Assumptions to confirm** (none was stated by the product owner): (a) the setting defaults to
 **off**; (b) promotion's target is always the current year and happens after the switch;
-(c) *(answered 2026-10-04: grades are classroom-level, so no year match is enforced)* (d) undo is refused once any promoted student
+(c) *(settled 2026-10-04, no longer an assumption: grades are classroom-level, no year match with the class is enforced; see item 7)*; (d) undo is refused once any promoted student
 is placed or a later run exists; (e) one permission (`ACADEMIC_YEAR_MANAGE`) covers the whole
 rollover; (f) attribution accepts any listed year up to the current one; (g) graduates keep
 an active membership; (h) a pending student keeps their guardians and sees (empty) self-service
@@ -631,9 +634,10 @@ Phase 3 (met 2026-10-04):
   unattributed classes; `all` and other years are for the year manager only (`403` otherwise).
 - A tracked school writes one enrollment row per (student, year) when a student is enrolled or placed; last
   year's row is never changed by a later year; a class of another year is refused for enrollment.
-- A grade is accepted only for a student who has an enrollment in that class (no year match with the
-  class is required); an admin can still correct an earlier year in the old class, including for a
-  graduate; `listStudentsInClass` includes the class's past students.
+- A grade is accepted only when the class is the student's current class or the student has an
+  enrollment in that class for the grade's year (no year match with the class's own year is required; a
+  class the student left takes no grade for a later year, `409 student-not-in-class`); an admin can still
+  correct an earlier year in the old class, including for a graduate; `listStudentsInClass` includes the class's past students.
 - Promotion always targets the current year: the default rule moves everyone to the next grade level and
   graduates the last grade of the school's level; per-student outcomes (repeat, graduate, leave) are
   validated against the grade before anything is written; a promoted or repeating student is `PENDING`

@@ -21,7 +21,7 @@ interface EnrollmentRepository extends JpaRepository<EnrollmentEntity, Long> {
 
     List<EnrollmentEntity> findByClassIdIn(Collection<Long> classIds);
 
-    boolean existsByStudentIdAndClassId(Long studentId, Long classId);
+    boolean existsByStudentIdAndClassIdAndAcademicYear(Long studentId, Long classId, String academicYear);
 
     boolean existsBySchoolId(Long schoolId);
 

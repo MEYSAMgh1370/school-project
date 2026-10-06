@@ -483,6 +483,18 @@ class AcademicRolloverFlowIntegrationTest {
         adminPost(s, "/grades", grade(x.c().studentId(), x.class6(), OLD)).andExpect(status().isOk());
         // و در کلاسی که هرگز در آن نبوده نه
         adminPost(s, "/grades", grade(x.b().studentId(), x.class6(), OLD)).andExpect(status().isConflict());
+        // کلاسی که دانش‌آموز ترک کرده برای سالِ جاری نمره نمی‌گیرد؛ ثبت‌نامِ سالِ قبل فقط برای همان سال کافی است
+        adminPost(s, "/grades", grade(x.a().studentId(), x.class5(), CURRENT)).andExpect(status().isConflict())
+                .andExpect(jsonPath("$.type").value(org.hamcrest.Matchers.endsWith("student-not-in-class")));
+        // نمره‌ی سالِ دیگر در کلاسِ جدید ذخیره و از همان کلاس با همان سال خوانده می‌شود
+        for (String year : List.of(OLD, CURRENT)) {
+            JsonNode stored = json(adminGet(s, "/grades?classId=" + new6 + "&academicYear=" + year + "&term=FIRST")
+                    .andExpect(status().isOk()));
+            assertThat(stored).hasSize(1);
+            assertThat(stored.get(0).get("studentId").asLong()).isEqualTo(x.a().studentId());
+            assertThat(stored.get(0).get("classId").asLong()).isEqualTo(new6);
+            assertThat(stored.get(0).get("academicYear").asText()).isEqualTo(year);
+        }
     }
 
     private String grade(long studentId, long classId, String year) {
