@@ -225,10 +225,7 @@ class AcademicFacadeImpl implements AcademicFacade {
         }
         StudentEntity student = studentRepository.findById(studentId)
                 .orElseThrow(() -> new AcademicException(new AcademicError.StudentNotFound(studentId)));
-        // عضوِ کلاسِ جاری است، یا در آن کلاس ثبت‌نامِ سالی را داشته (اصلاحِ نمره‌ی سالِ قبل توسط مدیر)
-        if (!student.getSchoolId().equals(schoolId)
-                || !(classId.equals(student.getClassId())
-                        || enrollmentRepository.existsByStudentIdAndClassId(studentId, classId))) {
+        if (!student.getSchoolId().equals(schoolId)) {
             throw new AcademicException(new AcademicError.StudentNotInClass(studentId, classId));
         }
         if (academicYear == null || academicYear.isBlank()) {
@@ -237,6 +234,13 @@ class AcademicFacadeImpl implements AcademicFacade {
         // سال کلید است: یک شکل canonical و حتماً از فهرستِ سال‌ها (academic-year.md فاز ۱)
         academicYear = AcademicYearCodes.canonical(academicYear);
         int startYear = requireListedYear(academicYear);
+        // عضوِ کلاسِ جاری است، یا در همان سالِ نمره در آن کلاس ثبت‌نام داشته (اصلاحِ نمره‌ی سالِ قبل در کلاسِ قبلی).
+        // سالِ نمره با سالِ خودِ کلاس هم‌خوانی لازم ندارد (نمره‌ها کلاسی‌اند، academic-year.md فاز ۳)، ولی ثبت‌نامِ
+        // سالی دیگر هم کافی نیست: دانش‌آموزی که کلاسی را ترک کرده نمره‌ی سالِ جاری در آن نمی‌گیرد
+        if (!(classId.equals(student.getClassId())
+                || enrollmentRepository.existsByStudentIdAndClassIdAndAcademicYear(studentId, classId, academicYear))) {
+            throw new AcademicException(new AcademicError.StudentNotInClass(studentId, classId));
+        }
         if (courseId != null) {
             // بازه‌ی اعتبارِ درس به سالِ نمره (academic-year.md فاز ۱)؛ وجودِ درس پیش‌تر بررسی شده
             CourseEntity course = courseRepository.findById(courseId).orElseThrow();
