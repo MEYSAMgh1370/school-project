@@ -9,8 +9,9 @@ window.YearlyPlanLogic = (function () {
         return item.source + ':' + item.id;
     }
 
-    // رویدادها به ترتیبِ زمانی (روز، سپس عنوان) و گروه‌بندی‌شده به ماهِ تقویمِ صفحه؛ چون سال از مهر تا خرداد است،
-    // ترتیبِ زمانی همان ترتیبِ مهر … خرداد است. ماهِ بدونِ رویداد گروهی ندارد.
+    // رویدادها به ترتیبِ زمانی (روز، سپس عنوان) و گروه‌بندی‌شده به ماهِ تقویمِ صفحه. ترتیبِ زمانی همان ترتیبِ ماه
+    // نسبت به شروعِ بازه است: بازه‌ی پیش‌فرض مهر … خرداد را می‌دهد و بازه‌ی گسترش‌یافته (مثلاً از مرداد یا تا
+    // شهریور) ماه‌های بیرونِ آن را هم به‌ترتیب می‌آورد؛ کلیدِ گروه سال را هم دارد. ماهِ بدونِ رویداد گروهی ندارد.
     function groupByMonth(items) {
         const sorted = [...items].sort((a, b) =>
             a.day < b.day ? -1 : a.day > b.day ? 1 : a.title.localeCompare(b.title));
@@ -31,27 +32,95 @@ window.YearlyPlanLogic = (function () {
         return groups;
     }
 
-    // «سال تحصیلی ۱۴۰۵-۱۴۰۶ (۱ مهر ۱۴۰۵ تا ۳۱ خرداد ۱۴۰۶)»
-    function yearLine(year) {
-        return 'سال تحصیلی ' + Calendar.digits(year.code) + ' (' + DateInput.formatLong(year.startDate)
-            + ' تا ' + DateInput.formatLong(year.endDate) + ')';
+    // بازه‌ی مؤثرِ مدرسه ({ startDate, endDate }): range اگر باشد، وگرنه تاریخ‌های پیش‌فرضِ خودِ سال
+    function effectiveRange(year, range) {
+        const source = range || year;
+        return { startDate: source.startDate, endDate: source.endDate };
     }
 
-    // متنِ راهنمای فیلدِ تاریخ: بازه‌ی مجازِ سال
-    function rangeHelp(year) {
+    // «سال تحصیلی ۱۴۰۵-۱۴۰۶ (۱ مهر ۱۴۰۵ تا ۳۱ خرداد ۱۴۰۶)» با بازه‌ی مؤثر
+    function yearLine(year, range) {
+        const eff = effectiveRange(year, range);
+        return 'سال تحصیلی ' + Calendar.digits(year.code) + ' (' + DateInput.formatLong(eff.startDate)
+            + ' تا ' + DateInput.formatLong(eff.endDate) + ')';
+    }
+
+    // برچسبِ «بازه‌ی سفارشی» فقط وقتی مدرسه بازه را گسترش داده است
+    const CUSTOM_TAG = 'بازه‌ی سفارشی';
+    function isCustom(range) {
+        return !!(range && range.custom);
+    }
+
+    // متنِ راهنمای فیلدِ تاریخ: بازه‌ی مجازِ مؤثر
+    function rangeHelp(year, range) {
+        const eff = effectiveRange(year, range);
         return 'تاریخ را به شکل سال/ماه/روز بنویسید (ارقام فارسی هم پذیرفته می‌شود)؛ فقط از '
-            + DateInput.formatLong(year.startDate) + ' تا ' + DateInput.formatLong(year.endDate) + ' مجاز است.';
+            + DateInput.formatLong(eff.startDate) + ' تا ' + DateInput.formatLong(eff.endDate) + ' مجاز است.';
+    }
+
+    // راهنمای modal تنظیم بازه: پیش‌فرض حداقل است
+    function defaultRangeHelp(year) {
+        return 'بازه‌ی پیش‌فرض (از ' + DateInput.formatLong(year.startDate) + ' تا ' + DateInput.formatLong(year.endDate)
+            + ') حداقل بازه است؛ فقط می‌توانید آن را گسترش دهید.';
     }
 
     // بازه‌ی بسته‌ی [startDate, endDate]؛ ISO با ارقام ASCII مقایسه‌پذیر است
-    function inRange(iso, year) {
-        return iso >= year.startDate && iso <= year.endDate;
+    function inRange(iso, range) {
+        return iso >= range.startDate && iso <= range.endDate;
     }
 
-    // نمونه‌ی تاریخ داخلِ سال برای placeholder: امروز اگر داخل سال باشد، وگرنه اولِ سال
-    function exampleDate(year, todayIso) {
-        return DateInput.format(inRange(todayIso, year) ? todayIso : year.startDate);
+    // نمونه‌ی تاریخ داخلِ بازه برای placeholder: امروز اگر داخل بازه باشد، وگرنه اولِ بازه
+    function exampleDate(range, todayIso) {
+        return DateInput.format(inRange(todayIso, range) ? todayIso : range.startDate);
     }
 
-    return { itemKey, groupByMonth, yearLine, rangeHelp, inRange, exampleDate };
+    // کلیدِ خطای اعتبارسنجیِ بازه → متن (سرور مرجع نهایی است)
+    function rangeMessage(key, year) {
+        switch (key) {
+            case 'required':
+                return 'تاریخ را بنویسید.';
+            case 'invalid':
+                return 'تاریخ را به شکل سال/ماه/روز بنویسید، مثل ' + DateInput.format(year.startDate) + '.';
+            case 'startAfterDefault':
+                return 'شروع نباید بعد از ' + DateInput.formatLong(year.startDate) + ' باشد؛ بازه را فقط می‌توانید گسترش دهید.';
+            case 'endBeforeDefault':
+                return 'پایان نباید پیش از ' + DateInput.formatLong(year.endDate) + ' باشد؛ بازه را فقط می‌توانید گسترش دهید.';
+            case 'startAfterEnd':
+                return 'شروع باید پیش از پایان باشد.';
+            default:
+                return '';
+        }
+    }
+
+    // اعتبارسنجیِ «فقط گسترش»: متنِ دو ورودی + بازه‌ی پیش‌فرضِ سال → { startDate, endDate, startError, endError }
+    // که خطاها کلیدِ پیام‌اند ('' = درست): required | invalid | startAfterDefault | endBeforeDefault | startAfterEnd
+    function validateRange(startText, endText, year) {
+        const startDate = DateInput.parse(startText || '');
+        const endDate = DateInput.parse(endText || '');
+        let startError = '';
+        let endError = '';
+        if (!(startText || '').trim()) {
+            startError = 'required';
+        } else if (startDate === null) {
+            startError = 'invalid';
+        } else if (startDate > year.startDate) {
+            startError = 'startAfterDefault';
+        }
+        if (!(endText || '').trim()) {
+            endError = 'required';
+        } else if (endDate === null) {
+            endError = 'invalid';
+        } else if (endDate < year.endDate) {
+            endError = 'endBeforeDefault';
+        }
+        if (!startError && !endError && startDate > endDate) {
+            endError = 'startAfterEnd';
+        }
+        return { startDate, endDate, startError, endError };
+    }
+
+    return {
+        itemKey, groupByMonth, effectiveRange, yearLine, isCustom, CUSTOM_TAG, rangeHelp, defaultRangeHelp,
+        inRange, exampleDate, rangeMessage, validateRange
+    };
 })();

@@ -252,6 +252,127 @@ class YearlyPlanFlowIntegrationTest {
         schoolFacade.removeYearlyPlanEvent(new SchoolId(1L), eventId);
     }
 
+    private String rangeBody(long yearId, LocalDate start, LocalDate end) {
+        return "{\"academicYearId\":" + yearId + ",\"startDate\":\"" + start + "\",\"endDate\":\"" + end + "\"}";
+    }
+
+    private org.springframework.test.web.servlet.ResultActions putRange(MockHttpSession session, String body)
+            throws Exception {
+        return mockMvc.perform(put("/api/admin/schools/1/yearly-plan/range")
+                .with(csrf())
+                .header("X-School-ID", "1")
+                .session(session)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(body));
+    }
+
+    @Test
+    void adminExtendsTheRangeAndEventsInTheExtendedPartAreAccepted() throws Exception {
+        MockHttpSession admin = login("admin@roshdeandishe.test", "password");
+        AcademicYearInfo year = year();
+        long yearId = year.id().value();
+        LocalDate start = year.startDate().minusDays(20);
+        LocalDate end = year.endDate().plusDays(20);
+        SchoolId one = new SchoolId(1L);
+        SchoolId other = schoolFacade.createSchool(
+                "مدرسه‌ی بازه‌ی برنامه‌ی سالانه دو", "Asia/Tehran", "fa-IR", SchoolLevel.ELEMENTARY, null);
+        long earlyId = 0;
+        long lateId = 0;
+        try {
+            putRange(admin, rangeBody(yearId, start, end))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.startDate").value(start.toString()))
+                    .andExpect(jsonPath("$.endDate").value(end.toString()))
+                    .andExpect(jsonPath("$.custom").value(true));
+
+            mockMvc.perform(get("/api/me/schools/1/yearly-plan")
+                            .param("academicYearId", String.valueOf(yearId))
+                            .session(admin))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.year.startDate").value(year.startDate().toString()))
+                    .andExpect(jsonPath("$.year.endDate").value(year.endDate().toString()))
+                    .andExpect(jsonPath("$.range.startDate").value(start.toString()))
+                    .andExpect(jsonPath("$.range.endDate").value(end.toString()))
+                    .andExpect(jsonPath("$.range.custom").value(true));
+
+            earlyId = addEvent(admin, yearId, start, "رویداد پیش از مهر");
+            lateId = addEvent(admin, yearId, end, "رویداد پس از خرداد");
+            long early = earlyId;
+            long late = lateId;
+            assertThat(schoolFacade.yearlyPlan(one, year.id()).items())
+                    .extracting(YearlyPlanItem::id).contains(early, late);
+
+            // فقط یک روز بیرون از بازه‌ی گسترش‌یافته هنوز رد می‌شود
+            mockMvc.perform(post("/api/admin/schools/1/yearly-plan")
+                            .with(csrf())
+                            .header("X-School-ID", "1")
+                            .session(admin)
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(body(yearId, start.minusDays(1), "زود")))
+                    .andExpect(status().isBadRequest())
+                    .andExpect(jsonPath("$.type").value(org.hamcrest.Matchers.endsWith("invalid-calendar-entry")));
+
+            // مدرسه‌ی دیگر دست‌نخورده است: بازه‌ی پیش‌فرض و بدون رویدادهای مدرسه‌ی ۱
+            assertThat(schoolFacade.yearlyPlan(other, year.id()).range().custom()).isFalse();
+            assertThat(schoolFacade.yearlyPlan(other, year.id()).range().startDate()).isEqualTo(year.startDate());
+            assertThatThrownBy(() -> schoolFacade.addYearlyPlanEvent(other, year.id(), start, "خارج از بازه"))
+                    .isInstanceOfSatisfying(SchoolException.class,
+                            e -> assertThat(e.error()).isInstanceOf(SchoolError.InvalidCalendarEntry.class));
+            assertThat(schoolFacade.yearlyPlan(other, year.id()).items())
+                    .extracting(YearlyPlanItem::id).doesNotContain(early, late);
+        } finally {
+            // بازگشت به پیش‌فرض: بازه‌ی اختصاصی پاک می‌شود تا تست‌های دیگر دست‌نخورده بمانند
+            putRange(admin, rangeBody(yearId, year.startDate(), year.endDate()))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.custom").value(false));
+            if (earlyId != 0) {
+                schoolFacade.removeYearlyPlanEvent(one, earlyId);
+            }
+            if (lateId != 0) {
+                schoolFacade.removeYearlyPlanEvent(one, lateId);
+            }
+        }
+        assertThat(schoolFacade.yearlyPlan(one, year.id()).range().custom()).isFalse();
+    }
+
+    @Test
+    void narrowingOrBrokenRangesAreRejectedWithInvalidYearRange() throws Exception {
+        MockHttpSession admin = login("admin@roshdeandishe.test", "password");
+        AcademicYearInfo year = year();
+        long yearId = year.id().value();
+
+        for (String body : new String[]{
+                rangeBody(yearId, year.startDate().plusDays(1), year.endDate()),
+                rangeBody(yearId, year.startDate(), year.endDate().minusDays(1)),
+                rangeBody(yearId, year.endDate().plusDays(2), year.endDate().plusDays(1)),
+                "{\"academicYearId\":" + yearId + ",\"startDate\":null,\"endDate\":\"" + year.endDate() + "\"}"}) {
+            putRange(admin, body)
+                    .andExpect(status().isBadRequest())
+                    .andExpect(jsonPath("$.type").value(org.hamcrest.Matchers.endsWith("invalid-year-range")));
+        }
+        assertThat(schoolFacade.yearlyPlan(new SchoolId(1L), year.id()).range().custom()).isFalse();
+
+        putRange(admin, rangeBody(999999L, year.startDate(), year.endDate()))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.type").value(org.hamcrest.Matchers.endsWith("academic-year-not-found")));
+    }
+
+    @Test
+    void aStudentCannotSetTheRange() throws Exception {
+        MockHttpSession admin = login("admin@roshdeandishe.test", "password");
+        AcademicYearInfo year = year();
+        long classId = createClass(admin, "پایه پنجم - بازه‌ی برنامه‌ی سالانه");
+        String studentEmail = "yearlyplan.range.student@roshdeandishe.test";
+        MockHttpSession student = registerAndLogin(studentEmail, "دانش‌آموز بازه‌ی برنامه");
+        enrollStudent(admin, studentEmail, "دانش‌آموز بازه‌ی برنامه", classId);
+
+        putRange(student, rangeBody(year.id().value(), year.startDate().minusDays(5), year.endDate()))
+                .andExpect(status().isForbidden())
+                .andExpect(jsonPath("$.type").value(org.hamcrest.Matchers.endsWith("permission-denied")));
+
+        assertThat(schoolFacade.yearlyPlan(new SchoolId(1L), year.id()).range().custom()).isFalse();
+    }
+
     @Test
     void aStrangerWhoIsNotAMemberCannotReadThePlan() throws Exception {
         MockHttpSession stranger = registerAndLogin("yearlyplan.stranger@roshdeandishe.test", "کاربر بی‌ربط");

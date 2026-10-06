@@ -44,6 +44,10 @@ public sealed interface SchoolError {
     record PlatformHolidayNotFound(Long holidayId) implements SchoolError {
     }
 
+    /** بازه‌ی برنامه‌ی سالانه‌ی مدرسه ناقص است یا از بازه‌ی پیش‌فرضِ سال کوچک‌تر است. */
+    record InvalidYearRange(String reason) implements SchoolError {
+    }
+
     /** کاربر فقط سالِ جاریِ مدرسه را می‌بیند (بدونِ ACADEMIC_YEAR_MANAGE) و سالِ دیگری خواسته است. */
     record AcademicYearNotAllowed(Long academicYearId) implements SchoolError {
     }

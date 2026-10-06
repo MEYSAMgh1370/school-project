@@ -79,6 +79,11 @@ public class SchoolExceptionHandler {
                     "تعطیلی سراسری یافت نشد",
                     "تعطیلیِ سراسری‌ای با شناسه " + e.holidayId() + " وجود ندارد."
             );
+            case SchoolError.InvalidYearRange e -> ProblemDetailFactory.problem(
+                    HttpStatus.BAD_REQUEST, "invalid-year-range",
+                    "بازه‌ی برنامه‌ی سالانه نامعتبر است",
+                    e.reason()
+            );
             case SchoolError.AcademicYearNotAllowed e -> ProblemDetailFactory.problem(
                     HttpStatus.FORBIDDEN, "academic-year-not-allowed",
                     "دسترسی به این سال تحصیلی مجاز نیست",

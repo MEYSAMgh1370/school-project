@@ -23,6 +23,8 @@ document.addEventListener('alpine:init', () => {
         saving: false,
 
         year: null,
+        // بازه‌ی مؤثرِ مدرسه ({ startDate, endDate, custom })؛ year پیش‌فرض را نگه می‌دارد
+        range: null,
         items: [],
         groups: [],
         // سال‌های قابل‌انتخاب ({ id, code, startDate, endDate })؛ انتخاب‌گر فقط با بیش از یک سال دیده می‌شود
@@ -32,6 +34,8 @@ document.addEventListener('alpine:init', () => {
         // modal افزودن / حذف: null = بسته
         add: null,
         confirm: null,
+        // modal تنظیم بازه‌ی سال
+        rangeForm: null,
 
         // فقط پاسخِ آخرین درخواست اثر می‌گذارد؛ عوض‌کردنِ مدرسه همه را بالا می‌برد
         listSeq: 0,
@@ -66,12 +70,14 @@ document.addEventListener('alpine:init', () => {
             this.error = '';
             this.notice = '';
             this.year = null;
+            this.range = null;
             this.items = [];
             this.groups = [];
             this.years = [];
             this.selectedYearId = null;
             this.add = null;
             this.confirm = null;
+            this.rangeForm = null;
         },
 
         // ---------------------------------------------------------------- خواندن
@@ -91,6 +97,7 @@ document.addEventListener('alpine:init', () => {
                     return;
                 }
                 this.year = plan.year;
+                this.range = plan.year ? (plan.range || null) : null;
                 this.items = plan.items;
                 this.groups = Logic.groupByMonth(plan.items);
                 if (plan.year && !this.selectedYearId) {
@@ -101,6 +108,7 @@ document.addEventListener('alpine:init', () => {
                 if (seq === this.listSeq) {
                     this.items = [];
                     this.groups = [];
+                    this.range = null;
                     this.loaded = false;
                     this.error = SchoolApi.messageOf(e);
                 }
@@ -147,7 +155,16 @@ document.addEventListener('alpine:init', () => {
         // ---------------------------------------------------------------- نمایش
 
         yearLine() {
-            return this.year ? Logic.yearLine(this.year) : '';
+            return this.year ? Logic.yearLine(this.year, this.range) : '';
+        },
+
+        // بازه‌ی مؤثر؛ اگر range نیامده باشد تاریخ‌های پیش‌فرضِ سال
+        effective() {
+            return Logic.effectiveRange(this.year, this.range);
+        },
+
+        isCustomRange() {
+            return Logic.isCustom(this.range);
         },
 
         itemKey(item) {
@@ -165,11 +182,11 @@ document.addEventListener('alpine:init', () => {
         // ---------------------------------------------------------------- افزودن
 
         exampleDate() {
-            return this.year ? Logic.exampleDate(this.year, DateInput.today()) : DateInput.format(DateInput.today());
+            return this.year ? Logic.exampleDate(this.effective(), DateInput.today()) : DateInput.format(DateInput.today());
         },
 
         rangeHelp() {
-            return this.year ? Logic.rangeHelp(this.year) : '';
+            return this.year ? Logic.rangeHelp(this.year, this.range) : '';
         },
 
         openAdd() {
@@ -195,9 +212,10 @@ document.addEventListener('alpine:init', () => {
             const iso = DateInput.parse(form.date);
             if (iso === null) {
                 form.dateError = 'تاریخ را به شکل سال/ماه/روز بنویسید، مثل ' + this.exampleDate() + '.';
-            } else if (!Logic.inRange(iso, this.year)) {
-                form.dateError = 'تاریخ باید داخل سال تحصیلی باشد: ' + DateInput.formatLong(this.year.startDate)
-                    + ' تا ' + DateInput.formatLong(this.year.endDate) + '.';
+            } else if (!Logic.inRange(iso, this.effective())) {
+                const eff = this.effective();
+                form.dateError = 'تاریخ باید داخل بازه‌ی سال تحصیلی باشد: ' + DateInput.formatLong(eff.startDate)
+                    + ' تا ' + DateInput.formatLong(eff.endDate) + '.';
             }
             const title = form.title.trim();
             if (!title) {
@@ -228,6 +246,71 @@ document.addEventListener('alpine:init', () => {
             }, (message) => {
                 if (this.add) {
                     this.add.error = message;
+                }
+            });
+        },
+
+        // ---------------------------------------------------------------- تنظیم بازه‌ی سال
+
+        defaultRangeHelp() {
+            return this.year ? Logic.defaultRangeHelp(this.year) : '';
+        },
+
+        openRange() {
+            this.notice = '';
+            if (!this.year) {
+                this.error = 'برای این مدرسه هنوز سال تحصیلی جاری انتخاب نشده است.';
+                return;
+            }
+            this.error = '';
+            const eff = this.effective();
+            this.rangeForm = {
+                start: DateInput.format(eff.startDate), end: DateInput.format(eff.endDate),
+                startError: '', endError: '', error: ''
+            };
+            this.$nextTick(() => window.ModalFocus.focusFirst(this.$refs.rangeModal));
+        },
+
+        closeRange() {
+            this.rangeForm = null;
+        },
+
+        // فقط‌گسترش: خطای هر فیلد کنارِ خودش و خلاصه در ناحیه‌ی خطای modal؛ سرور مرجع نهایی است
+        validateRangeForm() {
+            const form = this.rangeForm;
+            const result = Logic.validateRange(form.start, form.end, this.year);
+            form.startError = Logic.rangeMessage(result.startError, this.year);
+            form.endError = Logic.rangeMessage(result.endError, this.year);
+            form.error = '';
+            if (result.startError || result.endError) {
+                form.error = 'بازه‌ی سال را درست وارد کنید.';
+                return null;
+            }
+            return { academicYearId: this.year.id, startDate: result.startDate, endDate: result.endDate };
+        },
+
+        // reset=true: تاریخ‌های پیش‌فرض فرستاده می‌شود و سرور override را پاک می‌کند
+        async submitRange(reset) {
+            if (!this.rangeForm || this.saving) {
+                return;
+            }
+            let body;
+            if (reset === true) {
+                body = { academicYearId: this.year.id, startDate: this.year.startDate, endDate: this.year.endDate };
+            } else {
+                body = this.validateRangeForm();
+                if (body === null) {
+                    return;
+                }
+            }
+            await this.mutate(async () => {
+                await SchoolApi.request(this.schoolId, 'PUT', `${ADMIN(this.schoolId)}/yearly-plan/range`, body, MESSAGES);
+            }, reset === true ? 'بازه‌ی سال به پیش‌فرض برگشت.' : 'بازه‌ی سال ذخیره شد.', () => {
+                this.rangeForm = null;
+                this.load();
+            }, (message) => {
+                if (this.rangeForm) {
+                    this.rangeForm.error = message;
                 }
             });
         },
@@ -286,6 +369,7 @@ document.addEventListener('alpine:init', () => {
                         // مجوز نداشتن: صفحه خواندنی می‌ماند؛ modal بسته و دلیل در ناحیه‌ی خطای مشترک نشان داده می‌شود
                         this.add = null;
                         this.confirm = null;
+                        this.rangeForm = null;
                         this.error = message;
                     } else {
                         onFailure(message);

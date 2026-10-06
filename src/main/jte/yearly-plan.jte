@@ -30,12 +30,16 @@
             noSchoolMessage = "برای دیدن برنامه‌ی سالانه، یک مدرسه از سوییچر بالا انتخاب کنید.",
             content = @`
 
-                <div class="level is-mobile" x-show="year">
-                    <div class="level-left">
+                <%-- خطِ سال با بازه‌ی مؤثر؛ «تنظیم بازه‌ی سال» اقدامِ ثانویه است و برای همه‌ی نقش‌ها دیده می‌شود
+                     (بدونِ مجوز، پیامِ مشترکِ «اجازه ندارید» می‌گیرد) --%>
+                <div class="level is-mobile is-flex-wrap-wrap is-gap-2" x-show="year">
+                    <div class="level-left is-flex-wrap-wrap is-gap-2">
                         <p class="has-text-weight-semibold" id="yearlyPlanYearLine" x-text="yearLine()"></p>
+                        <span class="tag is-info is-light" id="yearlyPlanCustomTag" x-show="isCustomRange()">بازه‌ی سفارشی</span>
                     </div>
-                    <div class="level-right" x-show="years.length > 1">
-                        <div class="field">
+                    <div class="level-right is-flex-wrap-wrap is-gap-2">
+                        <button class="button is-light" type="button" id="yearlyPlanRange" @click="openRange">تنظیم بازه‌ی سال</button>
+                        <div class="field" x-show="years.length > 1">
                             <label class="label is-sr-only" for="yearlyPlanYear">سال تحصیلی</label>
                             <div class="control">
                                 <div class="select" :class="{ 'is-loading': loading }">
@@ -142,6 +146,52 @@
                                 <button class="button is-link" type="submit" id="yearlyPlanAddSubmit"
                                         :class="{ 'is-loading': saving }">افزودن</button>
                                 <button class="button" type="button" @click="closeAdd">انصراف</button>
+                            </footer>
+                        </form>
+                    </template>
+                </div>
+
+                <%-- ------------------------------------------------ تنظیم بازه‌ی سال (فقط گسترش) --%>
+                <div class="modal" role="dialog" aria-modal="true" aria-labelledby="yearlyPlanRangeTitle"
+                     tabindex="-1" x-ref="rangeModal" :class="{ 'is-active': rangeForm }" x-cloak
+                     @keydown.tab="window.ModalFocus.trap($event, $el)" @keydown.escape.stop="closeRange">
+                    <div class="modal-background" @click="closeRange"></div>
+                    <template x-if="rangeForm">
+                        <form class="modal-card" @submit.prevent="submitRange(false)" novalidate>
+                            <header class="modal-card-head">
+                                <p class="modal-card-title" id="yearlyPlanRangeTitle">تنظیم بازه‌ی سال</p>
+                                <button class="delete" type="button" aria-label="بستن" @click="closeRange"></button>
+                            </header>
+                            <section class="modal-card-body">
+                                <div class="notification is-danger" role="alert" x-show="rangeForm.error" x-text="rangeForm.error"></div>
+                                <p class="help mb-4" id="yearlyPlanRangeHelp" x-text="defaultRangeHelp()"></p>
+
+                                <div class="field">
+                                    <label class="label" for="yearlyPlanRangeStart">از تاریخ</label>
+                                    <div class="control">
+                                        <input class="input" id="yearlyPlanRangeStart" type="text" dir="ltr" inputmode="numeric"
+                                               autocomplete="off" x-model="rangeForm.start"
+                                               :class="{ 'is-danger': rangeForm.startError }">
+                                    </div>
+                                    <p class="help is-danger" x-show="rangeForm.startError" x-text="rangeForm.startError"></p>
+                                </div>
+
+                                <div class="field">
+                                    <label class="label" for="yearlyPlanRangeEnd">تا تاریخ</label>
+                                    <div class="control">
+                                        <input class="input" id="yearlyPlanRangeEnd" type="text" dir="ltr" inputmode="numeric"
+                                               autocomplete="off" x-model="rangeForm.end"
+                                               :class="{ 'is-danger': rangeForm.endError }">
+                                    </div>
+                                    <p class="help is-danger" x-show="rangeForm.endError" x-text="rangeForm.endError"></p>
+                                </div>
+                            </section>
+                            <footer class="modal-card-foot">
+                                <button class="button is-link" type="submit" id="yearlyPlanRangeSubmit"
+                                        :class="{ 'is-loading': saving }">ذخیره</button>
+                                <button class="button is-light" type="button" id="yearlyPlanRangeReset"
+                                        @click="submitRange(true)">بازگشت به پیش‌فرض</button>
+                                <button class="button" type="button" @click="closeRange">انصراف</button>
                             </footer>
                         </form>
                     </template>

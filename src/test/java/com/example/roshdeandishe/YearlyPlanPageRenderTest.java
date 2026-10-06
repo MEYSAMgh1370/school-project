@@ -50,7 +50,8 @@ class YearlyPlanPageRenderTest {
         assertThat(html).contains("x-data=\"yearlyPlanPage()\"").contains("برنامه‌ی سالانه");
         assertThat(html).contains("رویدادهای مدرسه و تعطیلی‌های سراسری سال تحصیلی");
         assertThat(html).contains("id=\"yearlyPlanAdd\"").contains("افزودن رویداد</button>");
-        assertThat(count(html, "button is-link")).isEqualTo(2); // سرصفحه + «افزودن» داخل modal
+        // سرصفحه + «افزودن» داخل modal + «ذخیره» در modal بازه (اقدامِ اصلیِ صفحه فقط یکی است)
+        assertThat(count(html, "button is-link")).isEqualTo(3);
         assertThat(html.indexOf("id=\"yearlyPlanAdd\"")).isLessThan(html.indexOf("id=\"yearlyPlanYearLine\""));
         assertThat(html.indexOf("id=\"yearlyPlanYearLine\"")).isLessThan(html.indexOf("id=\"yearlyPlanList\""));
         // انتخاب‌گرِ سال فقط با بیش از یک سال
@@ -84,6 +85,42 @@ class YearlyPlanPageRenderTest {
     }
 
     @Test
+    void theRangeActionIsASecondaryButtonInTheYearLineRowForEveryRole() {
+        String html = render();
+
+        assertThat(html).contains("id=\"yearlyPlanRange\"").contains("تنظیم بازه‌ی سال</button>");
+        assertThat(html).contains("class=\"button is-light\" type=\"button\" id=\"yearlyPlanRange\"");
+        // نه پنهان و نه غیرفعال بر اساس نقش
+        assertThat(html).doesNotContain(":disabled=");
+        int yearLine = html.indexOf("id=\"yearlyPlanYearLine\"");
+        assertThat(html.indexOf("id=\"yearlyPlanRange\"")).isGreaterThan(yearLine)
+                .isLessThan(html.indexOf("id=\"yearlyPlanList\""));
+        // برچسبِ بازه‌ی سفارشی کنارِ خطِ سال و فقط با range.custom
+        assertThat(html).contains("id=\"yearlyPlanCustomTag\"", "tag is-info is-light", "x-show=\"isCustomRange()\"")
+                .contains("بازه‌ی سفارشی</span>");
+        assertThat(html.indexOf("id=\"yearlyPlanCustomTag\"")).isGreaterThan(yearLine);
+    }
+
+    @Test
+    void theRangeModalHasTwoJalaliInputsInlineErrorsAndThreeFooterActions() {
+        String html = render();
+
+        assertThat(html).contains("x-ref=\"rangeModal\"", "aria-labelledby=\"yearlyPlanRangeTitle\"");
+        assertThat(html).contains("@keydown.escape.stop=\"closeRange\"", "@submit.prevent=\"submitRange(false)\"");
+        assertThat(html).contains("id=\"yearlyPlanRangeStart\"", "x-model=\"rangeForm.start\"",
+                "id=\"yearlyPlanRangeEnd\"", "x-model=\"rangeForm.end\"");
+        assertThat(html).contains(">از تاریخ</label>", ">تا تاریخ</label>");
+        String modal = html.substring(html.indexOf("x-ref=\"rangeModal\""), html.indexOf("x-ref=\"confirmModal\""));
+        assertThat(count(modal, "dir=\"ltr\"")).isEqualTo(2); // هر دو ورودیِ تاریخ
+        assertThat(html).contains("x-show=\"rangeForm.startError\"", "x-show=\"rangeForm.endError\"",
+                "x-show=\"rangeForm.error\"", "x-text=\"defaultRangeHelp()\"");
+        assertThat(html).contains("id=\"yearlyPlanRangeSubmit\"").contains(">ذخیره</button>");
+        assertThat(html).contains("id=\"yearlyPlanRangeReset\"").contains("@click=\"submitRange(true)\"")
+                .contains("بازگشت به پیش‌فرض</button>");
+        assertThat(html).contains("is-danger': rangeForm.startError", "is-danger': rangeForm.endError");
+    }
+
+    @Test
     void scriptsLoadInOrderAndNoPhysicalLeftRightOrBrowserDialogs() throws IOException {
         String html = render();
 
@@ -92,6 +129,8 @@ class YearlyPlanPageRenderTest {
         assertThat(html.indexOf("/js/school-api.js")).isLessThan(html.indexOf("/js/yearly-plan.js"));
         assertThat(html.indexOf("/js/yearly-plan-logic.js")).isLessThan(html.indexOf("/js/yearly-plan.js"));
         assertThat(html).contains("/js/modal-focus.js");
+        String page = html.substring(html.indexOf("x-data=\"yearlyPlanPage()\""));
+        assertThat(page).doesNotContain("alert(").doesNotContainPattern("(?<![.\\w])confirm\\(");
         assertThat(html).doesNotContainPattern("(?i)(margin|padding|border)-(left|right)")
                 .doesNotContainPattern("(?i)text-align:\\s*(left|right)")
                 .doesNotContain("is-pulled-left").doesNotContain("is-pulled-right");

@@ -13,10 +13,13 @@ import com.example.roshdeandishe.school.SchoolFacade.CalendarEntryInfo;
 import com.example.roshdeandishe.school.SchoolFacade.SchoolId;
 import com.example.roshdeandishe.school.SchoolFacade.YearlyPlan;
 import com.example.roshdeandishe.school.SchoolFacade.YearlyPlanItem;
+import com.example.roshdeandishe.school.SchoolFacade.YearlyPlanRange;
 import com.example.roshdeandishe.school.SchoolFacade.YearlyPlanSource;
 import com.example.roshdeandishe.school.dto.request.AddYearlyPlanEventRequest;
+import com.example.roshdeandishe.school.dto.request.SetYearlyPlanRangeRequest;
 import com.example.roshdeandishe.school.dto.response.AcademicYearResponse;
 import com.example.roshdeandishe.school.dto.response.YearlyPlanItemResponse;
+import com.example.roshdeandishe.school.dto.response.YearlyPlanRangeResponse;
 import com.example.roshdeandishe.school.dto.response.YearlyPlanResponse;
 import com.example.roshdeandishe.school.shared.SchoolError;
 import com.example.roshdeandishe.school.shared.SchoolException;
@@ -64,7 +67,7 @@ public class YearlyPlanController {
         if (academicYearId == null) {
             if (current.isEmpty()) {
                 // مدرسه هنوز سالِ جاری ندارد؛ صفحه حالتِ خالی را نشان می‌دهد
-                return new YearlyPlanResponse(null, List.of());
+                return new YearlyPlanResponse(null, null, List.of());
             }
             year = current.get().id();
         } else {
@@ -91,6 +94,19 @@ public class YearlyPlanController {
         return new YearlyPlanItemResponse(created.id(), created.day(), created.title(), YearlyPlanSource.SCHOOL.name());
     }
 
+    @PutMapping("/api/admin/schools/{schoolId}/yearly-plan/range")
+    @RequiresPermission("YEARLY_PLAN_MANAGE")
+    public YearlyPlanRangeResponse setRange(
+            @PathVariable Long schoolId, @RequestBody SetYearlyPlanRangeRequest request) {
+        TenantContext.requireMatches(schoolId);
+        if (request == null) {
+            throw new SchoolException(new SchoolError.InvalidYearRange("سال و تاریخ‌های شروع و پایان الزامی است."));
+        }
+        AcademicYearId year = request.academicYearId() == null ? null : new AcademicYearId(request.academicYearId());
+        return toResponse(schoolFacade.setYearlyPlanRange(
+                new SchoolId(schoolId), year, request.startDate(), request.endDate()));
+    }
+
     @DeleteMapping("/api/admin/schools/{schoolId}/yearly-plan/{entryId}")
     @RequiresPermission("YEARLY_PLAN_MANAGE")
     public ResponseEntity<Void> remove(@PathVariable Long schoolId, @PathVariable Long entryId) {
@@ -108,7 +124,12 @@ public class YearlyPlanController {
         AcademicYearInfo year = plan.year();
         return new YearlyPlanResponse(
                 new AcademicYearResponse(year.id().value(), year.code(), year.startDate(), year.endDate()),
+                toResponse(plan.range()),
                 plan.items().stream().map(YearlyPlanController::toResponse).toList());
+    }
+
+    private static YearlyPlanRangeResponse toResponse(YearlyPlanRange range) {
+        return new YearlyPlanRangeResponse(range.startDate(), range.endDate(), range.custom());
     }
 
     private static YearlyPlanItemResponse toResponse(YearlyPlanItem item) {

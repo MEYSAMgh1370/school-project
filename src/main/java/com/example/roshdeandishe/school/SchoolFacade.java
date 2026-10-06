@@ -141,6 +141,16 @@ public interface SchoolFacade {
                                          String title);
 
     /**
+     * تنظیم بازه‌ی برنامه‌ی سالانه‌ی مدرسه برای یک سال. بازه‌ی پیش‌فرض ({@link AcademicYearInfo}) حداقل است:
+     * مدرسه فقط می‌تواند آن را گسترش دهد (شروع در یا پیش از شروعِ پیش‌فرض، پایان در یا پس از پایانِ پیش‌فرض).
+     * تاریخِ تهی، پایانِ پیش از شروع، یا کوچک‌کردنِ بازه SchoolError.InvalidYearRange است. ثبتِ دوباره‌ی
+     * تاریخ‌های پیش‌فرض، بازه‌ی اختصاصی را پاک می‌کند. بازه‌ی مؤثر را برمی‌گرداند.
+     * SchoolError.SchoolNotFound / SchoolError.AcademicYearNotFound.
+     */
+    YearlyPlanRange setYearlyPlanRange(SchoolId schoolId, AcademicYearId academicYearId, LocalDate startDate,
+                                       LocalDate endDate);
+
+    /**
      * حذفِ رویداد. فقط ورودیِ EVENT همین مدرسه؛ ورودیِ CLOSED یا ورودیِ مدرسه‌ی دیگر همان
      * SchoolError.CalendarEntryNotFound است.
      */
@@ -171,7 +181,12 @@ public interface SchoolFacade {
         SCHOOL, PLATFORM
     }
 
-    record YearlyPlan(AcademicYearInfo year, List<YearlyPlanItem> items) {
+    /** {@code year} با تاریخ‌های پیش‌فرض؛ {@code range} بازه‌ی مؤثرِ همین مدرسه (رویدادها در آن می‌آیند). */
+    record YearlyPlan(AcademicYearInfo year, YearlyPlanRange range, List<YearlyPlanItem> items) {
+    }
+
+    /** بازه‌ی مؤثرِ برنامه‌ی سالانه؛ {@code custom} = مدرسه آن را از پیش‌فرض گسترش داده است. */
+    record YearlyPlanRange(LocalDate startDate, LocalDate endDate, boolean custom) {
     }
 
     record PlatformHolidayInfo(Long id, AcademicYearId academicYearId, LocalDate day, String title) {
