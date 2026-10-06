@@ -129,6 +129,11 @@ public class TenantResolverFilter extends OncePerRequestFilter {
     private static final java.util.regex.Pattern SCHOOL_SELF_SERVICE_PATH =
             java.util.regex.Pattern.compile("^/api/admin/schools(/\\d+)?$");
 
+    private static boolean isPlatformPath(String path) {
+        return path.equals("/api/platform") || path.startsWith("/api/platform/")
+                || path.equals("/platform") || path.startsWith("/platform/");
+    }
+
     @Override
     protected void doFilterInternal(
             HttpServletRequest request,
@@ -143,8 +148,13 @@ public class TenantResolverFilter extends OncePerRequestFilter {
                 || java.util.Arrays.stream(EXCLUDED_PATHS).anyMatch(path::startsWith)
                 || SCHOOL_SELF_SERVICE_PATH.matcher(path).matches();
 
+        // مسیرهای سطح پلتفرم (/api/platform/** و /platform/**) نه هدر می‌خواهند و نه هرگز
+        // TenantContext می‌گیرند - حتی اگر X-School-ID فرستاده شود. وگرنه PermissionAccessAspect
+        // درخواست را SchoolContext می‌دید و مجوز پلتفرم را با نقش مدرسه‌ای می‌سنجید (و برعکس).
+        boolean platformPath = isPlatformPath(path);
+
         try {
-            if (!excluded) {
+            if (!excluded && !platformPath) {
                 String headerValue = request.getHeader(TENANT_HEADER);
                 if (headerValue == null || headerValue.isBlank()) {
                     response.sendError(

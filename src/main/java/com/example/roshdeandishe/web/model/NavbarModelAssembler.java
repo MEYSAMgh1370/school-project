@@ -76,7 +76,9 @@ public class NavbarModelAssembler {
                 roleNames.put(schoolId, names);
             }
         });
-        return new NavbarModel(profile.fullName(), List.copyOf(options), roleNames);
+        // فقط برای نمایشِ لینکِ پلتفرم؛ مدیر پلتفرم معمولاً هیچ عضویتی ندارد و options خالی است
+        return new NavbarModel(profile.fullName(), List.copyOf(options), roleNames,
+                iamFacade.isPlatformAdmin(profile.id()));
     }
 
     /**

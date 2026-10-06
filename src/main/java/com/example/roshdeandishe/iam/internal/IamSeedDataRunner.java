@@ -213,6 +213,9 @@ class IamSeedDataRunner implements ApplicationRunner {
         permission(permissions, "ATTENDANCE_RECORD_ANY", "ثبت حضور و غیاب همه‌ی کلاس‌ها");
         permission(permissions, "ATTENDANCE_EDIT_PAST", "ویرایش حضور و غیاب روزهای گذشته");
         permission(permissions, "ATTENDANCE_VIEW_ALL", "مشاهده‌ی حضور و غیاب همه‌ی کلاس‌ها و گزارش آن");
+        // Permission سطح پلتفرم: فقط ردیف کاتالوگ - عمداً به هیچ نقشی grant نمی‌شود؛ تنها مسیر اعطا،
+        // شاخه‌ی PlatformContext در PermissionDecisionService برای کاربرِ platform_admins است
+        permission(permissions, PlatformPermissions.HOLIDAY_MANAGE, "مدیریت تعطیلی‌های سراسری");
         return permissions;
     }
 

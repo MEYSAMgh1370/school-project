@@ -111,6 +111,11 @@ class IamFacadeImpl implements IamFacade {
     }
 
     @Override
+    public boolean isPlatformAdmin(UserId userId) {
+        return permissionDecisionService.isPlatformAdmin(userId == null ? null : userId.value());
+    }
+
+    @Override
     public Optional<UserProfile> findUser(UserId userId) {
         return userRepository.findById(userId.value())
                 .map(u -> new UserProfile(new UserId(u.getId()), u.getEmail(), u.getFullName(), u.getPhoneNumber()));
@@ -462,6 +467,8 @@ class IamFacadeImpl implements IamFacade {
     @Override
     public List<PermissionInfo> listPermissions() {
         return permissionRepository.findAll().stream()
+                // Permissionهای سطح پلتفرم به هیچ نقش مدرسه‌ای تعلق نمی‌گیرند و در چک‌لیست ساخت نقش نیستند
+                .filter(p -> !PlatformPermissions.CODES.contains(p.getCode()))
                 .map(p -> new PermissionInfo(p.getId(), p.getCode(), p.getDisplayName()))
                 .sorted(Comparator.comparing(PermissionInfo::code))
                 .toList();
@@ -537,7 +544,9 @@ class IamFacadeImpl implements IamFacade {
 
         List<PermissionEntity> permissions = permissionCodes.stream()
                 .distinct()
-                .map(pc -> permissionRepository.findByCode(pc)
+                .map(pc -> (PlatformPermissions.CODES.contains(pc)
+                        ? Optional.<PermissionEntity>empty()
+                        : permissionRepository.findByCode(pc))
                         .orElseThrow(() -> new IamException(new IamError.InvalidPermissionCode(pc))))
                 .toList();
 

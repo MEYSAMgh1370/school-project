@@ -28,24 +28,31 @@ class PermissionDecisionService {
     private final SchoolMembershipRepository schoolMembershipRepository;
     private final PermissionRepository permissionRepository;
     private final RolePermissionRepository rolePermissionRepository;
+    private final PlatformAdminRepository platformAdminRepository;
 
     PermissionDecisionService(
             SchoolMembershipRepository schoolMembershipRepository,
             PermissionRepository permissionRepository,
-            RolePermissionRepository rolePermissionRepository
+            RolePermissionRepository rolePermissionRepository,
+            PlatformAdminRepository platformAdminRepository
     ) {
         this.schoolMembershipRepository = schoolMembershipRepository;
         this.permissionRepository = permissionRepository;
         this.rolePermissionRepository = rolePermissionRepository;
+        this.platformAdminRepository = platformAdminRepository;
+    }
+
+    /** آیا این کاربر در {@code iam.platform_admins} است؟ (نمایش ناوبار؛ مجوزی نمی‌دهد.) */
+    boolean isPlatformAdmin(Long userId) {
+        return userId != null && platformAdminRepository.existsById(userId);
     }
 
     AccessDecision decide(Long userId, String permissionCode, AccessContext context) {
-        // فعلاً فقط context مدرسه‌ای پشتیبانی می‌شود؛ نقش‌های سطح پلتفرم
-        // (مثل PLATFORM_ADMIN در PlatformContext) در فاز بعدی اضافه می‌شوند.
+        if (context instanceof AccessContext.PlatformContext) {
+            return decidePlatform(userId, permissionCode);
+        }
         if (!(context instanceof AccessContext.SchoolContext schoolContext)) {
-            return new AccessDecision.Denied(
-                    "بررسی Permission فعلاً فقط برای context مدرسه‌ای پشتیبانی می‌شود."
-            );
+            return new AccessDecision.Denied("نوع context پشتیبانی نمی‌شود.");
         }
 
         PermissionEntity permission = permissionRepository.findByCode(permissionCode)
@@ -74,5 +81,21 @@ class PermissionDecisionService {
                 : new AccessDecision.Denied(
                         "هیچ‌کدام از نقش‌های فعال کاربر در این مدرسه Permission '" + permissionCode + "' را ندارند."
                   );
+    }
+
+    /**
+     * فقط مجموعه‌ی ثابتِ {@link PlatformPermissions#CODES} و فقط برای کاربرِ
+     * {@code platform_admins}. هیچ نقش/عضویتی خوانده نمی‌شود، پس مجوز مدرسه‌ای هرگز از اینجا
+     * اعطا نمی‌شود؛ و برعکس، شاخه‌ی SchoolContext این جدول را اصلاً نمی‌بیند.
+     */
+    private AccessDecision decidePlatform(Long userId, String permissionCode) {
+        if (permissionCode == null || !PlatformPermissions.CODES.contains(permissionCode)) {
+            return new AccessDecision.Denied(
+                    "Permission '" + permissionCode + "' یک Permission سطح پلتفرم نیست."
+            );
+        }
+        return isPlatformAdmin(userId)
+                ? new AccessDecision.Granted("کاربر مدیر پلتفرم است.")
+                : new AccessDecision.Denied("کاربر مدیر پلتفرم نیست.");
     }
 }

@@ -82,6 +82,10 @@
         </div>
         <ul class="menu-list">
             <li><a href="/dashboard">پیشخوان</a></li>
+            @if(navbar.platformAdmin())
+                <%-- فقط برای مدیر پلتفرم (iam.platform_admins)؛ فقط نمایش - مجوز را API پلتفرم می‌سنجد --%>
+                <li><a href="/platform/holidays" data-platform-link>تعطیلی‌های سراسری</a></li>
+            @endif
         </ul>
         @if(!navbar.schools().isEmpty())
             @for(var group : NavCatalog.groups())
