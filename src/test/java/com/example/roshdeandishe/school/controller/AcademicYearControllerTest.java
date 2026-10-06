@@ -42,7 +42,8 @@ class AcademicYearControllerTest {
         controller = new AcademicYearController(school, iam);
         when(iam.currentUserId()).thenReturn(USER);
         when(school.findCurrentAcademicYear(new SchoolId(SCHOOL))).thenReturn(Optional.of(
-                new AcademicYearInfo(new AcademicYearId(2L), "1405-1406", 1405)));
+                new AcademicYearInfo(new AcademicYearId(2L), "1405-1406", 1405,
+                        java.time.LocalDate.of(2026, 9, 23), java.time.LocalDate.of(2027, 6, 21))));
     }
 
     private static MembershipInfo membership(Long schoolId, String role, boolean active) {

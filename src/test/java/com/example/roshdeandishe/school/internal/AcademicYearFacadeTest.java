@@ -66,6 +66,16 @@ class AcademicYearFacadeTest {
     }
 
     @Test
+    void yearRunsFromFirstOfMehrToThirtyFirstOfKhordadOfTheNextYear() {
+        when(years.findAllByOrderByStartYearAsc()).thenReturn(List.of(year(2L, "1405-1406", 1405)));
+
+        AcademicYearInfo info = facade.listAcademicYears().get(0);
+
+        assertThat(info.startDate()).isEqualTo(java.time.LocalDate.of(2026, 9, 23));
+        assertThat(info.endDate()).isEqualTo(java.time.LocalDate.of(2027, 6, 21));
+    }
+
+    @Test
     void aSchoolWithoutAChosenYearHasNoCurrentYear() {
         assertThat(facade.findCurrentAcademicYear(SCHOOL)).isEmpty();
         verify(years, never()).findById(any());

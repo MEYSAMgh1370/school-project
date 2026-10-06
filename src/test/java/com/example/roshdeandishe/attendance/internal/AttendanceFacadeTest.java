@@ -239,7 +239,8 @@ class AttendanceFacadeTest {
     @Test
     void aClassOfAnotherYearCannotBeRecordedButAnUnattributedOneCan() {
         when(school.findCurrentAcademicYear(new SchoolId(SCHOOL)))
-                .thenReturn(Optional.of(new AcademicYearInfo(new AcademicYearId(1L), "1405-1406", 1405)));
+                .thenReturn(Optional.of(new AcademicYearInfo(new AcademicYearId(1L), "1405-1406", 1405,
+                        java.time.LocalDate.of(2026, 9, 23), java.time.LocalDate.of(2027, 6, 21))));
         when(academic.findClass(SCHOOL, CLASS_B)).thenReturn(Optional.of(classInfo(CLASS_B, "ششم", "1404-1405")));
 
         assertThatThrownBy(() -> facade.saveRoll(SCHOOL, CLASS_B, MONDAY, TEACHER, List.of()))

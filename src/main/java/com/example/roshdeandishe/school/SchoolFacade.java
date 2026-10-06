@@ -135,7 +135,8 @@ public interface SchoolFacade {
     record AcademicYearId(Long value) {
     }
 
-    record AcademicYearInfo(AcademicYearId id, String code, int startYear) {
+    /** startDate/endDate: ۱ مهرِ startYear تا ۳۱ خردادِ startYear+1 (هر دو شاملِ بازه)، میلادی. */
+    record AcademicYearInfo(AcademicYearId id, String code, int startYear, LocalDate startDate, LocalDate endDate) {
     }
 
     record SchoolInfo(SchoolId id, String name, SchoolStatus status, String timezone, String locale, SchoolLevel level,

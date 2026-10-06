@@ -200,7 +200,9 @@ class SchoolFacadeImpl implements SchoolFacade {
     }
 
     private static AcademicYearInfo toYearInfo(AcademicYearEntity entity) {
-        return new AcademicYearInfo(new AcademicYearId(entity.getId()), entity.getCode(), entity.getStartYear());
+        int startYear = entity.getStartYear();
+        return new AcademicYearInfo(new AcademicYearId(entity.getId()), entity.getCode(), startYear,
+                SolarCalendar.toGregorian(startYear, 7, 1), SolarCalendar.toGregorian(startYear + 1, 3, 31));
     }
 
     /**

@@ -45,7 +45,8 @@ class AcademicYearVisibilityTest {
 
     private void givenCurrentYear(String code) {
         when(school.findCurrentAcademicYear(new SchoolId(SCHOOL))).thenReturn(code == null ? Optional.empty()
-                : Optional.of(new AcademicYearInfo(new AcademicYearId(2L), code, 1405)));
+                : Optional.of(new AcademicYearInfo(new AcademicYearId(2L), code, 1405,
+                        java.time.LocalDate.of(2026, 9, 23), java.time.LocalDate.of(2027, 6, 21))));
     }
 
     private void givenManager(boolean manager) {
