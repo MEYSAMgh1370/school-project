@@ -110,6 +110,6 @@ public class AcademicYearController {
     }
 
     private static AcademicYearResponse toResponse(AcademicYearInfo info) {
-        return new AcademicYearResponse(info.id().value(), info.code());
+        return new AcademicYearResponse(info.id().value(), info.code(), info.startDate(), info.endDate());
     }
 }

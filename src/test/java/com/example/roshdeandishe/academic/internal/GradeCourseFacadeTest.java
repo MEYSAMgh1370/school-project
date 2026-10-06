@@ -59,8 +59,10 @@ class GradeCourseFacadeTest {
         when(iam.currentUserId()).thenReturn(new UserId(1L));
         school = mock(SchoolFacade.class);
         when(school.listAcademicYears()).thenReturn(List.of(
-                new SchoolFacade.AcademicYearInfo(new SchoolFacade.AcademicYearId(1L), "1404-1405", 1404),
-                new SchoolFacade.AcademicYearInfo(new SchoolFacade.AcademicYearId(2L), "1405-1406", 1405)));
+                new SchoolFacade.AcademicYearInfo(new SchoolFacade.AcademicYearId(1L), "1404-1405", 1404,
+                        java.time.LocalDate.of(2025, 9, 23), java.time.LocalDate.of(2026, 6, 21)),
+                new SchoolFacade.AcademicYearInfo(new SchoolFacade.AcademicYearId(2L), "1405-1406", 1405,
+                        java.time.LocalDate.of(2026, 9, 23), java.time.LocalDate.of(2027, 6, 21))));
         facade = new AcademicFacadeImpl(students, classes, mock(StudentGuardianRepository.class), grades, courses,
                 mock(EnrollmentRepository.class), mock(EnrollmentLedger.class), iam, school,
                 mock(ApplicationEventPublisher.class));

@@ -41,7 +41,8 @@ class AcademicYearFacadeTest {
         schools = mock(SchoolRepository.class);
         years = mock(AcademicYearRepository.class);
         events = mock(org.springframework.context.ApplicationEventPublisher.class);
-        facade = new SchoolFacadeImpl(schools, years, mock(CalendarEntryRepository.class), events);
+        facade = new SchoolFacadeImpl(schools, years, mock(CalendarEntryRepository.class),
+                mock(PlatformHolidayRepository.class), mock(SchoolYearRangeRepository.class), events);
         school = new SchoolEntity();
         ReflectionTestUtils.setField(school, "id", 5L);
         when(schools.findById(5L)).thenReturn(Optional.of(school));
@@ -63,6 +64,16 @@ class AcademicYearFacadeTest {
         List<AcademicYearInfo> result = facade.listAcademicYears();
 
         assertThat(result).extracting(AcademicYearInfo::code).containsExactly("1404-1405", "1405-1406");
+    }
+
+    @Test
+    void yearRunsFromFirstOfMehrToThirtyFirstOfKhordadOfTheNextYear() {
+        when(years.findAllByOrderByStartYearAsc()).thenReturn(List.of(year(2L, "1405-1406", 1405)));
+
+        AcademicYearInfo info = facade.listAcademicYears().get(0);
+
+        assertThat(info.startDate()).isEqualTo(java.time.LocalDate.of(2026, 9, 23));
+        assertThat(info.endDate()).isEqualTo(java.time.LocalDate.of(2027, 6, 21));
     }
 
     @Test

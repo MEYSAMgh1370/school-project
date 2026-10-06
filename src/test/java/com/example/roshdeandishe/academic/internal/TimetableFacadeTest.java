@@ -73,7 +73,8 @@ class TimetableFacadeTest {
         facade = new TimetableFacadeImpl(periods, entries, activities, courses, classes, iam, school);
 
         when(school.findSchool(new SchoolId(SCHOOL))).thenReturn(Optional.of(schoolInfo(WeekStart.SATURDAY)));
-        when(school.listAcademicYears()).thenReturn(List.of(new AcademicYearInfo(new AcademicYearId(1L), YEAR, 1405)));
+        when(school.listAcademicYears()).thenReturn(List.of(new AcademicYearInfo(new AcademicYearId(1L), YEAR, 1405,
+                java.time.LocalDate.of(2026, 9, 23), java.time.LocalDate.of(2027, 6, 21))));
         when(classes.findById(CLASS_ID)).thenReturn(Optional.of(classEntity(CLASS_ID, SCHOOL)));
         when(classes.findById(OTHER_CLASS)).thenReturn(Optional.of(classEntity(OTHER_CLASS, SCHOOL)));
         when(periods.findById(PERIOD)).thenReturn(Optional.of(period(PERIOD, SCHOOL, 1, "08:00", "08:45")));

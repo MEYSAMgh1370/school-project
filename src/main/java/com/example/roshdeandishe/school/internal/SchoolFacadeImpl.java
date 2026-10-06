@@ -9,6 +9,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
+import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.List;
 import java.util.Locale;
 import java.util.Optional;
@@ -39,13 +41,19 @@ class SchoolFacadeImpl implements SchoolFacade {
     private final SchoolRepository schoolRepository;
     private final AcademicYearRepository academicYearRepository;
     private final CalendarEntryRepository calendarEntryRepository;
+    private final PlatformHolidayRepository platformHolidayRepository;
+    private final SchoolYearRangeRepository schoolYearRangeRepository;
     private final ApplicationEventPublisher eventPublisher;
 
     SchoolFacadeImpl(SchoolRepository schoolRepository, AcademicYearRepository academicYearRepository,
-                     CalendarEntryRepository calendarEntryRepository, ApplicationEventPublisher eventPublisher) {
+                     CalendarEntryRepository calendarEntryRepository,
+                     PlatformHolidayRepository platformHolidayRepository,
+                     SchoolYearRangeRepository schoolYearRangeRepository, ApplicationEventPublisher eventPublisher) {
+        this.schoolYearRangeRepository = schoolYearRangeRepository;
         this.schoolRepository = schoolRepository;
         this.academicYearRepository = academicYearRepository;
         this.calendarEntryRepository = calendarEntryRepository;
+        this.platformHolidayRepository = platformHolidayRepository;
         this.eventPublisher = eventPublisher;
     }
 
@@ -166,11 +174,7 @@ class SchoolFacadeImpl implements SchoolFacade {
         if (day == null || kind == null) {
             throw new SchoolException(new SchoolError.InvalidCalendarEntry("روز و نوع ورودی تقویم الزامی است."));
         }
-        String normalizedTitle = title == null ? "" : title.trim();
-        if (normalizedTitle.isEmpty() || normalizedTitle.length() > 128) {
-            throw new SchoolException(new SchoolError.InvalidCalendarEntry(
-                    "عنوان ورودی تقویم الزامی است و حداکثر ۱۲۸ نویسه می‌تواند باشد."));
-        }
+        String normalizedTitle = normalizeTitle(title);
         requireSchool(schoolId);
         return toCalendarInfo(calendarEntryRepository.save(
                 new CalendarEntryEntity(schoolId.value(), day, kind, normalizedTitle)));
@@ -186,7 +190,163 @@ class SchoolFacadeImpl implements SchoolFacade {
 
     @Override
     public boolean isClosedDay(SchoolId schoolId, LocalDate day) {
-        return calendarEntryRepository.existsBySchoolIdAndDayAndKind(schoolId.value(), day, CalendarKind.CLOSED);
+        // تعطیلیِ سراسری روز را در همه‌ی مدرسه‌ها می‌بندد و مدرسه نمی‌تواند لغوش کند
+        return calendarEntryRepository.existsBySchoolIdAndDayAndKind(schoolId.value(), day, CalendarKind.CLOSED)
+                || platformHolidayRepository.existsByDay(day);
+    }
+
+    @Override
+    public YearlyPlan yearlyPlan(SchoolId schoolId, AcademicYearId academicYearId) {
+        requireSchool(schoolId);
+        AcademicYearInfo year = requireYear(academicYearId);
+        List<YearlyPlanItem> items = new ArrayList<>();
+        YearlyPlanRange range = effectiveRange(schoolId, year);
+        platformHolidayRepository.findByAcademicYearIdOrderByDayAscIdAsc(year.id().value()).forEach(holiday ->
+                items.add(new YearlyPlanItem(holiday.getId(), holiday.getDay(), holiday.getTitle(),
+                        YearlyPlanSource.PLATFORM)));
+        calendarEntryRepository.findBySchoolIdAndKindAndDayBetweenOrderByDayAscIdAsc(
+                        schoolId.value(), CalendarKind.EVENT, range.startDate(), range.endDate())
+                .forEach(entry -> items.add(new YearlyPlanItem(entry.getId(), entry.getDay(), entry.getTitle(),
+                        YearlyPlanSource.SCHOOL)));
+        // مرتب‌سازیِ پایدار: در یک روز، تعطیلیِ سراسری پیش از رویدادِ مدرسه می‌آید
+        items.sort(Comparator.comparing(YearlyPlanItem::day));
+        return new YearlyPlan(year, range, List.copyOf(items));
+    }
+
+    @Override
+    @Transactional
+    public YearlyPlanRange setYearlyPlanRange(SchoolId schoolId, AcademicYearId academicYearId, LocalDate startDate,
+                                              LocalDate endDate) {
+        requireSchool(schoolId);
+        AcademicYearInfo year = requireYear(academicYearId);
+        if (startDate == null || endDate == null) {
+            throw new SchoolException(new SchoolError.InvalidYearRange("تاریخ شروع و پایان بازه الزامی است."));
+        }
+        if (endDate.isBefore(startDate)) {
+            throw new SchoolException(new SchoolError.InvalidYearRange("تاریخ پایان نباید پیش از تاریخ شروع باشد."));
+        }
+        if (startDate.isAfter(year.startDate()) || endDate.isBefore(year.endDate())) {
+            throw new SchoolException(new SchoolError.InvalidYearRange(
+                    "بازه‌ی پیش‌فرضِ سال «" + year.code() + "» از " + SolarCalendar.format(year.startDate()) + " تا "
+                            + SolarCalendar.format(year.endDate()) + " است و حداقلِ بازه‌ی برنامه‌ی سالانه است؛ "
+                            + "فقط می‌توان آن را گسترش داد (شروع در یا پیش از شروعِ پیش‌فرض و پایان در یا پس از "
+                            + "پایانِ پیش‌فرض)."));
+        }
+        // سقفِ گسترش: حداکثر یک ماهِ جلالی از هر طرف، یعنی از ۱ شهریور تا ۳۱ تیر (بازه‌ی پیش‌فرض ۱ مهر تا ۳۱ خرداد)
+        LocalDate earliestStart = SolarCalendar.toGregorian(year.startYear(), 6, 1);
+        LocalDate latestEnd = SolarCalendar.toGregorian(year.startYear() + 1, 4, 31);
+        if (startDate.isBefore(earliestStart) || endDate.isAfter(latestEnd)) {
+            throw new SchoolException(new SchoolError.InvalidYearRange(
+                    "بازه را فقط تا یک ماه از هر طرف می‌توان گسترش داد: شروع نه پیش از "
+                            + SolarCalendar.format(earliestStart) + " و پایان نه پس از "
+                            + SolarCalendar.format(latestEnd) + " (بازه‌ی پیش‌فرض از "
+                            + SolarCalendar.format(year.startDate()) + " تا " + SolarCalendar.format(year.endDate()) + ")."));
+        }
+        Optional<SchoolYearRangeEntity> existing = schoolYearRangeRepository
+                .findBySchoolIdAndAcademicYearId(schoolId.value(), year.id().value());
+        if (startDate.equals(year.startDate()) && endDate.equals(year.endDate())) {
+            existing.ifPresent(schoolYearRangeRepository::delete);
+            return new YearlyPlanRange(year.startDate(), year.endDate(), false);
+        }
+        SchoolYearRangeEntity entity = existing.orElseGet(() ->
+                new SchoolYearRangeEntity(schoolId.value(), year.id().value(), startDate, endDate));
+        entity.setRange(startDate, endDate);
+        schoolYearRangeRepository.save(entity);
+        return new YearlyPlanRange(startDate, endDate, true);
+    }
+
+    private YearlyPlanRange effectiveRange(SchoolId schoolId, AcademicYearInfo year) {
+        return schoolYearRangeRepository.findBySchoolIdAndAcademicYearId(schoolId.value(), year.id().value())
+                .map(range -> new YearlyPlanRange(range.getStartDate(), range.getEndDate(), true))
+                .orElseGet(() -> new YearlyPlanRange(year.startDate(), year.endDate(), false));
+    }
+
+    @Override
+    @Transactional
+    public CalendarEntryInfo addYearlyPlanEvent(SchoolId schoolId, AcademicYearId academicYearId, LocalDate day,
+                                                String title) {
+        if (day == null || academicYearId == null) {
+            throw new SchoolException(new SchoolError.InvalidCalendarEntry("روز و سال تحصیلی الزامی است."));
+        }
+        String normalizedTitle = normalizeTitle(title);
+        requireSchool(schoolId);
+        AcademicYearInfo year = requireYear(academicYearId);
+        YearlyPlanRange range = effectiveRange(schoolId, year);
+        if (day.isBefore(range.startDate()) || day.isAfter(range.endDate())) {
+            throw new SchoolException(new SchoolError.InvalidCalendarEntry(
+                    "روز باید در بازه‌ی برنامه‌ی سالانه‌ی سال «" + year.code() + "» (از "
+                            + SolarCalendar.format(range.startDate()) + " تا "
+                            + SolarCalendar.format(range.endDate()) + ") باشد."));
+        }
+        return toCalendarInfo(calendarEntryRepository.save(
+                new CalendarEntryEntity(schoolId.value(), day, CalendarKind.EVENT, normalizedTitle)));
+    }
+
+    @Override
+    @Transactional
+    public void removeYearlyPlanEvent(SchoolId schoolId, Long entryId) {
+        // فقط EVENT: ورودیِ CLOSED مال صفحه‌ی تعطیلی‌هاست و از اینجا حذف نمی‌شود
+        CalendarEntryEntity entry = calendarEntryRepository
+                .findByIdAndSchoolIdAndKind(entryId, schoolId.value(), CalendarKind.EVENT)
+                .orElseThrow(() -> new SchoolException(new SchoolError.CalendarEntryNotFound(entryId)));
+        calendarEntryRepository.delete(entry);
+    }
+
+    @Override
+    @Transactional
+    public PlatformHolidayInfo addPlatformHoliday(AcademicYearId academicYearId, LocalDate day, String title) {
+        if (day == null || academicYearId == null) {
+            throw new SchoolException(new SchoolError.InvalidCalendarEntry("روز و سال تحصیلی الزامی است."));
+        }
+        String normalizedTitle = normalizeTitle(title);
+        requireDayInYear(requireYear(academicYearId), day);
+        return toHolidayInfo(platformHolidayRepository.save(
+                new PlatformHolidayEntity(academicYearId.value(), day, normalizedTitle)));
+    }
+
+    @Override
+    @Transactional
+    public void removePlatformHoliday(Long id) {
+        PlatformHolidayEntity holiday = (id == null ? Optional.<PlatformHolidayEntity>empty()
+                : platformHolidayRepository.findById(id))
+                .orElseThrow(() -> new SchoolException(new SchoolError.PlatformHolidayNotFound(id)));
+        platformHolidayRepository.delete(holiday);
+    }
+
+    @Override
+    public List<PlatformHolidayInfo> listPlatformHolidays(AcademicYearId academicYearId) {
+        AcademicYearInfo year = requireYear(academicYearId);
+        return platformHolidayRepository.findByAcademicYearIdOrderByDayAscIdAsc(year.id().value()).stream()
+                .map(SchoolFacadeImpl::toHolidayInfo)
+                .toList();
+    }
+
+    private static String normalizeTitle(String title) {
+        String normalizedTitle = title == null ? "" : title.trim();
+        if (normalizedTitle.isEmpty() || normalizedTitle.length() > 128) {
+            throw new SchoolException(new SchoolError.InvalidCalendarEntry(
+                    "عنوان ورودی تقویم الزامی است و حداکثر ۱۲۸ نویسه می‌تواند باشد."));
+        }
+        return normalizedTitle;
+    }
+
+    private AcademicYearInfo requireYear(AcademicYearId academicYearId) {
+        Long id = academicYearId == null ? null : academicYearId.value();
+        return (id == null ? Optional.<AcademicYearEntity>empty() : academicYearRepository.findById(id))
+                .map(SchoolFacadeImpl::toYearInfo)
+                .orElseThrow(() -> new SchoolException(new SchoolError.AcademicYearNotFound(id)));
+    }
+
+    private static void requireDayInYear(AcademicYearInfo year, LocalDate day) {
+        if (day.isBefore(year.startDate()) || day.isAfter(year.endDate())) {
+            throw new SchoolException(new SchoolError.InvalidCalendarEntry(
+                    "روز باید در بازه‌ی سال تحصیلی «" + year.code() + "» (۱ مهر تا ۳۱ خرداد) باشد."));
+        }
+    }
+
+    private static PlatformHolidayInfo toHolidayInfo(PlatformHolidayEntity entity) {
+        return new PlatformHolidayInfo(entity.getId(), new AcademicYearId(entity.getAcademicYearId()),
+                entity.getDay(), entity.getTitle());
     }
 
     private void requireSchool(SchoolId schoolId) {
@@ -200,7 +360,9 @@ class SchoolFacadeImpl implements SchoolFacade {
     }
 
     private static AcademicYearInfo toYearInfo(AcademicYearEntity entity) {
-        return new AcademicYearInfo(new AcademicYearId(entity.getId()), entity.getCode(), entity.getStartYear());
+        int startYear = entity.getStartYear();
+        return new AcademicYearInfo(new AcademicYearId(entity.getId()), entity.getCode(), startYear,
+                SolarCalendar.toGregorian(startYear, 7, 1), SolarCalendar.toGregorian(startYear + 1, 3, 31));
     }
 
     /**

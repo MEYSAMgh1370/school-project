@@ -49,6 +49,10 @@ public final class NavCatalog {
                             List.of(ADMIN), List.of(ADMIN)).withPermissions("TIMETABLE_MANAGE"),
                     new Link("/my-timetable", "برنامه‌ی کلاسی من", "برنامه‌ی هفتگیِ شما",
                             List.of(STUDENT, PARENT, TEACHER), List.of(STUDENT, PARENT, TEACHER)),
+                    // خواندنِ برنامه‌ی سالانه برای همه‌ی عضوها آزاد است (بدون Permission)؛ افزودن/حذف با YEARLY_PLAN_MANAGE
+                    // روی REST چک می‌شود و کنترل‌ها پنهان نمی‌شوند (UX_ROADMAP §3)
+                    new Link("/yearly-plan", "برنامه‌ی سالانه", "رویدادهای مدرسه و تعطیلی‌های سراسری سال تحصیلی",
+                            List.of(ADMIN, TEACHER, STUDENT, PARENT), List.of(ADMIN)),
                     // خودسرویسِ حضور و غیاب: دانش‌آموز غیبت/تأخیرِ خودش را می‌بیند و والد برای فرزندش عذر می‌فرستد
                     new Link("/my-attendance", "غیبت‌های من", "غیبت و تأخیرِ شما یا فرزندانتان و ارسال عذر",
                             List.of(STUDENT, PARENT), List.of(STUDENT, PARENT)),

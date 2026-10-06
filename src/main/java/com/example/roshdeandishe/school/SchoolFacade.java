@@ -118,16 +118,84 @@ public interface SchoolFacade {
      */
     void removeCalendarEntry(SchoolId schoolId, Long entryId);
 
-    /** آیا در این روز دست‌کم یک ورودیِ {@link CalendarKind#CLOSED} هست؟ (حضور و غیاب فقط همین را می‌پرسد.) */
+    /**
+     * آیا این روز برای مدرسه تعطیل است؟ یعنی دست‌کم یک ورودیِ {@link CalendarKind#CLOSED} در همین
+     * مدرسه هست، یا یک تعطیلیِ سراسریِ پلتفرم روی همان روز (مدرسه نمی‌تواند آن را لغو کند).
+     * {@link CalendarKind#EVENT} روز را تعطیل نمی‌کند. (حضور و غیاب فقط همین را می‌پرسد.)
+     */
     boolean isClosedDay(SchoolId schoolId, LocalDate day);
 
+    /**
+     * برنامه‌ی سالانه‌ی یک مدرسه در یک سال تحصیلی (openspec/changes/yearly-plan.md): رویدادهای
+     * {@link CalendarKind#EVENT} همین مدرسه در بازه‌ی سال، به‌علاوه‌ی تعطیلی‌های سراسری همان سال،
+     * به ترتیب روز. SchoolError.SchoolNotFound / SchoolError.AcademicYearNotFound.
+     */
+    YearlyPlan yearlyPlan(SchoolId schoolId, AcademicYearId academicYearId);
+
+    /**
+     * افزودنِ رویداد (EVENT) به برنامه‌ی سالانه. قاعده‌ی عنوان مثل {@link #addCalendarEntry}؛ روز باید
+     * در بازه‌ی همان سال باشد (SchoolError.InvalidCalendarEntry). SchoolError.AcademicYearNotFound اگر
+     * سال نباشد، SchoolError.SchoolNotFound اگر مدرسه نباشد.
+     */
+    CalendarEntryInfo addYearlyPlanEvent(SchoolId schoolId, AcademicYearId academicYearId, LocalDate day,
+                                         String title);
+
+    /**
+     * تنظیم بازه‌ی برنامه‌ی سالانه‌ی مدرسه برای یک سال. بازه‌ی پیش‌فرض ({@link AcademicYearInfo}) حداقل است:
+     * مدرسه فقط می‌تواند آن را گسترش دهد (شروع در یا پیش از شروعِ پیش‌فرض، پایان در یا پس از پایانِ پیش‌فرض).
+     * تاریخِ تهی، پایانِ پیش از شروع، یا کوچک‌کردنِ بازه SchoolError.InvalidYearRange است. ثبتِ دوباره‌ی
+     * تاریخ‌های پیش‌فرض، بازه‌ی اختصاصی را پاک می‌کند. بازه‌ی مؤثر را برمی‌گرداند.
+     * SchoolError.SchoolNotFound / SchoolError.AcademicYearNotFound.
+     */
+    YearlyPlanRange setYearlyPlanRange(SchoolId schoolId, AcademicYearId academicYearId, LocalDate startDate,
+                                       LocalDate endDate);
+
+    /**
+     * حذفِ رویداد. فقط ورودیِ EVENT همین مدرسه؛ ورودیِ CLOSED یا ورودیِ مدرسه‌ی دیگر همان
+     * SchoolError.CalendarEntryNotFound است.
+     */
+    void removeYearlyPlanEvent(SchoolId schoolId, Long entryId);
+
+    /**
+     * ثبت تعطیلیِ سراسری برای یک سال (مسیر مدیر پلتفرم، فاز C). روز باید در بازه‌ی همان سال باشد
+     * (SchoolError.InvalidCalendarEntry)، عنوان مثل {@link #addCalendarEntry}؛
+     * SchoolError.AcademicYearNotFound اگر سال نباشد.
+     */
+    PlatformHolidayInfo addPlatformHoliday(AcademicYearId academicYearId, LocalDate day, String title);
+
+    /** SchoolError.PlatformHolidayNotFound اگر شناسه نباشد. */
+    void removePlatformHoliday(Long id);
+
+    /** تعطیلی‌های سراسریِ یک سال به ترتیب روز. SchoolError.AcademicYearNotFound اگر سال نباشد. */
+    List<PlatformHolidayInfo> listPlatformHolidays(AcademicYearId academicYearId);
+
     record SchoolId(Long value) {
+    }
+
+    /** {@code id} برای SCHOOL شناسه‌ی ورودی تقویم مدرسه و برای PLATFORM شناسه‌ی تعطیلیِ سراسری است. */
+    record YearlyPlanItem(Long id, LocalDate day, String title, YearlyPlanSource source) {
+    }
+
+    /** SCHOOL = رویدادِ خودِ مدرسه (قابل حذف توسط مدرسه)؛ PLATFORM = تعطیلیِ سراسری (مدرسه حذف نمی‌کند). */
+    enum YearlyPlanSource {
+        SCHOOL, PLATFORM
+    }
+
+    /** {@code year} با تاریخ‌های پیش‌فرض؛ {@code range} بازه‌ی مؤثرِ همین مدرسه (رویدادها در آن می‌آیند). */
+    record YearlyPlan(AcademicYearInfo year, YearlyPlanRange range, List<YearlyPlanItem> items) {
+    }
+
+    /** بازه‌ی مؤثرِ برنامه‌ی سالانه؛ {@code custom} = مدرسه آن را از پیش‌فرض گسترش داده است. */
+    record YearlyPlanRange(LocalDate startDate, LocalDate endDate, boolean custom) {
+    }
+
+    record PlatformHolidayInfo(Long id, AcademicYearId academicYearId, LocalDate day, String title) {
     }
 
     record CalendarEntryInfo(Long id, LocalDate day, CalendarKind kind, String title) {
     }
 
-    /** CLOSED = روز تعطیل؛ EVENT برای «برنامه‌ی سالانه»ی آینده (هنوز کسی استفاده نمی‌کند). */
+    /** CLOSED = روز تعطیل؛ EVENT = رویدادِ «برنامه‌ی سالانه» (روز را تعطیل نمی‌کند). */
     enum CalendarKind {
         CLOSED, EVENT
     }
@@ -135,7 +203,8 @@ public interface SchoolFacade {
     record AcademicYearId(Long value) {
     }
 
-    record AcademicYearInfo(AcademicYearId id, String code, int startYear) {
+    /** startDate/endDate: ۱ مهرِ startYear تا ۳۱ خردادِ startYear+1 (هر دو شاملِ بازه)، میلادی. */
+    record AcademicYearInfo(AcademicYearId id, String code, int startYear, LocalDate startDate, LocalDate endDate) {
     }
 
     record SchoolInfo(SchoolId id, String name, SchoolStatus status, String timezone, String locale, SchoolLevel level,

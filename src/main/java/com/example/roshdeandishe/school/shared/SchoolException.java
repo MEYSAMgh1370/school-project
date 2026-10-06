@@ -23,6 +23,9 @@ public final class SchoolException extends RuntimeException {
             case SchoolError.InvalidSetting e -> e.reason();
             case SchoolError.InvalidCalendarEntry e -> e.reason();
             case SchoolError.CalendarEntryNotFound e -> "رویدادی با شناسه " + e.entryId() + " در تقویم یافت نشد.";
+            case SchoolError.PlatformHolidayNotFound e -> "تعطیلیِ سراسریِ " + e.holidayId() + " یافت نشد.";
+            case SchoolError.InvalidYearRange e -> e.reason();
+            case SchoolError.AcademicYearNotAllowed e -> "دسترسی به این سال تحصیلی مجاز نیست.";
         };
     }
 }

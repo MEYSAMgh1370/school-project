@@ -67,6 +67,23 @@ final class SolarCalendar {
         return new SolarDate(jy, 7 + (int) (k / 30), (int) (k % 30) + 1);
     }
 
+    /**
+     * شمسی←میلادی؛ وارونِ دقیقِ {@link #fromGregorian}. ماه‌های ۱ تا ۶ سی‌ویک روز، ۷ تا ۱۱ سی روز
+     * و اسفند ۲۹ روز (در سالِ کبیسه ۳۰) دارند؛ ورودیِ نامعتبر IllegalArgumentException می‌دهد.
+     */
+    static LocalDate toGregorian(int year, int month, int day) {
+        if (month < 1 || month > 12) {
+            throw new IllegalArgumentException("ماه شمسی نامعتبر است: " + month);
+        }
+        JalCal cal = jalCal(year);
+        int monthLength = month <= 6 ? 31 : month <= 11 ? 30 : (cal.leap() == 0 ? 30 : 29);
+        if (day < 1 || day > monthLength) {
+            throw new IllegalArgumentException("روز شمسی نامعتبر است: " + year + "/" + month + "/" + day);
+        }
+        int dayOfYear = (month <= 6 ? (month - 1) * 31 : 186 + (month - 7) * 30) + day - 1;
+        return LocalDate.of(year + 621, 3, cal.march()).plusDays(dayOfYear);
+    }
+
     private record JalCal(int leap, int march) {
     }
 

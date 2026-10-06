@@ -95,8 +95,9 @@ class NavCatalogTest {
     @Test
     void selfServiceLinksAreRoleOnlyAndManagementLinksNameTheirManagePermission() {
         allLinks().forEach(link -> {
-            if (link.href().startsWith("/my-")) {
-                // «من»: بدونِ Permission - GRADES_VIEW/FINANCE_VIEW را نقش‌های دیگر هم دارند
+            if (link.href().startsWith("/my-") || link.href().equals("/yearly-plan")) {
+                // «من» و «برنامه‌ی سالانه» (خواندنش برای همه‌ی اعضاست): بدونِ Permission -
+                // GRADES_VIEW/FINANCE_VIEW را نقش‌های دیگر هم دارند
                 assertThat(link.permissions()).as(link.href()).isEmpty();
             } else {
                 assertThat(link.permissions()).as(link.href()).isNotEmpty();
@@ -142,6 +143,19 @@ class NavCatalogTest {
         assertThat(mine.permissions()).isEmpty();
         assertThat(mine.visibleWhen("role", "perms")).isEqualTo("['STUDENT', 'PARENT'].includes(role)");
         assertThat(groupOf("/my-attendance")).isEqualTo("education");
+    }
+
+    @Test
+    void yearlyPlanIsARoleOnlyEducationLinkEveryMemberSeesWithAnAdminOnlyShortcut() {
+        Link plan = linkOf("/yearly-plan");
+
+        assertThat(plan.label()).isEqualTo("برنامه‌ی سالانه");
+        assertThat(plan.roles()).containsExactly("SCHOOL_ADMIN", "TEACHER", "STUDENT", "PARENT");
+        assertThat(plan.shortcutRoles()).containsExactly("SCHOOL_ADMIN");
+        assertThat(plan.permissions()).isEmpty();
+        assertThat(plan.visibleWhen("role", "perms")).isEqualTo("['SCHOOL_ADMIN', 'TEACHER', 'STUDENT', 'PARENT'].includes(role)");
+        assertThat(groupOf("/yearly-plan")).isEqualTo("education");
+        assertThat(NavCatalog.shortcuts()).contains(plan);
     }
 
     @Test
