@@ -25,6 +25,8 @@ Status: proposed 2026-10-06; **phases A and B implemented 2026-10-06** (year dat
 8. **Provisioning** (answers question 1): `PLATFORM_ADMIN_EMAILS` (environment variable) lists emails; at startup a listed email matching an existing, activated user is added to `iam.platform_admins`. Unknown emails are ignored; no register/invite/seed path creates one.
 9. **Delivery** (answers question 3): Phases A and B ship first; Phase C ships as a separate PR reviewed for security on its own. Until C lands, platform holidays can be loaded only by the facade/tests.
 
+10. **Per-school range** (2026-10-06): a school may change its own plan range **per academic year**. The default 1 Mehr - 31 Khordad is the minimum: a school can only **extend** it (start on or before the default start, end on or after the default end), never narrow it, so no existing event can fall outside. Anyone holding `YEARLY_PLAN_MANAGE` may set it. Setting the default dates again clears the override. Event validation and the plan listing use the school's effective range; platform holidays stay validated against the default range. No cap beyond the extend-only rule is imposed (an unresolved question below).
+
 ## Phases
 
 ### Phase A - per-school yearly plan
@@ -79,3 +81,4 @@ Proposed shape, pending the questions below:
 4. Should `CALENDAR_MANAGE` stop accepting `EVENT`, so each kind has one owner?
 5. ~~Confirm the summer-window consequence in Phase A.~~ **Resolved 2026-10-06:** the product owner kept 1 Mehr - 31 Khordad although pre-start activities begin on 1 Mordad. The new year is current from 1 Mordad, so its plan can be written then, but an event dated before 1 Mehr is rejected (`400 invalid-calendar-entry`).
 6. National holidays are not pre-loaded; the platform admin enters them.
+7. Should an extended range be capped (for example so that two years' ranges cannot overlap, or at a maximum length)? The product owner gave only the extend-only rule.
