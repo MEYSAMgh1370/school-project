@@ -36,7 +36,7 @@ public class TenantResolverFilter extends OncePerRequestFilter {
             // می‌شود و مرورگر برای آن X-School-ID نمی‌فرستد - همان استدلال /css و /js
             "/fonts",
             "/swagger-ui", "/v3/api-docs", "/activate", "/register", "/webjars",
-            // «من» و داشبورد درباره‌ی خودِ کاربرند، نه یک مدرسه‌ی خاص -
+            // «من» و پیشخوان درباره‌ی خودِ کاربرند، نه یک مدرسه‌ی خاص -
             // schoolId ای وجود ندارد که در هدر بیاید
             "/api/me", "/dashboard",
             // صفحه‌ی مدیریتیِ /people خودش یک route است نه یک API؛ فراخوانی‌های
@@ -91,6 +91,12 @@ public class TenantResolverFilter extends OncePerRequestFilter {
             // /my-grades برای صفحه‌ی «برنامه‌ی کلاسی من» (fetch آن /api/me است)
             "/timetable",
             "/my-timetable",
+            // حضور و غیاب (/attendance و /attendance/report) و تقویم مدرسه (/calendar): همان استدلال /people
+            // برای خودِ صفحه؛ fetchهای آن‌ها به /api/admin/schools/{id}/attendance و .../calendar هدر را می‌فرستند
+            "/attendance",
+            "/calendar",
+            // «غیبت‌های من»: همان استدلال /my-timetable (fetch آن /api/me است و schoolId از path می‌آید)
+            "/my-attendance",
             // صفحه‌ی ثبت مدرسه: مدرسه هنوز وجود ندارد که schoolId داشته باشد
             "/schools/new",
             // درِ ورودی برنددار مدرسه (/s/{slug}): صفحه‌ی عمومی، بازدیدکننده

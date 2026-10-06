@@ -20,7 +20,7 @@ interface SchoolMembershipRepository extends JpaRepository<SchoolMembershipEntit
 
     Optional<SchoolMembershipEntity> findByIdAndSchoolId(Long id, Long schoolId);
 
-    // برای "عضویت‌های خودم" (داشبورد/سوییچر آینده) - شامل غیرفعال‌ها،
+    // برای "عضویت‌های خودم" (پیشخوان/سوییچر آینده) - شامل غیرفعال‌ها،
     // چون کاربر باید ببیند دسترسی‌اش به کدام مدرسه غیرفعال شده
     List<SchoolMembershipEntity> findByUserId(Long userId);
 

@@ -21,7 +21,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 class PhoneNumberCanonicalizationMigrationTest {
 
     private static final String[] SCHEMAS = {
-            "iam", "school", "academic", "finance", "bale", "curriculum", "studyplan", "exam"
+            "iam", "school", "academic", "finance", "bale", "curriculum", "studyplan", "exam", "attendance"
     };
 
     @Container

@@ -16,7 +16,7 @@ import java.util.Map;
 import static org.assertj.core.api.Assertions.assertThat;
 
 /**
- * بخش «فرزندان من» داشبورد را مستقیم (بدون Spring/Docker) رندر می‌کند: وضعیت مالیِ
+ * بخش «فرزندان من» پیشخوان را مستقیم (بدون Spring/Docker) رندر می‌کند: وضعیت مالیِ
  * سه‌گانه، حالت خالی، غیبتِ بخش برای غیرِ والد، محدودشدن به نقشِ انتخاب‌شده، و
  * ترتیب بخش‌ها (دسترسی سریع ← فرزندان ← عضویت‌ها).
  */
@@ -53,7 +53,7 @@ class DashboardWardsRenderTest {
 
         // مدرسه در خودِ URL است تا «باز کردن در تب جدید»/کلیک میانی هم درست کار کند
         assertThat(html).contains("href=\"/my-grades?student=100&school=5\"",
-                "href=\"/my-invoices?student=100&school=5\"");
+                "href=\"/my-invoices?student=100&school=5\"", "href=\"/my-attendance?school=5\">غیبت‌ها</a>");
         assertThat(html).doesNotContain("rememberSchool");
         // نام فرزند نباید در URL برود
         assertThat(html).doesNotContain("student=آرین").doesNotContain("?name=").doesNotContain("&name=");

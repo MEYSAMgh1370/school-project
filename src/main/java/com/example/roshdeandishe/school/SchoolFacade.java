@@ -72,6 +72,12 @@ public interface SchoolFacade {
     Optional<AcademicYearInfo> findCurrentAcademicYear(SchoolId schoolId);
 
     /**
+     * تاریخِ شمسی برای متنِ پیام‌های سرور، مثل «۱۴ مهر ۱۴۰۵» (رقم فارسی). صفحه‌ها تاریخ را سمت کلاینت
+     * با jalali.js نشان می‌دهند؛ این فقط برای پیام‌هایی است که روی سرور ساخته می‌شود (مثلاً اطلاع‌رسانی غیبت).
+     */
+    String formatSolarDate(java.time.LocalDate date);
+
+    /**
      * انتخاب سال تحصیلی جاریِ مدرسه از فهرست سراسری. فقط همین یک مقدار عوض
      * می‌شود - هیچ داده‌ای حذف یا تغییر نمی‌کند، و شروع/پایانِ سال همین انتخابِ
      * مدیرِ مدرسه است (نه تاریخِ ثابت). SchoolError.AcademicYearNotFound اگر سال
@@ -93,7 +99,37 @@ public interface SchoolFacade {
 
     void setAutoPromotion(SchoolId schoolId, boolean enabled);
 
+    /**
+     * ورودی‌های تقویم مدرسه در بازه‌ی بسته‌ی [from, to] به ترتیب روز. هر دو الزامی‌اند و
+     * {@code from} نباید بعد از {@code to} باشد (SchoolError.InvalidCalendarEntry).
+     * SchoolError.SchoolNotFound اگر مدرسه نباشد.
+     */
+    List<CalendarEntryInfo> listCalendar(SchoolId schoolId, LocalDate from, LocalDate to);
+
+    /**
+     * افزودنِ ورودی به تقویم مدرسه. عنوان غیرخالی و حداکثر ۱۲۸ نویسه (پس از trim)؛
+     * SchoolError.InvalidCalendarEntry برای روز/نوع/عنوانِ نامعتبر، SchoolError.SchoolNotFound
+     * اگر مدرسه نباشد. یک روز می‌تواند چند ورودی داشته باشد.
+     */
+    CalendarEntryInfo addCalendarEntry(SchoolId schoolId, LocalDate day, CalendarKind kind, String title);
+
+    /**
+     * حذفِ ورودی. ورودیِ مدرسه‌ی دیگر همان SchoolError.CalendarEntryNotFound است (وجودش لو نمی‌رود).
+     */
+    void removeCalendarEntry(SchoolId schoolId, Long entryId);
+
+    /** آیا در این روز دست‌کم یک ورودیِ {@link CalendarKind#CLOSED} هست؟ (حضور و غیاب فقط همین را می‌پرسد.) */
+    boolean isClosedDay(SchoolId schoolId, LocalDate day);
+
     record SchoolId(Long value) {
+    }
+
+    record CalendarEntryInfo(Long id, LocalDate day, CalendarKind kind, String title) {
+    }
+
+    /** CLOSED = روز تعطیل؛ EVENT برای «برنامه‌ی سالانه»ی آینده (هنوز کسی استفاده نمی‌کند). */
+    enum CalendarKind {
+        CLOSED, EVENT
     }
 
     record AcademicYearId(Long value) {

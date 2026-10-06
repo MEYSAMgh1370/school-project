@@ -151,6 +151,47 @@ class AcademicFacadeImpl implements AcademicFacade {
     }
 
     @Override
+    public Optional<ClassInfo> findClass(Long schoolId, Long classId) {
+        return classRepository.findById(classId)
+                .filter(c -> c.getSchoolId().equals(schoolId))
+                .map(AcademicFacadeImpl::toClassInfo);
+    }
+
+    @Override
+    public Map<Long, List<StudentInfo>> listStudentsByClass(Long schoolId, java.util.Collection<Long> classIds) {
+        Map<Long, Set<Long>> studentIdsByClass = new HashMap<>();
+        if (classIds.isEmpty()) {
+            return Map.of();
+        }
+        // مدرسه، کلاس‌ها را تعیین می‌کند: کلاسِ مدرسه‌ی دیگر هیچ دانش‌آموزی نمی‌دهد
+        Set<Long> ownClassIds = new LinkedHashSet<>();
+        classRepository.findAllById(classIds).stream()
+                .filter(c -> c.getSchoolId().equals(schoolId))
+                .forEach(c -> ownClassIds.add(c.getId()));
+        if (ownClassIds.isEmpty()) {
+            return Map.of();
+        }
+        studentRepository.findBySchoolId(schoolId).stream()
+                .filter(s -> s.getClassId() != null && ownClassIds.contains(s.getClassId()))
+                .forEach(s -> studentIdsByClass.computeIfAbsent(s.getClassId(), k -> new LinkedHashSet<>()).add(s.getId()));
+        enrollmentRepository.findByClassIdIn(ownClassIds).stream()
+                .filter(e -> e.getSchoolId().equals(schoolId))
+                .forEach(e -> studentIdsByClass.computeIfAbsent(e.getClassId(), k -> new LinkedHashSet<>()).add(e.getStudentId()));
+        Set<Long> allIds = new LinkedHashSet<>();
+        studentIdsByClass.values().forEach(allIds::addAll);
+        Map<Long, StudentInfo> infoById = new HashMap<>();
+        studentRepository.findAllById(allIds).stream()
+                .filter(s -> s.getSchoolId().equals(schoolId))
+                .forEach(s -> infoById.put(s.getId(), toStudentInfo(s)));
+        Map<Long, List<StudentInfo>> result = new HashMap<>();
+        studentIdsByClass.forEach((classId, ids) -> result.put(classId, ids.stream()
+                .map(infoById::get)
+                .filter(java.util.Objects::nonNull)
+                .toList()));
+        return result;
+    }
+
+    @Override
     public List<StudentInfo> listStudentsEnrolledIn(Long schoolId, String academicYear) {
         String year = AcademicYearCodes.canonical(academicYear);
         requireListedYear(year);

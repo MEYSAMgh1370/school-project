@@ -78,7 +78,7 @@ class RegistrationFlowIntegrationTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.email").value("newuser@example.test"));
 
-        // کاربر تازه هیچ Membershipای ندارد - داشبورد باید این حالت را
+        // کاربر تازه هیچ Membershipای ندارد - پیشخوان باید این حالت را
         // تحمل کند (تصمیم Q2: سوییچر بدون عضویت اصلاً رندر نمی‌شود) و در
         // حالت خالی، CTA ثبت مدرسه را نشان دهد (جریان بنیان‌گذار)
         mockMvc.perform(get("/dashboard").session(session))
@@ -89,8 +89,8 @@ class RegistrationFlowIntegrationTest {
     @Test
     void registerThenCreateSchoolAndBecomeItsAdmin() throws Exception {
         // کل مسیر onboarding خودسرویسی B2B: ثبت‌نام → صفحه‌ی ثبت مدرسه
-        // (/schools/new - تصمیم ۲۰۲۶-۰۷-۰۶: فرم دیگر روی داشبورد نیست) →
-        // ساخت مدرسه → SCHOOL_ADMIN شدن خودکار → دیدن مدرسه در داشبورد
+        // (/schools/new - تصمیم ۲۰۲۶-۰۷-۰۶: فرم دیگر روی پیشخوان نیست) →
+        // ساخت مدرسه → SCHOOL_ADMIN شدن خودکار → دیدن مدرسه در پیشخوان
         mockMvc.perform(post("/api/auth/register")
                         .with(csrf())
                         .contentType(MediaType.APPLICATION_JSON)

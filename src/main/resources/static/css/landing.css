@@ -11,8 +11,7 @@
 
 .app-marketing-header-inner,
 .app-landing-footer-inner,
-.app-landing-cta,
-.app-landing-preview-heading {
+.app-landing-cta {
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -25,9 +24,66 @@
 }
 
 .app-landing-brand {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
   color: var(--bulma-text);
   font-weight: var(--bulma-weight-bold);
   text-decoration: none;
+}
+
+/* نشان: مربع گردگوشه‌ی فیروزه‌ای با ساقه‌ی دو برگ، با CSS ساخته می‌شود
+   تا کامپوننت «آیکون» تازه‌ای به سیستم طراحی اضافه نشود. */
+.app-landing-brand-mark {
+  position: relative;
+  flex: none;
+  inline-size: var(--space-6);
+  block-size: var(--space-6);
+  border-radius: var(--radius-sm);
+  background: var(--bulma-primary);
+}
+
+.app-landing-brand-mark::before,
+.app-landing-brand-mark::after {
+  content: "";
+  position: absolute;
+  background: var(--bulma-primary-invert);
+}
+
+.app-landing-brand-mark::before {
+  inset-inline-start: calc(50% - 1px);
+  inset-block: 50% var(--space-2);
+  inline-size: 2px;
+}
+
+.app-landing-brand-mark::after {
+  inset-inline-start: 50%;
+  inset-block-start: var(--space-2);
+  inline-size: var(--space-3);
+  block-size: var(--space-3);
+  border-radius: 0 var(--space-3) 0 var(--space-3);
+}
+
+.app-marketing-header-start {
+  display: flex;
+  align-items: center;
+  gap: var(--space-7);
+}
+
+.app-marketing-nav {
+  display: flex;
+  align-items: center;
+  gap: var(--space-5);
+}
+
+.app-marketing-nav a {
+  color: var(--bulma-text-weak);
+  font-weight: var(--bulma-weight-medium);
+  text-decoration: none;
+}
+
+.app-marketing-nav a:hover {
+  color: var(--bulma-text);
 }
 
 .app-landing-hero {
@@ -38,29 +94,160 @@
   max-inline-size: 40rem;
 }
 
-.app-landing-preview,
 .app-landing-feature-card,
 .app-landing-cta {
   box-shadow: var(--shadow-sm);
 }
 
-.app-landing-preview {
-  padding: var(--space-5);
-}
-
-.app-landing-preview-item {
-  padding-block: var(--space-4);
-  border-block-start: 1px solid var(--bulma-border);
-}
-
-.app-landing-preview-heading + .app-landing-preview-item {
-  margin-block-start: var(--space-4);
-}
-
-.app-landing-preview-item p:last-child,
 .app-landing-steps p,
 .app-landing-cta p {
   margin-block-end: 0;
+}
+
+/* --- هیرو: تأکید، پیوند متنی و نمونه‌ی نمایشی پیشخوان ------------------- */
+.app-landing-emphasis {
+  color: var(--bulma-primary-on-scheme);
+}
+
+.app-landing-text-link {
+  display: inline-flex;
+  align-items: center;
+  min-block-size: var(--space-7);
+  color: var(--bulma-text);
+  font-weight: var(--bulma-weight-semibold);
+  text-decoration: underline;
+  text-decoration-color: var(--bulma-border);
+  text-decoration-thickness: 2px;
+  text-underline-offset: var(--space-2);
+}
+
+/* قاب گرم پشت پنجره‌ی نمایشی؛ همه‌ی رنگ‌ها از توکن‌های اسکیم می‌آیند و
+   در حالت تیره خودکار وارونه می‌شوند. */
+.app-landing-stage {
+  margin: 0;
+  padding: var(--space-5);
+  border: 1px solid var(--bulma-border);
+  border-radius: var(--radius-lg);
+  background: var(--bulma-scheme-main-ter);
+}
+
+.app-landing-window {
+  overflow: hidden;
+  border: 1px solid var(--bulma-border);
+  border-radius: var(--radius-md);
+  background: var(--bulma-scheme-main);
+  box-shadow: var(--shadow-md);
+}
+
+.app-landing-window-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  padding: var(--space-2) var(--space-4);
+  border-block-end: 1px solid var(--bulma-border);
+  background: var(--bulma-scheme-main-bis);
+}
+
+.app-landing-window-dots {
+  display: flex;
+  gap: var(--space-2);
+}
+
+.app-landing-window-dots span {
+  inline-size: var(--space-2);
+  block-size: var(--space-2);
+  border-radius: 50%;
+  background: var(--bulma-border);
+}
+
+.app-landing-window-body {
+  display: flex;
+}
+
+.app-landing-window-side {
+  display: flex;
+  flex: none;
+  flex-direction: column;
+  gap: var(--space-1);
+  inline-size: calc(var(--space-8) * 2);
+  padding: var(--space-4) var(--space-2);
+  border-inline-end: 1px solid var(--bulma-border);
+}
+
+.app-landing-window-side span {
+  padding: var(--space-2);
+  border-radius: var(--radius-sm);
+  color: var(--bulma-text-weak);
+}
+
+.app-landing-window-side .is-active {
+  background: var(--bulma-primary-soft);
+  color: var(--bulma-primary-on-scheme);
+  font-weight: var(--bulma-weight-bold);
+}
+
+.app-landing-window-main {
+  display: grid;
+  flex: 1;
+  gap: var(--space-3);
+  min-inline-size: 0;
+  padding: var(--space-4);
+  background: var(--bulma-scheme-main-bis);
+}
+
+.app-landing-window-top,
+.app-landing-agenda-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+}
+
+.app-landing-window-school {
+  font-weight: var(--bulma-weight-bold);
+}
+
+.app-landing-stats {
+  display: grid;
+  gap: var(--space-3);
+  grid-template-columns: repeat(auto-fit, minmax(7rem, 1fr));
+}
+
+.app-landing-stat,
+.app-landing-agenda {
+  display: grid;
+  gap: var(--space-1);
+  padding: var(--space-3);
+  border: 1px solid var(--bulma-border);
+  border-radius: var(--radius-md);
+  background: var(--bulma-scheme-main);
+}
+
+.app-landing-stat-value {
+  font-size: 1.375rem;
+  line-height: 1.3;
+}
+
+.app-landing-stat-bar {
+  margin-block-start: var(--space-1);
+  block-size: var(--space-2);
+}
+
+.app-landing-agenda {
+  gap: var(--space-3);
+}
+
+.app-landing-agenda-item {
+  display: grid;
+  grid-template-columns: var(--space-7) 1fr;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.app-landing-agenda-item > span:last-child {
+  display: grid;
+  min-inline-size: 0;
 }
 
 .app-landing-section {
@@ -298,6 +485,16 @@
   .app-landing-footer-columns {
     grid-template-columns: 1fr;
     gap: var(--space-5);
+  }
+
+  .app-marketing-nav,
+  .app-marketing-header-cta,
+  .app-landing-window-side {
+    display: none;
+  }
+
+  .app-landing-stage {
+    padding: var(--space-3);
   }
 
   .app-landing-slider-viewport {

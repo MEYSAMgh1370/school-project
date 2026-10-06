@@ -1,5 +1,5 @@
 document.addEventListener('alpine:init', () => {
-    // «برنامه‌ی امروز» روی داشبوردِ دانش‌آموز (openspec/changes/class-timetable.md، تصمیم ۱۰).
+    // «برنامه‌ی امروز» روی پیشخوانِ دانش‌آموز (openspec/changes/class-timetable.md، تصمیم ۱۰).
     // فقط وقتی نقشِ انتخاب‌شده STUDENT است داده می‌گیرد (برای نقش‌های دیگر هیچ درخواستی
     // نمی‌رود) و فقط «امروز» را از همان endpoint خودسرویسِ /my-timetable نشان می‌دهد.
     Alpine.data('dashboardTimetable', () => ({

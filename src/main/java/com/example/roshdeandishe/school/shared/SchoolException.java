@@ -21,6 +21,8 @@ public final class SchoolException extends RuntimeException {
             case SchoolError.AcademicYearChanged e -> "سال تحصیلی جاریِ مدرسه در این فاصله عوض شده است.";
             case SchoolError.AcademicYearNotFound e -> "سال تحصیلی‌ای با شناسه " + e.academicYearId() + " یافت نشد.";
             case SchoolError.InvalidSetting e -> e.reason();
+            case SchoolError.InvalidCalendarEntry e -> e.reason();
+            case SchoolError.CalendarEntryNotFound e -> "رویدادی با شناسه " + e.entryId() + " در تقویم یافت نشد.";
         };
     }
 }

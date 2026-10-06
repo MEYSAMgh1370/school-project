@@ -26,7 +26,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  * سایدبار برای نقش سفارشی (مثلاً معاون با TIMETABLE_MANAGE) روی داده‌ی واقعی:
  * (۱) نگهبانِ بی‌تغییری: برای هر نقشِ سیستمیِ seed، «Permissionِ لینک» دقیقاً همان نتیجه‌ی
  * «نقشِ لینک» را می‌دهد - یعنی افزودنِ شرطِ Permission به NavCatalog هیچ لینکی را برای
- * مدیر/معلم/دانش‌آموز/ولی/مدیر مالی کم یا زیاد نمی‌کند؛ (۲) ناوبارِ صفحه‌ی داشبورد Permissionهای
+ * مدیر/معلم/دانش‌آموز/ولی/مدیر مالی کم یا زیاد نمی‌کند؛ (۲) ناوبارِ صفحه‌ی پیشخوان Permissionهای
  * نقشِ سفارشی را به Alpine می‌دهد.
  */
 @SpringBootTest
@@ -54,7 +54,10 @@ class NavPermissionsFlowIntegrationTest {
                     continue;
                 }
                 for (String role : SYSTEM_ROLES) {
-                    boolean byPermission = permissionsByRole.get(role).containsAll(link.permissions());
+                    // «همه‌ی یک مجموعه» یا «همه‌ی یکی از جایگزین‌ها» (مثلاً حضور و غیاب: RECORD یا RECORD_ANY)
+                    boolean byPermission = link.permissionSets().stream()
+                            .filter(set -> !set.isEmpty())
+                            .anyMatch(set -> permissionsByRole.get(role).containsAll(set));
                     assertThat(byPermission)
                             .as("%s for %s: link roles %s, link permissions %s, role permissions %s",
                                     link.href(), role, link.roles(), link.permissions(), permissionsByRole.get(role))

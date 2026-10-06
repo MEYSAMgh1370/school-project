@@ -22,9 +22,9 @@ import java.util.regex.Pattern;
 import static org.assertj.core.api.Assertions.assertThat;
 
 /**
- * سایدبار و «دسترسی سریع» داشبورد را مستقیم (بدون Spring/Docker) رندر می‌کند
+ * سایدبار و «دسترسی سریع» پیشخوان را مستقیم (بدون Spring/Docker) رندر می‌کند
  * تا دو چیز قفل شود: هر دو از NavCatalog می‌آیند (لینکِ کارت‌ها همه در
- * سایدبار هم هست) و ترتیبِ محتوای داشبورد (دسترسی سریع ← عضویت‌ها ← نشانی
+ * سایدبار هم هست) و ترتیبِ محتوای پیشخوان (دسترسی سریع ← عضویت‌ها ← نشانی
  * ورود مدرسه ← شماره تلفن).
  */
 class NavSharedSourceRenderTest {
@@ -32,7 +32,8 @@ class NavSharedSourceRenderTest {
     private static final NavbarModel NAVBAR = new NavbarModel("سارا احمدی",
             List.of(new NavbarModel.SchoolOption(1L, "مدرسه‌ی نمونه", List.of("SCHOOL_ADMIN", "TEACHER"))));
 
-    private static final Pattern HREF = Pattern.compile("href=\"(/[a-z-]+)\"");
+    // «/» هم مجاز است: /attendance/report یک مسیر دوبخشی است
+    private static final Pattern HREF = Pattern.compile("href=\"(/[a-z/-]+)\"");
 
     private final TemplateEngine engine = TemplateEngine.createPrecompiled(ContentType.Html);
 
@@ -79,7 +80,8 @@ class NavSharedSourceRenderTest {
                 "href=\"/students\" x-show=\"['SCHOOL_ADMIN', 'TEACHER'].includes(selectedRole) "
                         + "|| ['STUDENT_ENROLL', 'STUDENT_VIEW'].every(p => permissions.includes(p))\"",
                 // صفحه‌های «من» فقط بر اساس نقش‌اند (Permissionِ خودسرویس مثل GRADES_VIEW معیار نیست)
-                "href=\"/my-grades\" x-show=\"['STUDENT', 'PARENT'].includes(selectedRole)\"");
+                "href=\"/my-grades\" x-show=\"['STUDENT', 'PARENT'].includes(selectedRole)\"",
+                "href=\"/my-attendance\" x-show=\"['STUDENT', 'PARENT'].includes(selectedRole)\"");
     }
 
     @Test
@@ -128,7 +130,7 @@ class NavSharedSourceRenderTest {
         String sidebar = render("layout/navbar.jte", Map.of("navbar", NAVBAR));
 
         List<String> shortcutHrefs = new ArrayList<>();
-        Matcher card = Pattern.compile("class=\"box app-shortcut\" href=\"(/[a-z-]+)\"").matcher(dashboard);
+        Matcher card = Pattern.compile("class=\"box app-shortcut\" href=\"(/[a-z/-]+)\"").matcher(dashboard);
         while (card.find()) {
             shortcutHrefs.add(card.group(1));
         }

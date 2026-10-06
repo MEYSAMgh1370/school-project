@@ -23,6 +23,8 @@ interface TimetableEntryRepository extends JpaRepository<TimetableEntryEntity, L
     @Query(value = "select 1 from (select pg_advisory_xact_lock(:namespace, :key)) as locked", nativeQuery = true)
     int lockCell(int namespace, int key);
 
+    List<TimetableEntryEntity> findBySchoolIdAndTeacherUserId(Long schoolId, Long teacherUserId);
+
     boolean existsByPeriodId(Long periodId);
 
     boolean existsByActivityId(Long activityId);

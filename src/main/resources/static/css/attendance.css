@@ -1,0 +1,73 @@
+/* Attendance roll (/attendance): composed from shared tokens and Bulma primitives; logical properties
+   only (RTL app). One row per student: name at inline-start, the present/absent/late toggle group at
+   inline-end, and an optional second line (excused + note) that appears only for absent/late. */
+.app-att-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.app-att-row {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: var(--space-2) var(--space-4);
+  align-items: center;
+  padding-block: var(--space-3);
+  border-block-end: 1px solid var(--bulma-border);
+}
+
+.app-att-row:last-child {
+  border-block-end: 0;
+}
+
+.app-att-name {
+  min-inline-size: 0;
+  font-weight: var(--bulma-weight-semibold);
+}
+
+.app-att-status {
+  margin: 0;
+}
+
+.app-att-status .button {
+  margin-block-end: 0;
+}
+
+.app-att-extra {
+  grid-column: 1 / -1;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: var(--space-3);
+}
+
+.app-att-note {
+  flex: 1 1 12rem;
+}
+
+/* narrow phones: the toggle group drops under the name instead of overflowing */
+@media screen and (max-width: 480px) {
+  .app-att-row {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* Class cards of the daily absentees view (/attendance/report). */
+.app-att-class {
+  block-size: 100%;
+  border: 1px solid var(--bulma-border);
+  box-shadow: var(--shadow-sm);
+}
+
+.app-att-absentee {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--space-2) var(--space-3);
+  padding-block: var(--space-2);
+  border-block-end: 1px solid var(--bulma-border);
+}
+
+.app-att-absentee:last-child {
+  border-block-end: 0;
+}

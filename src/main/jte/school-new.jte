@@ -3,7 +3,7 @@
 @param NavbarModel navbar
 
 <%-- ثبت مدرسه‌ی self-service (CLAUDE.md §1): سازنده بلافاصله SCHOOL_ADMIN
-     می‌شود. صفحه‌ی اختصاصی به‌جای فرم روی داشبورد (تصمیم ۲۰۲۶-۰۷-۰۶)؛
+     می‌شود. صفحه‌ی اختصاصی به‌جای فرم روی پیشخوان (تصمیم ۲۰۲۶-۰۷-۰۶)؛
      کامپوننت createSchoolForm در /js/school-new.js است - قانون جای‌گذاری
      کد §2 (fetch → فایل استاتیک). --%>
 @template.layout.main(title = "ثبت مدرسه", scripts = java.util.List.of("/js/navbar.js", "/js/school-new.js"), content = @`

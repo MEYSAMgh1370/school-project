@@ -53,7 +53,7 @@ public record NavbarModel(String fullName, List<SchoolOption> schools, Map<Long,
      *                        (فقط نمایش؛ کنترل دسترسی همیشه سمت سرور است).
      * @param weekStart       روز شروع هفته‌ی همین مدرسه (W9)؛ صفحه‌ها هفته را از آن می‌چرخانند.
      * @param currentYear     کدِ سال تحصیلیِ جاریِ مدرسه («1405-1406») یا تهی اگر مدرسه هنوز انتخاب نکرده
-     *                        (academic-year.md فاز ۱)؛ ناوبار و داشبورد آن را نشان می‌دهند.
+     *                        (academic-year.md فاز ۱)؛ ناوبار و پیشخوان آن را نشان می‌دهند.
      */
     public record SchoolOption(Long id, String name, List<String> roles, Map<String, List<String>> rolePermissions,
                                WeekStart weekStart, String currentYear) {

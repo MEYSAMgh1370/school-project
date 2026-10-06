@@ -12,7 +12,7 @@ import java.util.Set;
 import static org.assertj.core.api.Assertions.assertThat;
 
 /**
- * منبع واحدِ لینک‌ها (سایدبار + «دسترسی سریع» داشبورد) را بدون Spring و
+ * منبع واحدِ لینک‌ها (سایدبار + «دسترسی سریع» پیشخوان) را بدون Spring و
  * Docker قفل می‌کند: ثبت لینکِ تکراری یا کارتی برای نقشی که لینکش را
  * نمی‌بیند، همین‌جا می‌شکند - نه در مرورگر.
  */
@@ -55,7 +55,7 @@ class NavCatalogTest {
 
     @Test
     void everyRoleThatSeesTheSidebarHasAtLeastOneShortcut() {
-        // وگرنه داشبوردِ آن نقش بخش «دسترسی سریع» خالی نشان می‌دهد
+        // وگرنه پیشخوانِ آن نقش بخش «دسترسی سریع» خالی نشان می‌دهد
         Set<String> roles = new HashSet<>();
         allLinks().forEach(link -> roles.addAll(link.roles()));
         roles.forEach(role -> assertThat(NavCatalog.shortcuts().stream()
@@ -111,6 +111,62 @@ class NavCatalogTest {
         assertThat(permissionsOf("/finance")).containsExactlyInAnyOrder("FINANCE_MANAGE", "FINANCE_VIEW");
         assertThat(permissionsOf("/students")).containsExactlyInAnyOrder("STUDENT_ENROLL", "STUDENT_VIEW");
         assertThat(permissionsOf("/grades")).containsExactlyInAnyOrder("GRADES_EDIT", "CLASS_VIEW");
+    }
+
+    @Test
+    void attendanceAndCalendarPagesJoinTheirGroupsWithTheRightRolesAndPermissions() {
+        Link record = linkOf("/attendance");
+        Link report = linkOf("/attendance/report");
+        Link calendar = linkOf("/calendar");
+
+        assertThat(record.roles()).containsExactly("SCHOOL_ADMIN", "TEACHER");
+        assertThat(record.shortcutRoles()).containsExactly("SCHOOL_ADMIN", "TEACHER");
+        assertThat(report.roles()).containsExactly("SCHOOL_ADMIN");
+        assertThat(report.shortcutRoles()).containsExactly("SCHOOL_ADMIN");
+        assertThat(calendar.roles()).containsExactly("SCHOOL_ADMIN");
+        assertThat(calendar.shortcutRoles()).containsExactly("SCHOOL_ADMIN");
+        assertThat(permissionsOf("/attendance/report")).containsExactly("ATTENDANCE_VIEW_ALL");
+        assertThat(permissionsOf("/calendar")).containsExactly("CALENDAR_MANAGE");
+
+        assertThat(groupOf("/attendance")).isEqualTo("education");
+        assertThat(groupOf("/attendance/report")).isEqualTo("education");
+        assertThat(groupOf("/calendar")).isEqualTo("school");
+    }
+
+    @Test
+    void myAttendanceIsARoleOnlyEducationLinkWithAShortcutForStudentsAndParents() {
+        Link mine = linkOf("/my-attendance");
+
+        assertThat(mine.roles()).containsExactly("STUDENT", "PARENT");
+        assertThat(mine.shortcutRoles()).containsExactly("STUDENT", "PARENT");
+        assertThat(mine.permissions()).isEmpty();
+        assertThat(mine.visibleWhen("role", "perms")).isEqualTo("['STUDENT', 'PARENT'].includes(role)");
+        assertThat(groupOf("/my-attendance")).isEqualTo("education");
+    }
+
+    @Test
+    void recordingAttendanceAcceptsEitherRecordPermissionForACustomRole() {
+        Link record = linkOf("/attendance");
+
+        // معلم ATTENDANCE_RECORD و مدیر ATTENDANCE_RECORD_ANY دارد: هر دو مجموعه‌ی «همه» جدا و با «یا»
+        assertThat(record.permissionSets()).containsExactly(
+                List.of("ATTENDANCE_RECORD"), List.of("ATTENDANCE_RECORD_ANY"));
+        assertThat(record.visibleWhen("role", "perms")).isEqualTo(
+                "['SCHOOL_ADMIN', 'TEACHER'].includes(role) || ['ATTENDANCE_RECORD'].every(p => perms.includes(p))"
+                        + " || ['ATTENDANCE_RECORD_ANY'].every(p => perms.includes(p))");
+        assertThat(record.shortcutVisibleWhen("role", "perms")).contains("['ATTENDANCE_RECORD'].every(", "['ATTENDANCE_RECORD_ANY'].every(");
+        // لینک‌های بدونِ جایگزین دقیقاً مثل قبل‌اند
+        assertThat(linkOf("/timetable").permissionSets()).containsExactly(List.of("TIMETABLE_MANAGE"));
+    }
+
+    private static Link linkOf(String href) {
+        return allLinks().stream().filter(l -> l.href().equals(href)).findFirst().orElseThrow();
+    }
+
+    private static String groupOf(String href) {
+        return NavCatalog.groups().stream()
+                .filter(g -> g.links().stream().anyMatch(l -> l.href().equals(href)))
+                .findFirst().orElseThrow().id();
     }
 
     private static java.util.List<String> permissionsOf(String href) {

@@ -20,7 +20,7 @@
                 <div class="buttons is-centered mt-6">
                     @if(model.authenticated())
                         <a class="button is-white is-medium" href="/dashboard"
-                           onclick="localStorage.setItem('selectedSchoolId', '${model.schoolId()}')">ادامه به داشبورد</a>
+                           onclick="localStorage.setItem('selectedSchoolId', '${model.schoolId()}')">ادامه به پیشخوان</a>
                     @else
                         <a class="button is-white is-medium" href="/login"
                            onclick="localStorage.setItem('selectedSchoolId', '${model.schoolId()}')">ورود</a>

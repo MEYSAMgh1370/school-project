@@ -23,7 +23,26 @@ final class SolarCalendar {
     record SolarDate(int year, int month, int day) {
     }
 
+    private static final String[] MONTH_NAMES = {
+            "فروردین", "اردیبهشت", "خرداد", "تیر", "مرداد", "شهریور",
+            "مهر", "آبان", "آذر", "دی", "بهمن", "اسفند"
+    };
+
     private SolarCalendar() {
+    }
+
+    /** «۱۴ مهر ۱۴۰۵»: روز، نامِ ماه و سال با رقم فارسی (برای متنِ پیام‌ها؛ DESIGN.md §8). */
+    static String format(LocalDate date) {
+        SolarDate solar = fromGregorian(date);
+        return persianDigits(solar.day()) + " " + MONTH_NAMES[solar.month() - 1] + " " + persianDigits(solar.year());
+    }
+
+    private static String persianDigits(int number) {
+        StringBuilder out = new StringBuilder();
+        for (char c : Integer.toString(number).toCharArray()) {
+            out.append((char) ('۰' + (c - '0')));
+        }
+        return out.toString();
     }
 
     static SolarDate fromGregorian(LocalDate date) {

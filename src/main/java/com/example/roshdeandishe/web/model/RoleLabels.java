@@ -3,7 +3,7 @@ package com.example.roshdeandishe.web.model;
 import java.util.Map;
 
 /**
- * برچسب فارسی نقش‌ها برای رندر سمت سرور (navbar مشترک، جدول داشبورد) -
+ * برچسب فارسی نقش‌ها برای رندر سمت سرور (navbar مشترک، جدول پیشخوان) -
  * کد خام نقش (SCHOOL_ADMIN و ...) هرگز نباید به UI برسد (UX_ROADMAP.md §2).
  * نسخه‌ی سمت کلاینتِ همین نگاشت در people.js است (صفحه‌های client-rendered
  * داده‌ی API را با کد نقش می‌گیرند) - این دو را با هم هماهنگ نگه دارید.

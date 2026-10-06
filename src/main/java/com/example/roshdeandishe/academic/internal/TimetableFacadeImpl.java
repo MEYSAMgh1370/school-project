@@ -1,5 +1,7 @@
 package com.example.roshdeandishe.academic.internal;
 
+import com.example.roshdeandishe.academic.AcademicFacade.ClassId;
+import com.example.roshdeandishe.academic.AcademicFacade.ClassInfo;
 import com.example.roshdeandishe.academic.AcademicFacade.CourseId;
 import com.example.roshdeandishe.academic.AcademicFacade.CourseInfo;
 import com.example.roshdeandishe.academic.TimetableDay;
@@ -285,6 +287,21 @@ class TimetableFacadeImpl implements TimetableFacade {
         }
         return toEntryInfos(entryRepository.findBySchoolIdAndTeacherUserIdAndPeriodIdIn(
                 schoolId, teacherUserId, periodIds));
+    }
+
+    @Override
+    public List<ClassInfo> listClassesTaughtBy(Long schoolId, Long teacherUserId) {
+        Set<Long> classIds = new java.util.LinkedHashSet<>();
+        classRepository.findBySchoolId(schoolId).stream()
+                .filter(c -> teacherUserId.equals(c.getTeacherId()))
+                .forEach(c -> classIds.add(c.getId()));
+        entryRepository.findBySchoolIdAndTeacherUserId(schoolId, teacherUserId)
+                .forEach(e -> classIds.add(e.getClassId()));
+        return classRepository.findAllById(classIds).stream()
+                .filter(c -> c.getSchoolId().equals(schoolId))
+                .map(c -> new ClassInfo(new ClassId(c.getId()), c.getSchoolId(), c.getName(), c.getTeacherId(),
+                        c.getSection(), c.getGradeLevel(), c.getGradingScheme(), c.getAcademicYear()))
+                .toList();
     }
 
     // ---- کمکی‌ها ----

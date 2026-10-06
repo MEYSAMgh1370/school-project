@@ -21,6 +21,7 @@ The base package is `com.example.roshdeandishe`. Important top-level modules inc
 - `school` - school records, self-service creation, slugs, status.
 - `academic` - classes, students, guardians, grades.
 - `finance` - tuition fees, invoices, payments, expenses, attachments, audit trail.
+- `attendance` - one roll per class per school day (only the absent/late exceptions are stored), per-class absentees, the admin figure and a per-student report; depends only on the public facades of `academic`, `school` and `iam` (see [`changes/attendance.md`](changes/attendance.md)).
 - `notification` - outbound notifications and the inbound Bale bot channel (account linking, webhook handling, invoice notifications). Outbound delivery goes through a package-private `NotificationChannel` abstraction with Bale as the only channel today; see [`changes/rename-bale-module-to-notification.md`](changes/rename-bale-module-to-notification.md) and [`changes/notification-channel-abstraction.md`](changes/notification-channel-abstraction.md).
 - `curriculum` - topics and question bank.
 - `studyplan` - study plans and generated schedule blocks.
