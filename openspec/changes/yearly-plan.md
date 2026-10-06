@@ -77,5 +77,5 @@ Proposed shape, pending the questions below:
 2. Do existing databases contain `PLATFORM_ADMIN` membership rows? Not verified; a check or cleanup may be needed.
 3. Should Phase C ship in the same PR as A and B, or as a separate PR reviewed for security on its own?
 4. Should `CALENDAR_MANAGE` stop accepting `EVENT`, so each kind has one owner?
-5. Confirm the summer-window consequence in Phase A.
+5. ~~Confirm the summer-window consequence in Phase A.~~ **Resolved 2026-10-06:** the product owner kept 1 Mehr - 31 Khordad although pre-start activities begin on 1 Mordad. The new year is current from 1 Mordad, so its plan can be written then, but an event dated before 1 Mehr is rejected (`400 invalid-calendar-entry`).
 6. National holidays are not pre-loaded; the platform admin enters them.
