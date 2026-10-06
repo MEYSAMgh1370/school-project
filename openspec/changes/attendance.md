@@ -202,8 +202,9 @@ several entries. `SchoolFacade` exposes `listCalendar(schoolId, from, to)` and
 `GET /api/me/schools/{id}/calendar` (any active member) list a date range. A page
 `/calendar` lets the admin add and remove closed days by Jalali date. No national
 holidays are shipped: the admin enters them (a platform default list would be a
-separate decision). The yearly plan will add its own `kind` and pages on this table
-without a schema change.
+separate decision). The yearly plan (implemented 2026-10-06, see
+[`yearly-plan.md`](yearly-plan.md)) uses the reserved `EVENT` kind on this table without
+a change to it, and platform holidays also close the day for attendance.
 
 ### Excuses
 

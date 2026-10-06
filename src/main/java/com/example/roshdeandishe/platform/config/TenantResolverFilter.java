@@ -95,6 +95,8 @@ public class TenantResolverFilter extends OncePerRequestFilter {
             // برای خودِ صفحه؛ fetchهای آن‌ها به /api/admin/schools/{id}/attendance و .../calendar هدر را می‌فرستند
             "/attendance",
             "/calendar",
+            // برنامه‌ی سالانه: همان استدلال /calendar؛ fetchها (/api/me و /api/admin/schools/{id}/yearly-plan) هدر را می‌فرستند
+            "/yearly-plan",
             // «غیبت‌های من»: همان استدلال /my-timetable (fetch آن /api/me است و schoolId از path می‌آید)
             "/my-attendance",
             // صفحه‌ی ثبت مدرسه: مدرسه هنوز وجود ندارد که schoolId داشته باشد

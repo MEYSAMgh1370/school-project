@@ -1,6 +1,6 @@
 # Yearly plan (برنامه‌ی سالانه)
 
-Status: proposed 2026-10-06; not implemented. Product-owner answers recorded the same day (see Decisions). Phase C has open security questions that must be answered before it is built.
+Status: proposed 2026-10-06; **phases A and B implemented 2026-10-06** (year date range, yearly-plan API, `YEARLY_PLAN_MANAGE`, the `/yearly-plan` page, platform-holiday storage `V15` and its effect on `isClosedDay`); current behavior is in `specs/current-system.md`. **Phase C (the platform-admin path) is not implemented**, so no actor can create a platform holiday yet. Phase C's provisioning and security questions below remain to be reviewed in its own PR.
 
 ## Current behavior (evidence)
 
