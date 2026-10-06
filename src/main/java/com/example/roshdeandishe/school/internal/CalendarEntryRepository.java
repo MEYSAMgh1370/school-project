@@ -13,5 +13,10 @@ interface CalendarEntryRepository extends JpaRepository<CalendarEntryEntity, Lon
 
     Optional<CalendarEntryEntity> findByIdAndSchoolId(Long id, Long schoolId);
 
+    List<CalendarEntryEntity> findBySchoolIdAndKindAndDayBetweenOrderByDayAscIdAsc(
+            Long schoolId, CalendarKind kind, LocalDate from, LocalDate to);
+
+    Optional<CalendarEntryEntity> findByIdAndSchoolIdAndKind(Long id, Long schoolId, CalendarKind kind);
+
     boolean existsBySchoolIdAndDayAndKind(Long schoolId, LocalDate day, CalendarKind kind);
 }

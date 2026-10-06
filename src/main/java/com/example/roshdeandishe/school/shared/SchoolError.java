@@ -39,4 +39,12 @@ public sealed interface SchoolError {
     /** ورودیِ تقویمی با این شناسه در این مدرسه نیست (ورودیِ مدرسه‌ی دیگر هم همین است). */
     record CalendarEntryNotFound(Long entryId) implements SchoolError {
     }
+
+    /** تعطیلیِ سراسریِ پلتفرم با این شناسه نیست. */
+    record PlatformHolidayNotFound(Long holidayId) implements SchoolError {
+    }
+
+    /** کاربر فقط سالِ جاریِ مدرسه را می‌بیند (بدونِ ACADEMIC_YEAR_MANAGE) و سالِ دیگری خواسته است. */
+    record AcademicYearNotAllowed(Long academicYearId) implements SchoolError {
+    }
 }

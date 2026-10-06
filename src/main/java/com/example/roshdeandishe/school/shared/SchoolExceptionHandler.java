@@ -74,6 +74,16 @@ public class SchoolExceptionHandler {
                     "ورودی تقویم یافت نشد",
                     "ورودی‌ای با شناسه " + e.entryId() + " در تقویم این مدرسه نیست."
             );
+            case SchoolError.PlatformHolidayNotFound e -> ProblemDetailFactory.problem(
+                    HttpStatus.NOT_FOUND, "platform-holiday-not-found",
+                    "تعطیلی سراسری یافت نشد",
+                    "تعطیلیِ سراسری‌ای با شناسه " + e.holidayId() + " وجود ندارد."
+            );
+            case SchoolError.AcademicYearNotAllowed e -> ProblemDetailFactory.problem(
+                    HttpStatus.FORBIDDEN, "academic-year-not-allowed",
+                    "دسترسی به این سال تحصیلی مجاز نیست",
+                    "فقط مدیر مدرسه سال‌های غیرجاری را می‌بیند."
+            );
         };
     }
 }
