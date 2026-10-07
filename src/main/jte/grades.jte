@@ -137,9 +137,13 @@
                                                             <button class="app-grade-row__name" type="button" @click="startFocus(row)"
                                                                     x-text="row.name"></button>
                                                             <span class="tag" :class="rowStatus(row).cls" x-text="rowStatus(row).label"></span>
+                                                            <span class="tag is-light" x-show="absenceLabel(row)" x-text="absenceLabel(row)"></span>
+                                                            <p class="is-size-7 has-text-grey" x-show="row.previous">
+                                                                نوبت اول: <span x-text="row.previous"></span>
+                                                            </p>
                                                             <p class="help is-danger" x-show="row.validationError" x-text="row.validationError"></p>
                                                             <p class="help" x-show="row.suggestion">
-                                                                شاید منظورتان <span x-text="fa(row.suggestion)"></span> بوده؟
+                                                                شاید منظورتان <span x-text="faNumber(row.suggestion)"></span> بوده؟
                                                                 <button class="button is-light is-small" type="button"
                                                                         @click="acceptSuggestion(row)">بله، اصلاح کن</button>
                                                             </p>
@@ -191,6 +195,8 @@
                                                             <h3 class="title is-6 mb-1" x-text="focusRow().name"></h3>
                                                             <span class="tag" :class="rowStatus(focusRow()).cls"
                                                                   x-text="rowStatus(focusRow()).label"></span>
+                                                            <span class="tag is-light" x-show="absenceLabel(focusRow())"
+                                                                  x-text="absenceLabel(focusRow())"></span>
                                                         </div>
                                                     </div>
 
@@ -219,7 +225,7 @@
                                                     <p class="help is-danger" x-show="focusRow().validationError"
                                                        x-text="focusRow().validationError"></p>
                                                     <p class="help" x-show="focusRow().suggestion">
-                                                        شاید منظورتان <span x-text="fa(focusRow().suggestion)"></span> بوده؟
+                                                        شاید منظورتان <span x-text="faNumber(focusRow().suggestion)"></span> بوده؟
                                                         <button class="button is-light is-small" type="button"
                                                                 @click="acceptSuggestion(focusRow())">بله، اصلاح کن</button>
                                                     </p>
@@ -228,6 +234,9 @@
                                                         <label class="label" for="gradeFocusComment">نظر (اختیاری)</label>
                                                         <input class="input" id="gradeFocusComment" type="text" x-model="focusRow().comment">
                                                     </div>
+                                                    <p class="is-size-7 has-text-grey" x-show="focusRow().previous">
+                                                        نوبت اول: <span x-text="focusRow().previous"></span>
+                                                    </p>
                                                     <p class="is-size-7 has-text-grey">
                                                         آخرین ثبت:
                                                         <span dir="ltr" x-text="focusRow().recordedAt ? Calendar.formatDate(focusRow().recordedAt) : '—'"></span>
@@ -238,6 +247,7 @@
                                             <div class="app-action-bar app-action-bar--keyboard"
                                                  :style="'inset-block-end: ' + keyboardInset + 'px'">
                                                 <button class="button is-light" type="button" x-show="prevRow()" @click="goPrev()">قبلی</button>
+                                                <button class="button is-light" type="button" @click="skip()">رد کردن</button>
                                                 <button class="button is-primary" type="button" @click="goNext()"
                                                         :class="{ 'is-loading': savingAll }" x-text="nextLabel()"></button>
                                             </div>

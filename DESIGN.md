@@ -304,9 +304,16 @@ review mode with the likely-value suggestion (`175` → «۱۷٫۵»; only the
 unambiguous three-digit case guesses). Numeric input is a text field with
 `inputmode="decimal"` that normalizes Persian/Arabic digits and `٫ ، / ,`.
 A `beforeunload` guard warns about unsaved grades. **Not built, on purpose:**
-the «غایب»-style alternative value (a grade has no such domain value — that
-would be a business rule), «نمره قبلی» context (no previous-grade source),
-and draft autosave (§13.5 is still undecided). The keyboard bar follows
+the «غایب»-style grade value (a grade has no such domain value — that would
+be a business rule) and draft autosave (§13.5 is still undecided). In its place
+the keyboard bar has «رد کردن» (next student, grade left empty), and two
+**display-only** hints that never block grading: «غایب/تأخیر امروز» from
+today's attendance roll (attendance is a free module, every school has it; a
+teacher who may not read that class's roll simply sees no tag) and, when the
+second term is being entered, «نوبت اول: …» from the same class/year/course.
+Blocking a student because of absence is deliberately not done: a grade is per
+term, not per day, and a block would need its own written rule and a server
+check (see `openspec/changes/attendance.md`). The keyboard bar follows
 `visualViewport`; it is **untested on a real phone**.
 
 **List row.** 56px minimum height, label at inline-start, optional value

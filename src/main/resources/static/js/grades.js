@@ -151,6 +151,11 @@ document.addEventListener('alpine:init', () => {
             return window.Calendar ? window.Calendar.digits(String(value)) : String(value);
         },
 
+        // عددِ اعشاری برای نمایش: رقم فارسی و ممیزِ «٫» (DESIGN.md §8)؛ داده و ارسال ASCII می‌مانند
+        faNumber(value) {
+            return this.fa(String(value).replace('.', '٫'));
+        },
+
         classesBase() {
             return `/api/admin/schools/${this.schoolId}/classes`;
         },
@@ -436,6 +441,10 @@ document.addEventListener('alpine:init', () => {
                             recordedAt: existing ? existing.recordedAt : null,
                             validationError: '',
                             suggestion: '',
+                            // اطلاعات کمکی (فقط نمایش؛ ثبت را هرگز مسدود نمی‌کنند): غیبت/تأخیرِ امروز و نمره‌ی نوبتِ قبل
+                            absence: '',
+                            absenceExcused: false,
+                            previous: '',
                             saving: false
                         };
                     })
@@ -443,6 +452,9 @@ document.addEventListener('alpine:init', () => {
                 this.roster.forEach(row => { row.savedKey = this.rowKey(row); });
                 this.resetEntry();
                 this.loaded = true;
+                // بعد از نمایش جدول و بدونِ انتظار؛ هر شکستی بی‌صدا نادیده گرفته می‌شود
+                this.loadAttendanceHint(seq, classId);
+                this.loadPreviousTerm(seq, classId);
             } catch (e) {
                 if (seq === this.loadSeq) {
                     this.error = 'ارتباط با سرور برقرار نشد.';
@@ -451,6 +463,88 @@ document.addEventListener('alpine:init', () => {
                 if (seq === this.loadSeq) {
                     this.loading = false;
                 }
+            }
+        },
+
+        // ---- اطلاعاتِ کمکیِ ردیف (فقط نمایش) -----------------------------------------------------
+
+        todayIso() {
+            const now = new Date();
+            const pad = (n) => String(n).padStart(2, '0');
+            return `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`;
+        },
+
+        // غیبت/تأخیرِ امروزِ کلاس از ماژول حضور و غیاب (رایگان و برای همه‌ی مدرسه‌ها فعال). فقط
+        // وقتی حضور و غیابِ امروز ثبت شده باشد برچسب دارد؛ معلمِ غیرِ این کلاس 403 می‌گیرد و
+        // چیزی نمایش داده نمی‌شود. نمره‌دادن هرگز بسته نمی‌شود: نمره سطحِ نوبت است نه روز.
+        async loadAttendanceHint(seq, classId) {
+            try {
+                const response = await fetch(
+                    `/api/admin/schools/${this.schoolId}/attendance/classes/${classId}/days/${this.todayIso()}`,
+                    { headers: { 'X-School-ID': this.schoolId } });
+                if (!response.ok) {
+                    return;
+                }
+                const day = await response.json();
+                if (seq !== this.loadSeq || !day.taken) {
+                    return;
+                }
+                const marks = new Map(day.students.map(m => [m.studentId, m]));
+                this.roster.forEach(row => {
+                    const mark = marks.get(row.studentId);
+                    row.absence = mark && mark.status ? mark.status : '';
+                    row.absenceExcused = !!(mark && mark.excused);
+                });
+            } catch (e) {
+                // اطلاعاتِ کمکی است؛ نبودنش مانع کار نیست
+            }
+        },
+
+        absenceLabel(row) {
+            if (row.absence === 'ABSENT') {
+                return row.absenceExcused ? 'غایب امروز (موجه)' : 'غایب امروز';
+            }
+            return row.absence === 'LATE' ? 'تأخیر امروز' : '';
+        },
+
+        levelLabel(code) {
+            return { EXCELLENT: 'خیلی خوب', GOOD: 'خوب', ACCEPTABLE: 'قابل قبول', NEEDS_EFFORT: 'نیازمند تلاش' }[code] || '';
+        },
+
+        // نمره‌ی نوبت اول، فقط هنگام وارد کردنِ نوبت دوم و برای همان کلاس/سال/درس؛ هم‌سنجی بین
+        // درس‌ها یا سال‌ها حدس است و نمی‌آید. برای نوبت اول چیزی برای مقایسه نیست.
+        async loadPreviousTerm(seq, classId) {
+            if (this.filter.term !== 'SECOND') {
+                return;
+            }
+            try {
+                const params = new URLSearchParams({
+                    classId: String(classId),
+                    academicYear: this.filter.academicYear,
+                    term: 'FIRST'
+                });
+                if (this.filter.courseId) {
+                    params.set('courseId', this.filter.courseId);
+                }
+                const response = await fetch(`${this.gradesBase()}?${params}`,
+                    { headers: { 'X-School-ID': this.schoolId } });
+                if (!response.ok) {
+                    return;
+                }
+                const grades = await response.json();
+                if (seq !== this.loadSeq) {
+                    return;
+                }
+                this.roster.forEach(row => {
+                    const grade = grades.find(g => g.studentId === row.studentId);
+                    if (!grade) {
+                        return;
+                    }
+                    row.previous = grade.numericScore !== null && grade.numericScore !== undefined
+                        ? this.faNumber(grade.numericScore) : this.levelLabel(grade.descriptiveLevel);
+                });
+            } catch (e) {
+                // اطلاعاتِ کمکی است؛ نبودنش مانع کار نیست
             }
         },
 
@@ -577,6 +671,16 @@ document.addEventListener('alpine:init', () => {
         exitFocus() {
             this.view = 'list';
             this.focusId = null;
+        },
+
+        // «رد کردن»: بدونِ نمره و بدونِ هیچ قاعده‌ی تازه‌ای به بعدی می‌رود؛ ردیف همان «بدون نمره» می‌ماند
+        skip() {
+            const next = this.nextRow();
+            if (next) {
+                this.startFocus(next);
+            } else {
+                this.exitFocus();
+            }
         },
 
         goPrev() {
