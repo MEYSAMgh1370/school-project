@@ -31,17 +31,53 @@
         <section class="mb-5" aria-labelledby="dashboard-shortcuts-title" x-data
                  x-cloak x-show="${NavCatalog.anyShortcutVisibleWhen("$store.nav.selectedRole", "$store.nav.permissions")}">
             <h2 class="title is-5" id="dashboard-shortcuts-title">دسترسی سریع</h2>
+            <%-- چیدمان (DESIGN.md §5a): کارتِ تمام‌عرض ← کارت‌های نیم‌عرض ← ردیف‌های فهرست به تفکیک
+                 گروهِ NavCatalog. جایگاهِ هر لینک (Tier) ثابت است، چون نقشِ انتخاب‌شده client-side
+                 عوض می‌شود و هر زیرمجموعه‌ای از کارت‌ها باید درست چیده شود. همه‌ی لینک‌ها
+                 data-shortcut دارند (تست‌ها با همین نشانه می‌شمارند). --%>
             <div class="columns is-multiline is-mobile is-variable is-3">
-                @for(var link : NavCatalog.shortcuts())
-                    <div class="column is-4-desktop is-6-tablet is-6-mobile"
+                @for(var link : NavCatalog.dailyShortcuts())
+                    <div class="column ${link.isFeatured() ? "is-12" : "is-6 is-6-mobile"}"
                          x-cloak x-show="${link.shortcutVisibleWhen("$store.nav.selectedRole", "$store.nav.permissions")}">
-                        <a class="box app-shortcut" href="${link.href()}">
-                            <h3 class="title is-6 mb-1">${link.label()}</h3>
-                            <p class="is-size-7 has-text-grey">${link.description()}</p>
+                        <a class="box app-shortcut${link.isFeatured() ? " app-shortcut--featured" : ""}" href="${link.href()}" data-shortcut>
+                            <span class="app-tile">@template.layout.icon(name = link.icon(), size = 24)</span>
+                            <span class="app-shortcut__text">
+                                <span class="title ${link.isFeatured() ? "is-5" : "is-6"} mb-1">${link.label()}</span>
+                                <span class="is-size-7 has-text-grey">${link.description()}</span>
+                            </span>
+                            @if(link.isFeatured())
+                                @template.layout.icon(name = "chevron", size = 20)
+                            @endif
                         </a>
                     </div>
                 @endfor
             </div>
+            @for(var group : NavCatalog.groups())
+                @if(!group.rowShortcuts().isEmpty())
+                    <div class="mb-4" x-cloak
+                         x-show="${group.rowsVisibleWhen("$store.nav.selectedRole", "$store.nav.permissions")}">
+                        <h3 class="title is-6 mb-2">${group.label()}</h3>
+                        <div class="app-list">
+                            @for(var link : group.rowShortcuts())
+                                <a class="app-row" href="${link.href()}" data-shortcut
+                                   x-cloak x-show="${link.shortcutVisibleWhen("$store.nav.selectedRole", "$store.nav.permissions")}">
+                                    @template.layout.icon(name = link.icon(), size = 20)
+                                    <span class="app-row__label">${link.label()}</span>
+                                    @if("/academic-year".equals(link.href()))
+                                        @for(var school : navbar.schools())
+                                            @if(school.currentYear() != null)
+                                                <span class="is-size-7 has-text-grey" dir="ltr"
+                                                      x-show="$store.nav.selectedSchoolId === ${school.id()}">${school.currentYearDisplay()}</span>
+                                            @endif
+                                        @endfor
+                                    @endif
+                                    @template.layout.icon(name = "chevron", size = 16)
+                                </a>
+                            @endfor
+                        </div>
+                    </div>
+                @endif
+            @endfor
         </section>
 
         <%-- «وضعیت شهریه»: فقط برای مدیرِ مدرسه (چکِ literal SCHOOL_ADMIN در کنترلر) و فقط
@@ -265,15 +301,24 @@
                         @if(entry.hasSlug())
                             <%-- slug از طریق data-attribute به Alpine می‌رسد، نه
                                  با درج مستقیم در عبارت JS - همان قاعده‌ای که
-                                 باکس شماره تلفن بالاتر رعایت می‌کند. --%>
-                            <p class="mb-2">
+                                 باکس شماره تلفن بالاتر رعایت می‌کند. اشتراک‌گذاری
+                                 اقدامِ اصلی است (برگه‌ی اشتراکِ گوشی)؛ «کپی نشانی»
+                                 دومی (DESIGN.md §5a). --%>
+                            <p class="app-url mb-3">
                                 <a href="/s/${entry.slug()}" dir="ltr" data-slug="${entry.slug()}"
                                    x-text="entryUrl($el.dataset.slug)"></a>
                             </p>
-                            <button class="button is-light is-small" data-slug="${entry.slug()}"
-                                    @click="copy($el.dataset.slug)">
-                                کپی نشانی
-                            </button>
+                            <div class="buttons">
+                                <button class="button is-primary" type="button" data-slug="${entry.slug()}"
+                                        @click="share($el.dataset.slug)">
+                                    @template.layout.icon(name = "share", size = 20)
+                                    <span class="app-inline-gap-xs"></span>اشتراک‌گذاری
+                                </button>
+                                <button class="button is-light" type="button" data-slug="${entry.slug()}"
+                                        @click="copy($el.dataset.slug)">
+                                    کپی نشانی
+                                </button>
+                            </div>
                         @else
                             <p class="is-size-7 has-text-grey">
                                 این مدرسه نشانی اختصاصی ندارد. نشانی فقط هنگام

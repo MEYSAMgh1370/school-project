@@ -273,6 +273,19 @@ The next two get half-width cards. Everything else is a **list row**
 (below). The grouping must come from `NavCatalog` groups, so the dashboard
 and the sidebar always agree.
 
+**Built 2026-10-07 on the dashboard** (`dashboard.jte`, `dashboard.css`). The
+featured card, half-width cards and list rows are `NavCatalog.Tier` values
+(`FEATURED`, `CARD`, `ROW`) on each link; tier is fixed per link, not per role,
+because the selected role changes client-side and the layout must stay correct
+for any subset. Current assignment — **a product choice to confirm**:
+`/grades` featured; `/timetable` and `/exams` cards; everything else a row,
+grouped under its `NavCatalog` group label. Deviations from the canvas, each
+following this file over the mockup: the featured card is a plain card with a
+shadow, **not** primary-filled (§4.2 forbids primary as a content background);
+icon tiles are neutral, not tinted (§4.4 tints are for avatars only); the
+greeting is not built (copy decision). Dashboard shortcut anchors carry
+`data-shortcut`; tests count them by that attribute.
+
 **List row.** 56px minimum height, label at inline-start, optional value
 (e.g. the current academic year) and a `‹` glyph (`.app-dir-glyph`) at
 inline-end, hairline divider. For destinations used rarely.
@@ -344,6 +357,12 @@ alongside text.
 - Start with only what pages use (menu, back, search, check, alert, share,
   calendar, people, class, exam, finance, clock, chevron). Every addition is
   a line in this section.
+- **Built 2026-10-07** (`layout/icon.jte`, used by the dashboard): chevron,
+  calendar, clock, people, class, exam, finance, check, **grades** (a document;
+  added to the starting list — the featured «دفتر نمرات» card needs it), share.
+  menu, back, search and alert are not built yet; add them with their first
+  page. `NavSharedSourceRenderTest` fails if a `NavCatalog` link names an icon
+  the partial does not draw.
 - **An icon never stands alone except** back, menu and close, which require
   `aria-label`. Everywhere else it accompanies a text label and is
   `aria-hidden="true"`.
