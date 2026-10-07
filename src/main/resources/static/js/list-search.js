@@ -7,15 +7,14 @@
 //   - رقم فارسی و عربی → لاتین، تا «۱۴۰۵» و «1405» یکی باشند
 //   - نیم‌فاصله (‌)، نشانه‌ها و جهت‌نماها حذف می‌شوند، تا «می‌دهد» و «میدهد» یکی باشند
 //   - فاصله‌های اضافه جمع می‌شوند
+// رقم‌ها با digits.js به لاتین می‌روند (پیش از این این فایل جدول خودش را داشت).
 // این فایل فقط مقایسه را انجام می‌دهد؛ متن نمایش داده‌شده تغییر نمی‌کند.
 window.ListSearch = (function () {
     function normalize(value) {
-        return String(value == null ? '' : value)
+        return window.Digits.toAscii(value == null ? '' : value)
             .replace(/[‌‍‎‏ً-ٰٟ]/g, '')
             .replace(/ي/g, 'ی')
             .replace(/ك/g, 'ک')
-            .replace(/[۰-۹]/g, (d) => String(d.charCodeAt(0) - 0x06F0))
-            .replace(/[٠-٩]/g, (d) => String(d.charCodeAt(0) - 0x0660))
             .replace(/\s+/g, ' ')
             .trim();
     }

@@ -91,3 +91,24 @@ test('no page calls a Jalali member directly any more; calendar.js is the only c
         assert.ok(!/(?<![\w.])Jalali\./.test(code), `${page.name} still calls Jalali.* directly`);
     }
 });
+
+// هلپرهای مشترک (digits.js، list-search.js، money.js، grade-labels.js): هر صفحه‌ای که یکی از آن‌ها را
+// صدا می‌زند، یا اسکریپتی را لود می‌کند که آن را صدا می‌زند، باید همان فایل را در لیست داشته باشد. هلپرِ
+// جاافتاده فقط در لحظه‌ی اجرا ReferenceError می‌دهد، و کامپایل یا تست سرور آن را نمی‌بیند.
+const SHARED_HELPERS = [
+    { global: 'Digits', file: '/js/digits.js', uses: /(?<![\w.])(?:window\.)?Digits\b/ },
+    { global: 'ListSearch', file: '/js/list-search.js', uses: /(?<![\w.])(?:window\.)?ListSearch\b/ },
+    { global: 'Money', file: '/js/money.js', uses: /(?<![\w.])(?:window\.)?Money\b/ },
+    { global: 'GradeLabels', file: '/js/grade-labels.js', uses: /(?<![\w.])(?:window\.)?GradeLabels\b/ }
+];
+
+test('a page that uses a shared helper loads the file that defines it', () => {
+    for (const helper of SHARED_HELPERS) {
+        const consumers = pages.filter((page) => helper.uses.test(codeOf(page)));
+        for (const page of consumers) {
+            // خودِ تعریف‌کننده را هم وقتی کسی آن را لود می‌کند، باید داشته باشد
+            assert.ok(page.scripts.includes(helper.file),
+                `${page.name} uses ${helper.global} but does not load ${helper.file}`);
+        }
+    }
+});

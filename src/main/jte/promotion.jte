@@ -2,7 +2,7 @@
 
 @param NavbarModel navbar
 
-@template.layout.main(title = "ارتقای پایه", scripts = java.util.List.of("/js/navbar.js", "/js/jalali.js", "/js/calendar.js", "/js/modal-focus.js", "/js/list-search.js", "/js/promotion.js"), content = @`
+@template.layout.main(title = "ارتقای پایه", scripts = java.util.List.of("/js/navbar.js", "/js/digits.js", "/js/jalali.js", "/js/calendar.js", "/js/modal-focus.js", "/js/list-search.js", "/js/promotion.js"), content = @`
 @template.layout.navbar(navbar = navbar)
 
 <section class="section" id="main-content" role="main" tabindex="-1" x-data="promotionPage()">

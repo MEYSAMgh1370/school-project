@@ -2,6 +2,7 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 
 global.window = global;
+require('../../main/resources/static/js/digits.js');
 require('../../main/resources/static/js/list-search.js');
 
 test('an empty query matches every row', () => {

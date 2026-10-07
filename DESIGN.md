@@ -397,6 +397,16 @@ notice area (no browser dialog, per §5). The table keeps what it was loaded
 for; clearing the unsaved values frees the selection. Level labels come from
 `static/js/grade-labels.js`, shared by the teacher and student grade pages.
 
+**Review follow-ups (2026-10-07).** Finance: a payment in flight blocks a second
+submit; list and payment-panel responses are checked against the latest request
+(a slow earlier year cannot overwrite a newer list); a school switch clears the
+old school's data. Grades: the roster is for the selected year (`?academicYear=`):
+the class's current students plus those enrolled in it that year — the same rule
+that accepts a grade, so nobody listed is ungradeable, and a student who left the
+class is not listed. Digits: one helper, `static/js/digits.js` (`Digits.toAscii`),
+used by money, grades and list search; `page-scripts.test.js` checks each page loads
+the helpers it uses.
+
 **List row.** 56px minimum height, label at inline-start, optional value
 (e.g. the current academic year) and a `‹` glyph (`.app-dir-glyph`) at
 inline-end, hairline divider. For destinations used rarely.

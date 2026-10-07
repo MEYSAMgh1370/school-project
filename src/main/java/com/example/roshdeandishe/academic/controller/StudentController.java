@@ -29,9 +29,11 @@ import java.util.List;
 public class StudentController {
 
     private final AcademicFacade academicFacade;
+    private final AcademicYearVisibility yearVisibility;
 
-    public StudentController(AcademicFacade academicFacade) {
+    public StudentController(AcademicFacade academicFacade, AcademicYearVisibility yearVisibility) {
         this.academicFacade = academicFacade;
+        this.yearVisibility = yearVisibility;
     }
 
     @PostMapping
@@ -61,11 +63,18 @@ public class StudentController {
     @GetMapping
     @RequiresPermission("STUDENT_VIEW")
     public List<StudentResponse> listStudents(@PathVariable Long schoolId,
-                                              @RequestParam(required = false) Long classId) {
+                                              @RequestParam(required = false) Long classId,
+                                              @RequestParam(required = false) String academicYear) {
         TenantContext.requireMatches(schoolId);
 
-        // با classId: دانش‌آموزانِ آن کلاس شاملِ کسانی که در سالی در آن بوده‌اند (دفتر نمراتِ سالِ قبل)
+        // با classId و سال: دانش‌آموزانِ آن کلاس در آن سال (دفتر نمرات - همان قاعده‌ی ثبت نمره).
+        // با classId بدون سال: همه‌ی کسانی که هرگز در آن کلاس بوده‌اند (سازگاری با پیش از این).
+        if (academicYear != null) {
+            yearVisibility.requireVisible(schoolId, academicYear);
+        }
         return (classId == null ? academicFacade.listStudents(schoolId)
+                : academicYear != null
+                ? academicFacade.listStudentsInClass(schoolId, classId, academicYear)
                 : academicFacade.listStudentsInClass(schoolId, classId)).stream()
                 .map(StudentController::toResponse)
                 .toList();

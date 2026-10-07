@@ -31,6 +31,10 @@ document.addEventListener('alpine:init', () => {
         attributeYear: '',
         attributing: false,
         yearSeq: 0,
+        // شمارنده‌ی بارگذاری و پنل پرداخت: فقط پاسخِ آخرین درخواست روی صفحه می‌نشیند (پاسخ دیرِ سالِ قبل یا فاکتورِ
+        // قبلی، فهرست یا پنل تازه را بازنویسی نمی‌کند)
+        loadSeq: 0,
+        paymentsSeq: 0,
 
         init() {
             const saved = parseInt(localStorage.getItem('selectedSchoolId') || '', 10);
@@ -173,12 +177,19 @@ document.addEventListener('alpine:init', () => {
         },
 
         async load() {
+            const seq = ++this.loadSeq;
             this.loading = true;
             this.error = '';
             this.blocked = false;
             try {
                 await this.loadYears();
+                if (seq !== this.loadSeq) {
+                    return;
+                }
                 const feeResponse = await fetch(this.tuitionFeeBase() + this.yearQuery(), { headers: { 'X-School-ID': this.schoolId } });
+                if (seq !== this.loadSeq) {
+                    return;
+                }
                 if (feeResponse.status === 404) {
                     this.tuitionFee = null;
                 } else if (!feeResponse.ok) {
@@ -191,13 +202,20 @@ document.addEventListener('alpine:init', () => {
                 }
 
                 const invoicesResponse = await fetch(this.invoicesBase() + this.yearQuery(), { headers: { 'X-School-ID': this.schoolId } });
+                if (seq !== this.loadSeq) {
+                    return;
+                }
                 if (!invoicesResponse.ok) {
                     const classified = await this.classifyError(invoicesResponse);
                     this.error = classified.message;
                     this.blocked = classified.blocking;
                     return;
                 }
-                this.invoices = await invoicesResponse.json();
+                const invoices = await invoicesResponse.json();
+                if (seq !== this.loadSeq) {
+                    return;
+                }
+                this.invoices = invoices;
                 this.loadUnattributed();
 
                 // بهترین تلاش برای نام دانش‌آموز - studentsBase به STUDENT_VIEW
@@ -209,19 +227,23 @@ document.addEventListener('alpine:init', () => {
                     fetch(this.studentsBase(), { headers: { 'X-School-ID': this.schoolId } }),
                     fetch(this.membershipsBase(), { headers: { 'X-School-ID': this.schoolId } })
                 ]);
-                this.students = studentsResponse.ok ? await studentsResponse.json() : [];
-                if (membershipsResponse.ok) {
-                    this.pupils = (await membershipsResponse.json()).filter(m => m.active && m.roleCode === 'STUDENT');
-                } else {
-                    this.pupils = await window.MemberNames.resolve(
-                        this.schoolId,
-                        this.students.map(s => s.userId)
-                    );
+                const students = studentsResponse.ok ? await studentsResponse.json() : [];
+                const pupils = membershipsResponse.ok
+                    ? (await membershipsResponse.json()).filter(m => m.active && m.roleCode === 'STUDENT')
+                    : await window.MemberNames.resolve(this.schoolId, students.map(s => s.userId));
+                if (seq !== this.loadSeq) {
+                    return;
                 }
+                this.students = students;
+                this.pupils = pupils;
             } catch (e) {
-                this.error = 'ارتباط با سرور برقرار نشد.';
+                if (seq === this.loadSeq) {
+                    this.error = 'ارتباط با سرور برقرار نشد.';
+                }
             } finally {
-                this.loading = false;
+                if (seq === this.loadSeq) {
+                    this.loading = false;
+                }
             }
         },
 
@@ -317,9 +339,11 @@ document.addEventListener('alpine:init', () => {
         },
 
         async togglePayments(invoice) {
+            const seq = ++this.paymentsSeq;
             if (this.expandedInvoiceId === invoice.id) {
                 this.expandedInvoiceId = null;
                 this.payments = [];
+                this.paymentsLoading = false;
                 return;
             }
             this.expandedInvoiceId = invoice.id;
@@ -329,6 +353,10 @@ document.addEventListener('alpine:init', () => {
             try {
                 const response = await fetch(`${this.invoicesBase()}/${invoice.id}/payments`,
                     { headers: { 'X-School-ID': this.schoolId } });
+                // پاسخِ پنلِ فاکتورِ دیگری که کاربر بعداً باز کرده، یا پنلِ بسته‌شده، دور ریخته می‌شود
+                if (seq !== this.paymentsSeq || this.expandedInvoiceId !== invoice.id) {
+                    return;
+                }
                 if (response.ok) {
                     this.payments = await response.json();
                 } else {
@@ -336,9 +364,13 @@ document.addEventListener('alpine:init', () => {
                     this.error = classified.message;
                 }
             } catch (e) {
-                this.error = 'ارتباط با سرور برقرار نشد.';
+                if (seq === this.paymentsSeq) {
+                    this.error = 'ارتباط با سرور برقرار نشد.';
+                }
             } finally {
-                this.paymentsLoading = false;
+                if (seq === this.paymentsSeq) {
+                    this.paymentsLoading = false;
+                }
             }
         },
 

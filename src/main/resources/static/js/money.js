@@ -6,9 +6,7 @@ window.Money = (function () {
     });
 
     function normalizeDigits(value) {
-        return String(value ?? '')
-            .replace(/[۰-۹]/g, digit => String(digit.charCodeAt(0) - '۰'.charCodeAt(0)))
-            .replace(/[٠-٩]/g, digit => String(digit.charCodeAt(0) - '٠'.charCodeAt(0)));
+        return window.Digits.toAscii(value);
     }
 
     function normalizeAmount(value) {

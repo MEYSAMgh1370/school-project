@@ -171,15 +171,7 @@ document.addEventListener('alpine:init', () => {
             if (!value) {
                 return value;
             }
-            const persian = '۰۱۲۳۴۵۶۷۸۹';
-            const arabic = '٠١٢٣٤٥٦٧٨٩';
-            return String(value).replace(/[۰-۹٠-٩]/g, (ch) => {
-                let index = persian.indexOf(ch);
-                if (index === -1) {
-                    index = arabic.indexOf(ch);
-                }
-                return index === -1 ? ch : String(index);
-            });
+            return window.Digits.toAscii(value);
         },
 
         // نمره با صفحه‌کلیدِ فارسی هم تایپ می‌شود: رقم‌های فارسی/عربی و جداکننده‌های «٫» «،» «/» «,»
@@ -478,7 +470,8 @@ document.addEventListener('alpine:init', () => {
                     return;
                 }
                 const existingGrades = await response.json();
-                const rosterResponse = await fetch(`${this.studentsBase()}?classId=${classId}`,
+                // فهرستِ دانش‌آموزانِ همین سال (نه همه‌ی کسانی که هرگز در این کلاس بوده‌اند)
+                const rosterResponse = await fetch(`${this.studentsBase()}?classId=${classId}&academicYear=${encodeURIComponent(this.filter.academicYear)}`,
                     { headers: { 'X-School-ID': this.schoolId } });
                 const classStudents = rosterResponse.ok ? await rosterResponse.json() : null;
                 if (seq !== this.loadSeq) {

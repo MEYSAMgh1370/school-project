@@ -151,6 +151,24 @@ class AcademicFacadeImpl implements AcademicFacade {
     }
 
     @Override
+    public List<StudentInfo> listStudentsInClass(Long schoolId, Long classId, String academicYear) {
+        if (academicYear == null || academicYear.isBlank()) {
+            return listStudentsInClass(schoolId, classId);
+        }
+        requireClassInSchool(schoolId, classId);
+        String year = AcademicYearCodes.canonical(academicYear);
+        Set<Long> ids = new LinkedHashSet<>();
+        studentRepository.findBySchoolId(schoolId).stream()
+                .filter(s -> classId.equals(s.getClassId()))
+                .forEach(s -> ids.add(s.getId()));
+        enrollmentRepository.findByClassIdAndAcademicYear(classId, year).forEach(e -> ids.add(e.getStudentId()));
+        return studentRepository.findAllById(ids).stream()
+                .filter(s -> s.getSchoolId().equals(schoolId))
+                .map(AcademicFacadeImpl::toStudentInfo)
+                .toList();
+    }
+
+    @Override
     public Optional<ClassInfo> findClass(Long schoolId, Long classId) {
         return classRepository.findById(classId)
                 .filter(c -> c.getSchoolId().equals(schoolId))
