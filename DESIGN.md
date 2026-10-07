@@ -357,6 +357,13 @@ still come from `money.js`, which currently prints Latin commas (`12,000,000`);
 DESIGN.md §8 asks for `٬` with Persian digits, so that is a pending fix in
 `money.js`, not in these rows.
 
+**Exams page (2026-10-07).** The list of assessments is rows (name, time range,
+duration, a «مدیریت» button that opens the panel below). The management panels
+(sections, question picker, attempts, results) are unchanged. Known gap, not
+fixed here: the exam time range shows ISO dates (`2026-10-20 08:00`), which
+§8 does not allow for the `fa` locale; it needs the `Calendar` helper and a
+Jalali decision for times, not a layout change.
+
 **List row.** 56px minimum height, label at inline-start, optional value
 (e.g. the current academic year) and a `‹` glyph (`.app-dir-glyph`) at
 inline-end, hairline divider. For destinations used rarely.

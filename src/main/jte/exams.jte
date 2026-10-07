@@ -25,35 +25,27 @@
                                 tone = "is-light",
                                 message = @`این مدرسه هنوز آزمون تألیفی‌ای ندارد. اولین آزمون را از فرم زیر بسازید.`)
 
-                            <div class="table-container" x-show="exams.length > 0">
-                            <table class="table is-fullwidth is-striped">
-                                <thead>
-                                <tr>
-                                    <th scope="col">عنوان</th>
-                                    <th scope="col">شروع</th>
-                                    <th scope="col">پایان</th>
-                                    <th scope="col">مدت (دقیقه)</th>
-                                    <th scope="col"><span class="is-sr-only">جزئیات</span></th>
-                                </tr>
-                                </thead>
-                                <tbody>
+                            <%-- فهرست ردیفی (DESIGN.md §5a): هر آزمون یک ردیف با عنوان، بازه‌ی زمانی و مدت، و دکمه‌ی
+                                 مدیریت که پنل زیرِ همین فهرست را باز می‌کند. --%>
+                            <div class="app-list" role="list" x-show="exams.length > 0">
                                 <template x-for="exam in exams" :key="exam.id">
-                                    <tr>
-                                        <td x-text="exam.title"></td>
-                                        <td dir="ltr" x-text="exam.start.replace('T', ' ')"></td>
-                                        <td dir="ltr" x-text="exam.end.replace('T', ' ')"></td>
-                                        <td dir="ltr" x-text="exam.durationMinutes"></td>
-                                        <td>
-                                            <button type="button" class="button is-small"
-                                                    :class="{ 'is-link': expandedExamId === exam.id }"
-                                                    @click="toggleExam(exam.id)">
-                                                مدیریت
-                                            </button>
-                                        </td>
-                                    </tr>
+                                    <div class="app-exam-row" role="listitem">
+                                        <span class="app-avatar" aria-hidden="true" x-text="exam.title.charAt(0)"></span>
+                                        <div class="app-exam-row__main">
+                                            <span class="app-exam-row__name" x-text="exam.title"></span>
+                                            <span class="is-size-7 has-text-grey" dir="ltr"
+                                                  x-text="exam.start.replace('T', ' ') + ' تا ' + exam.end.replace('T', ' ')"></span>
+                                            <span class="is-size-7 has-text-grey"
+                                                  x-text="'مدت ' + exam.durationMinutes + ' دقیقه'"></span>
+                                        </div>
+                                        <button type="button" class="button is-light"
+                                                :class="{ 'is-link': expandedExamId === exam.id }"
+                                                :aria-expanded="expandedExamId === exam.id ? 'true' : 'false'"
+                                                @click="toggleExam(exam.id)">
+                                            مدیریت
+                                        </button>
+                                    </div>
                                 </template>
-                                </tbody>
-                            </table>
                             </div>
 
                             <template x-for="exam in exams" :key="'panel-' + exam.id">
