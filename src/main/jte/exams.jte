@@ -33,10 +33,10 @@
                                         <span class="app-avatar" aria-hidden="true" x-text="exam.title.charAt(0)"></span>
                                         <div class="app-exam-row__main">
                                             <span class="app-exam-row__name" x-text="exam.title"></span>
-                                            <span class="is-size-7 has-text-grey" dir="ltr"
-                                                  x-text="exam.start.replace('T', ' ') + ' تا ' + exam.end.replace('T', ' ')"></span>
                                             <span class="is-size-7 has-text-grey"
-                                                  x-text="'مدت ' + exam.durationMinutes + ' دقیقه'"></span>
+                                                  x-text="Calendar.formatDateTimeRange(exam.start, exam.end)"></span>
+                                            <span class="is-size-7 has-text-grey"
+                                                  x-text="'مدت ' + Calendar.digits(exam.durationMinutes) + ' دقیقه'"></span>
                                         </div>
                                         <button type="button" class="button is-light"
                                                 :class="{ 'is-link': expandedExamId === exam.id }"
