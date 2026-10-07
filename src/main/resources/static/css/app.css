@@ -800,7 +800,8 @@
 .app-member-row,
 .app-class-row,
 .app-invoice-row,
-.app-exam-row {
+.app-exam-row,
+.app-expense-row {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
@@ -813,14 +814,16 @@
 .app-member-row:last-child,
 .app-class-row:last-child,
 .app-invoice-row:last-child,
-.app-exam-row:last-child {
+.app-exam-row:last-child,
+.app-expense-row:last-child {
   margin-block-end: -1px;
 }
 
 .app-member-row__main,
 .app-class-row__main,
 .app-invoice-row__main,
-.app-exam-row__main {
+.app-exam-row__main,
+.app-expense-row__main {
   flex: 1 1 10rem;
   display: flex;
   flex-direction: column;
@@ -830,11 +833,18 @@
 .app-member-row__name,
 .app-class-row__name,
 .app-invoice-row__name,
-.app-exam-row__name {
+.app-exam-row__name,
+.app-expense-row__name {
   font-weight: var(--bulma-weight-medium);
 }
 
 /* وضعیت و اقدام‌ها: کنار هم، و در باریک‌ترین صفحه به خط بعد می‌روند. */
+.app-expense-row__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
 .app-member-row__status,
 .app-member-row__actions {
   display: flex;

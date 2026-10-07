@@ -372,6 +372,13 @@ every numeric date; fixing it belongs in `formatDate`, not in exams. Other pages
 (`my-study-plan.js`, `study-plans.js`) are study-interval times, not exams, and
 still format by hand — a separate decision.
 
+**Expenses (2026-10-07).** The expense list is rows with a search over category
+and vendor; each row shows the amount, the status in words and its actions. The
+category and vendor setup panels, the summary and the attachment tables are
+unchanged. **Roles** (`roles.jte`) stays a table on purpose: it is a permission
+matrix (roles × permissions), which a row list would hide. **Attendance** already
+uses its own row list (`app-att-list`) and was left as it is.
+
 **List row.** 56px minimum height, label at inline-start, optional value
 (e.g. the current academic year) and a `‹` glyph (`.app-dir-glyph`) at
 inline-end, hairline divider. For destinations used rarely.
