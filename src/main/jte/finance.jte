@@ -96,47 +96,46 @@
                                 </button>
                             </div>
                         </div>
-                        <div class="table-container">
-                        <table class="table is-fullwidth is-striped">
-                            <thead>
-                            <tr>
-                                <th scope="col">دانش‌آموز</th>
-                                <th scope="col">مبلغ</th>
-                                <th scope="col">پرداخت‌شده</th>
-                                <th scope="col">وضعیت</th>
-                                <th scope="col">تاریخ صدور</th>
-                                <th scope="col">سررسید</th>
-                                <th scope="col"><span class="is-sr-only">عملیات</span></th>
-                            </tr>
-                            </thead>
-                            <tbody>
-                            <template x-for="invoice in invoices" :key="invoice.id">
-                                <tr>
-                                    <td>
-                                        <span x-text="studentName(invoice.studentId)"></span>
-                                        <span class="tag is-light" x-show="currentYear && !invoice.academicYear"
-                                              title="این فاکتور هنوز به سالی نسبت داده نشده است">بدون سال</span>
-                                    </td>
-                                    <td x-text="Money.formatAmount(invoice.amount)"></td>
-                                    <td x-text="Money.formatAmount(invoice.amountPaid)"></td>
-                                    <td>
-                                        <span class="tag" :class="statusClass(invoice.status)"
-                                              x-text="statusLabel(invoice.status)"></span>
-                                    </td>
-                                    <td dir="ltr" x-text="Calendar.formatDate(invoice.issuedAt)"></td>
-                                    <td dir="ltr" x-text="invoice.dueDate ? Calendar.formatDate(invoice.dueDate) : '—'"></td>
-                                    <td>
-                                        <button class="button is-small"
-                                                :class="{ 'is-link': expandedInvoiceId === invoice.id }"
-                                                @click="togglePayments(invoice)">
-                                            پرداخت‌ها
-                                        </button>
-                                    </td>
-                                </tr>
-                            </template>
-                            </tbody>
-                        </table>
-                        </div>
+                        <%-- فهرست فاکتورها ردیفی شد (DESIGN.md §5a): جست‌وجو بر نام دانش‌آموز، هر فاکتور یک ردیف با مبلغ،
+                             پرداخت‌شده، وضعیت به کلمه و سررسید. جزئیات پرداخت هنوز جدول‌ها و فرم‌های پایین صفحه است. --%>
+                        <template x-if="invoices.length > 0">
+                            <div>
+                                <div class="field">
+                                    <label class="label is-sr-only" for="invoiceSearch">جست‌وجو در فاکتورها</label>
+                                    <div class="control">
+                                        <input class="input" id="invoiceSearch" type="search" x-model="filterText"
+                                               placeholder="جست‌وجوی نام دانش‌آموز">
+                                    </div>
+                                </div>
+                                <div class="app-list" role="list">
+                                    <template x-for="invoice in visibleInvoices()" :key="invoice.id">
+                                        <div class="app-invoice-row" role="listitem">
+                                            <div class="app-invoice-row__main">
+                                                <span class="app-invoice-row__name" x-text="studentName(invoice.studentId)"></span>
+                                                <span class="tag is-light" x-show="currentYear && !invoice.academicYear"
+                                                      title="این فاکتور هنوز به سالی نسبت داده نشده است">بدون سال</span>
+                                                <span class="is-size-7 has-text-grey">
+                                                    <span x-text="Money.formatAmount(invoice.amount)"></span>
+                                                    · پرداخت‌شده <span x-text="Money.formatAmount(invoice.amountPaid)"></span>
+                                                </span>
+                                                <span class="is-size-7 has-text-grey" dir="ltr"
+                                                      x-text="invoice.dueDate ? 'سررسید ' + Calendar.formatDate(invoice.dueDate) : 'بدون سررسید'"></span>
+                                            </div>
+                                            <span class="tag" :class="statusClass(invoice.status)"
+                                                  x-text="statusLabel(invoice.status)"></span>
+                                            <button class="button is-light"
+                                                    :class="{ 'is-link': expandedInvoiceId === invoice.id }"
+                                                    @click="togglePayments(invoice)">
+                                                پرداخت‌ها
+                                            </button>
+                                        </div>
+                                    </template>
+                                </div>
+                                <p class="has-text-grey mt-3" x-show="visibleInvoices().length === 0">
+                                    فاکتوری با این جست‌وجو پیدا نشد.
+                                </p>
+                            </div>
+                        </template>
 
                         <template x-for="invoice in invoices" :key="'payments-' + invoice.id">
                             <div class="box" x-show="expandedInvoiceId === invoice.id" x-cloak>

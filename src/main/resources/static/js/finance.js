@@ -3,6 +3,8 @@ document.addEventListener('alpine:init', () => {
         schoolId: null,
         tuitionFee: null,
         invoices: [],
+        // جست‌وجوی نام دانش‌آموز روی فهرست فاکتورها (DESIGN.md §6)
+        filterText: '',
         students: [],
         pupils: [],
         blocked: false,
@@ -41,6 +43,7 @@ document.addEventListener('alpine:init', () => {
                 this.currentYear = null;
                 this.attributeYear = '';
                 this.unattributed = { tuitionFee: false, invoices: 0 };
+                this.filterText = '';
                 this.load();
             });
             if (this.schoolId) {
@@ -84,6 +87,14 @@ document.addEventListener('alpine:init', () => {
         // نام) ترکیب شود. FINANCE_ADMIN حالا STUDENT_VIEW و MEMBER_NAMES_VIEW
         // را دارد (UX_ROADMAP.md §6.4) پس این resolve معمولاً موفق می‌شود؛ اگر
         // به هر دلیلی موفق نشد، صفحه نمی‌شکند، فقط شناسه‌ی خام نشان داده می‌شود.
+        visibleInvoices() {
+            const query = this.filterText.trim();
+            if (!query) {
+                return this.invoices;
+            }
+            return this.invoices.filter(invoice => this.studentName(invoice.studentId).includes(query));
+        },
+
         studentName(studentId) {
             const student = this.students.find(s => s.studentId === studentId);
             if (!student) {

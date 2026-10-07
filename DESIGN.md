@@ -347,6 +347,16 @@ The sweep found no contrast failure, but a hue check did: the `is-light` family'
 fill stays warm paper. Contrast-only sweeps miss this class of problem, so
 hue is checked by eye on a screenshot as well.
 
+**People, classes and finance (2026-10-07)** now use the same row pattern.
+People: search over name, email and role; each row shows the status in words
+(فعال / غیرفعال / فعال‌سازی شده / در انتظار فعال‌سازی) and the two actions as
+plain `is-light` buttons. Classes: rows with year, grade, section and teacher;
+the roster stays a panel below. Finance: invoice rows with status in words, a
+search over student name, and the payments panels unchanged. Money amounts
+still come from `money.js`, which currently prints Latin commas (`12,000,000`);
+DESIGN.md §8 asks for `٬` with Persian digits, so that is a pending fix in
+`money.js`, not in these rows.
+
 **List row.** 56px minimum height, label at inline-start, optional value
 (e.g. the current academic year) and a `‹` glyph (`.app-dir-glyph`) at
 inline-end, hairline divider. For destinations used rarely.

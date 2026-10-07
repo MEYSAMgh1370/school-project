@@ -60,43 +60,50 @@
                     </form>
                 </div>
 
-                <div class="table-container">
-                <table class="table is-fullwidth is-striped">
-                    <thead>
-                    <tr>
-                        <th scope="col">نام</th>
-                        <th scope="col">ایمیل</th>
-                        <th scope="col">نقش</th>
-                        <th scope="col">وضعیت</th>
-                        <th scope="col">عملیات</th>
-                    </tr>
-                    </thead>
-                    <tbody>
-                    <template x-for="member in members" :key="member.membershipId">
-                        <tr>
-                            <td x-text="member.fullName"></td>
-                            <td dir="ltr" x-text="member.email"></td>
-                            <td x-text="labelFor(member.roleCode)"></td>
-                            <td>
-                                <span class="tag is-success" x-show="member.active">فعال</span>
-                                <span class="tag is-danger" x-show="!member.active">غیرفعال</span>
-                                <span class="tag is-light" x-show="member.hasPassword">فعال‌سازی شده</span>
-                                <span class="tag is-warning" x-show="!member.hasPassword">در انتظار فعال‌سازی</span>
-                            </td>
-                            <td>
-                                <button class="button is-small" type="button" @click="toggleActive(member)">
-                                    <span x-show="member.active">غیرفعال کردن</span>
-                                    <span x-show="!member.active">فعال کردن</span>
-                                </button>
-                                <button class="button is-small" type="button" @click="sendInvite(member)">
-                                    ارسال/تکرار دعوت
-                                </button>
-                            </td>
-                        </tr>
-                    </template>
-                    </tbody>
-                </table>
-                </div>
+                <%-- فهرست ردیفی (DESIGN.md §5a): جست‌وجوی نام/ایمیل/نقش، هر عضو یک ردیف با آواتار، نقش و وضعیت به
+                     کلمه (نه فقط رنگ)، و دو اقدام کم‌حجم. --%>
+                <template x-if="members.length > 0">
+                    <div>
+                        <div class="field">
+                            <label class="label is-sr-only" for="memberSearch">جست‌وجو در اعضا</label>
+                            <div class="control">
+                                <input class="input" id="memberSearch" type="search" x-model="filterText"
+                                       placeholder="جست‌وجوی نام، ایمیل یا نقش">
+                            </div>
+                        </div>
+
+                        <div class="app-list" role="list">
+                            <template x-for="member in visibleMembers()" :key="member.membershipId">
+                                <div class="app-member-row" role="listitem">
+                                    <span class="app-avatar" aria-hidden="true" x-text="member.fullName.charAt(0)"></span>
+                                    <div class="app-member-row__main">
+                                        <span class="app-member-row__name" x-text="member.fullName"></span>
+                                        <span class="is-size-7 has-text-grey" dir="ltr" x-text="member.email"></span>
+                                        <span class="is-size-7 has-text-grey" x-text="labelFor(member.roleCode)"></span>
+                                    </div>
+                                    <div class="app-member-row__status">
+                                        <span class="tag is-success" x-show="member.active">فعال</span>
+                                        <span class="tag is-danger" x-show="!member.active">غیرفعال</span>
+                                        <span class="tag is-light" x-show="member.hasPassword">فعال‌سازی شده</span>
+                                        <span class="tag is-warning" x-show="!member.hasPassword">در انتظار فعال‌سازی</span>
+                                    </div>
+                                    <div class="app-member-row__actions">
+                                        <button class="button is-light" type="button" @click="toggleActive(member)">
+                                            <span x-show="member.active">غیرفعال کردن</span>
+                                            <span x-show="!member.active">فعال کردن</span>
+                                        </button>
+                                        <button class="button is-light" type="button" @click="sendInvite(member)">
+                                            ارسال/تکرار دعوت
+                                        </button>
+                                    </div>
+                                </div>
+                            </template>
+                        </div>
+                        <p class="has-text-grey mt-3" x-show="visibleMembers().length === 0">
+                            عضوی با این جست‌وجو پیدا نشد.
+                        </p>
+                    </div>
+                </template>
 
                 @template.layout.empty-state(
                     show = "!loading && members.length === 0",

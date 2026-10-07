@@ -796,6 +796,48 @@
   font-weight: var(--bulma-weight-bold);
 }
 
+/* ردیف‌های عضو، کلاس و فاکتور: همان الگوی ردیف دانش‌آموز (.app-student-row). */
+.app-member-row,
+.app-class-row,
+.app-invoice-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2) var(--space-3);
+  min-block-size: 64px;
+  padding: var(--space-2) var(--space-4);
+  border-block-end: 1px solid var(--bulma-border-weak);
+}
+
+.app-member-row:last-child,
+.app-class-row:last-child,
+.app-invoice-row:last-child {
+  margin-block-end: -1px;
+}
+
+.app-member-row__main,
+.app-class-row__main,
+.app-invoice-row__main {
+  flex: 1 1 10rem;
+  display: flex;
+  flex-direction: column;
+  min-inline-size: 0;
+}
+
+.app-member-row__name,
+.app-class-row__name,
+.app-invoice-row__name {
+  font-weight: var(--bulma-weight-medium);
+}
+
+/* وضعیت و اقدام‌ها: کنار هم، و در باریک‌ترین صفحه به خط بعد می‌روند. */
+.app-member-row__status,
+.app-member-row__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
 /* --- فهرستِ ردیف‌ها (DESIGN.md §5a) -----------------------------------------
    کانتینرِ مشترکِ ردیف‌های پیشخوان (.app-row) و دفتر نمرات (.app-grade-row):
    radius-md با hairline؛ جداکننده‌ی ردیف‌ها hairline است، نه رنگِ دیگر. */

@@ -7,6 +7,8 @@ document.addEventListener('alpine:init', () => {
         error: '',
         notice: '',
         invite: null,
+        // جست‌وجوی آزاد روی نام، ایمیل و نقش (فهرست ردیفی؛ DESIGN.md §6)
+        filterText: '',
         form: { email: '', fullName: '', roleCode: 'STUDENT' },
         roleLabels: {
             STUDENT: 'دانش‌آموز',
@@ -38,6 +40,7 @@ document.addEventListener('alpine:init', () => {
             window.addEventListener('school-changed', (e) => {
                 this.schoolId = e.detail.id;
                 this.invite = null;
+                this.filterText = '';
                 this.error = '';
                 this.notice = '';
                 this.load();
@@ -45,6 +48,18 @@ document.addEventListener('alpine:init', () => {
             if (this.schoolId) {
                 this.load();
             }
+        },
+
+        visibleMembers() {
+            const query = this.filterText.trim();
+            if (!query) {
+                return this.members;
+            }
+            return this.members.filter(member => [
+                member.fullName,
+                member.email,
+                this.labelFor(member.roleCode)
+            ].some(text => text && String(text).includes(query)));
         },
 
         csrfToken() {
