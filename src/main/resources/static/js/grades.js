@@ -127,7 +127,13 @@ document.addEventListener('alpine:init', () => {
                 }
             });
             this.$watch('filter.term', () => {
-                this.revertUnsavedSelection('term');
+                if (this.revertUnsavedSelection('term')) {
+                    return;
+                }
+                // جدولِ نوبتِ اول نباید زیرِ عنوانِ نوبتِ دوم بماند (نمره‌ها به نوبتِ اشتباه ثبت می‌شدند)
+                if ((this.loaded || this.loading) && String(this.filter.term) !== String(this.loadedFor.term)) {
+                    this.load();
+                }
             });
             if (this.schoolId) {
                 this.loadClasses();
@@ -434,6 +440,12 @@ document.addEventListener('alpine:init', () => {
             }
             this.filter.academicYear = this.normalizeDigits(this.filter.academicYear).trim();
             const seq = ++this.loadSeq;
+            const requested = {
+                classId: this.filter.classId,
+                academicYear: this.filter.academicYear,
+                courseId: this.filter.courseId,
+                term: this.filter.term
+            };
             this.loading = true;
             this.error = '';
             this.notice = '';
@@ -491,7 +503,7 @@ document.addEventListener('alpine:init', () => {
                     .sort((a, b) => a.name.localeCompare(b.name, 'fa'));
                 this.roster.forEach(row => { row.savedKey = this.rowKey(row); });
                 this.resetEntry();
-                this.loadedFor = { classId: this.filter.classId, academicYear: this.filter.academicYear, courseId: this.filter.courseId, term: this.filter.term };
+                this.loadedFor = requested;
                 this.loaded = true;
                 // بعد از نمایش جدول و بدونِ انتظار؛ هر شکستی بی‌صدا نادیده گرفته می‌شود
                 this.loadAttendanceHint(seq, classId);
@@ -802,6 +814,7 @@ document.addEventListener('alpine:init', () => {
 
         async postGrade(row, target = this.saveTarget()) {
             const scheme = target.scheme;
+            const sentKey = this.rowKey(row);
             const response = await fetch(this.gradesBase(), {
                 method: 'POST',
                 headers: {
@@ -826,7 +839,7 @@ document.addEventListener('alpine:init', () => {
             }
             const saved = await response.json();
             row.recordedAt = saved.recordedAt;
-            row.savedKey = this.rowKey(row);
+            row.savedKey = sentKey;
             return { ok: true };
         },
 

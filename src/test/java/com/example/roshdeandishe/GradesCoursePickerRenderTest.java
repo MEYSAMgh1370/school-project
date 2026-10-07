@@ -15,7 +15,8 @@ import static org.assertj.core.api.Assertions.assertThat;
  * انتخابگر «درس» در دفتر نمرات و ستون «درس» در «نمره‌های من»
  * (openspec/changes/grades-by-course.md). فقط ساختار قالب‌ها را می‌سنجد -
  * رفتار Alpine (بارگذاری درس‌ها با عوض‌شدن کلاس، بارگذاری مجدد با عوض‌شدن
- * درس) در مرورگر راستی‌آزمایی شد؛ پروژه تست JS ندارد.
+ * درس) در مرورگر راستی‌آزمایی شد؛ منطق خالصِ جست‌وجو و نرمال‌سازی در
+ * src/test/js/list-search.test.js (اجرا در CI با node --test) است.
  */
 class GradesCoursePickerRenderTest {
 
