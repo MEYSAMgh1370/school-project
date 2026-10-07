@@ -2,7 +2,7 @@
 
 @param NavbarModel navbar
 
-@template.layout.main(title = "امور مالی مدرسه", scripts = java.util.List.of("/js/navbar.js", "/js/jalali.js", "/js/calendar.js", "/js/member-names.js", "/js/money.js", "/js/finance.js"), content = @`
+@template.layout.main(title = "امور مالی مدرسه", scripts = java.util.List.of("/js/navbar.js", "/js/jalali.js", "/js/calendar.js", "/js/member-names.js", "/js/money.js", "/js/list-search.js", "/js/finance.js"), content = @`
 @template.layout.navbar(navbar = navbar)
 
 <section class="section" id="main-content" role="main" tabindex="-1" x-data="financePage()">
@@ -137,7 +137,7 @@
                             </div>
                         </template>
 
-                        <template x-for="invoice in invoices" :key="'payments-' + invoice.id">
+                        <template x-for="invoice in visibleInvoices()" :key="'payments-' + invoice.id">
                             <div class="box" x-show="expandedInvoiceId === invoice.id" x-cloak>
                                 <h3 class="title is-6">
                                     پرداخت‌های فاکتور <span x-text="studentName(invoice.studentId)"></span>

@@ -80,7 +80,7 @@ document.addEventListener('alpine:init', () => {
             if (!query) {
                 return this.questions;
             }
-            return this.questions.filter(question => String(question.text || '').includes(query));
+            return this.questions.filter(question => ListSearch.matches(query, [question.text]));
         },
 
         difficultyLabel(code) {

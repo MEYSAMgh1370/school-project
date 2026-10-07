@@ -55,11 +55,11 @@ document.addEventListener('alpine:init', () => {
             if (!query) {
                 return this.members;
             }
-            return this.members.filter(member => [
+            return this.members.filter(member => ListSearch.matches(query, [
                 member.fullName,
                 member.email,
                 this.labelFor(member.roleCode)
-            ].some(text => text && String(text).includes(query)));
+            ]));
         },
 
         csrfToken() {

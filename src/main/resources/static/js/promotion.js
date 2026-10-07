@@ -196,7 +196,7 @@ document.addEventListener('alpine:init', () => {
 
         visiblePlan() {
             const query = this.filterText.trim();
-            return query ? this.plan.filter(item => this.studentName(item.userId).includes(query)) : this.plan;
+            return query ? this.plan.filter(item => ListSearch.matches(query, [this.studentName(item.userId)])) : this.plan;
         },
 
         // ---------------------------------------------------------------- ارتقا

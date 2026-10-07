@@ -385,7 +385,7 @@ document.addEventListener('alpine:init', () => {
             if (!query) {
                 return this.roster;
             }
-            return this.roster.filter(row => row.name.includes(query));
+            return this.roster.filter(row => ListSearch.matches(query, [row.name]));
         },
 
         async load() {

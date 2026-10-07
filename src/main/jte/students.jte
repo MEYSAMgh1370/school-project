@@ -2,7 +2,7 @@
 
 @param NavbarModel navbar
 
-@template.layout.main(title = "دانش‌آموزان مدرسه", scripts = java.util.List.of("/js/navbar.js", "/js/member-names.js", "/js/students.js"), content = @`
+@template.layout.main(title = "دانش‌آموزان مدرسه", scripts = java.util.List.of("/js/navbar.js", "/js/member-names.js", "/js/list-search.js", "/js/students.js"), content = @`
 @template.layout.navbar(navbar = navbar)
 
 <section class="section" id="main-content" role="main" tabindex="-1"

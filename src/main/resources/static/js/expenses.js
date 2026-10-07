@@ -60,10 +60,10 @@ document.addEventListener('alpine:init', () => {
             if (!query) {
                 return this.expenses;
             }
-            return this.expenses.filter(expense => [
+            return this.expenses.filter(expense => ListSearch.matches(query, [
                 this.categoryName(expense.categoryId),
                 this.vendorName(expense.vendorId)
-            ].some(text => text && text.includes(query)));
+            ]));
         },
 
         categoriesBase() {

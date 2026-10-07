@@ -2,7 +2,7 @@
 
 @param NavbarModel navbar
 
-@template.layout.main(title = "نمرات", scripts = java.util.List.of("/js/navbar.js", "/js/jalali.js", "/js/calendar.js", "/js/member-names.js", "/js/grades.js"),
+@template.layout.main(title = "نمرات", scripts = java.util.List.of("/js/navbar.js", "/js/jalali.js", "/js/calendar.js", "/js/member-names.js", "/js/list-search.js", "/js/grades.js"),
         styles = java.util.List.of("/css/grades.css"), content = @`
 @template.layout.navbar(navbar = navbar)
 

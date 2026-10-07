@@ -46,6 +46,13 @@ document.addEventListener('alpine:init', () => {
                 this.filterText = '';
                 this.load();
             });
+            // پنل پرداخت‌های یک فاکتور که جست‌وجو پنهانش کرده باز نمی‌ماند: با هیچ ردیفی قابل بستن نیست
+            this.$watch('filterText', () => {
+                if (this.expandedInvoiceId !== null
+                    && !this.visibleInvoices().some(invoice => invoice.id === this.expandedInvoiceId)) {
+                    this.expandedInvoiceId = null;
+                }
+            });
             if (this.schoolId) {
                 this.load();
             }
@@ -92,7 +99,7 @@ document.addEventListener('alpine:init', () => {
             if (!query) {
                 return this.invoices;
             }
-            return this.invoices.filter(invoice => this.studentName(invoice.studentId).includes(query));
+            return this.invoices.filter(invoice => ListSearch.matches(query, [this.studentName(invoice.studentId)]));
         },
 
         studentName(studentId) {

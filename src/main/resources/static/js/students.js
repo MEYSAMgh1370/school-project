@@ -51,11 +51,11 @@ document.addEventListener('alpine:init', () => {
             if (!query) {
                 return this.students;
             }
-            return this.students.filter(student => [
+            return this.students.filter(student => ListSearch.matches(query, [
                 this.studentName(student.userId),
                 this.studentEmail(student.userId),
                 this.classLabel(student)
-            ].some(text => text && text.includes(query)));
+            ]));
         },
 
         csrfToken() {

@@ -384,6 +384,13 @@ question text; each row shows the correct choice (Persian digits) and the
 difficulty as a word. The topic picker was already a button list and is
 unchanged, and so are the difficulty filter and the add-question form.
 
+**Search, shared (2026-10-07).** Every list search goes through
+`static/js/list-search.js` (`ListSearch.matches`). It treats Arabic ي/ك as
+Persian ی/ک, Persian and Arabic digits as ASCII, and ignores ZWNJ and diacritics,
+on both sides of the comparison. Pages that use it: students, people, finance,
+expenses, curriculum, grades, promotion. Finance payment panels follow the
+visible invoices and close when a search hides their invoice.
+
 **List row.** 56px minimum height, label at inline-start, optional value
 (e.g. the current academic year) and a `‹` glyph (`.app-dir-glyph`) at
 inline-end, hairline divider. For destinations used rarely.
