@@ -379,6 +379,11 @@ unchanged. **Roles** (`roles.jte`) stays a table on purpose: it is a permission
 matrix (roles × permissions), which a row list would hide. **Attendance** already
 uses its own row list (`app-att-list`) and was left as it is.
 
+**Curriculum (2026-10-07).** The question list is rows with a search over the
+question text; each row shows the correct choice (Persian digits) and the
+difficulty as a word. The topic picker was already a button list and is
+unchanged, and so are the difficulty filter and the add-question form.
+
 **List row.** 56px minimum height, label at inline-start, optional value
 (e.g. the current academic year) and a `‹` glyph (`.app-dir-glyph`) at
 inline-end, hairline divider. For destinations used rarely.

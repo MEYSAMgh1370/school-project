@@ -3,6 +3,8 @@ document.addEventListener('alpine:init', () => {
         schoolId: null,
         flatTopics: [],
         questions: [],
+        // جست‌وجوی متن سؤال روی فهرست ردیفی (DESIGN.md §6)
+        filterText: '',
         selectedTopicId: null,
         difficultyFilter: [],
         loading: false,
@@ -34,6 +36,7 @@ document.addEventListener('alpine:init', () => {
                 this.notice = '';
                 this.blocked = false;
                 this.selectedTopicId = null;
+                this.filterText = '';
                 this.difficultyFilter = [];
                 this.load();
             });
@@ -72,6 +75,14 @@ document.addEventListener('alpine:init', () => {
             return topic ? topic.name : '';
         },
 
+        visibleQuestions() {
+            const query = this.filterText.trim();
+            if (!query) {
+                return this.questions;
+            }
+            return this.questions.filter(question => String(question.text || '').includes(query));
+        },
+
         difficultyLabel(code) {
             const level = this.difficultyLevels.find(l => l.value === code);
             return level ? level.label : '—';
@@ -79,6 +90,7 @@ document.addEventListener('alpine:init', () => {
 
         selectTopic(topicId) {
             this.selectedTopicId = topicId;
+            this.filterText = '';
             this.loadQuestions();
         },
 

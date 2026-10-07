@@ -801,7 +801,8 @@
 .app-class-row,
 .app-invoice-row,
 .app-exam-row,
-.app-expense-row {
+.app-expense-row,
+.app-question-row {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
@@ -815,7 +816,8 @@
 .app-class-row:last-child,
 .app-invoice-row:last-child,
 .app-exam-row:last-child,
-.app-expense-row:last-child {
+.app-expense-row:last-child,
+.app-question-row:last-child {
   margin-block-end: -1px;
 }
 
@@ -823,7 +825,8 @@
 .app-class-row__main,
 .app-invoice-row__main,
 .app-exam-row__main,
-.app-expense-row__main {
+.app-expense-row__main,
+.app-question-row__main {
   flex: 1 1 10rem;
   display: flex;
   flex-direction: column;
@@ -834,7 +837,8 @@
 .app-class-row__name,
 .app-invoice-row__name,
 .app-exam-row__name,
-.app-expense-row__name {
+.app-expense-row__name,
+.app-question-row__name {
   font-weight: var(--bulma-weight-medium);
 }
 

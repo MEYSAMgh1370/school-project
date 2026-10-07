@@ -2,7 +2,7 @@
 
 @param NavbarModel navbar
 
-@template.layout.main(title = "سرفصل‌ها و بانک سؤال", scripts = java.util.List.of("/js/navbar.js", "/js/curriculum.js"), content = @`
+@template.layout.main(title = "سرفصل‌ها و بانک سؤال", scripts = java.util.List.of("/js/navbar.js", "/js/jalali.js", "/js/calendar.js", "/js/curriculum.js"), content = @`
 @template.layout.navbar(navbar = navbar)
 
 <section class="section" id="main-content" role="main" tabindex="-1" x-data="curriculumPage()">
@@ -86,28 +86,33 @@
                                     </template>
                                 </div>
 
-                                <div class="table-container" x-show="questions.length > 0">
-                                <table class="table is-fullwidth is-striped">
-                                    <thead>
-                                    <tr>
-                                        <th scope="col">متن سؤال</th>
-                                        <th scope="col">گزینه‌ی درست</th>
-                                        <th scope="col">سطح دشواری</th>
-                                    </tr>
-                                    </thead>
-                                    <tbody>
-                                    <template x-for="question in questions" :key="question.id">
-                                        <tr>
-                                            <td x-text="question.text"></td>
-                                            <td x-text="'گزینه ' + question.correctChoice"></td>
-                                            <td>
-                                                <span class="tag is-light" x-text="difficultyLabel(question.difficulty)"></span>
-                                            </td>
-                                        </tr>
-                                    </template>
-                                    </tbody>
-                                </table>
-                                </div>
+                                <%-- فهرست ردیفی (DESIGN.md §5a): جست‌وجوی متن سؤال، و هر سؤال یک ردیف با متن،
+                                     گزینه‌ی درست و سطح دشواری به کلمه. --%>
+                                <template x-if="questions.length > 0">
+                                    <div>
+                                        <div class="field">
+                                            <label class="label is-sr-only" for="questionSearch">جست‌وجو در سؤال‌ها</label>
+                                            <div class="control">
+                                                <input class="input" id="questionSearch" type="search" x-model="filterText"
+                                                       placeholder="جست‌وجوی متن سؤال">
+                                            </div>
+                                        </div>
+                                        <div class="app-list" role="list">
+                                            <template x-for="question in visibleQuestions()" :key="question.id">
+                                                <div class="app-question-row" role="listitem">
+                                                    <div class="app-question-row__main">
+                                                        <span class="app-question-row__name" x-text="question.text"></span>
+                                                        <span class="is-size-7 has-text-grey" x-text="'گزینه‌ی درست: ' + Calendar.digits(question.correctChoice)"></span>
+                                                    </div>
+                                                    <span class="tag is-light" x-text="difficultyLabel(question.difficulty)"></span>
+                                                </div>
+                                            </template>
+                                        </div>
+                                        <p class="has-text-grey mt-3" x-show="visibleQuestions().length === 0">
+                                            سؤالی با این جست‌وجو پیدا نشد.
+                                        </p>
+                                    </div>
+                                </template>
 
                                 @template.layout.empty-state(
                                     show = "!loading && questions.length === 0",
