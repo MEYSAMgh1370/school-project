@@ -156,8 +156,72 @@ window.YearlyPlanLogic = (function () {
         return years.length ? years[years.length - 1] : null;
     }
 
+    // ---------------------------------------------------------------- یادآوری (openspec/changes/event-reminders.md)
+
+    // گزینه‌های رایجِ فرم (فقط UI): سرور هر عدد صحیحِ ۰ تا ۳۰ را می‌پذیرد
+    const REMIND_CHOICES = [0, 1, 2, 3, 7, 14];
+    const REMIND_MAX = 30;
+    const ROLES_REQUIRED = 'حداقل یک نقش را انتخاب کنید.';
+
+    // «همان روز» / «۳ روز قبل»؛ مقدارِ نامعتبر ''
+    function remindLabel(days) {
+        if (!Number.isInteger(days) || days < 0) {
+            return '';
+        }
+        return days === 0 ? 'همان روز' : Calendar.digits(days) + ' روز قبل';
+    }
+
+    // گزینه‌های select: value رشته است (برای x-model)؛ '' = بدون یادآوری
+    function remindOptions() {
+        return [{ value: '', label: 'بدون یادآوری' }]
+            .concat(REMIND_CHOICES.map((days) => ({ value: String(days), label: remindLabel(days) })));
+    }
+
+    // مقدارِ select → عددِ روی سیم یا null (بدون یادآوری)
+    function remindValue(text) {
+        if (text === '' || text === null || text === undefined) {
+            return null;
+        }
+        const days = Number(text);
+        return Number.isInteger(days) && days >= 0 && days <= REMIND_MAX ? days : null;
+    }
+
+    // برچسبِ ردیف: فقط رویدادِ مدرسه با مهلتِ یادآوری؛ تعطیلیِ سراسری و رویدادِ بی‌یادآوری ''
+    function remindTag(item) {
+        if (!item || item.source !== 'SCHOOL') {
+            return '';
+        }
+        const label = remindLabel(item.remindDaysBefore);
+        return label ? 'یادآوری: ' + label : '';
+    }
+
+    // بدنه‌ی POST افزودن؛ day ISO و remindDaysBefore عدد یا null است
+    function addBody(academicYearId, dayIso, title, remindText) {
+        return { academicYearId, day: dayIso, title, remindDaysBefore: remindValue(remindText) };
+    }
+
+    // پاسخ GET reminder-roles → حالتِ فرم؛ selected تهی = هنوز انتخابی نشده (همه یادآوری می‌گیرند)، همه بی‌تیک
+    function rolesState(payload) {
+        const roles = (payload && payload.roles) || [];
+        const unset = !payload || payload.selected === null || payload.selected === undefined;
+        const known = new Set(roles.map((role) => role.code));
+        return { roles, unset, selected: unset ? [] : payload.selected.filter((code) => known.has(code)) };
+    }
+
+    // حداقل یک نقش؛ '' = درست
+    function rolesError(selected) {
+        return selected && selected.length > 0 ? '' : ROLES_REQUIRED;
+    }
+
+    // بدنه‌ی PUT: کدها به ترتیبِ فهرستِ نقش‌ها و فقط کدهای شناخته‌شده
+    function rolesBody(selected, roles) {
+        const chosen = new Set(selected);
+        return { roleCodes: roles.map((role) => role.code).filter((code) => chosen.has(code)) };
+    }
+
     return {
         itemKey, groupByMonth, pickYear, effectiveRange, yearLine, isCustom, CUSTOM_TAG, rangeHelp, defaultRangeHelp,
-        inRange, exampleDate, rangeMessage, validateRange, rangeLimits
+        inRange, exampleDate, rangeMessage, validateRange, rangeLimits,
+        remindLabel, remindOptions, remindValue, remindTag, addBody, rolesState, rolesError, rolesBody
     };
 })();

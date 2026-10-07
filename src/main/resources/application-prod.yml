@@ -136,6 +136,9 @@ roshdeandishe:
   platform-admin:
     # اختیاری (پیش‌فرض خالی = هیچ مدیر پلتفرمی)؛ معنا و هشدار ثبت‌نامِ باز در application.yml
     emails: ${PLATFORM_ADMIN_EMAILS:}
+  reminders:
+    # اختیاری (پیش‌فرض ۸)؛ ساعتِ محلیِ مدرسه برای ارسالِ یادآوریِ رویدادها، ۰ تا ۲۳ (رجوع به application.yml)
+    send-hour: ${REMINDER_SEND_HOUR:8}
   jwt:
     # کلید HMAC-SHA256 (حداقل ۲۵۶ بیت). مقدار dev در application.yml در گیت
     # است، پس در production حتماً باید یک کلید تازه باشد.

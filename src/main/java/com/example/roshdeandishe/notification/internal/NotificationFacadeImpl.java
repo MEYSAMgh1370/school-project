@@ -25,12 +25,28 @@ class NotificationFacadeImpl implements NotificationFacade {
      */
     @Override
     public boolean sendMessageToUser(Long userId, String text) {
+        return deliverMessageToUser(userId, text) == DeliveryResult.SENT;
+    }
+
+    /**
+     * کانال‌ها به ترتیب امتحان می‌شوند و با اولین SENT متوقف می‌شود. وگرنه بهترین نتیجه‌ی غیرموفق برمی‌گردد:
+     * اگر هر کانالی خطای موقت داده باشد TEMPORARY_FAILURE (تلاش دوباره ارزش دارد)، وگرنه UNDELIVERABLE اگر
+     * کانالی قطعاً نرسانده، وگرنه NOT_LINKED (بدون هیچ کانال یا فقط کاربرِ لینک‌نشده).
+     */
+    @Override
+    public DeliveryResult deliverMessageToUser(Long userId, String text) {
+        DeliveryResult worst = DeliveryResult.NOT_LINKED;
         for (NotificationChannel channel : channels) {
-            if (channel.send(userId, text)) {
-                return true;
+            DeliveryResult result = channel.deliver(userId, text);
+            if (result == DeliveryResult.SENT) {
+                return result;
+            }
+            if (result == DeliveryResult.TEMPORARY_FAILURE
+                    || (result == DeliveryResult.UNDELIVERABLE && worst == DeliveryResult.NOT_LINKED)) {
+                worst = result;
             }
         }
-        return false;
+        return worst;
     }
 
     @Override

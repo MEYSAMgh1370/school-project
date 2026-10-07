@@ -6,6 +6,7 @@ import java.time.temporal.TemporalAdjusters;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 
 /**
  * تنها نقطه‌ی ورود عمومی به ماژول School.
@@ -136,9 +137,33 @@ public interface SchoolFacade {
      * افزودنِ رویداد (EVENT) به برنامه‌ی سالانه. قاعده‌ی عنوان مثل {@link #addCalendarEntry}؛ روز باید
      * در بازه‌ی همان سال باشد (SchoolError.InvalidCalendarEntry). SchoolError.AcademicYearNotFound اگر
      * سال نباشد، SchoolError.SchoolNotFound اگر مدرسه نباشد.
+     * <p>
+     * {@code remindDaysBefore}: چند روز پیش از رویداد یادآوری شروع شود (null = بدون یادآوری، ۰ = همان روز،
+     * حداکثر ۳۰)؛ بیرون از ۰..۳۰ SchoolError.InvalidCalendarEntry
+     * (openspec/changes/event-reminders.md). رویدادِ ساخته‌شده (source = SCHOOL) برگردانده می‌شود.
      */
-    CalendarEntryInfo addYearlyPlanEvent(SchoolId schoolId, AcademicYearId academicYearId, LocalDate day,
-                                         String title);
+    YearlyPlanItem addYearlyPlanEvent(SchoolId schoolId, AcademicYearId academicYearId, LocalDate day,
+                                      String title, Integer remindDaysBefore);
+
+    /**
+     * رویدادهای EVENT این مدرسه که در روزِ محلیِ {@code today} «سررسید یادآوری» هستند:
+     * {@code remindDaysBefore != null} و {@code day - remindDaysBefore <= today <= day}، به ترتیب روز و شناسه.
+     * CLOSED و رویدادِ بدون زمانِ یادآوری نمی‌آید. SchoolError.SchoolNotFound اگر مدرسه نباشد.
+     */
+    List<ReminderEvent> dueReminderEvents(SchoolId schoolId, LocalDate today);
+
+    /**
+     * نقش‌هایی که مدیر برای دریافت یادآوری انتخاب کرده؛ {@link Optional#empty()} = انتخابی ذخیره نشده =
+     * همه‌ی نقش‌ها (پیش‌فرض). SchoolError.SchoolNotFound اگر مدرسه نباشد.
+     */
+    Optional<Set<String>> reminderRoleCodes(SchoolId schoolId);
+
+    /**
+     * جایگزینیِ انتخابِ نقش‌های یادآوری. مجموعه‌ی تهی/null یا هر کدِ خالی SchoolError.InvalidSetting است
+     * (مدیری که یادآوری نمی‌خواهد، زمانِ یادآوری را روی رویدادها نمی‌گذارد). اعتبارِ خودِ کدها با فراخواننده است
+     * (نقش‌ها متعلق به iam هستند). SchoolError.SchoolNotFound اگر مدرسه نباشد.
+     */
+    void setReminderRoleCodes(SchoolId schoolId, Set<String> roleCodes);
 
     /**
      * تنظیم بازه‌ی برنامه‌ی سالانه‌ی مدرسه برای یک سال. بازه‌ی پیش‌فرض ({@link AcademicYearInfo}) حداقل است:
@@ -172,8 +197,15 @@ public interface SchoolFacade {
     record SchoolId(Long value) {
     }
 
-    /** {@code id} برای SCHOOL شناسه‌ی ورودی تقویم مدرسه و برای PLATFORM شناسه‌ی تعطیلیِ سراسری است. */
-    record YearlyPlanItem(Long id, LocalDate day, String title, YearlyPlanSource source) {
+    /**
+     * {@code id} برای SCHOOL شناسه‌ی ورودی تقویم مدرسه و برای PLATFORM شناسه‌ی تعطیلیِ سراسری است.
+     * {@code remindDaysBefore}: null برای PLATFORM و برای رویدادِ بدون زمانِ یادآوری.
+     */
+    record YearlyPlanItem(Long id, LocalDate day, String title, YearlyPlanSource source, Integer remindDaysBefore) {
+    }
+
+    /** رویدادِ سررسیدِ یادآوری (فقط EVENT دارای زمانِ یادآوری). */
+    record ReminderEvent(Long id, LocalDate day, String title, int remindDaysBefore) {
     }
 
     /** SCHOOL = رویدادِ خودِ مدرسه (قابل حذف توسط مدرسه)؛ PLATFORM = تعطیلیِ سراسری (مدرسه حذف نمی‌کند). */
@@ -209,6 +241,24 @@ public interface SchoolFacade {
 
     record SchoolInfo(SchoolId id, String name, SchoolStatus status, String timezone, String locale, SchoolLevel level,
                       String slug, WeekStart weekStart) {
+
+        /** منطقه‌ی زمانیِ پیش‌فرض وقتی مدرسه منطقه‌ی معتبر ندارد. */
+        public static final java.time.ZoneId DEFAULT_ZONE = java.time.ZoneId.of("Asia/Tehran");
+
+        /**
+         * «امروز»ِ مدرسه از اینجا می‌آید (job یادآوری و جعبه‌ی داشبورد هر دو)؛ خالی یا نامعتبر
+         * {@link #DEFAULT_ZONE} می‌شود تا دو جا هرگز از هم جدا نشوند.
+         */
+        public java.time.ZoneId zoneId() {
+            if (timezone == null || timezone.isBlank()) {
+                return DEFAULT_ZONE;
+            }
+            try {
+                return java.time.ZoneId.of(timezone.strip());
+            } catch (java.time.DateTimeException e) {
+                return DEFAULT_ZONE;
+            }
+        }
     }
 
     /**

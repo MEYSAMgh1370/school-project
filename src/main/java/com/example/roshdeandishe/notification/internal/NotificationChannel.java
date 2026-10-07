@@ -1,5 +1,7 @@
 package com.example.roshdeandishe.notification.internal;
 
+import com.example.roshdeandishe.notification.NotificationFacade;
+
 /**
  * یک کانال اطلاع‌رسانی خروجی (امروز فقط بله: {@link BaleChannel}). کانال تازه
  * (مثلاً SMS) فقط یک {@code @Component} است که این اینترفیس را پیاده می‌کند و
@@ -14,4 +16,15 @@ package com.example.roshdeandishe.notification.internal;
 interface NotificationChannel {
 
     boolean send(Long userId, String text);
+
+    /**
+     * نتیجه‌ی دقیق‌تر برای فراخوان‌کننده‌هایی که می‌توانند دوباره تلاش کنند. پیش‌فرضِ کانالی که فقط
+     * {@link #send} دارد: true = SENT و false = UNDELIVERABLE (نمی‌دانیم چرا نشد، پس تلاش دوباره نمی‌کنیم).
+     * کانالی که خطای موقت را می‌شناسد (مثل {@link BaleChannel}) این متد را بازنویسی می‌کند.
+     */
+    default NotificationFacade.DeliveryResult deliver(Long userId, String text) {
+        return send(userId, text)
+                ? NotificationFacade.DeliveryResult.SENT
+                : NotificationFacade.DeliveryResult.UNDELIVERABLE;
+    }
 }

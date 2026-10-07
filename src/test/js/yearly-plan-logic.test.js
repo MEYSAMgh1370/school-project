@@ -127,6 +127,70 @@ test('range check is inclusive and the example date always lies inside the year'
     assert.equal(YearlyPlanLogic.exampleDate(YEAR, iso('1407/01/01')), '۱۴۰۵/۰۷/۰۱');
 });
 
+test('reminder labels use Persian digits and the option list starts with "none"', () => {
+    assert.equal(YearlyPlanLogic.remindLabel(0), 'همان روز');
+    assert.equal(YearlyPlanLogic.remindLabel(3), '۳ روز قبل');
+    assert.equal(YearlyPlanLogic.remindLabel(14), '۱۴ روز قبل');
+    assert.equal(YearlyPlanLogic.remindLabel(null), '');
+    assert.equal(YearlyPlanLogic.remindLabel(-1), '');
+    assert.equal(YearlyPlanLogic.remindLabel('3'), '');
+
+    const options = YearlyPlanLogic.remindOptions();
+    assert.deepEqual(options.map((o) => o.value), ['', '0', '1', '2', '3', '7', '14']);
+    assert.deepEqual(options.map((o) => o.label), [
+        'بدون یادآوری', 'همان روز', '۱ روز قبل', '۲ روز قبل', '۳ روز قبل', '۷ روز قبل', '۱۴ روز قبل']);
+});
+
+test('the select value becomes a number or null on the wire', () => {
+    assert.equal(YearlyPlanLogic.remindValue(''), null);
+    assert.equal(YearlyPlanLogic.remindValue(null), null);
+    assert.equal(YearlyPlanLogic.remindValue(undefined), null);
+    assert.equal(YearlyPlanLogic.remindValue('0'), 0);
+    assert.equal(YearlyPlanLogic.remindValue('7'), 7);
+    assert.equal(YearlyPlanLogic.remindValue('30'), 30);
+    assert.equal(YearlyPlanLogic.remindValue('31'), null);
+    assert.equal(YearlyPlanLogic.remindValue('x'), null);
+    assert.equal(YearlyPlanLogic.remindValue('1.5'), null);
+
+    assert.deepEqual(YearlyPlanLogic.addBody(7, '2026-10-13', 'جلسه', '3'),
+        { academicYearId: 7, day: '2026-10-13', title: 'جلسه', remindDaysBefore: 3 });
+    assert.deepEqual(YearlyPlanLogic.addBody(7, '2026-10-13', 'جلسه', ''),
+        { academicYearId: 7, day: '2026-10-13', title: 'جلسه', remindDaysBefore: null });
+    assert.equal(YearlyPlanLogic.addBody(7, '2026-10-13', 'جلسه', '0').remindDaysBefore, 0);
+});
+
+test('the reminder tag shows only for school events that have a lead time', () => {
+    assert.equal(YearlyPlanLogic.remindTag({ source: 'SCHOOL', remindDaysBefore: 3 }), 'یادآوری: ۳ روز قبل');
+    assert.equal(YearlyPlanLogic.remindTag({ source: 'SCHOOL', remindDaysBefore: 0 }), 'یادآوری: همان روز');
+    assert.equal(YearlyPlanLogic.remindTag({ source: 'SCHOOL', remindDaysBefore: null }), '');
+    assert.equal(YearlyPlanLogic.remindTag({ source: 'SCHOOL' }), '');
+    assert.equal(YearlyPlanLogic.remindTag({ source: 'PLATFORM', remindDaysBefore: 3 }), '');
+    assert.equal(YearlyPlanLogic.remindTag(null), '');
+});
+
+test('reminder roles: null selection starts unchecked, otherwise the selected are checked', () => {
+    const roles = [{ code: 'TEACHER', title: 'معلم' }, { code: 'PARENT', title: 'والد' }];
+
+    const unset = YearlyPlanLogic.rolesState({ roles, selected: null });
+    assert.deepEqual(unset, { roles, unset: true, selected: [] });
+
+    const some = YearlyPlanLogic.rolesState({ roles, selected: ['PARENT', 'GONE'] });
+    assert.equal(some.unset, false);
+    assert.deepEqual(some.selected, ['PARENT']);
+
+    assert.deepEqual(YearlyPlanLogic.rolesState(null), { roles: [], unset: true, selected: [] });
+});
+
+test('reminder roles need at least one choice and the body follows the role order', () => {
+    const roles = [{ code: 'TEACHER', title: 'معلم' }, { code: 'PARENT', title: 'والد' }, { code: 'STUDENT', title: 'دانش‌آموز' }];
+    assert.equal(YearlyPlanLogic.rolesError([]), 'حداقل یک نقش را انتخاب کنید.');
+    assert.equal(YearlyPlanLogic.rolesError(null), 'حداقل یک نقش را انتخاب کنید.');
+    assert.equal(YearlyPlanLogic.rolesError(['PARENT']), '');
+
+    assert.deepEqual(YearlyPlanLogic.rolesBody(['STUDENT', 'TEACHER', 'UNKNOWN'], roles),
+        { roleCodes: ['TEACHER', 'STUDENT'] });
+});
+
 test('the extension is capped at one Jalali month on each side', () => {
     const limits = YearlyPlanLogic.rangeLimits(YEAR);
     assert.equal(limits.earliestStart, iso('1405/06/01'));

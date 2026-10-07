@@ -39,6 +39,7 @@
                     </div>
                     <div class="level-right is-flex-wrap-wrap is-gap-2">
                         <button class="button is-light" type="button" id="yearlyPlanRange" @click="openRange">تنظیم بازه‌ی سال</button>
+                        <button class="button is-light" type="button" id="yearlyPlanRoles" @click="openRoles">گیرندگان یادآوری</button>
                         <div class="field" x-show="years.length > 1">
                             <label class="label is-sr-only" for="yearlyPlanYear">سال تحصیلی</label>
                             <div class="control">
@@ -91,6 +92,7 @@
                                             <td>
                                                 <span x-text="item.title"></span>
                                                 <span class="tag is-info is-light" x-show="item.source === 'PLATFORM'">تعطیلی سراسری</span>
+                                <span class="tag is-info is-light" x-show="remindTag(item)" x-text="remindTag(item)"></span>
                                             </td>
                                             <td>
                                                 <template x-if="item.source === 'SCHOOL'">
@@ -140,6 +142,20 @@
                                                x-model="add.title" :class="{ 'is-danger': add.titleError }">
                                     </div>
                                     <p class="help is-danger" x-show="add.titleError" x-text="add.titleError"></p>
+                                </div>
+
+                                <div class="field">
+                                    <label class="label" for="yearlyPlanRemind">یادآوری</label>
+                                    <div class="control">
+                                        <div class="select is-fullwidth">
+                                            <select id="yearlyPlanRemind" x-model="add.remind" aria-describedby="yearlyPlanRemindHelp">
+                                                <template x-for="o in remindOptions()" :key="o.value">
+                                                    <option :value="o.value" :selected="o.value === add.remind" x-text="o.label"></option>
+                                                </template>
+                                            </select>
+                                        </div>
+                                    </div>
+                                    <p class="help" id="yearlyPlanRemindHelp">اعضای انتخاب‌شده در پیام بله و پیشخوان یادآوری می‌گیرند.</p>
                                 </div>
                             </section>
                             <footer class="modal-card-foot">
@@ -224,6 +240,46 @@
                             <button class="button" type="button" @click="closeConfirm">انصراف</button>
                         </footer>
                     </div>
+                </div>
+
+                <%-- ------------------------------------------------ گیرندگانِ یادآوری (همیشه یک modal) --%>
+                <div class="modal" role="dialog" aria-modal="true" aria-labelledby="yearlyPlanRolesTitle"
+                     tabindex="-1" x-ref="rolesModal" :class="{ 'is-active': rolesForm }" x-cloak
+                     @keydown.tab="window.ModalFocus.trap($event, $el)" @keydown.escape.stop="closeRoles">
+                    <div class="modal-background" @click="closeRoles"></div>
+                    <template x-if="rolesForm">
+                        <form class="modal-card" @submit.prevent="submitRoles" novalidate>
+                            <header class="modal-card-head">
+                                <p class="modal-card-title" id="yearlyPlanRolesTitle">گیرندگان یادآوری</p>
+                                <button class="delete" type="button" aria-label="بستن" @click="closeRoles"></button>
+                            </header>
+                            <section class="modal-card-body">
+                                <div class="notification is-danger" role="alert" x-show="rolesForm.error" x-text="rolesForm.error"></div>
+                                <p x-show="rolesForm.loading">در حال بارگذاری...</p>
+
+                                <div x-show="!rolesForm.loading">
+                                    <p class="help mb-4" id="yearlyPlanRolesNote" x-show="rolesForm.unset">تا وقتی نقش‌ها را انتخاب نکنید، همه‌ی اعضای مدرسه یادآوری می‌گیرند.</p>
+                                    <template x-for="(role, index) in rolesForm.roles" :key="role.code">
+                                        <div class="field">
+                                            <div class="control">
+                                                <label class="checkbox" :for="'yearlyPlanRole-' + index">
+                                                    <input type="checkbox" :id="'yearlyPlanRole-' + index" :value="role.code"
+                                                           x-model="rolesForm.selected">
+                                                    <span x-text="role.title"></span>
+                                                </label>
+                                            </div>
+                                        </div>
+                                    </template>
+                                    <p class="help is-danger" id="yearlyPlanRolesError" x-show="rolesForm.rolesError" x-text="rolesForm.rolesError"></p>
+                                </div>
+                            </section>
+                            <footer class="modal-card-foot">
+                                <button class="button is-link" type="submit" id="yearlyPlanRolesSubmit"
+                                        :class="{ 'is-loading': saving }">ذخیره</button>
+                                <button class="button" type="button" @click="closeRoles">انصراف</button>
+                            </footer>
+                        </form>
+                    </template>
                 </div>
             `)
     </div>

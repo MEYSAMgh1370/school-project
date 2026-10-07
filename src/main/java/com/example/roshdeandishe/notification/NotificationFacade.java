@@ -22,6 +22,23 @@ public interface NotificationFacade {
     boolean sendMessageToUser(Long userId, String text);
 
     /**
+     * مثل {@link #sendMessageToUser} ولی نتیجه را دقیق می‌گوید تا فراخوان‌کننده‌ای که می‌تواند دوباره تلاش کند
+     * (مثلاً job یادآوریِ رویدادها) «کاربر لینک نشده» را از «ارسال موقتاً شکست خورد» جدا کند. مثل
+     * {@code sendMessageToUser} هرگز exception دامنه‌ای پرتاب نمی‌کند.
+     */
+    DeliveryResult deliverMessageToUser(Long userId, String text);
+
+    /**
+     * {@code SENT}: پیام رسید. {@code NOT_LINKED}: کاربر روی هیچ کانالی حساب لینک‌شده ندارد (تلاش دوباره بی‌فایده است
+     * تا خودش لینک کند). {@code UNDELIVERABLE}: کانال پیام را قطعاً نمی‌پذیرد یا پیکربندی نشده (مثلاً توکن بله خالی
+     * یا پاسخ 4xx غیر از 429) و تلاش دوباره فایده ندارد. {@code TEMPORARY_FAILURE}: خطای موقت (قطعی یا تایم‌اوت شبکه،
+     * 5xx، 429) و تلاش دوباره منطقی است.
+     */
+    enum DeliveryResult {
+        SENT, NOT_LINKED, UNDELIVERABLE, TEMPORARY_FAILURE
+    }
+
+    /**
      * پردازش یک Update خام (بدنه‌ی JSON) از وب‌هوک بله. عمداً یک
      * {@code String} خام می‌گیرد، نه یک نوع ساختاریافته - شکل دقیق Update
      * (BaleUpdate) کاملاً داخلی همین ماژول است تا BaleWebhookController
