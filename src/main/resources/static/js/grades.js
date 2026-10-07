@@ -24,6 +24,8 @@ document.addEventListener('alpine:init', () => {
         schoolSeq: 0,
         yearSeq: 0,
         loaded: false,
+        // انتخاب‌هایی که جدولِ فعلی با آن‌ها ساخته شده؛ تغییرِ انتخاب با نمره‌ی ثبت‌نشده از اینجا برمی‌گردد
+        loadedFor: {},
         blocked: false,
         error: '',
         notice: '',
@@ -86,6 +88,9 @@ document.addEventListener('alpine:init', () => {
             // جدولِ کلاس قبلی هم کنار گذاشته می‌شود (و بارگذاری در جریانش دور ریخته
             // می‌شود): ردیف‌های کلاس قبلی با کلاس جدید قابل ثبت نیستند.
             this.$watch('filter.classId', () => {
+                if (this.revertUnsavedSelection('classId')) {
+                    return;
+                }
                 this.loadSeq++;
                 this.loading = false;
                 this.loaded = false;
@@ -101,6 +106,9 @@ document.addEventListener('alpine:init', () => {
                 if (this.years.length === 0) {
                     return;
                 }
+                if (this.revertUnsavedSelection('academicYear')) {
+                    return;
+                }
                 this.loadSeq++;
                 this.loading = false;
                 this.loaded = false;
@@ -109,10 +117,37 @@ document.addEventListener('alpine:init', () => {
                 // کلاس‌ها به سال تعلق دارند (academic-year.md فاز ۳)
                 this.reloadClassesForYear();
             });
+            // درس و نوبت هم جدول را عوض می‌کنند: با نمره‌ی ثبت‌نشده، همان برگشت را دارند
+            this.$watch('filter.courseId', () => {
+                if (this.revertUnsavedSelection('courseId')) {
+                    return;
+                }
+                if ((this.loaded || this.loading) && String(this.filter.courseId) !== String(this.loadedFor.courseId)) {
+                    this.load();
+                }
+            });
+            this.$watch('filter.term', () => {
+                this.revertUnsavedSelection('term');
+            });
             if (this.schoolId) {
                 this.loadClasses();
                 this.loadYears();
             }
+        },
+
+        // اگر نمره‌ی ثبت‌نشده هست و انتخاب عوض شده، انتخاب به همان چیزی برمی‌گردد که جدول با آن ساخته شده.
+        // true یعنی برگشت انجام شد. تغییر انتخاب بدون نمره‌ی ثبت‌نشده آزاد است.
+        revertUnsavedSelection(key) {
+            if (this.dirtyRows().length === 0 || !(key in this.loadedFor)) {
+                return false;
+            }
+            // back on the loaded selection (the revert itself fires the watcher again): nothing to change
+            if (String(this.filter[key]) === String(this.loadedFor[key])) {
+                return true;
+            }
+            this.filter[key] = this.loadedFor[key];
+            this.error = 'نمره‌های ثبت‌نشده دارید. اول «ثبت همه» را بزنید یا آن‌ها را پاک کنید، سپس انتخاب را عوض کنید.';
+            return true;
         },
 
         csrfToken() {
@@ -456,6 +491,7 @@ document.addEventListener('alpine:init', () => {
                     .sort((a, b) => a.name.localeCompare(b.name, 'fa'));
                 this.roster.forEach(row => { row.savedKey = this.rowKey(row); });
                 this.resetEntry();
+                this.loadedFor = { classId: this.filter.classId, academicYear: this.filter.academicYear, courseId: this.filter.courseId, term: this.filter.term };
                 this.loaded = true;
                 // بعد از نمایش جدول و بدونِ انتظار؛ هر شکستی بی‌صدا نادیده گرفته می‌شود
                 this.loadAttendanceHint(seq, classId);
@@ -513,7 +549,7 @@ document.addEventListener('alpine:init', () => {
         },
 
         levelLabel(code) {
-            return { EXCELLENT: 'خیلی خوب', GOOD: 'خوب', ACCEPTABLE: 'قابل قبول', NEEDS_EFFORT: 'نیازمند تلاش' }[code] || '';
+            return window.GradeLabels.descriptive[code] || '';
         },
 
         // نمره‌ی نوبت اول، فقط هنگام وارد کردنِ نوبت دوم و برای همان کلاس/سال/درس؛ هم‌سنجی بین

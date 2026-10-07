@@ -2,7 +2,7 @@
 
 @param NavbarModel navbar
 
-@template.layout.main(title = "نمرات", scripts = java.util.List.of("/js/navbar.js", "/js/jalali.js", "/js/calendar.js", "/js/member-names.js", "/js/list-search.js", "/js/grades.js"),
+@template.layout.main(title = "نمرات", scripts = java.util.List.of("/js/navbar.js", "/js/jalali.js", "/js/calendar.js", "/js/member-names.js", "/js/list-search.js", "/js/grade-labels.js", "/js/grades.js"),
         styles = java.util.List.of("/css/grades.css"), content = @`
 @template.layout.navbar(navbar = navbar)
 
@@ -39,7 +39,7 @@
                                         <label class="label" for="gradeCourse">درس</label>
                                         <div class="select">
                                             <select id="gradeCourse" x-model="filter.courseId" :disabled="!filter.classId"
-                                                    aria-describedby="gradeCourseHelp" @change="if (loaded || loading) load()">
+                                                    aria-describedby="gradeCourseHelp">
                                                 <option value="">نمره‌ی کل</option>
                                                 <template x-for="course in courses" :key="course.id">
                                                     <option :value="course.id" x-text="course.name"></option>

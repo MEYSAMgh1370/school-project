@@ -391,6 +391,12 @@ on both sides of the comparison. Pages that use it: students, people, finance,
 expenses, curriculum, grades, promotion. Finance payment panels follow the
 visible invoices and close when a search hides their invoice.
 
+**Grade entry, unsaved scores (2026-10-07).** Changing class, year, course or
+term while typed grades are unsaved is undone, with a notice in the page's
+notice area (no browser dialog, per §5). The table keeps what it was loaded
+for; clearing the unsaved values frees the selection. Level labels come from
+`static/js/grade-labels.js`, shared by the teacher and student grade pages.
+
 **List row.** 56px minimum height, label at inline-start, optional value
 (e.g. the current academic year) and a `‹` glyph (`.app-dir-glyph`) at
 inline-end, hairline divider. For destinations used rarely.

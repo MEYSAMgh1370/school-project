@@ -4,7 +4,7 @@
 @param NavbarModel navbar
 @param java.util.List<WardRef> wards
 
-@template.layout.main(title = "نمره‌های من", scripts = java.util.List.of("/js/navbar.js", "/js/jalali.js", "/js/calendar.js", "/js/my-grades.js"),
+@template.layout.main(title = "نمره‌های من", scripts = java.util.List.of("/js/navbar.js", "/js/jalali.js", "/js/calendar.js", "/js/grade-labels.js", "/js/my-grades.js"),
         styles = java.util.List.of("/css/my-grades.css"), content = @`
 @template.layout.navbar(navbar = navbar)
 
