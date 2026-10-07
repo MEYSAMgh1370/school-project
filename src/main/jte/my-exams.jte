@@ -2,7 +2,7 @@
 
 @param NavbarModel navbar
 
-@template.layout.main(title = "آزمون‌های من", scripts = java.util.List.of("/js/navbar.js", "/js/my-exams.js"), content = @`
+@template.layout.main(title = "آزمون‌های من", scripts = java.util.List.of("/js/navbar.js", "/js/jalali.js", "/js/calendar.js", "/js/my-exams.js"), content = @`
 @template.layout.navbar(navbar = navbar)
 
 <section class="section" id="main-content" role="main" tabindex="-1" x-data="myExamsPage()">
@@ -26,10 +26,8 @@
                                     <div>
                                         <p class="title is-6" x-text="examLabel(exam)"></p>
                                         <p class="is-size-7 has-text-grey">
-                                            <span dir="ltr" x-text="exam.start.replace('T', ' ')"></span>
-                                            تا
-                                            <span dir="ltr" x-text="exam.end.replace('T', ' ')"></span>
-                                            — مدت <span dir="ltr" x-text="exam.durationMinutes"></span> دقیقه
+                                            <span x-text="Calendar.formatDateTimeRange(exam.start, exam.end)"></span>
+                                            — مدت <span x-text="Calendar.digits(exam.durationMinutes)"></span> دقیقه
                                         </p>
                                     </div>
                                 </div>

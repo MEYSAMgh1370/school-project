@@ -364,11 +364,13 @@ fixed here: the exam time range shows ISO dates (`2026-10-20 08:00`), which
 §8 does not allow for the `fa` locale. **Resolved 2026-10-07 for the exam row:**
 `Calendar.formatDateTimeRange` shows the Jalali date, a 24-hour clock and Persian
 digits, with the date once when the range is one day (`۱۴۰۵/۷/۲۸ ۰۸:۰۰ تا ۱۰:۰۰`)
-and both dates otherwise. The date comes from the existing `Calendar.formatDate`,
+and both dates otherwise. Used on `/exams` and `/my-exams` (the student's list).
+The date comes from the existing `Calendar.formatDate`,
 which prints **without** zero padding (`۱۴۰۵/۷/۲۸`), while §8 specifies padded
 numeric dates (`۱۴۰۵/۰۴/۲۲`). That mismatch predates this change and affects
 every numeric date; fixing it belongs in `formatDate`, not in exams. Other pages that format times by hand
-(`my-study-plan.js`, `study-plans.js`) still do not use it.
+(`my-study-plan.js`, `study-plans.js`) are study-interval times, not exams, and
+still format by hand — a separate decision.
 
 **List row.** 56px minimum height, label at inline-start, optional value
 (e.g. the current academic year) and a `‹` glyph (`.app-dir-glyph`) at
