@@ -267,17 +267,23 @@ class EventReminderJobTest {
     }
 
     @Test
-    void aNotLinkedRecipientIsNotRetried() {
+    void aRecipientWhoLinksBaleLaterInTheWindowStillGetsTheReminder() {
         oneSchool("Asia/Tehran");
         dueToday();
         members(member(1, "PARENT", true));
-        when(notification.deliverMessageToUser(anyLong(), anyString())).thenReturn(DeliveryResult.NOT_LINKED);
+        // دور اول: هنوز حساب بله ندارد؛ دور دوم (ساعت بعد): لینک کرده است
+        whenDelivering(1L, DeliveryResult.NOT_LINKED, DeliveryResult.SENT);
 
         EventReminderJob job = job();
         job.runOnce(TEHRAN_0830);
-        job.runOnce(Instant.parse("2026-10-06T06:00:00Z"));
+        assertThat(claimed).isEmpty();
 
-        verify(notification, org.mockito.Mockito.times(1)).deliverMessageToUser(eq(1L), anyString());
+        job.runOnce(Instant.parse("2026-10-06T06:00:00Z"));
+        assertThat(claimed).containsExactly(EVENT + ":1");
+
+        // بعد از رسیدن پیام دیگر تلاش نمی‌شود
+        job.runOnce(Instant.parse("2026-10-06T07:00:00Z"));
+        verify(notification, org.mockito.Mockito.times(2)).deliverMessageToUser(eq(1L), anyString());
     }
 
     // ---- ایزوله‌سازی ----
@@ -405,20 +411,55 @@ class EventReminderJobTest {
     }
 
     @Test
-    void undeliverableAndNotLinkedAreFinalAndKeepTheClaim() {
+    void undeliverableIsFinalAndKeepsTheClaim() {
         oneSchool("Asia/Tehran");
         dueToday();
-        members(member(1, "PARENT", true), member(2, "PARENT", true));
+        members(member(1, "PARENT", true));
         whenDelivering(1L, DeliveryResult.UNDELIVERABLE);
-        whenDelivering(2L, DeliveryResult.NOT_LINKED);
 
         EventReminderJob job = job();
         job.runOnce(TEHRAN_0830);
         job.runOnce(Instant.parse("2026-10-06T06:00:00Z"));
 
-        assertThat(claimed).containsExactlyInAnyOrder(EVENT + ":1", EVENT + ":2");
+        assertThat(claimed).containsExactly(EVENT + ":1");
         verify(notification, org.mockito.Mockito.times(1)).deliverMessageToUser(eq(1L), anyString());
-        verify(notification, org.mockito.Mockito.times(1)).deliverMessageToUser(eq(2L), anyString());
+    }
+
+    @Test
+    void unlinkedUsersAreNotBaleFailuresSoTheyNeitherAbortNorResetTheOutageCounter() {
+        oneSchool("Asia/Tehran");
+        dueToday();
+        members(member(1, "PARENT", true), member(2, "PARENT", true), member(3, "PARENT", true),
+                member(4, "PARENT", true), member(5, "PARENT", true), member(6, "PARENT", true));
+        // دو خطای موقت، یک کاربرِ بدون حساب (نه شمارنده را زیاد می‌کند نه صفر)، سومین خطای موقت ⇒ توقف
+        whenDelivering(1L, DeliveryResult.TEMPORARY_FAILURE);
+        whenDelivering(2L, DeliveryResult.TEMPORARY_FAILURE);
+        whenDelivering(3L, DeliveryResult.NOT_LINKED);
+        whenDelivering(4L, DeliveryResult.TEMPORARY_FAILURE);
+
+        job().runOnce(TEHRAN_0830);
+
+        verify(notification).deliverMessageToUser(eq(4L), anyString());
+        verify(notification, never()).deliverMessageToUser(eq(5L), anyString());
+        verify(notification, never()).deliverMessageToUser(eq(6L), anyString());
+        assertThat(claimed).isEmpty();
+    }
+
+    @Test
+    void manyUnlinkedUsersAloneNeverStopTheRun() {
+        oneSchool("Asia/Tehran");
+        dueToday();
+        members(member(1, "PARENT", true), member(2, "PARENT", true), member(3, "PARENT", true),
+                member(4, "PARENT", true), member(5, "PARENT", true));
+        when(notification.deliverMessageToUser(anyLong(), anyString())).thenReturn(DeliveryResult.NOT_LINKED);
+        whenDelivering(5L, DeliveryResult.SENT);
+
+        job().runOnce(TEHRAN_0830);
+
+        for (long id = 1; id <= 5; id++) {
+            verify(notification).deliverMessageToUser(eq(id), anyString());
+        }
+        assertThat(claimed).containsExactly(EVENT + ":5");
     }
 
     @Test

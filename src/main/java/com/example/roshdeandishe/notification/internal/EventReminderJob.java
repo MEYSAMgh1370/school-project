@@ -32,9 +32,10 @@ import java.util.Set;
  * بعد از ساعتِ ارسال هم همان روز جبران می‌کند (catch-up).
  * <p>
  * بدون پیامِ تکراری: ردیفِ دفتر (EventReminderSentRepository.claim) «قبل از» ارسال درج می‌شود و فقط
- * با درجِ موفق پیام می‌رود. نتیجه‌ی قطعی (SENT، NOT_LINKED، UNDELIVERABLE) دوباره تلاش نمی‌شود؛ فقط
- * TEMPORARY_FAILURE (قطعی/تایم‌اوت/5xx/429 بله) ادعا را آزاد می‌کند تا اجرای ساعت بعد، تا وقتی رویداد
- * سررسید است، دوباره تلاش کند، و ۳ خطای موقتِ پیاپی بقیه‌ی آن دور را متوقف می‌کند. شکستِ یک ارسال یا یک مدرسه بقیه را متوقف نمی‌کند و
+ * با درجِ موفق پیام می‌رود. نتیجه‌ی قطعی (SENT و UNDELIVERABLE) دوباره تلاش نمی‌شود. ادعا فقط برای
+ * TEMPORARY_FAILURE (قطعی/تایم‌اوت/5xx/429 بله) و NOT_LINKED (هنوز حساب بله ندارد) آزاد می‌شود تا اجرای ساعت بعد،
+ * تا وقتی رویداد سررسید است، دوباره تلاش کند؛ پس کسی که وسط پنجره بله را لینک کند پیام را می‌گیرد. NOT_LINKED فقط
+ * یک جستجوی دیتابیس است (بدون تماس با بله). ۳ خطای موقتِ پیاپی بقیه‌ی آن دور را متوقف می‌کند. شکستِ یک ارسال یا یک مدرسه بقیه را متوقف نمی‌کند و
  * {@link #runOnce} هیچ‌وقت exception بیرون نمی‌دهد. {@code TenantContext} برای هر مدرسه ست و در finally
  * پاک می‌شود. متنِ پیام و اطلاعاتِ شخصی هرگز لاگ نمی‌شود (فقط شناسه‌ها و شمارش‌ها).
  * <p>
@@ -127,6 +128,7 @@ class EventReminderJob {
 
         int sent = 0;
         int notDelivered = 0;
+        int notLinked = 0;
         int retryLater = 0;
         int failed = 0;
         for (ReminderEvent event : events) {
@@ -152,11 +154,18 @@ class EventReminderJob {
                         }
                         continue;
                     }
+                    if (result == DeliveryResult.NOT_LINKED) {
+                        // حساب بله ندارد (فعلاً): ادعا را آزاد کن تا اگر وسط پنجره لینک کرد ساعت بعد پیام را بگیرد.
+                        // تماسی با بله نبوده، پس شمارنده‌ی خطای موقتِ پیاپی نه زیاد می‌شود نه صفر.
+                        ledger.release(event.id(), userId);
+                        notLinked++;
+                        continue;
+                    }
                     run.consecutiveTemporaryFailures = 0;
                     if (result == DeliveryResult.SENT) {
                         sent++;
                     } else {
-                        // NOT_LINKED / UNDELIVERABLE: قطعی است و دوباره تلاش نمی‌شود
+                        // UNDELIVERABLE (بله پاسخ قطعی داد: توکن نیست یا 4xx): دوباره تلاش نمی‌شود
                         notDelivered++;
                     }
                 } catch (RuntimeException e) {
@@ -166,8 +175,9 @@ class EventReminderJob {
                 }
             }
         }
-        log.info("یادآوری رویدادها برای مدرسه {}: رویداد={}, گیرنده={}, ارسال‌شده={}, ارسال‌نشده={}, تلاش‌مجدد={}, خطا={}",
-                schoolId.value(), events.size(), recipients.size(), sent, notDelivered, retryLater, failed);
+        log.info("یادآوری رویدادها برای مدرسه {}: رویداد={}, گیرنده={}, ارسال‌شده={}, ارسال‌نشده={}, بدون‌حساب={}, "
+                        + "تلاش‌مجدد={}, خطا={}",
+                schoolId.value(), events.size(), recipients.size(), sent, notDelivered, notLinked, retryLater, failed);
     }
 
     /** اعضای فعالِ مدرسه با نقشِ انتخاب‌شده (Optional.empty = همه‌ی نقش‌ها)، بدونِ تکرارِ کاربر. */
