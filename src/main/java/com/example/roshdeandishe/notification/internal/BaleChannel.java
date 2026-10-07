@@ -1,5 +1,7 @@
 package com.example.roshdeandishe.notification.internal;
 
+import com.example.roshdeandishe.notification.NotificationFacade.DeliveryResult;
+
 import org.springframework.stereotype.Component;
 
 /**
@@ -19,8 +21,13 @@ class BaleChannel implements NotificationChannel {
 
     @Override
     public boolean send(Long userId, String text) {
+        return deliver(userId, text) == DeliveryResult.SENT;
+    }
+
+    @Override
+    public DeliveryResult deliver(Long userId, String text) {
         return baleLinkRepository.findByUserId(userId)
-                .map(link -> baleClient.sendMessage(link.getChatId(), text))
-                .orElse(false);
+                .map(link -> baleClient.deliver(link.getChatId(), text))
+                .orElse(DeliveryResult.NOT_LINKED);
     }
 }

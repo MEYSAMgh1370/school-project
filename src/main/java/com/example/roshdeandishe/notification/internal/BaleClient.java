@@ -1,6 +1,11 @@
 package com.example.roshdeandishe.notification.internal;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
+import com.example.roshdeandishe.notification.NotificationFacade.DeliveryResult;
+import org.springframework.http.client.JdkClientHttpRequestFactory;
+import org.springframework.web.client.RestClientResponseException;
+import java.net.http.HttpClient;
+import java.time.Duration;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
@@ -27,6 +32,9 @@ class BaleClient {
 
     private static final Logger log = LoggerFactory.getLogger(BaleClient.class);
 
+    private static final Duration CONNECT_TIMEOUT = Duration.ofSeconds(5);
+    private static final Duration READ_TIMEOUT = Duration.ofSeconds(10);
+
     private final RestClient restClient;
     private final String botToken;
 
@@ -34,14 +42,27 @@ class BaleClient {
             @Value("${roshdeandishe.bale.api-base-url}") String apiBaseUrl,
             @Value("${roshdeandishe.bale.bot-token}") String botToken
     ) {
-        this.restClient = RestClient.builder().baseUrl(apiBaseUrl).build();
+        // بدون timeout یک قطعیِ بله می‌توانست thread زمان‌بندی را بی‌نهایت نگه دارد
+        JdkClientHttpRequestFactory requestFactory = new JdkClientHttpRequestFactory(
+                HttpClient.newBuilder().connectTimeout(CONNECT_TIMEOUT).build());
+        requestFactory.setReadTimeout(READ_TIMEOUT);
+        this.restClient = RestClient.builder().baseUrl(apiBaseUrl).requestFactory(requestFactory).build();
         this.botToken = botToken;
     }
 
     boolean sendMessage(Long chatId, String text) {
+        return deliver(chatId, text) == DeliveryResult.SENT;
+    }
+
+    /**
+     * ارسال با نتیجه‌ی دقیق: بدون توکن یا پاسخ 4xx (غیر از 429) = UNDELIVERABLE (تلاش دوباره فایده ندارد، مثلاً
+     * کاربر ربات را بسته)، و 5xx، 429 یا خطای شبکه/تایم‌اوت = TEMPORARY_FAILURE. متن پیام فقط در حالت
+     * «توکن پیکربندی نشده» لاگ می‌شود (رفتار قبلی)؛ برای خطاها فقط وضعیت HTTP.
+     */
+    DeliveryResult deliver(Long chatId, String text) {
         if (botToken == null || botToken.isBlank()) {
             log.warn("roshdeandishe.bale.bot-token پیکربندی نشده - پیام به chatId={} ارسال نشد: {}", chatId, text);
-            return false;
+            return DeliveryResult.UNDELIVERABLE;
         }
 
         try {
@@ -50,10 +71,15 @@ class BaleClient {
                     .body(new SendMessageRequest(chatId, text, null))
                     .retrieve()
                     .toBodilessEntity();
-            return true;
+            return DeliveryResult.SENT;
+        } catch (RestClientResponseException e) {
+            int status = e.getStatusCode().value();
+            boolean permanent = status >= 400 && status < 500 && status != 429;
+            log.warn("ارسال پیام بله به chatId={} شکست خورد (HTTP {}).", chatId, status);
+            return permanent ? DeliveryResult.UNDELIVERABLE : DeliveryResult.TEMPORARY_FAILURE;
         } catch (RestClientException e) {
             log.warn("ارسال پیام بله به chatId={} شکست خورد.", chatId, e);
-            return false;
+            return DeliveryResult.TEMPORARY_FAILURE;
         }
     }
 

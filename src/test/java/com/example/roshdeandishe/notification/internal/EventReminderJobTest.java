@@ -4,6 +4,7 @@ import com.example.roshdeandishe.iam.IamFacade;
 import com.example.roshdeandishe.iam.IamFacade.MembershipInfo;
 import com.example.roshdeandishe.iam.IamFacade.UserId;
 import com.example.roshdeandishe.notification.NotificationFacade;
+import com.example.roshdeandishe.notification.NotificationFacade.DeliveryResult;
 import com.example.roshdeandishe.platform.TenantContext;
 import com.example.roshdeandishe.school.SchoolFacade;
 import com.example.roshdeandishe.school.SchoolFacade.ReminderEvent;
@@ -60,10 +61,20 @@ class EventReminderJobTest {
         iam = mock(IamFacade.class);
         notification = mock(NotificationFacade.class);
         claimed = new HashSet<>();
-        ledger = (entryId, userId) -> claimed.add(entryId + ":" + userId) ? 1 : 0;
+        ledger = new EventReminderSentRepository() {
+            @Override
+            public int claim(long entryId, long userId) {
+                return claimed.add(entryId + ":" + userId) ? 1 : 0;
+            }
+
+            @Override
+            public int release(long entryId, long userId) {
+                return claimed.remove(entryId + ":" + userId) ? 1 : 0;
+            }
+        };
         when(school.formatSolarDate(any())).thenReturn("۱۴ مهر ۱۴۰۵");
         when(school.reminderRoleCodes(any())).thenReturn(Optional.empty());
-        when(notification.sendMessageToUser(anyLong(), anyString())).thenReturn(true);
+        when(notification.deliverMessageToUser(anyLong(), anyString())).thenReturn(DeliveryResult.SENT);
         TenantContext.clear();
     }
 
@@ -108,7 +119,7 @@ class EventReminderJobTest {
 
         job().runOnce(TEHRAN_0730);
 
-        verify(notification, never()).sendMessageToUser(anyLong(), anyString());
+        verify(notification, never()).deliverMessageToUser(anyLong(), anyString());
         verify(school, never()).dueReminderEvents(any(), any());
     }
 
@@ -120,7 +131,7 @@ class EventReminderJobTest {
 
         job().runOnce(Instant.parse("2026-10-06T17:00:00Z")); // ۲۰:۳۰ تهران
 
-        verify(notification).sendMessageToUser(eq(1L), anyString());
+        verify(notification).deliverMessageToUser(eq(1L), anyString());
     }
 
     @Test
@@ -131,10 +142,10 @@ class EventReminderJobTest {
         members(member(1, "PARENT", true));
 
         job().runOnce(TEHRAN_0830);
-        verify(notification, never()).sendMessageToUser(anyLong(), anyString());
+        verify(notification, never()).deliverMessageToUser(anyLong(), anyString());
 
         job().runOnce(Instant.parse("2026-10-06T06:00:00Z")); // 08:00 برلین
-        verify(notification).sendMessageToUser(eq(1L), anyString());
+        verify(notification).deliverMessageToUser(eq(1L), anyString());
     }
 
     @Test
@@ -148,7 +159,7 @@ class EventReminderJobTest {
         job().runOnce(Instant.parse("2026-10-06T20:00:00Z"));
 
         verify(school).dueReminderEvents(new SchoolId(SCHOOL), nzDay);
-        verify(notification).sendMessageToUser(eq(1L), anyString());
+        verify(notification).deliverMessageToUser(eq(1L), anyString());
     }
 
     @Test
@@ -161,7 +172,7 @@ class EventReminderJobTest {
 
             job().runOnce(TEHRAN_0830);
         }
-        verify(notification, org.mockito.Mockito.times(3)).sendMessageToUser(eq(1L), anyString());
+        verify(notification, org.mockito.Mockito.times(3)).deliverMessageToUser(eq(1L), anyString());
         verify(school, never()).dueReminderEvents(any(), eq(LocalDate.of(2026, 10, 7)));
     }
 
@@ -174,7 +185,7 @@ class EventReminderJobTest {
         job().runOnce(TEHRAN_0830);
 
         verify(school, never()).dueReminderEvents(any(), any());
-        verify(notification, never()).sendMessageToUser(anyLong(), anyString());
+        verify(notification, never()).deliverMessageToUser(anyLong(), anyString());
     }
 
     @Test
@@ -185,7 +196,7 @@ class EventReminderJobTest {
 
         job().runOnce(TEHRAN_0830);
 
-        verify(notification, never()).sendMessageToUser(anyLong(), anyString());
+        verify(notification, never()).deliverMessageToUser(anyLong(), anyString());
         assertThat(claimed).isEmpty();
     }
 
@@ -210,10 +221,10 @@ class EventReminderJobTest {
 
         job().runOnce(TEHRAN_0830);
 
-        verify(notification).sendMessageToUser(eq(1L), anyString());
-        verify(notification).sendMessageToUser(eq(3L), anyString());
-        verify(notification, never()).sendMessageToUser(eq(2L), anyString());
-        verify(notification, never()).sendMessageToUser(eq(4L), anyString());
+        verify(notification).deliverMessageToUser(eq(1L), anyString());
+        verify(notification).deliverMessageToUser(eq(3L), anyString());
+        verify(notification, never()).deliverMessageToUser(eq(2L), anyString());
+        verify(notification, never()).deliverMessageToUser(eq(4L), anyString());
     }
 
     @Test
@@ -224,9 +235,9 @@ class EventReminderJobTest {
 
         job().runOnce(TEHRAN_0830);
 
-        verify(notification).sendMessageToUser(eq(1L), anyString());
-        verify(notification).sendMessageToUser(eq(2L), anyString());
-        verify(notification, never()).sendMessageToUser(eq(4L), anyString());
+        verify(notification).deliverMessageToUser(eq(1L), anyString());
+        verify(notification).deliverMessageToUser(eq(2L), anyString());
+        verify(notification, never()).deliverMessageToUser(eq(4L), anyString());
     }
 
     @Test
@@ -237,7 +248,7 @@ class EventReminderJobTest {
 
         job().runOnce(TEHRAN_0830);
 
-        verify(notification, org.mockito.Mockito.times(1)).sendMessageToUser(eq(1L), anyString());
+        verify(notification, org.mockito.Mockito.times(1)).deliverMessageToUser(eq(1L), anyString());
     }
 
     // ---- دفتر ----
@@ -252,21 +263,21 @@ class EventReminderJobTest {
         job.runOnce(TEHRAN_0830);
         job.runOnce(Instant.parse("2026-10-06T06:00:00Z"));
 
-        verify(notification, org.mockito.Mockito.times(1)).sendMessageToUser(eq(1L), anyString());
+        verify(notification, org.mockito.Mockito.times(1)).deliverMessageToUser(eq(1L), anyString());
     }
 
     @Test
-    void aRecipientIsNotRetriedAfterAFalseSend() {
+    void aNotLinkedRecipientIsNotRetried() {
         oneSchool("Asia/Tehran");
         dueToday();
         members(member(1, "PARENT", true));
-        when(notification.sendMessageToUser(anyLong(), anyString())).thenReturn(false);
+        when(notification.deliverMessageToUser(anyLong(), anyString())).thenReturn(DeliveryResult.NOT_LINKED);
 
         EventReminderJob job = job();
         job.runOnce(TEHRAN_0830);
         job.runOnce(Instant.parse("2026-10-06T06:00:00Z"));
 
-        verify(notification, org.mockito.Mockito.times(1)).sendMessageToUser(eq(1L), anyString());
+        verify(notification, org.mockito.Mockito.times(1)).deliverMessageToUser(eq(1L), anyString());
     }
 
     // ---- ایزوله‌سازی ----
@@ -276,12 +287,12 @@ class EventReminderJobTest {
         oneSchool("Asia/Tehran");
         dueToday();
         members(member(1, "PARENT", true), member(2, "PARENT", true), member(3, "PARENT", true));
-        when(notification.sendMessageToUser(eq(2L), anyString())).thenThrow(new IllegalStateException("boom"));
+        when(notification.deliverMessageToUser(eq(2L), anyString())).thenThrow(new IllegalStateException("boom"));
 
         assertThatCode(() -> job().runOnce(TEHRAN_0830)).doesNotThrowAnyException();
 
-        verify(notification).sendMessageToUser(eq(1L), anyString());
-        verify(notification).sendMessageToUser(eq(3L), anyString());
+        verify(notification).deliverMessageToUser(eq(1L), anyString());
+        verify(notification).deliverMessageToUser(eq(3L), anyString());
     }
 
     @Test
@@ -296,7 +307,7 @@ class EventReminderJobTest {
 
         assertThatCode(() -> job().runOnce(TEHRAN_0830)).doesNotThrowAnyException();
 
-        verify(notification).sendMessageToUser(eq(9L), anyString());
+        verify(notification).deliverMessageToUser(eq(9L), anyString());
     }
 
     @Test
@@ -354,7 +365,7 @@ class EventReminderJobTest {
 
         job().runOnce(TEHRAN_0830);
 
-        verify(notification).sendMessageToUser(1L,
+        verify(notification).deliverMessageToUser(1L,
                 "یادآوری: رویداد «جشن» ۳ روز دیگر (۱۴ مهر ۱۴۰۵) در دبستان 5 برگزار می‌شود.");
     }
 
@@ -366,5 +377,113 @@ class EventReminderJobTest {
         assertThatThrownBy(() -> EventReminderJob.validateSendHour(-1)).isInstanceOf(IllegalStateException.class);
         assertThatThrownBy(() -> new EventReminderJob(school, iam, notification, ledger, true, 25))
                 .isInstanceOf(IllegalStateException.class);
+    }
+
+    // ---- خطای موقت: آزادسازی ادعا و تلاش مجدد ----
+
+    private void whenDelivering(long userId, DeliveryResult first, DeliveryResult... then) {
+        when(notification.deliverMessageToUser(eq(userId), anyString())).thenReturn(first, then);
+    }
+
+    @Test
+    void aTemporaryFailureReleasesTheClaimSoTheNextRunRetriesAndDeliversOnce() {
+        oneSchool("Asia/Tehran");
+        dueToday();
+        members(member(1, "PARENT", true));
+        whenDelivering(1L, DeliveryResult.TEMPORARY_FAILURE, DeliveryResult.SENT);
+
+        EventReminderJob job = job();
+        job.runOnce(TEHRAN_0830);
+        assertThat(claimed).isEmpty();
+
+        job.runOnce(Instant.parse("2026-10-06T06:00:00Z"));
+        assertThat(claimed).containsExactly(EVENT + ":1");
+
+        // سومین دور: دیگر چیزی ارسال نمی‌شود
+        job.runOnce(Instant.parse("2026-10-06T07:00:00Z"));
+        verify(notification, org.mockito.Mockito.times(2)).deliverMessageToUser(eq(1L), anyString());
+    }
+
+    @Test
+    void undeliverableAndNotLinkedAreFinalAndKeepTheClaim() {
+        oneSchool("Asia/Tehran");
+        dueToday();
+        members(member(1, "PARENT", true), member(2, "PARENT", true));
+        whenDelivering(1L, DeliveryResult.UNDELIVERABLE);
+        whenDelivering(2L, DeliveryResult.NOT_LINKED);
+
+        EventReminderJob job = job();
+        job.runOnce(TEHRAN_0830);
+        job.runOnce(Instant.parse("2026-10-06T06:00:00Z"));
+
+        assertThat(claimed).containsExactlyInAnyOrder(EVENT + ":1", EVENT + ":2");
+        verify(notification, org.mockito.Mockito.times(1)).deliverMessageToUser(eq(1L), anyString());
+        verify(notification, org.mockito.Mockito.times(1)).deliverMessageToUser(eq(2L), anyString());
+    }
+
+    @Test
+    void threeTemporaryFailuresInARowStopTheRunAndTheRestIsRetriedNextHour() {
+        oneSchool("Asia/Tehran");
+        dueToday();
+        members(member(1, "PARENT", true), member(2, "PARENT", true), member(3, "PARENT", true),
+                member(4, "PARENT", true), member(5, "PARENT", true));
+        for (long id : new long[]{1, 2, 3}) {
+            whenDelivering(id, DeliveryResult.TEMPORARY_FAILURE, DeliveryResult.SENT);
+        }
+
+        EventReminderJob job = job();
+        job.runOnce(TEHRAN_0830);
+
+        // بعد از سومین خطای موقتِ پیاپی دور متوقف شد: کاربر ۴ و ۵ نه تلاش شدند و نه ادعا شدند
+        verify(notification, never()).deliverMessageToUser(eq(4L), anyString());
+        verify(notification, never()).deliverMessageToUser(eq(5L), anyString());
+        assertThat(claimed).isEmpty();
+
+        // ساعت بعد بله برگشته: هر پنج نفر پیام می‌گیرند
+        job.runOnce(Instant.parse("2026-10-06T06:00:00Z"));
+        assertThat(claimed).hasSize(5);
+        verify(notification).deliverMessageToUser(eq(4L), anyString());
+        verify(notification).deliverMessageToUser(eq(5L), anyString());
+    }
+
+    @Test
+    void aSuccessResetsTheConsecutiveFailureCounterSoTheRunContinues() {
+        oneSchool("Asia/Tehran");
+        dueToday();
+        members(member(1, "PARENT", true), member(2, "PARENT", true), member(3, "PARENT", true),
+                member(4, "PARENT", true), member(5, "PARENT", true), member(6, "PARENT", true));
+        whenDelivering(1L, DeliveryResult.TEMPORARY_FAILURE);
+        whenDelivering(2L, DeliveryResult.TEMPORARY_FAILURE);
+        whenDelivering(3L, DeliveryResult.SENT);
+        whenDelivering(4L, DeliveryResult.TEMPORARY_FAILURE);
+        whenDelivering(5L, DeliveryResult.TEMPORARY_FAILURE);
+        whenDelivering(6L, DeliveryResult.SENT);
+
+        job().runOnce(TEHRAN_0830);
+
+        // همه‌ی شش نفر تلاش شدند؛ فقط موفق‌ها ادعای ثابت دارند و دو جفتِ موقت آزاد شده‌اند
+        for (long id = 1; id <= 6; id++) {
+            verify(notification).deliverMessageToUser(eq(id), anyString());
+        }
+        assertThat(claimed).containsExactlyInAnyOrder(EVENT + ":3", EVENT + ":6");
+    }
+
+    @Test
+    void anAbortedRunSkipsTheLaterSchoolsToo() {
+        when(school.listSchools()).thenReturn(List.of(
+                info(SCHOOL, SchoolStatus.ACTIVE, "Asia/Tehran"), info(6L, SchoolStatus.ACTIVE, "Asia/Tehran")));
+        dueToday();
+        members(member(1, "PARENT", true), member(2, "PARENT", true), member(3, "PARENT", true));
+        when(school.dueReminderEvents(new SchoolId(6L), TODAY))
+                .thenReturn(List.of(new ReminderEvent(EVENT + 1, TODAY, "جشن", 0)));
+        when(iam.findMembershipsBySchool(6L)).thenReturn(List.of(
+                new MembershipInfo(1L, new UserId(9L), "u@x.test", "نام", 6L, "PARENT", true, true)));
+        when(notification.deliverMessageToUser(anyLong(), anyString())).thenReturn(DeliveryResult.TEMPORARY_FAILURE);
+
+        assertThatCode(() -> job().runOnce(TEHRAN_0830)).doesNotThrowAnyException();
+
+        verify(notification, never()).deliverMessageToUser(eq(9L), anyString());
+        assertThat(claimed).isEmpty();
+        assertThat(TenantContext.isSet()).isFalse();
     }
 }

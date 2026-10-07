@@ -1,5 +1,7 @@
 package com.example.roshdeandishe.notification.internal;
 
+import com.example.roshdeandishe.notification.NotificationFacade;
+
 import org.junit.jupiter.api.Test;
 
 import java.util.ArrayList;
@@ -70,5 +72,74 @@ class NotificationFacadeImplTest {
         assertThat(facade(unreachable, reachable).sendMessageToUser(7L, "سلام")).isTrue();
         assertThat(unreachable.calls).hasSize(1);
         assertThat(reachable.calls).hasSize(1);
+    }
+
+    // ---- deliverMessageToUser (نتیجه‌ی دقیق) ----
+
+    private static class ResultChannel implements NotificationChannel {
+        private final NotificationFacade.DeliveryResult result;
+        int calls;
+
+        ResultChannel(NotificationFacade.DeliveryResult result) {
+            this.result = result;
+        }
+
+        @Override
+        public boolean send(Long userId, String text) {
+            return deliver(userId, text) == NotificationFacade.DeliveryResult.SENT;
+        }
+
+        @Override
+        public NotificationFacade.DeliveryResult deliver(Long userId, String text) {
+            calls++;
+            return result;
+        }
+    }
+
+    @Test
+    void deliverStopsAtTheFirstSentChannel() {
+        ResultChannel first = new ResultChannel(NotificationFacade.DeliveryResult.SENT);
+        ResultChannel second = new ResultChannel(NotificationFacade.DeliveryResult.SENT);
+
+        assertThat(facade(first, second).deliverMessageToUser(7L, "سلام"))
+                .isEqualTo(NotificationFacade.DeliveryResult.SENT);
+        assertThat(second.calls).isZero();
+    }
+
+    @Test
+    void withoutAnyChannelTheUserIsNotLinked() {
+        assertThat(facade().deliverMessageToUser(7L, "سلام")).isEqualTo(NotificationFacade.DeliveryResult.NOT_LINKED);
+    }
+
+    @Test
+    void theWorstUnsuccessfulResultWinsSoATemporaryFailureIsNeverHidden() {
+        NotificationFacade.DeliveryResult notLinked = NotificationFacade.DeliveryResult.NOT_LINKED;
+        NotificationFacade.DeliveryResult temporary = NotificationFacade.DeliveryResult.TEMPORARY_FAILURE;
+        NotificationFacade.DeliveryResult undeliverable = NotificationFacade.DeliveryResult.UNDELIVERABLE;
+
+        assertThat(facade(new ResultChannel(notLinked), new ResultChannel(temporary)).deliverMessageToUser(7L, "x"))
+                .isEqualTo(temporary);
+        assertThat(facade(new ResultChannel(temporary), new ResultChannel(notLinked)).deliverMessageToUser(7L, "x"))
+                .isEqualTo(temporary);
+        assertThat(facade(new ResultChannel(notLinked), new ResultChannel(undeliverable)).deliverMessageToUser(7L, "x"))
+                .isEqualTo(undeliverable);
+        assertThat(facade(new ResultChannel(undeliverable), new ResultChannel(notLinked)).deliverMessageToUser(7L, "x"))
+                .isEqualTo(undeliverable);
+    }
+
+    @Test
+    void aChannelThatOnlyKnowsBooleanSendIsTreatedAsFinalWhenItFails() {
+        assertThat(facade(new FakeChannel(true)).deliverMessageToUser(7L, "x"))
+                .isEqualTo(NotificationFacade.DeliveryResult.SENT);
+        assertThat(facade(new FakeChannel(false)).deliverMessageToUser(7L, "x"))
+                .isEqualTo(NotificationFacade.DeliveryResult.UNDELIVERABLE);
+    }
+
+    @Test
+    void sendMessageToUserIsTrueOnlyForSent() {
+        assertThat(facade(new ResultChannel(NotificationFacade.DeliveryResult.TEMPORARY_FAILURE))
+                .sendMessageToUser(7L, "x")).isFalse();
+        assertThat(facade(new ResultChannel(NotificationFacade.DeliveryResult.SENT))
+                .sendMessageToUser(7L, "x")).isTrue();
     }
 }

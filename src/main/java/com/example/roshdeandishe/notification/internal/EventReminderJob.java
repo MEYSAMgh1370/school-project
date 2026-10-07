@@ -3,6 +3,7 @@ package com.example.roshdeandishe.notification.internal;
 import com.example.roshdeandishe.iam.IamFacade;
 import com.example.roshdeandishe.iam.IamFacade.MembershipInfo;
 import com.example.roshdeandishe.notification.NotificationFacade;
+import com.example.roshdeandishe.notification.NotificationFacade.DeliveryResult;
 import com.example.roshdeandishe.platform.TenantContext;
 import com.example.roshdeandishe.school.SchoolFacade;
 import com.example.roshdeandishe.school.SchoolFacade.ReminderEvent;
@@ -31,8 +32,9 @@ import java.util.Set;
  * بعد از ساعتِ ارسال هم همان روز جبران می‌کند (catch-up).
  * <p>
  * بدون پیامِ تکراری: ردیفِ دفتر (EventReminderSentRepository.claim) «قبل از» ارسال درج می‌شود و فقط
- * با درجِ موفق پیام می‌رود؛ هر گیرنده برای هر رویداد یک‌بار تلاش می‌شود حتی اگر ارسال {@code false}
- * (بدونِ حسابِ بله یا شکست) برگردد. شکستِ یک ارسال یا یک مدرسه بقیه را متوقف نمی‌کند و
+ * با درجِ موفق پیام می‌رود. نتیجه‌ی قطعی (SENT، NOT_LINKED، UNDELIVERABLE) دوباره تلاش نمی‌شود؛ فقط
+ * TEMPORARY_FAILURE (قطعی/تایم‌اوت/5xx/429 بله) ادعا را آزاد می‌کند تا اجرای ساعت بعد، تا وقتی رویداد
+ * سررسید است، دوباره تلاش کند، و ۳ خطای موقتِ پیاپی بقیه‌ی آن دور را متوقف می‌کند. شکستِ یک ارسال یا یک مدرسه بقیه را متوقف نمی‌کند و
  * {@link #runOnce} هیچ‌وقت exception بیرون نمی‌دهد. {@code TenantContext} برای هر مدرسه ست و در finally
  * پاک می‌شود. متنِ پیام و اطلاعاتِ شخصی هرگز لاگ نمی‌شود (فقط شناسه‌ها و شمارش‌ها).
  * <p>
@@ -43,6 +45,8 @@ import java.util.Set;
 class EventReminderJob {
 
     private static final Logger log = LoggerFactory.getLogger(EventReminderJob.class);
+    /** پس از این‌همه خطای موقتِ پیاپی، بقیه‌ی این دور رها می‌شود (ساعت بعد دوباره). */
+    private static final int MAX_CONSECUTIVE_TEMPORARY_FAILURES = 3;
 
     private final SchoolFacade schoolFacade;
     private final IamFacade iamFacade;
@@ -83,13 +87,17 @@ class EventReminderJob {
         if (!enabled) {
             return;
         }
+        RunState run = new RunState();
         try {
             for (SchoolInfo school : schoolFacade.listSchools()) {
+                if (run.aborted) {
+                    break;
+                }
                 if (school.status() != SchoolStatus.ACTIVE) {
                     continue;
                 }
                 try {
-                    remindSchool(school, now);
+                    remindSchool(school, now, run);
                 } catch (RuntimeException e) {
                     log.warn("یادآوری رویدادها برای مدرسه {} شکست خورد: {}", school.id().value(),
                             e.getClass().getSimpleName());
@@ -102,7 +110,7 @@ class EventReminderJob {
         }
     }
 
-    private void remindSchool(SchoolInfo school, Instant now) {
+    private void remindSchool(SchoolInfo school, Instant now, RunState run) {
         ZonedDateTime local = now.atZone(school.zoneId());
         if (local.getHour() < sendHour) {
             return;
@@ -119,18 +127,36 @@ class EventReminderJob {
 
         int sent = 0;
         int notDelivered = 0;
+        int retryLater = 0;
         int failed = 0;
         for (ReminderEvent event : events) {
             String text = buildMessage(event.title(), (int) ChronoUnit.DAYS.between(today, event.day()),
                     schoolFacade.formatSolarDate(event.day()), school.name());
             for (Long userId : recipients) {
+                if (run.aborted) {
+                    break;
+                }
                 try {
                     if (ledger.claim(event.id(), userId) == 0) {
                         continue;
                     }
-                    if (notificationFacade.sendMessageToUser(userId, text)) {
+                    DeliveryResult result = notificationFacade.deliverMessageToUser(userId, text);
+                    if (result == DeliveryResult.TEMPORARY_FAILURE) {
+                        // خطای موقت (قطعی/تایم‌اوت/5xx/429): ادعا را آزاد کن تا اجرای ساعت بعد دوباره تلاش کند
+                        ledger.release(event.id(), userId);
+                        retryLater++;
+                        if (++run.consecutiveTemporaryFailures >= MAX_CONSECUTIVE_TEMPORARY_FAILURES) {
+                            // بله احتمالاً در دسترس نیست: ادامه فقط thread را با تماس‌های بی‌نتیجه نگه می‌دارد
+                            run.aborted = true;
+                            log.warn("بله پیاپی خطای موقت داد؛ این دور یادآوری متوقف شد و ساعت بعد ادامه می‌یابد.");
+                        }
+                        continue;
+                    }
+                    run.consecutiveTemporaryFailures = 0;
+                    if (result == DeliveryResult.SENT) {
                         sent++;
                     } else {
+                        // NOT_LINKED / UNDELIVERABLE: قطعی است و دوباره تلاش نمی‌شود
                         notDelivered++;
                     }
                 } catch (RuntimeException e) {
@@ -140,8 +166,8 @@ class EventReminderJob {
                 }
             }
         }
-        log.info("یادآوری رویدادها برای مدرسه {}: رویداد={}, گیرنده={}, ارسال‌شده={}, ارسال‌نشده={}, خطا={}",
-                schoolId.value(), events.size(), recipients.size(), sent, notDelivered, failed);
+        log.info("یادآوری رویدادها برای مدرسه {}: رویداد={}, گیرنده={}, ارسال‌شده={}, ارسال‌نشده={}, تلاش‌مجدد={}, خطا={}",
+                schoolId.value(), events.size(), recipients.size(), sent, notDelivered, retryLater, failed);
     }
 
     /** اعضای فعالِ مدرسه با نقشِ انتخاب‌شده (Optional.empty = همه‌ی نقش‌ها)، بدونِ تکرارِ کاربر. */
@@ -176,5 +202,11 @@ class EventReminderJob {
             out.append(c >= '0' && c <= '9' ? (char) ('۰' + (c - '0')) : c);
         }
         return out.toString();
+    }
+
+    /** وضعیتِ یک دور اجرا بین همه‌ی مدرسه‌ها: شمارنده‌ی خطای موقتِ پیاپی و توقفِ دور. */
+    private static final class RunState {
+        int consecutiveTemporaryFailures;
+        boolean aborted;
     }
 }

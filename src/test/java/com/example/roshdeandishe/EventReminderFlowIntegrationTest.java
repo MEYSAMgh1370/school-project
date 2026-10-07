@@ -276,6 +276,13 @@ class EventReminderFlowIntegrationTest {
         claimedEntries.add(other);
         assertThat(claim.invoke(repository, other, 1L)).isEqualTo(1);
 
+        // آزادسازی بعد از خطای موقت: یک‌بار حذف می‌شود، دوباره حذف چیزی نیست، و بعدش دوباره قابل ادعاست
+        Method release = repositoryType.getDeclaredMethod("release", long.class, long.class);
+        release.setAccessible(true);
+        assertThat(release.invoke(repository, entry, 2L)).isEqualTo(1);
+        assertThat(release.invoke(repository, entry, 2L)).isEqualTo(0);
+        assertThat(claim.invoke(repository, entry, 2L)).isEqualTo(1);
+
         Integer rows = jdbc.queryForObject(
                 "select count(*) from bale.event_reminders_sent where calendar_entry_id in (?, ?)", Integer.class, entry, other);
         assertThat(rows).isEqualTo(3);

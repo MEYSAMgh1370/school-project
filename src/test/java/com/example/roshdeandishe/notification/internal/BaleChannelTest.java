@@ -1,5 +1,7 @@
 package com.example.roshdeandishe.notification.internal;
 
+import com.example.roshdeandishe.notification.NotificationFacade.DeliveryResult;
+
 import org.junit.jupiter.api.Test;
 
 import java.time.Instant;
@@ -17,17 +19,17 @@ import static org.mockito.Mockito.when;
 class BaleChannelTest {
 
     private static class RecordingClient extends BaleClient {
-        private final boolean result;
+        private final DeliveryResult result;
         Long chatId;
         String text;
 
-        RecordingClient(boolean result) {
+        RecordingClient(DeliveryResult result) {
             super("http://localhost:0", "");
             this.result = result;
         }
 
         @Override
-        boolean sendMessage(Long chatId, String text) {
+        DeliveryResult deliver(Long chatId, String text) {
             this.chatId = chatId;
             this.text = text;
             return result;
@@ -39,7 +41,7 @@ class BaleChannelTest {
     @Test
     void unlinkedUserIsUnreachableAndNothingIsSent() {
         when(links.findByUserId(7L)).thenReturn(Optional.empty());
-        RecordingClient client = new RecordingClient(true);
+        RecordingClient client = new RecordingClient(DeliveryResult.SENT);
 
         assertThat(new BaleChannel(links, client).send(7L, "سلام")).isFalse();
         assertThat(client.chatId).isNull();
@@ -48,7 +50,7 @@ class BaleChannelTest {
     @Test
     void linkedUserGetsTheMessageOnTheirLinkedChat() {
         when(links.findByUserId(7L)).thenReturn(Optional.of(new BaleLinkEntity(7L, 555L, Instant.now())));
-        RecordingClient client = new RecordingClient(true);
+        RecordingClient client = new RecordingClient(DeliveryResult.SENT);
 
         assertThat(new BaleChannel(links, client).send(7L, "سلام")).isTrue();
         assertThat(client.chatId).isEqualTo(555L);
@@ -59,6 +61,21 @@ class BaleChannelTest {
     void aFailedSendIsReportedAsNotDelivered() {
         when(links.findByUserId(7L)).thenReturn(Optional.of(new BaleLinkEntity(7L, 555L, Instant.now())));
 
-        assertThat(new BaleChannel(links, new RecordingClient(false)).send(7L, "سلام")).isFalse();
+        assertThat(new BaleChannel(links, new RecordingClient(DeliveryResult.TEMPORARY_FAILURE)).send(7L, "سلام")).isFalse();
+    }
+
+    @Test
+    void theDetailedResultDistinguishesNotLinkedFromAClientFailure() {
+        when(links.findByUserId(7L)).thenReturn(Optional.empty());
+        assertThat(new BaleChannel(links, new RecordingClient(DeliveryResult.SENT)).deliver(7L, "سلام"))
+                .isEqualTo(DeliveryResult.NOT_LINKED);
+
+        when(links.findByUserId(8L)).thenReturn(Optional.of(new BaleLinkEntity(8L, 556L, Instant.now())));
+        assertThat(new BaleChannel(links, new RecordingClient(DeliveryResult.TEMPORARY_FAILURE)).deliver(8L, "سلام"))
+                .isEqualTo(DeliveryResult.TEMPORARY_FAILURE);
+        assertThat(new BaleChannel(links, new RecordingClient(DeliveryResult.UNDELIVERABLE)).deliver(8L, "سلام"))
+                .isEqualTo(DeliveryResult.UNDELIVERABLE);
+        assertThat(new BaleChannel(links, new RecordingClient(DeliveryResult.SENT)).deliver(8L, "سلام"))
+                .isEqualTo(DeliveryResult.SENT);
     }
 }

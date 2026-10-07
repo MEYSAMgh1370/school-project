@@ -17,4 +17,13 @@ interface EventReminderSentRepository extends Repository<EventReminderSentEntity
     @Query(value = "insert into bale.event_reminders_sent (calendar_entry_id, user_id) "
             + "values (:entryId, :userId) on conflict do nothing", nativeQuery = true)
     int claim(@Param("entryId") long entryId, @Param("userId") long userId);
+
+    /**
+     * آزادکردنِ ادعا بعد از خطای «موقت» ارسال، تا اجرای ساعت بعد دوباره تلاش کند. ۱ اگر ردیف حذف شد.
+     */
+    @Transactional
+    @Modifying
+    @Query(value = "delete from bale.event_reminders_sent where calendar_entry_id = :entryId and user_id = :userId",
+            nativeQuery = true)
+    int release(@Param("entryId") long entryId, @Param("userId") long userId);
 }
