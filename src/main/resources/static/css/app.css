@@ -228,6 +228,17 @@
        #5B6573) — the text-h/-s pair cannot express it, so it is set whole. */
     --bulma-text-weak: hsl(215 12% 40%);
 
+    /* The neutral `is-light` family (button, tag, notification) takes its TEXT
+       from the light-scheme hue 48 (`--bulma-light-invert`), which reads olive-
+       brown — measured rgb(65,61,42) on the students page. Its fill stays warm
+       paper; the label takes the cool body ink, as DESIGN.md §4.1 requires for
+       every ink-coloured thing. Contrast only goes up (14:1+). */
+    .button.is-light,
+    .tag.is-light,
+    .notification.is-light {
+      color: var(--bulma-text-strong);
+    }
+
     /* Inline `<a>` does NOT read --bulma-link. Bulma builds --bulma-link-text
        from link-on-scheme-l, which ships at 58% for light — against the teal
        hue that renders a pale link far under AA.
@@ -772,6 +783,19 @@
   }
 }
 
+/* --- آواتار حرف‌اول (DESIGN.md §5a): خنثی، مشترک بین فهرست‌های ردیفی. */
+.app-avatar {
+  flex: none;
+  display: grid;
+  place-items: center;
+  inline-size: 40px;
+  block-size: 40px;
+  border-radius: 50%;
+  background: var(--bulma-scheme-main-ter);
+  color: var(--bulma-text);
+  font-weight: var(--bulma-weight-bold);
+}
+
 /* --- فهرستِ ردیف‌ها (DESIGN.md §5a) -----------------------------------------
    کانتینرِ مشترکِ ردیف‌های پیشخوان (.app-row) و دفتر نمرات (.app-grade-row):
    radius-md با hairline؛ جداکننده‌ی ردیف‌ها hairline است، نه رنگِ دیگر. */
@@ -780,6 +804,32 @@
   border: 1px solid var(--bulma-border-weak);
   border-radius: var(--radius-md);
   background: var(--bulma-scheme-main);
+}
+
+/* ردیف دانش‌آموز: آواتار، نام+ایمیل، کلاس، دکمه‌ی والدین؛ در باریک‌ترین صفحه‌ها می‌شکند. */
+.app-student-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2) var(--space-3);
+  min-block-size: 64px;
+  padding: var(--space-2) var(--space-4);
+  border-block-end: 1px solid var(--bulma-border-weak);
+}
+
+.app-student-row:last-child {
+  margin-block-end: -1px;
+}
+
+.app-student-row__main {
+  flex: 1 1 10rem;
+  display: flex;
+  flex-direction: column;
+  min-inline-size: 0;
+}
+
+.app-student-row__name {
+  font-weight: var(--bulma-weight-medium);
 }
 
 /* --- Shared layout/accessibility utilities -------------------------------- */

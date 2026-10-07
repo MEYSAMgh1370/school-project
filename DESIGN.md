@@ -336,6 +336,17 @@ term, not per day, and a block would need its own written rule and a server
 check (see `openspec/changes/attendance.md`). The keyboard bar follows
 `visualViewport`; it is **untested on a real phone**.
 
+**Students page (2026-10-07), the first management list to adopt the row
+pattern.** The table became `.app-student-row` rows (avatar, name and email,
+class tag, guardian count, «مدیریت والدین» as a plain `is-light` button) with a
+text search over name, email and class. The guardian panel is unchanged. Search
+is always shown, not only over 25 rows, because it costs nothing on a short list.
+The sweep found no contrast failure, but a hue check did: the `is-light` family's
+**text** inherited the warm light-scheme hue and read olive-brown
+(rgb(65,61,42)). The light scheme now sets that text to the cool body ink;
+fill stays warm paper. Contrast-only sweeps miss this class of problem, so
+hue is checked by eye on a screenshot as well.
+
 **List row.** 56px minimum height, label at inline-start, optional value
 (e.g. the current academic year) and a `‹` glyph (`.app-dir-glyph`) at
 inline-end, hairline divider. For destinations used rarely.

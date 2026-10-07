@@ -82,36 +82,42 @@
                     </form>
                 </div>
 
-                <div class="table-container">
-                <table class="table is-fullwidth is-striped">
-                    <thead>
-                    <tr>
-                        <th scope="col">نام دانش‌آموز</th>
-                        <th scope="col">ایمیل</th>
-                        <th scope="col">کلاس</th>
-                        <th scope="col">والدین</th>
-                    </tr>
-                    </thead>
-                    <tbody>
-                    <template x-for="student in students" :key="student.studentId">
-                        <tr>
-                            <td x-text="studentName(student.userId)"></td>
-                            <td dir="ltr" x-text="studentEmail(student.userId)"></td>
-                            <td x-text="classLabel(student)"></td>
-                            <td>
-                                <button class="button is-small" type="button"
-                                        @click="toggleGuardianPanel(student.studentId)"
-                                        :aria-expanded="selectedStudentId === student.studentId ? 'true' : 'false'">
-                                    <span x-text="selectedStudentId === student.studentId ? 'بستن' : 'مدیریت والدین'"></span>
-                                    <span class="tag is-light app-inline-gap" x-show="guardiansByStudent[student.studentId]"
-                                          x-text="(guardiansByStudent[student.studentId] || []).length"></span>
-                                </button>
-                            </td>
-                        </tr>
-                    </template>
-                    </tbody>
-                </table>
-                </div>
+                <%-- فهرست ردیفی (DESIGN.md §5a، همان الگوی دفتر نمرات): جست‌وجوی نام/ایمیل/کلاس بالای فهرست،
+                     هر دانش‌آموز یک ردیف با آواتار، کلاس و تعداد ولی، و دکمه‌ی مدیریت والدین. --%>
+                <template x-if="students.length > 0">
+                    <div>
+                        <div class="field">
+                            <label class="label is-sr-only" for="studentSearch">جست‌وجو در دانش‌آموزان</label>
+                            <div class="control">
+                                <input class="input" id="studentSearch" type="search" x-model="filterText"
+                                       placeholder="جست‌وجوی نام، ایمیل یا کلاس">
+                            </div>
+                        </div>
+
+                        <div class="app-list" role="list">
+                            <template x-for="student in visibleStudents()" :key="student.studentId">
+                                <div class="app-student-row" role="listitem">
+                                    <span class="app-avatar" aria-hidden="true" x-text="studentName(student.userId).charAt(0)"></span>
+                                    <div class="app-student-row__main">
+                                        <span class="app-student-row__name" x-text="studentName(student.userId)"></span>
+                                        <span class="is-size-7 has-text-grey" dir="ltr" x-text="studentEmail(student.userId)"></span>
+                                    </div>
+                                    <span class="tag is-light" x-text="classLabel(student)"></span>
+                                    <button class="button is-light" type="button"
+                                            @click="toggleGuardianPanel(student.studentId)"
+                                            :aria-expanded="selectedStudentId === student.studentId ? 'true' : 'false'">
+                                        <span x-text="selectedStudentId === student.studentId ? 'بستن' : 'مدیریت والدین'"></span>
+                                        <span class="tag is-light app-inline-gap" x-show="guardiansByStudent[student.studentId]"
+                                              x-text="(guardiansByStudent[student.studentId] || []).length"></span>
+                                    </button>
+                                </div>
+                            </template>
+                        </div>
+                        <p class="has-text-grey mt-3" x-show="visibleStudents().length === 0">
+                            دانش‌آموزی با این جست‌وجو پیدا نشد.
+                        </p>
+                    </div>
+                </template>
 
                 @template.layout.empty-state(
                     show = "!loading && students.length === 0",

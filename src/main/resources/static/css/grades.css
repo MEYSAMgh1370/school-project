@@ -77,19 +77,6 @@
   inline-size: 100%;
 }
 
-/* آواتارِ حرف اول: خنثی؛ رنگِ دسته (§4.4) هنوز جفتِ تیره ندارد، پس اینجا نیامده. */
-.app-avatar {
-  flex: none;
-  display: grid;
-  place-items: center;
-  inline-size: 40px;
-  block-size: 40px;
-  border-radius: 50%;
-  background: var(--bulma-scheme-main-ter);
-  color: var(--bulma-text);
-  font-weight: var(--bulma-weight-bold);
-}
-
 .app-avatar--lg {
   inline-size: 48px;
   block-size: 48px;

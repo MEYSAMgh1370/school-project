@@ -9,6 +9,8 @@ document.addEventListener('alpine:init', () => {
         pupils: [],
         parents: [],
         selectedStudentId: null,
+        // جست‌وجوی آزاد روی نام، ایمیل و کلاس (فهرست ردیفی؛ DESIGN.md §6)
+        filterText: '',
         guardiansByStudent: {},
         guardiansLoading: false,
         guardianForm: { guardianUserId: '' },
@@ -33,6 +35,7 @@ document.addEventListener('alpine:init', () => {
                 this.error = '';
                 this.notice = '';
                 this.selectedStudentId = null;
+                this.filterText = '';
                 this.guardiansByStudent = {};
                 this.pendingInviteStudent = null;
                 this.pendingInviteResult = null;
@@ -41,6 +44,18 @@ document.addEventListener('alpine:init', () => {
             if (this.schoolId) {
                 this.load();
             }
+        },
+
+        visibleStudents() {
+            const query = this.filterText.trim();
+            if (!query) {
+                return this.students;
+            }
+            return this.students.filter(student => [
+                this.studentName(student.userId),
+                this.studentEmail(student.userId),
+                this.classLabel(student)
+            ].some(text => text && text.includes(query)));
         },
 
         csrfToken() {
