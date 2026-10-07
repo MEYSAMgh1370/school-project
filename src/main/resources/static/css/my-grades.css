@@ -81,7 +81,10 @@
 
 .app-picker-option.is-selected {
   font-weight: var(--bulma-weight-semibold);
-  color: var(--bulma-link);
+  /* `--bulma-link` is the FILL colour (l 21%): as text on the dark card it
+     measured 2.38:1. `--bulma-link-text` is the per-scheme text variant
+     (DESIGN.md §4a: accent on a neutral surface → on-scheme). */
+  color: var(--bulma-link-text);
 }
 
 .app-picker-option .tag {

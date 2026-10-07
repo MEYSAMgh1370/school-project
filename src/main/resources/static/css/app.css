@@ -162,6 +162,12 @@
      — see above. */
   --bulma-primary-invert-l: 100%;
   --bulma-link-invert-l:    100%;
+
+  /* `.button.is-link.is-light` text reads link-light-invert-l, which Bulma
+     derives from ITS OWN link scale (link-35-l) rather than from the primary
+     lightness: with the teal hue that rendered rgb(18,151,151) on a pale fill,
+     3.4:1 on `activate`. Same value as primary's (primary-10-l). */
+  --bulma-link-light-invert-l: 10%;
   --bulma-success-invert-l: 100%;
   --bulma-danger-invert-l:  100%;
   --bulma-info-invert-l:    100%;
@@ -316,6 +322,53 @@
        measured 1.8:1 on the card. hsl(215 12% 48%) = 3.9:1 on #151A21
        (computed — a value this file chose, not one the doc specifies). */
     --app-control-border: hsl(215 12% 48%);
+
+    /* Select / dropdown arrows are a control-identifying glyph (WCAG 1.4.11,
+       3:1). Bulma points them at `--bulma-link`, the FILL colour (l 21%), which
+       is ~2.4:1 on the dark card — visible in a screenshot, invisible to a
+       text-contrast sweep. The per-scheme text variant fixes it. */
+    --bulma-arrow-color: var(--bulma-link-text);
+  }
+}
+
+/* --- Dark scheme: the `is-light` variant family -----------------------------
+   Bulma builds `.button/.tag.is-<colour>.is-light` fills from `--bulma-light-l`
+   (the NEUTRAL light colour — 40% in dark, set above) with a dark invert text,
+   and `.notification.is-*.is-light` from a hardcoded 90% fill with an invert
+   that, for the neutral one, is the 96% text colour above. Neither follows the
+   scheme, so the sweep (2026-10-07, real browser) measured 1.07–3.9:1 on 11
+   elements: neutral/warning notifications (light text on a cream fill), the
+   `حذف` danger buttons, and every info/success/warning tag.
+   The fix is DESIGN.md §4a's rule — the variant is a *dark tint of its hue with
+   light text* in the dark scheme: fill l 24%, text l 92% (≈ 8:1). Doubling
+   `is-light` (specificity 0,3,0, same as Bulma's rule, later in the cascade)
+   is the same trick Bulma uses for `.tag.is-light.is-light`. The neutral
+   button/tag keep their own 40%/96% fill from the dark block. */
+@media (prefers-color-scheme: dark) {
+  .notification.is-light.is-light {
+    --bulma-notification-background-l: 24%;
+    --bulma-notification-color-l: 92%;
+  }
+
+  .button:is(.is-primary, .is-link, .is-info, .is-success, .is-warning, .is-danger).is-light {
+    --bulma-button-background-l: 24%;
+    --bulma-button-color-l: 92%;
+  }
+
+  .tag:is(.is-primary, .is-link, .is-info, .is-success, .is-warning, .is-danger).is-light {
+    --bulma-tag-background-l: 24%;
+    --bulma-tag-color-l: 92%;
+  }
+
+  /* A field inside a tinted notification (the amber «نسبت دادن به سال» block on
+     academic-year/finance): the control border is measured against the
+     notification fill, not the card, and the stock grey was 1.79:1 on it.
+     Weak ink is 3.6:1 there. `:not(.is-danger)` keeps the invalid state's own
+     border. */
+  .notification .input:not(.is-danger),
+  .notification .textarea:not(.is-danger),
+  .notification .select:not(.is-danger) select {
+    border-color: var(--bulma-text-weak);
   }
 }
 

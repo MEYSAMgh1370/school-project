@@ -239,6 +239,26 @@ Hues stay; lightness and saturation change.
   carried over.
 - **Per-page sweeps remain mandatory.** Every previous sweep found failures
   the one before could not. Assume unswept pages hold more.
+- **All 32 page templates swept 2026-10-07, both schemes** (Chromium, Bulma
+  1.0.4, 1280px; each page rendered from its real `.jte`, hidden states —
+  modals, `x-if` blocks, empty bindings — revealed before measuring). The
+  sweep checks every visible text node (4.5:1, 3:1 for large text),
+  placeholders, and `.input/.textarea/.select` borders (3:1). Before the fixes
+  it found **1 failure in light and 11 distinct in dark** (1.07–3.9:1); after,
+  **0 in both**. Root causes, all in `app.css`: (1) Bulma builds
+  `.button/.tag.is-<colour>.is-light` from `--bulma-light-l` and
+  `.notification.is-*.is-light` from a hardcoded 90% fill, neither of which
+  follows the scheme — in dark they are now a 24% tint of the hue with 92%
+  text; (2) `.button.is-link.is-light` text read Bulma's own link scale (3.4:1)
+  — `--bulma-link-light-invert-l` is now 10%; (3) a field inside a tinted
+  notification has no 3:1 border against the tint — it takes weak ink there;
+  (4) `my-grades.css` used the link *fill* colour as text (2.38:1) — now
+  `--bulma-link-text`; (5) select/dropdown arrows read the fill colour too
+  (about 2.4:1 on the dark card) — `--bulma-arrow-color` is `link-text` in dark.
+  **What the sweep does not measure:** icons and chart/progress fills,
+  hover/pressed states, gradients or images behind text, text that only
+  exists once real data loads, and layout. The arrows were found by looking at
+  a screenshot, not by the script — it is a floor, not a clearance.
 - **Measured 2026-10-07 in a real browser (Chromium, Bulma 1.0.4, mobile
   viewport)** on the dashboard and the grade-entry page, both schemes. Light:
   body 14.2, caption 5.45, primary button 7.35, danger tag 6.57, control border
@@ -592,6 +612,6 @@ modal and loading rules, all voice and date/digit conventions, the
    `money.js` until then.
 8. **Empty-state copy** (carried over) — every empty state names the action
    that creates the first item.
-9. **Per-page dark verification** (carried over) — management pages beyond
-   students, auth/registration, dashboard, exam and grade flows remain
-   unswept.
+9. **Per-page dark verification** — text, placeholder and field-border
+   contrast swept on all 32 templates (§4a); still open: non-text marks,
+   hover/pressed states, and pages with real data loaded.
