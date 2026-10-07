@@ -68,14 +68,6 @@
   color: var(--bulma-text);
 }
 
-/* فهرست ردیف‌ها: کانتینرِ radius-md با hairline؛ ردیف حداقل ۵۶px. */
-.app-list {
-  overflow: hidden;
-  border: 1px solid var(--bulma-border-weak);
-  border-radius: var(--radius-md);
-  background: var(--bulma-scheme-main);
-}
-
 .app-row {
   display: flex;
   align-items: center;

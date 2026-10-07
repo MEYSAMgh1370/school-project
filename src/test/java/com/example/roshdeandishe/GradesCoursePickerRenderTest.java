@@ -89,4 +89,23 @@ class GradesCoursePickerRenderTest {
         assertThat(html).contains("id=\"gradeYearText\"").contains("x-show=\"years.length === 0\"");
         assertThat(html).contains("<label class=\"label\" for=\"gradeYear\">سال تحصیلی</label>");
     }
+
+    // ورود سریعِ نمرات (DESIGN.md §5a): ساختارِ قالب. رفتارِ Alpine در مرورگر راستی‌آزمایی می‌شود
+    // (پروژه تست JS ندارد)؛ اینجا فقط چیزهایی قفل می‌شوند که با تغییرِ قالب بی‌صدا می‌شکنند.
+    @Test
+    void quickEntryHasChipsFocusModeAndExactlyOnePrimaryActionPerView() {
+        String html = render("grades.jte", Map.of("navbar", NAVBAR));
+
+        assertThat(html).contains("/css/grades.css");
+        // chip ها: aria-pressed و شمارش
+        assertThat(html).contains("x-for=\"item in chips()\"").contains(":aria-pressed=");
+        // نمای تمرکز: نامِ مقصد روی دکمه‌ی اصلی، و نوار روی کیبورد
+        assertThat(html).contains("x-text=\"nextLabel()\"").contains("keyboardInset");
+        // خلاصه‌ی مرور برای صفحه‌خوان
+        assertThat(html).contains("role=\"alert\" x-show=\"reviewSummary\"");
+        // نمره ورودیِ متنی با inputmode اعشاری است، نه number (رقم‌های فارسی را رد می‌کرد)
+        assertThat(html).contains("inputmode=\"decimal\"").doesNotContain("type=\"number\"");
+        // دکمه‌ی «ثبت» هر ردیف فرعی است؛ تنها دکمه‌های پُر: «ثبت همه»/«بعدی» (هر نما یکی) و «بارگذاری»
+        assertThat(html).doesNotContain("button is-small is-link").doesNotContain("button is-link");
+    }
 }

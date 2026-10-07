@@ -239,6 +239,16 @@ Hues stay; lightness and saturation change.
   carried over.
 - **Per-page sweeps remain mandatory.** Every previous sweep found failures
   the one before could not. Assume unswept pages hold more.
+- **Measured 2026-10-07 in a real browser (Chromium, Bulma 1.0.4, mobile
+  viewport)** on the dashboard and the grade-entry page, both schemes. Light:
+  body 14.2, caption 5.45, primary button 7.35, danger tag 6.57, control border
+  3.78. Dark: body 15.5, caption 8.5, danger tag 4.62. It found two failures
+  the hex arithmetic could not, both fixed in `app.css`: `.button.is-light`
+  turned **olive** at 4.39:1 (the light-scheme hue 48 carried into dark; dark
+  now uses hue 215 → 5.65:1), and the input border was 1.8:1 because §4.1 gave
+  no dark control border. **This file now sets one:** `hsl(215 12% 48%)`,
+  3.9:1 on `#151A21` — a value the implementation chose; amend it here if you
+  prefer another.
 
 ---
 
@@ -285,6 +295,19 @@ shadow, **not** primary-filled (§4.2 forbids primary as a content background);
 icon tiles are neutral, not tinted (§4.4 tints are for avatars only); the
 greeting is not built (copy decision). Dashboard shortcut anchors carry
 `data-shortcut`; tests count them by that attribute.
+
+**Built 2026-10-07 on grade entry** (`grades.jte`, `grades.js`, `grades.css`;
+client-side only — each grade is still one `POST`, no bulk endpoint):
+list rows with a word-status chip, filter chips (shown over 25 students or
+when review has items), focus mode, the keyboard-top bar, «ثبت همه», and
+review mode with the likely-value suggestion (`175` → «۱۷٫۵»; only the
+unambiguous three-digit case guesses). Numeric input is a text field with
+`inputmode="decimal"` that normalizes Persian/Arabic digits and `٫ ، / ,`.
+A `beforeunload` guard warns about unsaved grades. **Not built, on purpose:**
+the «غایب»-style alternative value (a grade has no such domain value — that
+would be a business rule), «نمره قبلی» context (no previous-grade source),
+and draft autosave (§13.5 is still undecided). The keyboard bar follows
+`visualViewport`; it is **untested on a real phone**.
 
 **List row.** 56px minimum height, label at inline-start, optional value
 (e.g. the current academic year) and a `‹` glyph (`.app-dir-glyph`) at

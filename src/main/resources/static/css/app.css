@@ -177,6 +177,12 @@
      reachable from :root. The other two §3 metrics are not — see the
      "not tokenized by Bulma" block below. */
   --bulma-body-line-height: 1.75;
+
+  /* Control border (DESIGN.md §4.1): the border that IDENTIFIES a field
+     reaches 3:1 (WCAG 1.4.11) — #7A8494, 3.78:1 on the card (measured in a
+     browser). The hairline is decoration only. On :root so a browser with no
+     colour-scheme preference still gets it; the dark block overrides it. */
+  --app-control-border: hsl(217 11% 53%);
 }
 
 /* زبان انگلیسی: این فایل استاتیک است و سمت سرور قالب‌بندی نمی‌شود، پس همه‌ی
@@ -216,11 +222,6 @@
        #5B6573) — the text-h/-s pair cannot express it, so it is set whole. */
     --bulma-text-weak: hsl(215 12% 40%);
 
-    /* Control border (DESIGN.md §4.1): the border that IDENTIFIES a field
-       reaches 3:1 (WCAG 1.4.11) — #7A8494, 3.78:1 on the card. The hairline
-       above is decoration only. Used by the `.input` rule below. */
-    --app-control-border: hsl(217 11% 53%);
-
     /* Inline `<a>` does NOT read --bulma-link. Bulma builds --bulma-link-text
        from link-on-scheme-l, which ships at 58% for light — against the teal
        hue that renders a pale link far under AA.
@@ -235,13 +236,6 @@
     /* Cards stay near-white; the PAGE becomes paper. Bulma points body
        background at scheme-main (white) by default. */
     --bulma-body-background-color: var(--bulma-scheme-main-ter);
-  }
-
-  /* Fields are identified by the control border, not the hairline. */
-  .input,
-  .textarea,
-  .select select {
-    border-color: var(--app-control-border);
   }
 }
 
@@ -310,7 +304,28 @@
        a 1.4.1 colour-only failure, but 50% fixes the border (3.3:1) while
        white-on-danger stays AA at 4.8:1. */
     --bulma-danger-l: 50%;
+
+    /* `is-light` fill: the light-scheme hue 48 / 22% turned it OLIVE at l 40%
+       and measured 4.39:1 against its label in a real browser. The dark scheme
+       runs cool surfaces (hue 215), so the raised-surface tone does too: 5.65:1. */
+    --bulma-light-h: 215deg;
+    --bulma-light-s: 22%;
+
+    /* Control border in dark. DESIGN.md §4.1 requires 3:1 for the border that
+       identifies a field but gives no dark value; Bulma's stock dark border
+       measured 1.8:1 on the card. hsl(215 12% 48%) = 3.9:1 on #151A21
+       (computed — a value this file chose, not one the doc specifies). */
+    --app-control-border: hsl(215 12% 48%);
   }
+}
+
+/* Fields are identified by the control border, not the hairline (DESIGN.md
+   §4.1). The value is per scheme, so the rule is global. Hover/focus/danger
+   states keep their own, more specific border colours. */
+.input,
+.textarea,
+.select select {
+  border-color: var(--app-control-border);
 }
 
 /* ==========================================================================
@@ -702,6 +717,16 @@
     flex-direction: column;
     align-items: flex-start;
   }
+}
+
+/* --- فهرستِ ردیف‌ها (DESIGN.md §5a) -----------------------------------------
+   کانتینرِ مشترکِ ردیف‌های پیشخوان (.app-row) و دفتر نمرات (.app-grade-row):
+   radius-md با hairline؛ جداکننده‌ی ردیف‌ها hairline است، نه رنگِ دیگر. */
+.app-list {
+  overflow: hidden;
+  border: 1px solid var(--bulma-border-weak);
+  border-radius: var(--radius-md);
+  background: var(--bulma-scheme-main);
 }
 
 /* --- Shared layout/accessibility utilities -------------------------------- */
