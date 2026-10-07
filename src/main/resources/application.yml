@@ -113,6 +113,13 @@ roshdeandishe:
     start-month: ${ACADEMIC_YEAR_START_MONTH:5}
     start-day: ${ACADEMIC_YEAR_START_DAY:1}
     timezone: ${ACADEMIC_YEAR_TIMEZONE:Asia/Tehran}
+  reminders:
+    # یادآوریِ رویدادهای برنامه‌ی سالانه (notification.internal.EventReminderJob، openspec/changes/event-reminders.md):
+    # هر ساعت، برای مدرسه‌هایی که ساعتِ محلی‌شان به send-hour رسیده، پیامِ بله به گیرنده‌ها می‌رود.
+    # enabled=false یعنی job هیچ کاری نمی‌کند. send-hour عدد ۰ تا ۲۳ است (مقدارِ نامعتبر هنگامِ
+    # بالا آمدن fail می‌کند)؛ ساعتِ محلیِ هر مدرسه از timezone خودش می‌آید.
+    enabled: true
+    send-hour: ${REMINDER_SEND_HOUR:8}
   platform-admin:
     # فهرست ایمیل‌های مدیر پلتفرم، جداشده با کاما (iam.internal.PlatformAdminProvisioner، openspec/changes/yearly-plan.md فاز C).
     # در هر بالا آمدن، جدول iam.platform_admins برابر ایمیل‌هایی می‌شود که با یک کاربرِ موجود، ACTIVE و

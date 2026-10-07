@@ -6,6 +6,7 @@ import java.time.temporal.TemporalAdjusters;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 
 /**
  * تنها نقطه‌ی ورود عمومی به ماژول School.
@@ -136,9 +137,33 @@ public interface SchoolFacade {
      * افزودنِ رویداد (EVENT) به برنامه‌ی سالانه. قاعده‌ی عنوان مثل {@link #addCalendarEntry}؛ روز باید
      * در بازه‌ی همان سال باشد (SchoolError.InvalidCalendarEntry). SchoolError.AcademicYearNotFound اگر
      * سال نباشد، SchoolError.SchoolNotFound اگر مدرسه نباشد.
+     * <p>
+     * {@code remindDaysBefore}: چند روز پیش از رویداد یادآوری شروع شود (null = بدون یادآوری، ۰ = همان روز،
+     * حداکثر ۳۰)؛ بیرون از ۰..۳۰ SchoolError.InvalidCalendarEntry
+     * (openspec/changes/event-reminders.md). رویدادِ ساخته‌شده (source = SCHOOL) برگردانده می‌شود.
      */
-    CalendarEntryInfo addYearlyPlanEvent(SchoolId schoolId, AcademicYearId academicYearId, LocalDate day,
-                                         String title);
+    YearlyPlanItem addYearlyPlanEvent(SchoolId schoolId, AcademicYearId academicYearId, LocalDate day,
+                                      String title, Integer remindDaysBefore);
+
+    /**
+     * رویدادهای EVENT این مدرسه که در روزِ محلیِ {@code today} «سررسید یادآوری» هستند:
+     * {@code remindDaysBefore != null} و {@code day - remindDaysBefore <= today <= day}، به ترتیب روز و شناسه.
+     * CLOSED و رویدادِ بدون زمانِ یادآوری نمی‌آید. SchoolError.SchoolNotFound اگر مدرسه نباشد.
+     */
+    List<ReminderEvent> dueReminderEvents(SchoolId schoolId, LocalDate today);
+
+    /**
+     * نقش‌هایی که مدیر برای دریافت یادآوری انتخاب کرده؛ {@link Optional#empty()} = انتخابی ذخیره نشده =
+     * همه‌ی نقش‌ها (پیش‌فرض). SchoolError.SchoolNotFound اگر مدرسه نباشد.
+     */
+    Optional<Set<String>> reminderRoleCodes(SchoolId schoolId);
+
+    /**
+     * جایگزینیِ انتخابِ نقش‌های یادآوری. مجموعه‌ی تهی/null یا هر کدِ خالی SchoolError.InvalidSetting است
+     * (مدیری که یادآوری نمی‌خواهد، زمانِ یادآوری را روی رویدادها نمی‌گذارد). اعتبارِ خودِ کدها با فراخواننده است
+     * (نقش‌ها متعلق به iam هستند). SchoolError.SchoolNotFound اگر مدرسه نباشد.
+     */
+    void setReminderRoleCodes(SchoolId schoolId, Set<String> roleCodes);
 
     /**
      * تنظیم بازه‌ی برنامه‌ی سالانه‌ی مدرسه برای یک سال. بازه‌ی پیش‌فرض ({@link AcademicYearInfo}) حداقل است:
@@ -172,8 +197,15 @@ public interface SchoolFacade {
     record SchoolId(Long value) {
     }
 
-    /** {@code id} برای SCHOOL شناسه‌ی ورودی تقویم مدرسه و برای PLATFORM شناسه‌ی تعطیلیِ سراسری است. */
-    record YearlyPlanItem(Long id, LocalDate day, String title, YearlyPlanSource source) {
+    /**
+     * {@code id} برای SCHOOL شناسه‌ی ورودی تقویم مدرسه و برای PLATFORM شناسه‌ی تعطیلیِ سراسری است.
+     * {@code remindDaysBefore}: null برای PLATFORM و برای رویدادِ بدون زمانِ یادآوری.
+     */
+    record YearlyPlanItem(Long id, LocalDate day, String title, YearlyPlanSource source, Integer remindDaysBefore) {
+    }
+
+    /** رویدادِ سررسیدِ یادآوری (فقط EVENT دارای زمانِ یادآوری). */
+    record ReminderEvent(Long id, LocalDate day, String title, int remindDaysBefore) {
     }
 
     /** SCHOOL = رویدادِ خودِ مدرسه (قابل حذف توسط مدرسه)؛ PLATFORM = تعطیلیِ سراسری (مدرسه حذف نمی‌کند). */

@@ -315,7 +315,7 @@ class YearlyPlanFlowIntegrationTest {
             // مدرسه‌ی دیگر دست‌نخورده است: بازه‌ی پیش‌فرض و بدون رویدادهای مدرسه‌ی ۱
             assertThat(schoolFacade.yearlyPlan(other, year.id()).range().custom()).isFalse();
             assertThat(schoolFacade.yearlyPlan(other, year.id()).range().startDate()).isEqualTo(year.startDate());
-            assertThatThrownBy(() -> schoolFacade.addYearlyPlanEvent(other, year.id(), start, "خارج از بازه"))
+            assertThatThrownBy(() -> schoolFacade.addYearlyPlanEvent(other, year.id(), start, "خارج از بازه", null))
                     .isInstanceOfSatisfying(SchoolException.class,
                             e -> assertThat(e.error()).isInstanceOf(SchoolError.InvalidCalendarEntry.class));
             assertThat(schoolFacade.yearlyPlan(other, year.id()).items())

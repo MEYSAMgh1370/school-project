@@ -118,6 +118,7 @@ This is intentional. An application that boots with a public signing key or a
 | `SESSION_COOKIE_SECURE` | `true` | Session cookie `Secure` flag. Leave on; only turn off if you deliberately serve plain HTTP |
 | `HEALTH_CHECK_MAIL` | `false` | Whether SMTP reachability counts toward `/actuator/health` (see §7) |
 | `PLATFORM_ADMIN_EMAILS` | *(empty)* | Comma-separated emails of platform administrators (who manage platform-wide holidays). Empty = **no** platform admin. See "Platform administrators" below before setting it |
+| `REMINDER_SEND_HOUR` | `8` | School-local hour (0-23) from which yearly-plan event reminders are sent. Reminders are Bale messages, so they only reach users who linked Bale and only when `BALE_BOT_TOKEN` is set; the dashboard box «رویدادهای نزدیک» works regardless. An invalid value stops the app at startup |
 
 **Email is optional by design.** Invite/activation email is best-effort
 throughout this codebase: if SMTP is unset or fails, issuing an invite still

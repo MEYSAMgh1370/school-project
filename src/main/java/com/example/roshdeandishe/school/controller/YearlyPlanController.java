@@ -9,12 +9,10 @@ import com.example.roshdeandishe.platform.TenantContext;
 import com.example.roshdeandishe.school.SchoolFacade;
 import com.example.roshdeandishe.school.SchoolFacade.AcademicYearId;
 import com.example.roshdeandishe.school.SchoolFacade.AcademicYearInfo;
-import com.example.roshdeandishe.school.SchoolFacade.CalendarEntryInfo;
 import com.example.roshdeandishe.school.SchoolFacade.SchoolId;
 import com.example.roshdeandishe.school.SchoolFacade.YearlyPlan;
 import com.example.roshdeandishe.school.SchoolFacade.YearlyPlanItem;
 import com.example.roshdeandishe.school.SchoolFacade.YearlyPlanRange;
-import com.example.roshdeandishe.school.SchoolFacade.YearlyPlanSource;
 import com.example.roshdeandishe.school.dto.request.AddYearlyPlanEventRequest;
 import com.example.roshdeandishe.school.dto.request.SetYearlyPlanRangeRequest;
 import com.example.roshdeandishe.school.dto.response.AcademicYearResponse;
@@ -89,9 +87,8 @@ public class YearlyPlanController {
             throw new SchoolException(new SchoolError.InvalidCalendarEntry("سال، روز و عنوان الزامی است."));
         }
         AcademicYearId year = request.academicYearId() == null ? null : new AcademicYearId(request.academicYearId());
-        CalendarEntryInfo created = schoolFacade.addYearlyPlanEvent(
-                new SchoolId(schoolId), year, request.day(), request.title());
-        return new YearlyPlanItemResponse(created.id(), created.day(), created.title(), YearlyPlanSource.SCHOOL.name());
+        return toResponse(schoolFacade.addYearlyPlanEvent(
+                new SchoolId(schoolId), year, request.day(), request.title(), request.remindDaysBefore()));
     }
 
     @PutMapping("/api/admin/schools/{schoolId}/yearly-plan/range")
@@ -133,6 +130,7 @@ public class YearlyPlanController {
     }
 
     private static YearlyPlanItemResponse toResponse(YearlyPlanItem item) {
-        return new YearlyPlanItemResponse(item.id(), item.day(), item.title(), item.source().name());
+        return new YearlyPlanItemResponse(
+                item.id(), item.day(), item.title(), item.source().name(), item.remindDaysBefore());
     }
 }

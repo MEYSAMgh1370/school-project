@@ -38,17 +38,23 @@ class SchoolFacadeImpl implements SchoolFacade {
             "dashboard", "activate", "roshdeandishe"
     );
 
+    private static final int MIN_REMIND_DAYS = 0;
+    private static final int MAX_REMIND_DAYS = 30;
+
     private final SchoolRepository schoolRepository;
     private final AcademicYearRepository academicYearRepository;
     private final CalendarEntryRepository calendarEntryRepository;
     private final PlatformHolidayRepository platformHolidayRepository;
     private final SchoolYearRangeRepository schoolYearRangeRepository;
     private final ApplicationEventPublisher eventPublisher;
+    private final ReminderRoleRepository reminderRoleRepository;
 
     SchoolFacadeImpl(SchoolRepository schoolRepository, AcademicYearRepository academicYearRepository,
                      CalendarEntryRepository calendarEntryRepository,
                      PlatformHolidayRepository platformHolidayRepository,
-                     SchoolYearRangeRepository schoolYearRangeRepository, ApplicationEventPublisher eventPublisher) {
+                     SchoolYearRangeRepository schoolYearRangeRepository, ApplicationEventPublisher eventPublisher,
+                     ReminderRoleRepository reminderRoleRepository) {
+        this.reminderRoleRepository = reminderRoleRepository;
         this.schoolYearRangeRepository = schoolYearRangeRepository;
         this.schoolRepository = schoolRepository;
         this.academicYearRepository = academicYearRepository;
@@ -203,11 +209,10 @@ class SchoolFacadeImpl implements SchoolFacade {
         YearlyPlanRange range = effectiveRange(schoolId, year);
         platformHolidayRepository.findByAcademicYearIdOrderByDayAscIdAsc(year.id().value()).forEach(holiday ->
                 items.add(new YearlyPlanItem(holiday.getId(), holiday.getDay(), holiday.getTitle(),
-                        YearlyPlanSource.PLATFORM)));
+                        YearlyPlanSource.PLATFORM, null)));
         calendarEntryRepository.findBySchoolIdAndKindAndDayBetweenOrderByDayAscIdAsc(
                         schoolId.value(), CalendarKind.EVENT, range.startDate(), range.endDate())
-                .forEach(entry -> items.add(new YearlyPlanItem(entry.getId(), entry.getDay(), entry.getTitle(),
-                        YearlyPlanSource.SCHOOL)));
+                .forEach(entry -> items.add(toPlanItem(entry)));
         // مرتب‌سازیِ پایدار: در یک روز، تعطیلیِ سراسری پیش از رویدادِ مدرسه می‌آید
         items.sort(Comparator.comparing(YearlyPlanItem::day));
         return new YearlyPlan(year, range, List.copyOf(items));
@@ -263,12 +268,16 @@ class SchoolFacadeImpl implements SchoolFacade {
 
     @Override
     @Transactional
-    public CalendarEntryInfo addYearlyPlanEvent(SchoolId schoolId, AcademicYearId academicYearId, LocalDate day,
-                                                String title) {
+    public YearlyPlanItem addYearlyPlanEvent(SchoolId schoolId, AcademicYearId academicYearId, LocalDate day,
+                                             String title, Integer remindDaysBefore) {
         if (day == null || academicYearId == null) {
             throw new SchoolException(new SchoolError.InvalidCalendarEntry("روز و سال تحصیلی الزامی است."));
         }
         String normalizedTitle = normalizeTitle(title);
+        if (remindDaysBefore != null && (remindDaysBefore < MIN_REMIND_DAYS || remindDaysBefore > MAX_REMIND_DAYS)) {
+            throw new SchoolException(new SchoolError.InvalidCalendarEntry(
+                    "زمان یادآوری باید بین ۰ تا ۳۰ روز پیش از رویداد باشد."));
+        }
         requireSchool(schoolId);
         AcademicYearInfo year = requireYear(academicYearId);
         YearlyPlanRange range = effectiveRange(schoolId, year);
@@ -278,8 +287,73 @@ class SchoolFacadeImpl implements SchoolFacade {
                             + SolarCalendar.format(range.startDate()) + " تا "
                             + SolarCalendar.format(range.endDate()) + ") باشد."));
         }
-        return toCalendarInfo(calendarEntryRepository.save(
-                new CalendarEntryEntity(schoolId.value(), day, CalendarKind.EVENT, normalizedTitle)));
+        Short lead = remindDaysBefore == null ? null : remindDaysBefore.shortValue();
+        return toPlanItem(calendarEntryRepository.save(
+                new CalendarEntryEntity(schoolId.value(), day, CalendarKind.EVENT, normalizedTitle, lead)));
+    }
+
+    @Override
+    public List<ReminderEvent> dueReminderEvents(SchoolId schoolId, LocalDate today) {
+        requireSchool(schoolId);
+        // پنجره‌ی هر رویداد حداکثر ۳۰ روز است؛ پس فقط رویدادهای [today, today+30] کاندیدند و فیلتر دقیق اینجاست
+        return calendarEntryRepository
+                .findBySchoolIdAndKindAndRemindDaysBeforeIsNotNullAndDayBetweenOrderByDayAscIdAsc(
+                        schoolId.value(), CalendarKind.EVENT, today, today.plusDays(MAX_REMIND_DAYS))
+                .stream()
+                .filter(entry -> entry.getKind() == CalendarKind.EVENT && entry.getRemindDaysBefore() != null
+                        && !entry.getDay().minusDays(entry.getRemindDaysBefore()).isAfter(today)
+                        && !today.isAfter(entry.getDay()))
+                .map(entry -> new ReminderEvent(entry.getId(), entry.getDay(), entry.getTitle(),
+                        entry.getRemindDaysBefore()))
+                .toList();
+    }
+
+    @Override
+    public Optional<Set<String>> reminderRoleCodes(SchoolId schoolId) {
+        requireSchool(schoolId);
+        Set<String> codes = new java.util.TreeSet<>();
+        reminderRoleRepository.findBySchoolId(schoolId.value()).forEach(role -> codes.add(role.getRoleCode()));
+        return codes.isEmpty() ? Optional.empty() : Optional.of(Set.copyOf(codes));
+    }
+
+    @Override
+    @Transactional
+    public void setReminderRoleCodes(SchoolId schoolId, Set<String> roleCodes) {
+        if (roleCodes == null || roleCodes.isEmpty()) {
+            throw new SchoolException(new SchoolError.InvalidSetting(
+                    "دست‌کم یک نقش برای دریافت یادآوری باید انتخاب شود."));
+        }
+        Set<String> wanted = new java.util.HashSet<>();
+        for (String code : roleCodes) {
+            if (code == null || code.isBlank() || code.trim().length() > 64) {
+                throw new SchoolException(new SchoolError.InvalidSetting("کد نقش نامعتبر است."));
+            }
+            wanted.add(code.trim());
+        }
+        requireSchool(schoolId);
+        // جایگزینی با تفاضل (نه حذف‌همه و درج دوباره): Hibernate درج را پیش از حذف flush می‌کند و کلید تکراری می‌شد
+        List<ReminderRoleEntity> existing = reminderRoleRepository.findBySchoolId(schoolId.value());
+        Set<String> existingCodes = new java.util.HashSet<>();
+        List<ReminderRoleEntity> toRemove = new ArrayList<>();
+        for (ReminderRoleEntity role : existing) {
+            existingCodes.add(role.getRoleCode());
+            if (!wanted.contains(role.getRoleCode())) {
+                toRemove.add(role);
+            }
+        }
+        reminderRoleRepository.deleteAll(toRemove);
+        List<ReminderRoleEntity> toAdd = new ArrayList<>();
+        for (String code : wanted) {
+            if (!existingCodes.contains(code)) {
+                toAdd.add(new ReminderRoleEntity(schoolId.value(), code));
+            }
+        }
+        reminderRoleRepository.saveAll(toAdd);
+    }
+
+    private static YearlyPlanItem toPlanItem(CalendarEntryEntity entry) {
+        return new YearlyPlanItem(entry.getId(), entry.getDay(), entry.getTitle(), YearlyPlanSource.SCHOOL,
+                entry.getRemindDaysBefore() == null ? null : entry.getRemindDaysBefore().intValue());
     }
 
     @Override

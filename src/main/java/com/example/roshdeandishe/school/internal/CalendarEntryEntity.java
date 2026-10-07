@@ -35,6 +35,10 @@ class CalendarEntryEntity {
     @Column(nullable = false, length = 128)
     private String title;
 
+    /** چند روز پیش از رویداد یادآوری شروع می‌شود (۰..۳۰)؛ null = بدون یادآوری. فقط EVENT. smallint → Short. */
+    @Column(name = "remind_days_before")
+    private Short remindDaysBefore;
+
     @Column(name = "created_at", nullable = false, insertable = false, updatable = false)
     private Instant createdAt;
 
@@ -43,5 +47,10 @@ class CalendarEntryEntity {
         this.day = day;
         this.kind = kind;
         this.title = title;
+    }
+
+    CalendarEntryEntity(Long schoolId, LocalDate day, CalendarKind kind, String title, Short remindDaysBefore) {
+        this(schoolId, day, kind, title);
+        this.remindDaysBefore = remindDaysBefore;
     }
 }

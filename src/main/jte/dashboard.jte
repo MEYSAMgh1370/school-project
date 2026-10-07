@@ -5,7 +5,7 @@
 @param DashboardModel model
 @param NavbarModel navbar
 
-@template.layout.main(title = "پیشخوان", scripts = java.util.List.of("/js/navbar.js", "/js/jalali.js", "/js/calendar.js", "/js/timetable-grid.js", "/js/dashboard.js", "/js/dashboard-timetable.js"),
+@template.layout.main(title = "پیشخوان", scripts = java.util.List.of("/js/navbar.js", "/js/jalali.js", "/js/calendar.js", "/js/timetable-grid.js", "/js/date-input.js", "/js/school-api.js", "/js/upcoming-events-logic.js", "/js/dashboard.js", "/js/dashboard-timetable.js", "/js/dashboard-upcoming.js"),
         styles = java.util.List.of("/css/dashboard.css", "/css/timetable.css"), content = @`
 @template.layout.navbar(navbar = navbar)
 
@@ -101,6 +101,26 @@
                 </div>
             </section>
         @endfor
+
+        <%-- «رویدادهای نزدیک»: رویدادهای برنامه‌ی سالانه‌ی مدرسه‌ی انتخاب‌شده که پنجره‌ی یادآوری‌شان شروع شده
+             (openspec/changes/event-reminders.md). کاملاً client-side از /api/me/schools/{id}/upcoming-events؛ برای
+             غیرگیرنده لیست خالی می‌آید. بخش تا وقتی رویدادی نباشد (بارگذاری، لیست خالی، مدرسه‌ی انتخاب‌نشده، خطا)
+             پنهان می‌ماند. --%>
+        <section class="mb-5" aria-labelledby="dashboard-upcoming-title" x-data="dashboardUpcoming()"
+                 x-cloak x-show="rows.length > 0" id="dashboardUpcoming">
+            <div class="box">
+                <h2 class="title is-5 mb-3" id="dashboard-upcoming-title">رویدادهای نزدیک</h2>
+                <ul id="dashboardUpcomingList">
+                    <template x-for="row in rows" :key="row.id">
+                        <li class="mb-2">
+                            <span class="has-text-weight-semibold" x-text="row.title"></span>
+                            <span class="is-block is-size-7 has-text-grey" x-text="row.date + '، ' + row.relative"></span>
+                        </li>
+                    </template>
+                </ul>
+                <p class="mt-3 mb-0"><a href="/yearly-plan">برنامه‌ی سالانه</a></p>
+            </div>
+        </section>
 
         <%-- «برنامه‌ی امروز»: فقط برای نقشِ انتخاب‌شده‌ی «دانش‌آموز» (تصمیمِ محصول: دانش‌آموز
              برنامه را در صفحه‌ی اول می‌بیند؛ معلم و والد در /my-timetable). داده کاملاً

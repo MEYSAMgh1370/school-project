@@ -42,7 +42,8 @@ class AcademicYearFacadeTest {
         years = mock(AcademicYearRepository.class);
         events = mock(org.springframework.context.ApplicationEventPublisher.class);
         facade = new SchoolFacadeImpl(schools, years, mock(CalendarEntryRepository.class),
-                mock(PlatformHolidayRepository.class), mock(SchoolYearRangeRepository.class), events);
+                mock(PlatformHolidayRepository.class), mock(SchoolYearRangeRepository.class), events,
+                mock(ReminderRoleRepository.class));
         school = new SchoolEntity();
         ReflectionTestUtils.setField(school, "id", 5L);
         when(schools.findById(5L)).thenReturn(Optional.of(school));

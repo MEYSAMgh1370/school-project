@@ -18,5 +18,9 @@ interface CalendarEntryRepository extends JpaRepository<CalendarEntryEntity, Lon
 
     Optional<CalendarEntryEntity> findByIdAndSchoolIdAndKind(Long id, Long schoolId, CalendarKind kind);
 
+    /** EVENTهای دارای زمانِ یادآوری در بازه‌ی بسته‌ی [from, to] روز؛ فیلتر دقیقِ پنجره در facade انجام می‌شود. */
+    List<CalendarEntryEntity> findBySchoolIdAndKindAndRemindDaysBeforeIsNotNullAndDayBetweenOrderByDayAscIdAsc(
+            Long schoolId, CalendarKind kind, LocalDate from, LocalDate to);
+
     boolean existsBySchoolIdAndDayAndKind(Long schoolId, LocalDate day, CalendarKind kind);
 }

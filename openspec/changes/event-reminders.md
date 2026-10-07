@@ -1,6 +1,6 @@
 # Yearly-plan event reminders (یادآوری رویدادهای برنامه‌ی سالانه)
 
-Status: proposed 2026-10-06; not implemented. Product-owner answers recorded the same day (see Decisions); items marked **assumption** were not decided by the product owner and are listed under Unresolved questions.
+Status: proposed 2026-10-06; **implemented 2026-10-07** (migrations `V18` and `V19`, `EventReminderJob`, the reminder-roles and upcoming-events endpoints, the `/yearly-plan` additions and the dashboard box); current behavior is in `specs/current-system.md`. The assumptions below were built as written and are still open for confirmation. Product-owner answers recorded the same day (see Decisions); items marked **assumption** were not decided by the product owner and are listed under Unresolved questions.
 
 ## Current behavior (evidence)
 

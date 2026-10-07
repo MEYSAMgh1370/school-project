@@ -50,8 +50,8 @@ class YearlyPlanPageRenderTest {
         assertThat(html).contains("x-data=\"yearlyPlanPage()\"").contains("برنامه‌ی سالانه");
         assertThat(html).contains("رویدادهای مدرسه و تعطیلی‌های سراسری سال تحصیلی");
         assertThat(html).contains("id=\"yearlyPlanAdd\"").contains("افزودن رویداد</button>");
-        // سرصفحه + «افزودن» داخل modal + «ذخیره» در modal بازه (اقدامِ اصلیِ صفحه فقط یکی است)
-        assertThat(count(html, "button is-link")).isEqualTo(3);
+        // سرصفحه + «افزودن» داخل modal + «ذخیره» در modal بازه و در modal گیرندگان یادآوری (اقدامِ اصلیِ صفحه فقط یکی است)
+        assertThat(count(html, "button is-link")).isEqualTo(4);
         assertThat(html.indexOf("id=\"yearlyPlanAdd\"")).isLessThan(html.indexOf("id=\"yearlyPlanYearLine\""));
         assertThat(html.indexOf("id=\"yearlyPlanYearLine\"")).isLessThan(html.indexOf("id=\"yearlyPlanList\""));
         // انتخاب‌گرِ سال فقط با بیش از یک سال
@@ -140,5 +140,24 @@ class YearlyPlanPageRenderTest {
                     .doesNotContainPattern("\\balert\\(")
                     .doesNotContainPattern("(?<![.\\w])confirm\\(");
         }
+    }
+
+    @Test
+    void theAddFormHasAnOptionalReminderChoiceAndTheRolesModalIsSecondary() {
+        String html = render();
+
+        // انتخاب «یادآوری» در فرم افزودن، با راهنما
+        assertThat(html).contains("id=\"yearlyPlanRemind\"", "x-model=\"add.remind\"",
+                "id=\"yearlyPlanRemindHelp\"", "اعضای انتخاب‌شده در پیام بله و پیشخوان یادآوری می‌گیرند.");
+        // برچسبِ زمانِ یادآوری روی ردیف‌های مدرسه
+        assertThat(html).contains("x-text=\"remindTag(item)\"");
+        // دکمه‌ی فرعی (نه اقدامِ اصلی) و modal گیرندگان با checkboxِ هر نقش، یادداشتِ «همه» و خطای ورودی
+        assertThat(html).contains("class=\"button is-light\" type=\"button\" id=\"yearlyPlanRoles\"")
+                .contains("گیرندگان یادآوری</button>");
+        assertThat(html).contains("x-ref=\"rolesModal\"", "id=\"yearlyPlanRolesTitle\"", "type=\"checkbox\"",
+                "id=\"yearlyPlanRolesNote\"", "id=\"yearlyPlanRolesError\"", "id=\"yearlyPlanRolesSubmit\"",
+                "تا وقتی نقش‌ها را انتخاب نکنید، همه‌ی اعضای مدرسه یادآوری می‌گیرند.");
+        // هر input یک label واقعی دارد و modal به‌جای confirm/alert مرورگر کار می‌کند
+        assertThat(html).contains("@keydown.tab=\"window.ModalFocus.trap($event, $el)\"");
     }
 }

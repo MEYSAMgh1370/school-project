@@ -57,7 +57,8 @@ class SchoolYearlyPlanFacadeTest {
         holidays = mock(PlatformHolidayRepository.class);
         ranges = mock(SchoolYearRangeRepository.class);
         facade = new SchoolFacadeImpl(schools, years, calendar, holidays, ranges,
-                mock(org.springframework.context.ApplicationEventPublisher.class));
+                mock(org.springframework.context.ApplicationEventPublisher.class),
+                mock(ReminderRoleRepository.class));
         when(schools.existsById(5L)).thenReturn(true);
         AcademicYearEntity year = new AcademicYearEntity();
         ReflectionTestUtils.setField(year, "id", 2L);
@@ -91,34 +92,35 @@ class SchoolYearlyPlanFacadeTest {
 
     @Test
     void firstAndLastDayOfTheYearAreAccepted() {
-        CalendarEntryInfo a = facade.addYearlyPlanEvent(SCHOOL, YEAR, first, "اولین روز");
-        CalendarEntryInfo b = facade.addYearlyPlanEvent(SCHOOL, YEAR, last, "آخرین روز");
+        YearlyPlanItem a = facade.addYearlyPlanEvent(SCHOOL, YEAR, first, "اولین روز", null);
+        YearlyPlanItem b = facade.addYearlyPlanEvent(SCHOOL, YEAR, last, "آخرین روز", null);
 
         assertThat(a.day()).isEqualTo(first);
-        assertThat(a.kind()).isEqualTo(CalendarKind.EVENT);
+        assertThat(a.source()).isEqualTo(YearlyPlanSource.SCHOOL);
+        assertThat(a.remindDaysBefore()).isNull();
         assertThat(b.day()).isEqualTo(last);
     }
 
     @Test
     void dayJustOutsideTheYearIsRejectedAndNothingIsSaved() {
-        assertInvalid(() -> facade.addYearlyPlanEvent(SCHOOL, YEAR, first.minusDays(1), "زود"));
-        assertInvalid(() -> facade.addYearlyPlanEvent(SCHOOL, YEAR, last.plusDays(1), "دیر"));
+        assertInvalid(() -> facade.addYearlyPlanEvent(SCHOOL, YEAR, first.minusDays(1), "زود", null));
+        assertInvalid(() -> facade.addYearlyPlanEvent(SCHOOL, YEAR, last.plusDays(1), "دیر", null));
         verify(calendar, never()).save(any());
     }
 
     @Test
     void blankOrTooLongTitleIsRejected() {
         for (String title : new String[]{null, "", "   ", "x".repeat(129)}) {
-            assertInvalid(() -> facade.addYearlyPlanEvent(SCHOOL, YEAR, first, title));
+            assertInvalid(() -> facade.addYearlyPlanEvent(SCHOOL, YEAR, first, title, null));
         }
-        assertThat(facade.addYearlyPlanEvent(SCHOOL, YEAR, first, "  " + "x".repeat(128) + "  ").title())
+        assertThat(facade.addYearlyPlanEvent(SCHOOL, YEAR, first, "  " + "x".repeat(128) + "  ", null).title())
                 .hasSize(128);
     }
 
     @Test
     void missingDayOrYearIsRejected() {
-        assertInvalid(() -> facade.addYearlyPlanEvent(SCHOOL, YEAR, null, "رویداد"));
-        assertInvalid(() -> facade.addYearlyPlanEvent(SCHOOL, null, first, "رویداد"));
+        assertInvalid(() -> facade.addYearlyPlanEvent(SCHOOL, YEAR, null, "رویداد", null));
+        assertInvalid(() -> facade.addYearlyPlanEvent(SCHOOL, null, first, "رویداد", null));
         verify(calendar, never()).save(any());
     }
 
@@ -126,7 +128,7 @@ class SchoolYearlyPlanFacadeTest {
     void unknownYearIsNotFound() {
         AcademicYearId unknown = new AcademicYearId(99L);
 
-        assertThatThrownBy(() -> facade.addYearlyPlanEvent(SCHOOL, unknown, first, "رویداد"))
+        assertThatThrownBy(() -> facade.addYearlyPlanEvent(SCHOOL, unknown, first, "رویداد", null))
                 .isInstanceOfSatisfying(SchoolException.class,
                         e -> assertThat(e.error()).isInstanceOf(SchoolError.AcademicYearNotFound.class));
         assertThatThrownBy(() -> facade.yearlyPlan(SCHOOL, unknown))
@@ -329,12 +331,12 @@ class SchoolYearlyPlanFacadeTest {
     void eventsOnTheExtendedDaysAreAcceptedButJustOutsideTheExtendedRangeIsRejected() {
         stubRange(first.minusDays(10), last.plusDays(10));
 
-        assertThat(facade.addYearlyPlanEvent(SCHOOL, YEAR, first.minusDays(10), "پیش از سال").day())
+        assertThat(facade.addYearlyPlanEvent(SCHOOL, YEAR, first.minusDays(10), "پیش از سال", null).day())
                 .isEqualTo(first.minusDays(10));
-        assertThat(facade.addYearlyPlanEvent(SCHOOL, YEAR, last.plusDays(10), "پس از سال").day())
+        assertThat(facade.addYearlyPlanEvent(SCHOOL, YEAR, last.plusDays(10), "پس از سال", null).day())
                 .isEqualTo(last.plusDays(10));
-        assertInvalid(() -> facade.addYearlyPlanEvent(SCHOOL, YEAR, first.minusDays(11), "زود"));
-        assertInvalid(() -> facade.addYearlyPlanEvent(SCHOOL, YEAR, last.plusDays(11), "دیر"));
+        assertInvalid(() -> facade.addYearlyPlanEvent(SCHOOL, YEAR, first.minusDays(11), "زود", null));
+        assertInvalid(() -> facade.addYearlyPlanEvent(SCHOOL, YEAR, last.plusDays(11), "دیر", null));
         verify(calendar, times(2)).save(any());
     }
 
