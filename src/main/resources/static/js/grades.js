@@ -144,7 +144,7 @@ document.addEventListener('alpine:init', () => {
             if (raw === null || raw === undefined) {
                 return '';
             }
-            return this.normalizeDigits(String(raw)).replace(/[٫،,\/]/g, '.').trim();
+            return this.normalizeDigits(String(raw)).replace(/[٫،,]/g, '.').trim();
         },
 
         fa(value) {
@@ -390,6 +390,11 @@ document.addEventListener('alpine:init', () => {
 
         async load() {
             if (!this.filter.classId || !this.filter.academicYear) {
+                return;
+            }
+            // «بارگذاری» جدول را از سرور دوباره می‌سازد و نمره‌های تایپ‌شده‌ی ثبت‌نشده را دور می‌ریزد
+            if (this.dirtyRows().length > 0) {
+                this.error = 'نمره‌های ثبت‌نشده دارید. اول «ثبت همه» را بزنید، سپس دوباره بارگذاری کنید.';
                 return;
             }
             this.filter.academicYear = this.normalizeDigits(this.filter.academicYear).trim();
@@ -747,8 +752,20 @@ document.addEventListener('alpine:init', () => {
         },
 
         // ثبتِ یک ردیف با همان POSTِ همیشگی؛ پیامِ خطا را برمی‌گرداند و state را خودش نمی‌نویسد
-        async postGrade(row) {
-            const scheme = this.selectedScheme();
+        // هدفِ ثبت (کلاس، سال، نوبت، درس) در لحظه‌ی شروعِ ثبت گرفته می‌شود: تغییرِ انتخاب‌ها
+        // وسط یک «ثبت همه» نباید ردیف‌های بعدی را به نوبت یا درسِ دیگری ببرد
+        saveTarget() {
+            return {
+                classId: parseInt(this.filter.classId, 10),
+                academicYear: this.filter.academicYear,
+                term: this.filter.term,
+                courseId: this.filter.courseId ? parseInt(this.filter.courseId, 10) : null,
+                scheme: this.selectedScheme()
+            };
+        },
+
+        async postGrade(row, target = this.saveTarget()) {
+            const scheme = target.scheme;
             const response = await fetch(this.gradesBase(), {
                 method: 'POST',
                 headers: {
@@ -758,13 +775,13 @@ document.addEventListener('alpine:init', () => {
                 },
                 body: JSON.stringify({
                     studentId: row.studentId,
-                    classId: parseInt(this.filter.classId, 10),
-                    academicYear: this.filter.academicYear,
-                    term: this.filter.term,
+                    classId: target.classId,
+                    academicYear: target.academicYear,
+                    term: target.term,
                     descriptiveLevel: scheme === 'DESCRIPTIVE' ? row.descriptiveLevel : null,
                     numericScore: scheme === 'NUMERIC' ? this.normalizeScore(row.numericScore) : null,
                     comment: row.comment || null,
-                    courseId: this.filter.courseId ? parseInt(this.filter.courseId, 10) : null
+                    courseId: target.courseId
                 })
             });
             if (!response.ok) {
@@ -814,11 +831,12 @@ document.addEventListener('alpine:init', () => {
             this.reviewSummary = '';
             const pending = this.dirtyRows();
             // ردیفِ نیمه‌پُرنشده (مقدارِ پاک‌شده) ثبت نمی‌شود و خطا هم نیست
-            if (pending.length === 0 && this.reviewIds.length === 0) {
+            if (pending.length === 0) {
                 this.notice = 'نمره‌ی تازه‌ای برای ثبت نیست.';
                 return;
             }
             this.savingAll = true;
+            const target = this.saveTarget();
             const courseLabel = this.courseLabel();
             let saved = 0;
             const failedIds = [];
@@ -830,7 +848,7 @@ document.addEventListener('alpine:init', () => {
                     }
                     row.saving = true;
                     try {
-                        const result = await this.postGrade(row);
+                        const result = await this.postGrade(row, target);
                         if (result.ok) {
                             saved++;
                         } else {
