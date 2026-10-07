@@ -198,7 +198,8 @@
                                         </div>
                                         <div class="control app-control-align-end">
                                             <button class="button is-link" type="submit"
-                                                    :class="{ 'is-loading': submitting }">
+                                                    :disabled="recordingPayment"
+                                                    :class="{ 'is-loading': recordingPayment }">
                                                 ثبت پرداخت
                                             </button>
                                         </div>

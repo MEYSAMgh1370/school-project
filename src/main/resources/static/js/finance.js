@@ -18,6 +18,8 @@ document.addEventListener('alpine:init', () => {
         payments: [],
         paymentsLoading: false,
         paymentForm: { amount: '', method: 'CASH', note: '' },
+        // یک ثبتِ پرداخت در حال انجام: فرمِ دوباره‌فرستاده‌شده (Enter دوبار) همان مبلغ را دوباره ثبت می‌کرد
+        recordingPayment: false,
         backfilling: false,
         // شهریه و فاکتور به‌تفکیک سال (academic-year.md فاز ۲): سال‌های قابل‌انتخاب و سالِ انتخاب‌شده؛
         // مدرسه‌ای که سالِ جاری ندارد فهرست خالی دارد و مثل پیش از فاز ۲ بدون سال کار می‌کند
@@ -37,6 +39,13 @@ document.addEventListener('alpine:init', () => {
                 this.schoolId = e.detail.id;
                 this.error = '';
                 this.notice = '';
+                // داده‌های مدرسه‌ی قبلی تا پاسخِ مدرسه‌ی تازه نمایش داده نمی‌شوند
+                this.invoices = [];
+                this.students = [];
+                this.pupils = [];
+                this.payments = [];
+                this.expandedInvoiceId = null;
+                this.tuitionFee = null;
                 // سالِ مدرسه‌ی قبلی برای مدرسه‌ی تازه معنا ندارد
                 this.years = [];
                 this.year = '';
@@ -334,15 +343,20 @@ document.addEventListener('alpine:init', () => {
         },
 
         async recordPayment(invoice) {
-            this.submitting = true;
+            if (this.recordingPayment) {
+                return;
+            }
+            // مدرسه همان لحظه‌ی شروع ثابت می‌شود: تغییر مدرسه وسط درخواست، پرداخت را به مدرسه‌ی دیگر نمی‌برد
+            const schoolId = this.schoolId;
+            this.recordingPayment = true;
             this.error = '';
             this.notice = '';
             try {
-                const response = await fetch(`${this.invoicesBase()}/${invoice.id}/payments`, {
+                const response = await fetch(`/api/admin/schools/${schoolId}/invoices/${invoice.id}/payments`, {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
-                        'X-School-ID': this.schoolId,
+                        'X-School-ID': schoolId,
                         'X-XSRF-TOKEN': this.csrfToken()
                     },
                     body: JSON.stringify({
@@ -356,6 +370,10 @@ document.addEventListener('alpine:init', () => {
                     this.error = classified.message;
                     return;
                 }
+                if (schoolId !== this.schoolId) {
+                    // مدرسه عوض شده: پرداخت ثبت شده، ولی فهرستِ مدرسه‌ی تازه را نباید با آن بازسازی کرد
+                    return;
+                }
                 this.notice = 'پرداخت با موفقیت ثبت شد.';
                 await this.load();
                 // بعد از load، پنل باز را با پرداخت‌های تازه به‌روزرسانی کن
@@ -367,7 +385,7 @@ document.addEventListener('alpine:init', () => {
             } catch (e) {
                 this.error = 'ارتباط با سرور برقرار نشد.';
             } finally {
-                this.submitting = false;
+                this.recordingPayment = false;
             }
         },
 

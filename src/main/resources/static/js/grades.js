@@ -78,6 +78,10 @@ document.addEventListener('alpine:init', () => {
                 this.roster = [];
                 this.resetEntry();
                 this.courses = [];
+                // کلاس‌ها و دانش‌آموزان مدرسه‌ی قبلی تا پاسخِ مدرسه‌ی تازه نباید قابل انتخاب باشند
+                this.classes = [];
+                this.students = [];
+                this.pupils = [];
                 this.filter = { classId: '', courseId: '', academicYear: '', term: 'FIRST' };
                 this.years = [];
                 this.loadClasses();
@@ -804,6 +808,7 @@ document.addEventListener('alpine:init', () => {
         // وسط یک «ثبت همه» نباید ردیف‌های بعدی را به نوبت یا درسِ دیگری ببرد
         saveTarget() {
             return {
+                schoolId: this.schoolId,
                 classId: parseInt(this.filter.classId, 10),
                 academicYear: this.filter.academicYear,
                 term: this.filter.term,
@@ -815,11 +820,11 @@ document.addEventListener('alpine:init', () => {
         async postGrade(row, target = this.saveTarget()) {
             const scheme = target.scheme;
             const sentKey = this.rowKey(row);
-            const response = await fetch(this.gradesBase(), {
+            const response = await fetch(`/api/admin/schools/${target.schoolId}/grades`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
-                    'X-School-ID': this.schoolId,
+                    'X-School-ID': target.schoolId,
                     'X-XSRF-TOKEN': this.csrfToken()
                 },
                 body: JSON.stringify({
