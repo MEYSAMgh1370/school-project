@@ -241,6 +241,24 @@ public interface SchoolFacade {
 
     record SchoolInfo(SchoolId id, String name, SchoolStatus status, String timezone, String locale, SchoolLevel level,
                       String slug, WeekStart weekStart) {
+
+        /** منطقه‌ی زمانیِ پیش‌فرض وقتی مدرسه منطقه‌ی معتبر ندارد. */
+        public static final java.time.ZoneId DEFAULT_ZONE = java.time.ZoneId.of("Asia/Tehran");
+
+        /**
+         * «امروز»ِ مدرسه از اینجا می‌آید (job یادآوری و جعبه‌ی داشبورد هر دو)؛ خالی یا نامعتبر
+         * {@link #DEFAULT_ZONE} می‌شود تا دو جا هرگز از هم جدا نشوند.
+         */
+        public java.time.ZoneId zoneId() {
+            if (timezone == null || timezone.isBlank()) {
+                return DEFAULT_ZONE;
+            }
+            try {
+                return java.time.ZoneId.of(timezone.strip());
+            } catch (java.time.DateTimeException e) {
+                return DEFAULT_ZONE;
+            }
+        }
     }
 
     /**

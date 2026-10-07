@@ -15,10 +15,8 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
-import java.time.DateTimeException;
 import java.time.Instant;
 import java.time.LocalDate;
-import java.time.ZoneId;
 import java.time.ZonedDateTime;
 import java.time.temporal.ChronoUnit;
 import java.util.LinkedHashSet;
@@ -45,7 +43,6 @@ import java.util.Set;
 class EventReminderJob {
 
     private static final Logger log = LoggerFactory.getLogger(EventReminderJob.class);
-    private static final ZoneId FALLBACK_ZONE = ZoneId.of("Asia/Tehran");
 
     private final SchoolFacade schoolFacade;
     private final IamFacade iamFacade;
@@ -106,7 +103,7 @@ class EventReminderJob {
     }
 
     private void remindSchool(SchoolInfo school, Instant now) {
-        ZonedDateTime local = now.atZone(zoneOf(school.timezone()));
+        ZonedDateTime local = now.atZone(school.zoneId());
         if (local.getHour() < sendHour) {
             return;
         }
@@ -157,17 +154,6 @@ class EventReminderJob {
             }
         }
         return userIds;
-    }
-
-    private static ZoneId zoneOf(String timezone) {
-        if (timezone == null || timezone.isBlank()) {
-            return FALLBACK_ZONE;
-        }
-        try {
-            return ZoneId.of(timezone.strip());
-        } catch (DateTimeException e) {
-            return FALLBACK_ZONE;
-        }
     }
 
     /**

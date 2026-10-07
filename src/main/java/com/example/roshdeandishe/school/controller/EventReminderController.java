@@ -16,7 +16,6 @@ import com.example.roshdeandishe.school.shared.SchoolError;
 import com.example.roshdeandishe.school.shared.SchoolException;
 import org.springframework.web.bind.annotation.*;
 
-import java.time.DateTimeException;
 import java.time.LocalDate;
 import java.time.ZoneId;
 import java.time.temporal.ChronoUnit;
@@ -34,8 +33,6 @@ import java.util.TreeSet;
 @RestController
 public class EventReminderController {
 
-    /** وقتی مدرسه منطقه‌ی زمانیِ معتبر ندارد. */
-    private static final ZoneId FALLBACK_ZONE = ZoneId.of("Asia/Tehran");
     private static final String PLATFORM_ROLE_PREFIX = "PLATFORM_";
 
     private final SchoolFacade schoolFacade;
@@ -101,15 +98,7 @@ public class EventReminderController {
     }
 
     private ZoneId zoneOf(SchoolId school) {
-        String timezone = schoolFacade.findSchool(school).map(SchoolInfo::timezone).orElse(null);
-        if (timezone == null || timezone.isBlank()) {
-            return FALLBACK_ZONE;
-        }
-        try {
-            return ZoneId.of(timezone.trim());
-        } catch (DateTimeException e) {
-            return FALLBACK_ZONE;
-        }
+        return schoolFacade.findSchool(school).map(SchoolInfo::zoneId).orElse(SchoolInfo.DEFAULT_ZONE);
     }
 
     private static UpcomingEventsResponse.Event toResponse(ReminderEvent event, LocalDate today) {
