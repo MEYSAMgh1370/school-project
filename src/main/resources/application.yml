@@ -76,6 +76,23 @@ spring:
       jdbc-schema-initialization:
         enabled: true
 
+  # نشست وب در پستگرس نگه داشته می‌شود، نه در حافظه‌ی همین پروسه
+  # (openspec/changes/jdbc-backed-web-sessions.md). عمداً اینجاست و نه فقط در
+  # پروفایل prod: مکانیزمِ نشست که بین dev و production فرق کند، یک نقصِ
+  # منتظرِ دیپلوی است - تست‌های Testcontainers هم همین store را تمرین می‌کنند.
+  session:
+    jdbc:
+      # ساختِ جدول کار Flyway است (V20__spring_session.sql)، نه Spring Session.
+      # never یعنی Spring Session هرگز جدولی نمی‌سازد و تغییر نمی‌دهد - همان
+      # قاعده‌ی openspec/decisions/2026-07-30-flyway-schema-ownership.md.
+      initialize-schema: never
+      # نام با schema صریح: Spring Session JDBC خالص است و
+      # hibernate.default_schema را نمی‌بیند؛ نام بی‌پیشوند از search_path حل
+      # می‌شود که «"$user", public» است، نه iam. یک مقدار برای هر دو جدول کافی
+      # است، چون JdbcIndexedSessionRepository جدول دوم را
+      # %TABLE_NAME%_ATTRIBUTES می‌سازد.
+      table-name: iam.spring_session
+
 server:
   # لیارا پورت کانتینر را از liara.json می‌خواند (8080)؛ PORT فقط برای
   # سازگاری با میزبان‌هایی است که پورت را از محیط تزریق می‌کنند.

@@ -106,6 +106,28 @@
             <artifactId>spring-boot-flyway</artifactId>
         </dependency>
 
+        <!-- نشست وب در پستگرس، نه در heap این کانتینر. دو نتیجه‌ی مستقیم:
+             دیپلوی و ری‌استارت دیگر همه را logout نمی‌کند، و حجم نشست‌ها
+             دیگر یک سهمِ اندازه‌گیری‌نشده از حافظه‌ی کانتینر نیست.
+             نسخه را spring-boot-dependencies مدیریت می‌کند (4.1.0).
+
+             این تغییر اپ را «چند-instance» نمی‌کند: دو job زمان‌بندی‌شده
+             (EventReminderJob و AcademicYearProvisioner) هیچ محافظی برای
+             اجرای هم‌زمان روی چند instance ندارند - رجوع به
+             openspec/changes/jdbc-backed-web-sessions.md
+
+             *starter* است و نه org.springframework.session:spring-session-jdbc
+             خالی، به همان دلیلی که بالاتر برای flyway نوشته شده: در Spring
+             Boot 4 هر autoconfiguration artifact خودش را دارد
+             (spring-boot-session-jdbc). با وابستگیِ خالی، کتابخانه در
+             classpath هست ولی هیچ‌وقت wire نمی‌شود - نشست بی‌صدا در حافظه
+             می‌ماند و هیچ خطایی هم نمی‌دهد. این حالت آزموده شد: لاگین ۲۰۰
+             می‌داد و iam.spring_session صفر ردیف داشت. -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-session-jdbc</artifactId>
+        </dependency>
+
         <!-- Security (برای IAM ماژول) -->
         <dependency>
             <groupId>org.springframework.boot</groupId>

@@ -139,6 +139,6 @@ Evidence:
 - [`DEPLOYMENT.md`](../DEPLOYMENT.md)
 - [`application-prod.yml`](../src/main/resources/application-prod.yml)
 
-Production should not rely on development secrets or demo data. Horizontal scaling is not a current capability because web login uses in-memory `HttpSession`.
+Production should not rely on development secrets or demo data. Web sessions are held in PostgreSQL (`spring-session-jdbc`, tables owned by Flyway), so a restart or deploy no longer ends every signed-in session. Horizontal scaling is still not a current capability, but the reason is no longer sessions: the two `@Scheduled` jobs have no multi-instance guard. See [`changes/jdbc-backed-web-sessions.md`](changes/jdbc-backed-web-sessions.md).
 
 The production JVM is sized explicitly rather than as a percentage of container memory, and the `prod` profile excludes the Spring Modulith runtime bootstrap, which would otherwise import the whole classpath through ArchUnit on every boot to build a module model that production never serves. Module boundaries are verified by `ModularityTests` at test time instead, and the development profile still exposes `/actuator/modulith`. Measured at 537 MB RSS before and 408 MB after, on an empty database. The measurement method, its variance band, and the proposed follow-up are in [`changes/production-memory-footprint.md`](changes/production-memory-footprint.md).
