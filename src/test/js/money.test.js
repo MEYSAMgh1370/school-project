@@ -2,6 +2,7 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 
 global.window = globalThis;
+require('../../main/resources/static/js/digits.js');
 require('../../main/resources/static/js/money.js');
 
 test('formats raw amounts neutrally with Persian digits and grouping', () => {

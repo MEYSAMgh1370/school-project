@@ -130,13 +130,14 @@ class NavSharedSourceRenderTest {
         String sidebar = render("layout/navbar.jte", Map.of("navbar", NAVBAR));
 
         List<String> shortcutHrefs = new ArrayList<>();
-        Matcher card = Pattern.compile("class=\"box app-shortcut\" href=\"(/[a-z/-]+)\"").matcher(dashboard);
+        // کارت‌ها و ردیف‌های فهرست همه data-shortcut دارند (DESIGN.md §5a)
+        Matcher card = Pattern.compile("<a class=\"[^\"]*\" href=\"(/[a-z/-]+)\" data-shortcut").matcher(dashboard);
         while (card.find()) {
             shortcutHrefs.add(card.group(1));
         }
 
         assertThat(shortcutHrefs).isNotEmpty()
-                .containsExactlyElementsOf(NavCatalog.shortcuts().stream().map(l -> l.href()).toList());
+                .containsExactlyInAnyOrderElementsOf(NavCatalog.shortcuts().stream().map(l -> l.href()).toList());
         assertThat(hrefsIn(sidebar)).containsAll(shortcutHrefs);
     }
 
@@ -193,6 +194,35 @@ class NavSharedSourceRenderTest {
         assertThat(shortcuts).isLessThan(memberships);
         assertThat(memberships).isLessThan(schoolEntry);
         assertThat(schoolEntry).isLessThan(phone);
+    }
+
+    @Test
+    void everyCatalogLinkNamesAnIconTheIconPartialKnows() {
+        // layout/icon.jte رندر می‌کند و برای نامِ ناشناس فقط یک <svg> خالی می‌دهد؛ غلطِ املایی
+        // در NavCatalog بی‌صدا یک آیکنِ نامرئی می‌شود و کامپایل هم آن را نمی‌گیرد
+        NavCatalog.groups().stream().flatMap(g -> g.links().stream()).forEach(link -> {
+            String svg = render("layout/icon.jte", Map.of("name", link.icon()));
+            assertThat(svg).as("icon of %s", link.href()).containsPattern("<(path|rect|circle)");
+        });
+    }
+
+    @Test
+    void dashboardShortcutsAreFeaturedThenCardsThenGroupedRows() {
+        assertThat(NavCatalog.dailyShortcuts()).extracting(NavCatalog.Link::href)
+                .containsExactly("/grades", "/timetable", "/exams");
+        assertThat(NavCatalog.dailyShortcuts().get(0).isFeatured()).isTrue();
+
+        String html = render("dashboard.jte", Map.of("model", dashboardModel(), "navbar", NAVBAR));
+        int featured = html.indexOf("app-shortcut--featured");
+        int firstRow = html.indexOf("class=\"app-row\"");
+
+        assertThat(featured).isPositive();
+        assertThat(firstRow).isGreaterThan(featured);
+        // ردیف‌ها زیرِ عنوانِ گروهِ NavCatalog می‌آیند و هیچ کارتی دوباره به‌صورت ردیف نمی‌آید
+        assertThat(html).contains("<h3 class=\"title is-6 mb-2\">مدرسه</h3>");
+        assertThat(html).doesNotContain("class=\"app-row\" href=\"/grades\"")
+                .doesNotContain("class=\"app-row\" href=\"/exams\"");
+        assertThat(html).contains("class=\"app-row\" href=\"/students\"");
     }
 
     @Test

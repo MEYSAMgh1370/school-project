@@ -5,10 +5,14 @@
    The "Bulma bridge" section requires the Bulma WebJar to be 1.x
    (runtime CSS variables) — verified: pom.xml pins 1.0.4 (DESIGN.md §2).
 
-   Visual direction: "Paper & Turquoise", adopted 2026-09-27 (DESIGN.md §4).
-   Two moves: warm the neutral scheme (hue 221 → 28), and move the single
-   accent from ink-blue to Persian turquoise. Replaces the ink-blue adopted
-   2026-08-16.
+   Visual direction: "Paper & Ink-Teal", proposed 2026-10-07 (DESIGN.md §4).
+   Warm paper SURFACES (hue 48) under cool INK text (hue 216) with one deep
+   teal accent (hsl 180 79% 21%). Replaces "Paper & Turquoise" (2026-09-27).
+   Every ink-coloured thing (text, icons, shadows, control borders) is cool
+   and every surface is warm — nothing mixes within its own category.
+   Contrast figures quoted below were computed from the hex values in
+   DESIGN.md §4; the computed-style sweep on real pages (DESIGN.md §13.1)
+   has NOT been re-run yet.
 
    CASCADE NOTE — read before editing. Bulma declares its scheme values in
    three places at identical specificity (0,1,0): `:root`, `@media
@@ -70,10 +74,15 @@
   --radius-lg: 20px;
 
   /* --- Shadows (two levels only; no heavy elevation) ---------------------
-     Tinted warm to match the paper scheme: a cool-grey shadow under a warm
-     surface is what makes a warm palette look accidental. */
-  --shadow-sm: 0 1px 2px hsl(28 25% 20% / 0.06);
-  --shadow-md: 0 4px 16px hsl(28 25% 20% / 0.10);
+     Tinted to the INK hue (DESIGN.md §2), so they agree with the text rather
+     than the paper. Allowed only on the featured card and the focused item
+     in focus-mode entry. */
+  --shadow-sm: 0 1px 2px hsl(216 30% 15% / 0.06);
+  --shadow-md: 0 4px 16px hsl(216 30% 15% / 0.10);
+
+  /* --- Focus ring (DESIGN.md §2): ONE definition, used for keyboard focus
+     and for the "current item" in data entry. 2px primary + 3px soft halo. */
+  --focus-ring: 0 0 0 5px var(--bulma-primary-soft);
 
   /* --- Motion ------------------------------------------------------------ */
   --motion-fast: 120ms;
@@ -97,54 +106,54 @@
      past ~20% at these lightnesses.
      Hue and saturation are deliberately outside the light-only media block
      so the warmth carries into the dark scheme too. */
-  --bulma-scheme-h: 28;
-  --bulma-scheme-s: 34%;
-  --bulma-text-h: 28deg;
-  --bulma-text-s: 18%;
+  --bulma-scheme-h: 48;
+  --bulma-scheme-s: 22%;
+  --bulma-text-h: 216deg;
+  --bulma-text-s: 26%;
 
-  /* --- Primary accent: Persian turquoise (فیروزه) ------------------------
-     hsl(177 58% 29%) ≈ #1F7571. 5.1:1 on paper, 5.5:1 carrying white text.
+  /* --- Primary accent: deep teal ------------------------------------------
+     hsl(180 79% 21%) ≈ #0B5E5E. 6.9:1 on paper, 7.6:1 carrying white text.
      Deliberately NOT a warm terracotta/amber: this UI has real destructive
      actions, and a warm red-adjacent primary sitting next to an is-danger
      button makes the most consequential distinction in the app the hardest
      one to see (DESIGN.md §4). */
-  --bulma-primary-h: 177deg;
-  --bulma-primary-s: 58%;
-  --bulma-primary-l: 29%;
+  --bulma-primary-h: 180deg;
+  --bulma-primary-s: 79%;
+  --bulma-primary-l: 21%;
 
   /* Links match primary so buttons and anchors agree on one accent. */
-  --bulma-link-h: 177deg;
-  --bulma-link-s: 58%;
-  --bulma-link-l: 29%;
+  --bulma-link-h: 180deg;
+  --bulma-link-s: 79%;
+  --bulma-link-l: 21%;
 
   /* The `is-light` family (button/tag/notification `.is-light`) is its own
      color, independent of the scheme — left alone it keeps shipping a cool
      #F3F4F6 fill with #2E333D text on warm paper. */
-  --bulma-light-h: 28deg;
-  --bulma-light-s: 30%;
+  --bulma-light-h: 48deg;
+  --bulma-light-s: 22%;
 
-  /* --- Semantics, re-tinted into the warm family (DESIGN.md §4) ----------
-     Bulma's stock semantics are LIGHT (l 53-70%) and cool; they read as
-     foreign against warm paper. These are darker and warmer, and all clear
-     WCAG AA on paper: success 5.4:1, danger 5.5:1, info 5.4:1. */
-  --bulma-success-h: 144deg;
-  --bulma-success-s: 46%;
-  --bulma-success-l: 31%;
+  /* --- Semantics (DESIGN.md §4.3) ----------------------------------------
+     success #2E6B3A (white 6.4:1), warning #C98A1B (ink 5.3:1), danger
+     #B42318 (white 6.6:1), info #2B4C7E (white 8.6:1). */
+  --bulma-success-h: 132deg;
+  --bulma-success-s: 40%;
+  --bulma-success-l: 30%;
 
   /* Saffron. The one semantic that cannot carry white text at any usable
-     lightness — it keeps Bulma's dark invert (5.2:1 with ink), exactly as
-     the stock yellow already behaves, so no template changes. */
-  --bulma-warning-h: 37deg;
-  --bulma-warning-s: 75%;
+     lightness — it keeps Bulma's dark invert (ink 5.3:1), exactly as the
+     stock yellow already behaves, so no template changes. As TEXT on a card
+     it needs the darker #A06A12 (4.6:1) — see DESIGN.md §4.3. */
+  --bulma-warning-h: 38deg;
+  --bulma-warning-s: 76%;
   --bulma-warning-l: 45%;
 
-  --bulma-danger-h: 5deg;
-  --bulma-danger-s: 61%;
-  --bulma-danger-l: 44%;
+  --bulma-danger-h: 4deg;
+  --bulma-danger-s: 76%;
+  --bulma-danger-l: 40%;
 
-  --bulma-info-h: 200deg;
-  --bulma-info-s: 50%;
-  --bulma-info-l: 36%;
+  --bulma-info-h: 216deg;
+  --bulma-info-s: 49%;
+  --bulma-info-l: 33%;
 
   /* Bulma sizes `is-*` button/tag text off <color>-invert-l, whose stock
      values assume a LIGHT fill (primary-invert-l resolves to 6%). Every
@@ -153,6 +162,12 @@
      — see above. */
   --bulma-primary-invert-l: 100%;
   --bulma-link-invert-l:    100%;
+
+  /* `.button.is-link.is-light` text reads link-light-invert-l, which Bulma
+     derives from ITS OWN link scale (link-35-l) rather than from the primary
+     lightness: with the teal hue that rendered rgb(18,151,151) on a pale fill,
+     3.4:1 on `activate`. Same value as primary's (primary-10-l). */
+  --bulma-link-light-invert-l: 10%;
   --bulma-success-invert-l: 100%;
   --bulma-danger-invert-l:  100%;
   --bulma-info-invert-l:    100%;
@@ -168,6 +183,12 @@
      reachable from :root. The other two §3 metrics are not — see the
      "not tokenized by Bulma" block below. */
   --bulma-body-line-height: 1.75;
+
+  /* Control border (DESIGN.md §4.1): the border that IDENTIFIES a field
+     reaches 3:1 (WCAG 1.4.11) — #7A8494, 3.78:1 on the card (measured in a
+     browser). The hairline is decoration only. On :root so a browser with no
+     colour-scheme preference still gets it; the dark block overrides it. */
+  --app-control-border: hsl(217 11% 53%);
 }
 
 /* زبان انگلیسی: این فایل استاتیک است و سمت سرور قالب‌بندی نمی‌شود، پس همه‌ی
@@ -188,30 +209,46 @@
    see the CASCADE NOTE at the top of this file. Bulma's own light block
    (bulma.css line 917) loses to this one on document order.
 
-   Paper ramp: surface #FEFDFC, page #F8F5F1, fill #F6F2EC, hairline #E8DACF.
-   Ink: body #4E4236 (8.7:1), weak #7E6A58 (4.7:1), strong #332B24 (13:1).
-   text-weak is pulled from Bulma's 48% to 42% because 48% lands at 4.4:1 on
-   paper — under AA. Every `is-size-7 has-text-grey` caption depends on it. */
+   Paper ramp (DESIGN.md §4.1): card #FFFFFF, page #F6F5F1, hairline ≈ #E6E3DC.
+   Ink: body #1C2430 (14.3:1 page / 15.6:1 card), weak #5B6573 (5.4:1 page /
+   5.9:1 card). Every `is-size-7 has-text-grey` caption depends on weak ink. */
 @media (prefers-color-scheme: light) {
   :root {
-    --bulma-scheme-main-l:     99.5%;
+    --bulma-scheme-main-l:     100%;
     --bulma-scheme-main-bis-l: 98%;
-    --bulma-scheme-main-ter-l: 96%;
+    --bulma-scheme-main-ter-l: 95%;
     --bulma-background-l:      95%;
-    --bulma-border-weak-l:     92%;
-    --bulma-border-l:          85%;
-    --bulma-text-weak-l:       42%;
-    --bulma-text-l:            26%;
-    --bulma-text-strong-l:     17%;
-    --bulma-text-title-l:      12%;
+    --bulma-border-weak-l:     91%;
+    --bulma-border-l:          88%;
+    --bulma-text-l:            15%;
+    --bulma-text-strong-l:     11%;
+    --bulma-text-title-l:      11%;
+
+    /* Weak ink is a different hue/saturation from body ink (hsl 215 12% 40%,
+       #5B6573) — the text-h/-s pair cannot express it, so it is set whole. */
+    --bulma-text-weak: hsl(215 12% 40%);
+
+    /* The neutral `is-light` family (button, tag, notification) takes its TEXT
+       from the light-scheme hue 48 (`--bulma-light-invert`), which reads olive-
+       brown — measured rgb(65,61,42) on the students page. Its fill stays warm
+       paper; the label takes the cool body ink, as DESIGN.md §4.1 requires for
+       every ink-coloured thing. Contrast only goes up (14:1+). */
+    .button.is-light,
+    .tag.is-light,
+    .notification.is-light {
+      color: var(--bulma-text-strong);
+    }
 
     /* Inline `<a>` does NOT read --bulma-link. Bulma builds --bulma-link-text
-       from link-on-scheme-l, which ships at 58% for light — against the
-       turquoise hue that renders a pale #56D2CC at 1.8:1 on paper.
+       from link-on-scheme-l, which ships at 58% for light — against the teal
+       hue that renders a pale link far under AA.
        This MUST stay light-scoped: Bulma's dark block sets it to 73%, and
-       hoisting 29% into `:root` drops dark-mode links to 3.3:1. Both
-       measured 2026-09-27 by reading computed styles. */
-    --bulma-link-on-scheme-l: 29%;
+       hoisting this into `:root` drops dark-mode links (measured 3.3:1 for
+       the previous hue on 2026-09-27).
+       21% equals the primary lightness, so links read as #0B5E5E (6.9:1 on
+       paper, computed from the hex). DESIGN.md §13.2: confirm against
+       computed styles — this value is NOT yet measured in a browser. */
+    --bulma-link-on-scheme-l: 21%;
 
     /* Cards stay near-white; the PAGE becomes paper. Bulma points body
        background at scheme-main (white) by default. */
@@ -223,6 +260,9 @@
    The app has rendered dark for OS-dark visitors since the Bulma 1.x upgrade,
    on Bulma's stock stops, undesigned. This block owns it.
 
+   DESIGN.md §4a gives the dark values as cool hex (page #0E1217, card
+   #151A21), so the dark scheme runs surface hue 215 rather than the light
+   scheme's 48 — see the dark-scheme note in the handover.
    Two things were wrong with the inherited defaults, beyond hue:
    1. Page and card both resolved to the same colour, so nothing separated.
       Bulma points `body-background-color` at `scheme-main`; here the page is
@@ -231,22 +271,23 @@
       so the dark scheme runs its own lower value. Hue stays 28. */
 @media (prefers-color-scheme: dark) {
   :root {
-    --bulma-scheme-s: 18%;
+    --bulma-scheme-h: 215;
+    --bulma-scheme-s: 22%;
 
-    --bulma-scheme-main-l:     13%;  /* cards / surfaces */
-    --bulma-scheme-main-bis-l: 16%;
-    --bulma-scheme-main-ter-l: 19%;
-    --bulma-background-l:      17%;  /* fills, table stripes */
-    --bulma-border-weak-l:     24%;
-    --bulma-border-l:          32%;
+    --bulma-scheme-main-l:     10.6%;  /* cards / surfaces — #151A21 */
+    --bulma-scheme-main-bis-l: 13%;
+    --bulma-scheme-main-ter-l: 16%;
+    --bulma-background-l:      14%;    /* fills, table stripes */
+    --bulma-border-weak-l:     20%;    /* card vs page is only 1.08:1 — the */
+    --bulma-border-l:          28%;    /* hairline carries the separation   */
 
-    --bulma-text-l:        84%;
-    --bulma-text-strong-l: 94%;
-    --bulma-text-weak-l:   64%;
-    --bulma-text-title-l:  97%;
+    --bulma-text-l:        92%;        /* body ink #E8EBEF, 14.6:1 on card */
+    --bulma-text-strong-l: 96%;
+    --bulma-text-title-l:  98%;
+    --bulma-text-weak:     hsl(214 13% 69%);  /* #A3ACB8, 7.6:1 on card */
 
-    /* Page sits BELOW the card so surfaces read as raised. */
-    --bulma-body-background-color: hsl(28, 18%, 8%);
+    /* Page sits BELOW the card so surfaces read as raised — #0E1217. */
+    --bulma-body-background-color: hsl(213, 24%, 7.3%);
 
     /* `is-light` is a named light colour, and Bulma does not flip it for the
        dark scheme — left alone it fires a near-white #F8F5F2 button onto a
@@ -268,9 +309,10 @@
        it is the fix. */
     --bulma-light-light-invert-l: 96%;
 
-    /* Primary stays at l 29%: white-on-turquoise measures 5.5:1, and the
-       button still clears 3:1 against the page for non-text contrast.
-       Lightening it for presence would drop the white label below AA. */
+    /* Primary fill does not move: white on #0B5E5E stays 7.6:1. As TEXT it
+       would be 2.3:1 on the dark card, which is why text and links use the
+       lifted `-on-scheme` value (Bulma's own 73% here; DESIGN.md §4a asks
+       for #3FA3A0 — unmeasured, see §13). */
 
     /* Danger is the one accent that does move. At the light-scheme 44% the
        `.input.is-danger` BORDER measures 2.88:1 against a dark field — under
@@ -279,7 +321,75 @@
        a 1.4.1 colour-only failure, but 50% fixes the border (3.3:1) while
        white-on-danger stays AA at 4.8:1. */
     --bulma-danger-l: 50%;
+
+    /* `is-light` fill: the light-scheme hue 48 / 22% turned it OLIVE at l 40%
+       and measured 4.39:1 against its label in a real browser. The dark scheme
+       runs cool surfaces (hue 215), so the raised-surface tone does too: 5.65:1. */
+    --bulma-light-h: 215deg;
+    --bulma-light-s: 22%;
+
+    /* Control border in dark. DESIGN.md §4.1 requires 3:1 for the border that
+       identifies a field but gives no dark value; Bulma's stock dark border
+       measured 1.8:1 on the card. hsl(215 12% 48%) = 3.9:1 on #151A21
+       (computed — a value this file chose, not one the doc specifies). */
+    --app-control-border: hsl(215 12% 48%);
+
+    /* Select / dropdown arrows are a control-identifying glyph (WCAG 1.4.11,
+       3:1). Bulma points them at `--bulma-link`, the FILL colour (l 21%), which
+       is ~2.4:1 on the dark card — visible in a screenshot, invisible to a
+       text-contrast sweep. The per-scheme text variant fixes it. */
+    --bulma-arrow-color: var(--bulma-link-text);
   }
+}
+
+/* --- Dark scheme: the `is-light` variant family -----------------------------
+   Bulma builds `.button/.tag.is-<colour>.is-light` fills from `--bulma-light-l`
+   (the NEUTRAL light colour — 40% in dark, set above) with a dark invert text,
+   and `.notification.is-*.is-light` from a hardcoded 90% fill with an invert
+   that, for the neutral one, is the 96% text colour above. Neither follows the
+   scheme, so the sweep (2026-10-07, real browser) measured 1.07–3.9:1 on 11
+   elements: neutral/warning notifications (light text on a cream fill), the
+   `حذف` danger buttons, and every info/success/warning tag.
+   The fix is DESIGN.md §4a's rule — the variant is a *dark tint of its hue with
+   light text* in the dark scheme: fill l 24%, text l 92% (≈ 8:1). Doubling
+   `is-light` (specificity 0,3,0, same as Bulma's rule, later in the cascade)
+   is the same trick Bulma uses for `.tag.is-light.is-light`. The neutral
+   button/tag keep their own 40%/96% fill from the dark block. */
+@media (prefers-color-scheme: dark) {
+  .notification.is-light.is-light {
+    --bulma-notification-background-l: 24%;
+    --bulma-notification-color-l: 92%;
+  }
+
+  .button:is(.is-primary, .is-link, .is-info, .is-success, .is-warning, .is-danger).is-light {
+    --bulma-button-background-l: 24%;
+    --bulma-button-color-l: 92%;
+  }
+
+  .tag:is(.is-primary, .is-link, .is-info, .is-success, .is-warning, .is-danger).is-light {
+    --bulma-tag-background-l: 24%;
+    --bulma-tag-color-l: 92%;
+  }
+
+  /* A field inside a tinted notification (the amber «نسبت دادن به سال» block on
+     academic-year/finance): the control border is measured against the
+     notification fill, not the card, and the stock grey was 1.79:1 on it.
+     Weak ink is 3.6:1 there. `:not(.is-danger)` keeps the invalid state's own
+     border. */
+  .notification .input:not(.is-danger),
+  .notification .textarea:not(.is-danger),
+  .notification .select:not(.is-danger) select {
+    border-color: var(--bulma-text-weak);
+  }
+}
+
+/* Fields are identified by the control border, not the hairline (DESIGN.md
+   §4.1). The value is per scheme, so the rule is global. Hover/focus/danger
+   states keep their own, more specific border colours. */
+.input,
+.textarea,
+.select select {
+  border-color: var(--app-control-border);
 }
 
 /* ==========================================================================
@@ -356,10 +466,34 @@
   min-block-size: 44px;
 }
 
-/* Visible keyboard focus — never removed without replacement. */
+/* Visible keyboard focus — never removed without replacement. One ring
+   (DESIGN.md §2): 2px primary outline + 3px primary-soft halo. The same
+   --focus-ring marks the "current item" in data entry. */
 :focus-visible {
   outline: 2px solid hsl(var(--bulma-primary-h) var(--bulma-primary-s) var(--bulma-primary-l));
-  outline-offset: 2px;
+  outline-offset: 0;
+  box-shadow: var(--focus-ring);
+}
+
+/* Placeholders carry no meaning (the label does); weak ink keeps them 4.5:1. */
+.input::placeholder,
+.textarea::placeholder {
+  color: var(--bulma-text-weak);
+  opacity: 1;
+}
+
+/* Data value (DESIGN.md §3): grades, amounts, counts being entered or
+   compared. Tabular so columns of digits align; Persian digits are applied
+   at render time (DESIGN.md §8). 26px when it is the focused item. */
+.app-value {
+  font-size: 1.125rem;
+  font-variant-numeric: tabular-nums;
+  text-align: center;
+}
+
+.app-value.is-focused {
+  font-size: 1.625rem;
+  font-weight: var(--bulma-weight-extrabold);
 }
 
 /* Reduced motion: disable non-essential animation globally. */
@@ -468,7 +602,7 @@
   position: fixed;
   inset: 0;
   z-index: 35;
-  background: hsl(28 25% 20% / 0.4);
+  background: hsl(216 30% 15% / 0.4);
 }
 
 .app-sidebar-header {
@@ -647,6 +781,115 @@
     flex-direction: column;
     align-items: flex-start;
   }
+}
+
+/* --- آواتار حرف‌اول (DESIGN.md §5a): خنثی، مشترک بین فهرست‌های ردیفی. */
+.app-avatar {
+  flex: none;
+  display: grid;
+  place-items: center;
+  inline-size: 40px;
+  block-size: 40px;
+  border-radius: 50%;
+  background: var(--bulma-scheme-main-ter);
+  color: var(--bulma-text);
+  font-weight: var(--bulma-weight-bold);
+}
+
+/* ردیف‌های عضو، کلاس و فاکتور: همان الگوی ردیف دانش‌آموز (.app-student-row). */
+.app-member-row,
+.app-class-row,
+.app-invoice-row,
+.app-exam-row,
+.app-expense-row,
+.app-question-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2) var(--space-3);
+  min-block-size: 64px;
+  padding: var(--space-2) var(--space-4);
+  border-block-end: 1px solid var(--bulma-border-weak);
+}
+
+.app-member-row:last-child,
+.app-class-row:last-child,
+.app-invoice-row:last-child,
+.app-exam-row:last-child,
+.app-expense-row:last-child,
+.app-question-row:last-child {
+  margin-block-end: -1px;
+}
+
+.app-member-row__main,
+.app-class-row__main,
+.app-invoice-row__main,
+.app-exam-row__main,
+.app-expense-row__main,
+.app-question-row__main {
+  flex: 1 1 10rem;
+  display: flex;
+  flex-direction: column;
+  min-inline-size: 0;
+}
+
+.app-member-row__name,
+.app-class-row__name,
+.app-invoice-row__name,
+.app-exam-row__name,
+.app-expense-row__name,
+.app-question-row__name {
+  font-weight: var(--bulma-weight-medium);
+}
+
+/* وضعیت و اقدام‌ها: کنار هم، و در باریک‌ترین صفحه به خط بعد می‌روند. */
+.app-expense-row__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+.app-member-row__status,
+.app-member-row__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+/* --- فهرستِ ردیف‌ها (DESIGN.md §5a) -----------------------------------------
+   کانتینرِ مشترکِ ردیف‌های پیشخوان (.app-row) و دفتر نمرات (.app-grade-row):
+   radius-md با hairline؛ جداکننده‌ی ردیف‌ها hairline است، نه رنگِ دیگر. */
+.app-list {
+  overflow: hidden;
+  border: 1px solid var(--bulma-border-weak);
+  border-radius: var(--radius-md);
+  background: var(--bulma-scheme-main);
+}
+
+/* ردیف دانش‌آموز: آواتار، نام+ایمیل، کلاس، دکمه‌ی والدین؛ در باریک‌ترین صفحه‌ها می‌شکند. */
+.app-student-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2) var(--space-3);
+  min-block-size: 64px;
+  padding: var(--space-2) var(--space-4);
+  border-block-end: 1px solid var(--bulma-border-weak);
+}
+
+.app-student-row:last-child {
+  margin-block-end: -1px;
+}
+
+.app-student-row__main {
+  flex: 1 1 10rem;
+  display: flex;
+  flex-direction: column;
+  min-inline-size: 0;
+}
+
+.app-student-row__name {
+  font-weight: var(--bulma-weight-medium);
 }
 
 /* --- Shared layout/accessibility utilities -------------------------------- */

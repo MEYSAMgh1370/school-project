@@ -28,3 +28,76 @@
 .app-ward .tags {
   margin-block-end: var(--space-2);
 }
+
+/* --- پیشخوان بازطراحی‌شده (DESIGN.md §5a): کارتِ تمام‌عرض، کارت نیم‌عرض، ردیف فهرست --- */
+
+/* کارت‌های دسترسی سریع: آیکن (در کاشی) + متن؛ کارتِ تمام‌عرض radius-lg و shadow-sm دارد
+   (یکی از دو جایی که سایه مجاز است). primary فقط به‌عنوان نشانه‌ی hover/focus می‌آید،
+   نه پس‌زمینه‌ی بلوکِ محتوا (DESIGN.md §4.2). */
+.app-shortcut {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--space-3);
+}
+
+.app-shortcut--featured {
+  flex-direction: row;
+  align-items: center;
+  gap: var(--space-4);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-md);
+}
+
+.app-shortcut__text {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-inline-size: 0;
+}
+
+/* کاشیِ آیکن: خنثی (ink روی سطح)، نه رنگی — رنگِ دسته فقط برای آواتار است (§4.4). */
+.app-tile {
+  flex: none;
+  display: grid;
+  place-items: center;
+  inline-size: 48px;
+  block-size: 48px;
+  border-radius: var(--radius-sm);
+  background: var(--bulma-scheme-main-ter);
+  color: var(--bulma-text);
+}
+
+.app-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  min-block-size: 56px;
+  padding-inline: var(--space-4);
+  border-block-end: 1px solid var(--bulma-border-weak);
+  color: var(--bulma-text);
+  font-weight: var(--bulma-weight-medium);
+}
+
+.app-row:last-child {
+  margin-block-end: -1px;
+}
+
+.app-row:hover,
+.app-row:focus-visible {
+  background: var(--bulma-scheme-main-bis);
+  color: var(--bulma-text);
+}
+
+.app-row__label {
+  flex: 1;
+  min-inline-size: 0;
+}
+
+/* نشانیِ ورود در بلوکِ دعوت: جزیره‌ی ltr که با … کوتاه می‌شود. */
+.app-url a {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}

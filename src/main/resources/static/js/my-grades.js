@@ -134,12 +134,7 @@ document.addEventListener('alpine:init', () => {
 
         gradeValue(grade) {
             if (grade.scheme === 'DESCRIPTIVE') {
-                return {
-                    EXCELLENT: 'خیلی خوب',
-                    GOOD: 'خوب',
-                    ACCEPTABLE: 'قابل قبول',
-                    NEEDS_EFFORT: 'نیازمند تلاش'
-                }[grade.descriptiveLevel] || '—';
+                return window.GradeLabels.descriptive[grade.descriptiveLevel] || '—';
             }
             return grade.numericScore !== null && grade.numericScore !== undefined
                 ? Calendar.digits(grade.numericScore) : '—';

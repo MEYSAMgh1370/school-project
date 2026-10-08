@@ -125,6 +125,21 @@ window.Calendar = (function () {
         return { from: toIsoDate(from), to: toIsoDate(to) };
     }
 
+    // بازه‌ی زمانِ محلی (مثلاً «2026-10-20T08:00») → تاریخ و ساعت از خودِ متن.
+    // عمداً از Date(string) استفاده نمی‌کنیم: آن برای رشته‌ی بدون منطقه گاهی
+    // ساعت را جابه‌جا می‌کند. Date محلی از اجزا ساخته می‌شود، پس روزِ جلالی درست است.
+    function parseLocalDateTime(value) {
+        const match = /^(\d{4})-(\d{2})-(\d{2})(?:[T ](\d{2}):(\d{2}))?/.exec(String(value));
+        if (!match) {
+            throw new Error('calendar.js: زمان ناشناخته: ' + value);
+        }
+        return {
+            date: new Date(Number(match[1]), Number(match[2]) - 1, Number(match[3])),
+            hour: match[4] || '00',
+            minute: match[5] || '00'
+        };
+    }
+
     // ---------------------------------------------------- تقویم جلالی (fa)
 
     function createJalali() {
@@ -173,6 +188,18 @@ window.Calendar = (function () {
                     return startLabel + ' تا ' + fa(end.d) + ' ' + names[end.m - 1] + ' ' + fa(start.y);
                 }
                 return startLabel + ' ' + fa(start.y) + ' تا ' + fa(end.d) + ' ' + names[end.m - 1] + ' ' + fa(end.y);
+            },
+
+            // بازه‌ی زمان با ساعت ۲۴‌تایی و رقم فارسی. اگر شروع و پایان یک روز باشند تاریخ
+            // یک‌بار می‌آید («۲۸ مهر ۱۴۰۵ ۰۸:۰۰ تا ۱۰:۰۰»)؛ در غیر این صورت هر دو تاریخ
+            formatDateTimeRange(startValue, endValue) {
+                const start = parseLocalDateTime(startValue);
+                const end = parseLocalDateTime(endValue);
+                const time = (p) => calendar.digits(p.hour) + ':' + calendar.digits(p.minute);
+                if (start.date.getTime() === end.date.getTime()) {
+                    return calendar.formatDate(start.date) + ' ' + time(start) + ' تا ' + time(end);
+                }
+                return calendar.formatDate(start.date) + ' ' + time(start) + ' تا ' + calendar.formatDate(end.date) + ' ' + time(end);
             }
         };
         calendar.daysInMonth = (y, m) => daysInMonth(calendar, y, m);
@@ -221,6 +248,17 @@ window.Calendar = (function () {
 
             formatRange(startDate, endDate) {
                 return dateFormat.formatRange(startDate, endDate);
+            },
+
+            // همان قاعده‌ی fa؛ ساعت ۲۴‌تایی و رقم لاتین (زبان میلادی رقم فارسی ندارد)
+            formatDateTimeRange(startValue, endValue) {
+                const start = parseLocalDateTime(startValue);
+                const end = parseLocalDateTime(endValue);
+                const time = (p) => p.hour + ':' + p.minute;
+                if (start.date.getTime() === end.date.getTime()) {
+                    return calendar.formatDate(start.date) + ' ' + time(start) + ' – ' + time(end);
+                }
+                return calendar.formatDate(start.date) + ' ' + time(start) + ' – ' + calendar.formatDate(end.date) + ' ' + time(end);
             }
         };
         calendar.daysInMonth = (y, m) => daysInMonth(calendar, y, m);

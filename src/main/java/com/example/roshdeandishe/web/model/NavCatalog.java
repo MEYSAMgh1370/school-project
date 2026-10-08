@@ -31,62 +31,69 @@ public final class NavCatalog {
     private static final List<Group> GROUPS = List.of(
             new Group("school", "مدرسه", List.of(
                     new Link("/people", "اعضای مدرسه", "افزودن و مدیریت اعضای مدرسه",
-                            List.of(ADMIN), List.of(ADMIN)).withPermissions("MEMBERSHIP_MANAGE"),
+                            List.of(ADMIN), List.of(ADMIN)).withPermissions("MEMBERSHIP_MANAGE").withIcon("people"),
                     new Link("/students", "دانش‌آموزان", "فهرست دانش‌آموزان مدرسه",
-                            List.of(ADMIN, TEACHER), List.of(ADMIN, TEACHER)).withPermissions("STUDENT_ENROLL", "STUDENT_VIEW"),
+                            List.of(ADMIN, TEACHER), List.of(ADMIN, TEACHER)).withPermissions("STUDENT_ENROLL", "STUDENT_VIEW").withIcon("people"),
                     new Link("/roles", "نقش‌ها و دسترسی‌ها", "تعریف نقش‌ها و دسترسی‌هایشان",
-                            List.of(ADMIN), List.of()).withPermissions("ROLE_MANAGE"),
+                            List.of(ADMIN), List.of()).withPermissions("ROLE_MANAGE").withIcon("people"),
                     new Link("/academic-year", "سال تحصیلی", "انتخاب سال تحصیلی جاریِ مدرسه",
-                            List.of(ADMIN), List.of(ADMIN)).withPermissions("ACADEMIC_YEAR_MANAGE"),
+                            List.of(ADMIN), List.of(ADMIN)).withPermissions("ACADEMIC_YEAR_MANAGE").withIcon("calendar"),
                     new Link("/promotion", "ارتقای پایه", "ارتقای دانش‌آموزان به سال جدید و جا دادن در کلاس‌ها",
-                            List.of(ADMIN), List.of()).withPermissions("ACADEMIC_YEAR_MANAGE"),
+                            List.of(ADMIN), List.of()).withPermissions("ACADEMIC_YEAR_MANAGE").withIcon("class"),
                     new Link("/calendar", "تقویم مدرسه", "روزهای تعطیل مدرسه؛ در این روزها حضور و غیاب گرفته نمی‌شود",
-                            List.of(ADMIN), List.of(ADMIN)).withPermissions("CALENDAR_MANAGE"))),
+                            List.of(ADMIN), List.of(ADMIN)).withPermissions("CALENDAR_MANAGE").withIcon("calendar"))),
             new Group("education", "آموزش", List.of(
                     new Link("/classes", "کلاس‌ها", "کلاس‌ها و ثبت‌نام دانش‌آموزان",
-                            List.of(ADMIN, TEACHER), List.of(ADMIN, TEACHER)).withPermissions("CLASS_VIEW"),
+                            List.of(ADMIN, TEACHER), List.of(ADMIN, TEACHER)).withPermissions("CLASS_VIEW").withIcon("class"),
                     new Link("/timetable", "برنامه‌ی کلاسی", "زنگ‌ها و برنامه‌ی هفتگیِ کلاس‌ها",
-                            List.of(ADMIN), List.of(ADMIN)).withPermissions("TIMETABLE_MANAGE"),
+                            List.of(ADMIN), List.of(ADMIN)).withPermissions("TIMETABLE_MANAGE").withIcon("calendar").as(Tier.CARD),
                     new Link("/my-timetable", "برنامه‌ی کلاسی من", "برنامه‌ی هفتگیِ شما",
-                            List.of(STUDENT, PARENT, TEACHER), List.of(STUDENT, PARENT, TEACHER)),
+                            List.of(STUDENT, PARENT, TEACHER), List.of(STUDENT, PARENT, TEACHER)).withIcon("calendar"),
                     // خواندنِ برنامه‌ی سالانه برای همه‌ی عضوها آزاد است (بدون Permission)؛ افزودن/حذف با YEARLY_PLAN_MANAGE
                     // روی REST چک می‌شود و کنترل‌ها پنهان نمی‌شوند (UX_ROADMAP §3)
                     new Link("/yearly-plan", "برنامه‌ی سالانه", "رویدادهای مدرسه و تعطیلی‌های سراسری سال تحصیلی",
-                            List.of(ADMIN, TEACHER, STUDENT, PARENT), List.of(ADMIN)),
+                            List.of(ADMIN, TEACHER, STUDENT, PARENT), List.of(ADMIN)).withIcon("calendar"),
                     // خودسرویسِ حضور و غیاب: دانش‌آموز غیبت/تأخیرِ خودش را می‌بیند و والد برای فرزندش عذر می‌فرستد
                     new Link("/my-attendance", "غیبت‌های من", "غیبت و تأخیرِ شما یا فرزندانتان و ارسال عذر",
-                            List.of(STUDENT, PARENT), List.of(STUDENT, PARENT)),
+                            List.of(STUDENT, PARENT), List.of(STUDENT, PARENT)).withIcon("check"),
                     // ثبت: «یکی از دو مجوز» (معلم ATTENDANCE_RECORD، مدیر ATTENDANCE_RECORD_ANY)
                     new Link("/attendance", "حضور و غیاب", "ثبت حضور و غیاب کلاس‌ها",
                             List.of(ADMIN, TEACHER), List.of(ADMIN, TEACHER))
-                            .withPermissions("ATTENDANCE_RECORD").orPermissions("ATTENDANCE_RECORD_ANY"),
+                            .withPermissions("ATTENDANCE_RECORD").orPermissions("ATTENDANCE_RECORD_ANY").withIcon("check"),
                     new Link("/attendance/report", "گزارش حضور و غیاب", "غایبین روز و گزارش بازه‌ای",
-                            List.of(ADMIN), List.of(ADMIN)).withPermissions("ATTENDANCE_VIEW_ALL"),
+                            List.of(ADMIN), List.of(ADMIN)).withPermissions("ATTENDANCE_VIEW_ALL").withIcon("check"),
                     new Link("/curriculum", "سرفصل‌ها و بانک سؤال", "سرفصل‌های درسی و بانک سؤال",
-                            List.of(ADMIN, TEACHER), List.of()).withPermissions("CURRICULUM_VIEW"),
+                            List.of(ADMIN, TEACHER), List.of()).withPermissions("CURRICULUM_VIEW").withIcon("class"),
                     new Link("/study-plans", "برنامه‌های مطالعه", "برنامه‌های مطالعه‌ی کلاس‌ها",
-                            List.of(ADMIN, TEACHER), List.of()).withPermissions("STUDYPLAN_VIEW"),
+                            List.of(ADMIN, TEACHER), List.of()).withPermissions("STUDYPLAN_VIEW").withIcon("calendar"),
                     new Link("/exams", "آزمون‌ها", "ساخت و پیگیری آزمون‌ها",
-                            List.of(ADMIN, TEACHER), List.of(ADMIN, TEACHER)).withPermissions("EXAM_VIEW"),
+                            List.of(ADMIN, TEACHER), List.of(ADMIN, TEACHER)).withPermissions("EXAM_VIEW").withIcon("exam").as(Tier.CARD),
                     new Link("/my-exams", "آزمون‌های من", "آزمون‌های شما و نتیجه‌ها",
-                            List.of(STUDENT), List.of(STUDENT)),
+                            List.of(STUDENT), List.of(STUDENT)).withIcon("exam"),
                     new Link("/my-study-plan", "برنامه‌ی مطالعه‌ی من", "برنامه‌ی مطالعه‌ی شما",
-                            List.of(STUDENT), List.of(STUDENT)))),
+                            List.of(STUDENT), List.of(STUDENT)).withIcon("calendar"))),
             new Group("grades", "نمرات", List.of(
                     new Link("/grades", "دفتر نمرات", "ثبت و مرور نمره‌ها",
-                            List.of(ADMIN, TEACHER), List.of(ADMIN, TEACHER)).withPermissions("GRADES_EDIT", "CLASS_VIEW"),
+                            List.of(ADMIN, TEACHER), List.of(ADMIN, TEACHER)).withPermissions("GRADES_EDIT", "CLASS_VIEW").withIcon("grades").as(Tier.FEATURED),
                     new Link("/my-grades", "نمره‌های من", "نمره‌های شما",
-                            List.of(STUDENT, PARENT), List.of(STUDENT, PARENT)))),
+                            List.of(STUDENT, PARENT), List.of(STUDENT, PARENT)).withIcon("grades"))),
             new Group("finance", "مالی", List.of(
                     new Link("/finance", "امور مالی", "شهریه، پرداخت‌ها و فاکتورها",
-                            List.of(ADMIN, FINANCE), List.of(ADMIN, FINANCE)).withPermissions("FINANCE_MANAGE", "FINANCE_VIEW"),
+                            List.of(ADMIN, FINANCE), List.of(ADMIN, FINANCE)).withPermissions("FINANCE_MANAGE", "FINANCE_VIEW").withIcon("finance"),
                     new Link("/expenses", "هزینه‌ها", "ثبت و پیگیری هزینه‌ها",
-                            List.of(ADMIN, FINANCE), List.of(FINANCE)).withPermissions("EXPENSE_VIEW"),
+                            List.of(ADMIN, FINANCE), List.of(FINANCE)).withPermissions("EXPENSE_VIEW").withIcon("finance"),
                     new Link("/my-invoices", "فاکتورهای من", "شهریه و پرداخت‌های شما",
-                            List.of(STUDENT, PARENT), List.of(STUDENT, PARENT)))));
+                            List.of(STUDENT, PARENT), List.of(STUDENT, PARENT)).withIcon("finance"))));
 
     private NavCatalog() {
     }
+
+    /**
+     * جایگاهِ یک لینک در پیشخوان (DESIGN.md §5a): یک کارتِ تمام‌عرض، کارت‌های نیم‌عرض،
+     * و بقیه ردیف‌های فهرست. جایگاه ثابت و مستقل از نقش است چون نقشِ انتخاب‌شده
+     * client-side عوض می‌شود و چیدمان باید با هر زیرمجموعه‌ای از کارت‌ها درست بماند.
+     */
+    public enum Tier { FEATURED, CARD, ROW }
 
     /** گروه‌های سایدبار به ترتیب نمایش. */
     public static List<Group> groups() {
@@ -103,6 +110,14 @@ public final class NavCatalog {
                 }
             }
         }
+        return List.copyOf(result);
+    }
+
+    /** کارت‌های تمام‌عرض و نیم‌عرضِ پیشخوان: اول FEATURED، بعد CARD، هرکدام به ترتیبِ کاتالوگ. */
+    public static List<Link> dailyShortcuts() {
+        List<Link> result = new ArrayList<>();
+        shortcuts().stream().filter(Link::isFeatured).forEach(result::add);
+        shortcuts().stream().filter(Link::isCard).forEach(result::add);
         return List.copyOf(result);
     }
 
@@ -162,6 +177,25 @@ public final class NavCatalog {
             return includes(roles, roleExpression);
         }
 
+        /** لینک‌های این گروه که ردیفِ فهرستِ پیشخوان‌اند (دارای shortcutRoles و جایگاهِ ROW). */
+        public List<Link> rowShortcuts() {
+            return links.stream()
+                    .filter(link -> !link.shortcutRoles().isEmpty() && link.tier() == Tier.ROW)
+                    .toList();
+        }
+
+        /** عنوانِ گروه فقط وقتی دیده می‌شود که یکی از ردیف‌هایش برای نقشِ انتخاب‌شده دیده شود. */
+        public String rowsVisibleWhen(String roleExpression, String permissionsExpression) {
+            Set<String> roles = new LinkedHashSet<>();
+            Set<List<String>> permissionSets = new LinkedHashSet<>();
+            rowShortcuts().forEach(link -> {
+                roles.addAll(link.shortcutRoles());
+                permissionSets.addAll(link.permissionSets());
+            });
+            return anyOf(includes(roles, roleExpression), permissionSets,
+                    customRolePermissions(roleExpression, permissionsExpression));
+        }
+
         /** همان، به‌علاوه‌ی «همه‌ی Permissionهای یکی از لینک‌ها» (نقشِ سفارشی). */
         public String visibleWhen(String roleExpression, String permissionsExpression) {
             Set<String> roles = new LinkedHashSet<>();
@@ -194,26 +228,48 @@ public final class NavCatalog {
      */
     public record Link(String href, String label, String description,
                        List<String> roles, List<String> shortcutRoles, List<String> permissions,
-                       List<List<String>> alternativePermissions) {
+                       List<List<String>> alternativePermissions, String icon, Tier tier) {
 
         public Link(String href, String label, String description, List<String> roles, List<String> shortcutRoles) {
-            this(href, label, description, roles, shortcutRoles, List.of(), List.of());
+            this(href, label, description, roles, shortcutRoles, List.of(), List.of(), "", Tier.ROW);
         }
 
         public Link(String href, String label, String description,
                     List<String> roles, List<String> shortcutRoles, List<String> permissions) {
-            this(href, label, description, roles, shortcutRoles, permissions, List.of());
+            this(href, label, description, roles, shortcutRoles, permissions, List.of(), "", Tier.ROW);
         }
 
         Link withPermissions(String... codes) {
-            return new Link(href, label, description, roles, shortcutRoles, List.of(codes), alternativePermissions);
+            return new Link(href, label, description, roles, shortcutRoles, List.of(codes), alternativePermissions,
+                    icon, tier);
+        }
+
+        /** نامِ آیکن در {@code layout/icon.jte} (DESIGN.md §5b). */
+        Link withIcon(String name) {
+            return new Link(href, label, description, roles, shortcutRoles, permissions, alternativePermissions,
+                    name, tier);
+        }
+
+        /** جایگاهِ کارت در پیشخوان (DESIGN.md §5a)؛ پیش‌فرض {@link Tier#ROW}. */
+        Link as(Tier newTier) {
+            return new Link(href, label, description, roles, shortcutRoles, permissions, alternativePermissions,
+                    icon, newTier);
+        }
+
+        public boolean isFeatured() {
+            return tier == Tier.FEATURED;
+        }
+
+        public boolean isCard() {
+            return tier == Tier.CARD;
         }
 
         /** یک مجموعه‌ی جایگزین (همه‌ی این مجوزها) کنارِ {@code permissions}؛ «یا» بین مجموعه‌ها. */
         Link orPermissions(String... codes) {
             List<List<String>> alternatives = new ArrayList<>(alternativePermissions);
             alternatives.add(List.of(codes));
-            return new Link(href, label, description, roles, shortcutRoles, permissions, List.copyOf(alternatives));
+            return new Link(href, label, description, roles, shortcutRoles, permissions, List.copyOf(alternatives),
+                    icon, tier);
         }
 
         /** {@code permissions} و جایگزین‌ها، هرکدام یک مجموعه‌ی «همه»؛ مجموعه‌ی خالی نادیده گرفته می‌شود. */

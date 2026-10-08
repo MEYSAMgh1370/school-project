@@ -15,7 +15,8 @@ import static org.assertj.core.api.Assertions.assertThat;
  * انتخابگر «درس» در دفتر نمرات و ستون «درس» در «نمره‌های من»
  * (openspec/changes/grades-by-course.md). فقط ساختار قالب‌ها را می‌سنجد -
  * رفتار Alpine (بارگذاری درس‌ها با عوض‌شدن کلاس، بارگذاری مجدد با عوض‌شدن
- * درس) در مرورگر راستی‌آزمایی شد؛ پروژه تست JS ندارد.
+ * درس) در مرورگر راستی‌آزمایی شد؛ منطق خالصِ جست‌وجو و نرمال‌سازی در
+ * src/test/js/list-search.test.js (اجرا در CI با node --test) است.
  */
 class GradesCoursePickerRenderTest {
 
@@ -42,12 +43,11 @@ class GradesCoursePickerRenderTest {
     }
 
     @Test
-    void theCourseSelectIsDisabledUntilAClassIsChosenAndReloadsALoadedTable() {
+    void theCourseSelectIsDisabledUntilAClassIsChosen() {
         String html = render("grades.jte", Map.of("navbar", NAVBAR));
 
         assertThat(html).contains(":disabled=\"!filter.classId\"");
-        // حتی وسطِ بارگذاری هم دوباره بارگذاری می‌شود (پاسخ کهنه در JS دور ریخته می‌شود)
-        assertThat(html).contains("@change=\"if (loaded || loading) load()\"");
+        // بارگذاریِ دوباره‌ی جدول با تغییرِ درس از $watch در JS است (با حفاظت از نمره‌ی ثبت‌نشده)
     }
 
     @Test
@@ -88,5 +88,31 @@ class GradesCoursePickerRenderTest {
         assertThat(html).contains("id=\"gradeYear\"").contains("x-for=\"year in years\"");
         assertThat(html).contains("id=\"gradeYearText\"").contains("x-show=\"years.length === 0\"");
         assertThat(html).contains("<label class=\"label\" for=\"gradeYear\">سال تحصیلی</label>");
+    }
+
+    // ورود سریعِ نمرات (DESIGN.md §5a): ساختارِ قالب. رفتارِ Alpine در مرورگر راستی‌آزمایی می‌شود
+    // (پروژه تست JS ندارد)؛ اینجا فقط چیزهایی قفل می‌شوند که با تغییرِ قالب بی‌صدا می‌شکنند.
+    @Test
+    void quickEntryHasChipsFocusModeAndOneFilledPrimaryActionInEachView() {
+        String html = render("grades.jte", Map.of("navbar", NAVBAR));
+
+        assertThat(html).contains("/css/grades.css");
+        // chip ها: aria-pressed و شمارش
+        assertThat(html).contains("x-for=\"item in chips()\"").contains(":aria-pressed=");
+        // نمای تمرکز: نامِ مقصد روی دکمه‌ی اصلی، و نوار روی کیبورد
+        assertThat(html).contains("x-text=\"nextLabel()\"").contains("keyboardInset");
+        // خلاصه‌ی مرور برای صفحه‌خوان
+        assertThat(html).contains("role=\"alert\" x-show=\"reviewSummary\"");
+        // نمره ورودیِ متنی با inputmode اعشاری است، نه number (رقم‌های فارسی را رد می‌کرد)
+        assertThat(html).contains("inputmode=\"decimal\"").doesNotContain("type=\"number\"");
+        // یک دکمه‌ی پُر در هر نما: نوار فهرست و نوار تمرکز (هر کدام «ثبت همه»/«اصلاح»/«بعدی»).
+        // دکمه‌ی «بارگذاری» پیش از بارگذاری پُر است و بعد فرعی می‌شود، پس با کلاس پویا نوشته شده و اینجا نمی‌آید.
+        assertThat(html.split("class=\"button is-primary\"", -1).length - 1).isEqualTo(2);
+        // «ثبت» هر ردیف فرعی است
+        assertThat(html).doesNotContain("button is-small is-link").doesNotContain("button is-link");
+        // برچسب سطح ارزشیابی از منبع مشترک می‌آید، نه کپی در هر صفحه
+        assertThat(html).contains("/js/grade-labels.js");
+        // تغییر درس با نمره‌ی ثبت‌نشده از watch گرفته می‌شود، نه از @change که جدول را بی‌صدا عوض می‌کرد
+        assertThat(html).doesNotContain("@change=\"if (loaded || loading) load()\"");
     }
 }

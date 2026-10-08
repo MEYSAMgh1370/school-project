@@ -4,6 +4,7 @@ document.addEventListener('alpine:init', () => {
         categories: [],
         vendors: [],
         expenses: [],
+        filterText: '',
         blocked: false,
         loading: false,
         submitting: false,
@@ -40,6 +41,7 @@ document.addEventListener('alpine:init', () => {
                 this.schoolId = e.detail.id;
                 this.error = '';
                 this.notice = '';
+                this.filterText = '';
                 this.load();
             });
             if (this.schoolId) {
@@ -50,6 +52,18 @@ document.addEventListener('alpine:init', () => {
         csrfToken() {
             const match = document.cookie.match(/(?:^|;\s*)XSRF-TOKEN=([^;]*)/);
             return match ? decodeURIComponent(match[1]) : '';
+        },
+
+        // جست‌وجو روی نام دسته و طرف حساب (فهرست ردیفی؛ DESIGN.md §6)
+        visibleExpenses() {
+            const query = this.filterText.trim();
+            if (!query) {
+                return this.expenses;
+            }
+            return this.expenses.filter(expense => ListSearch.matches(query, [
+                this.categoryName(expense.categoryId),
+                this.vendorName(expense.vendorId)
+            ]));
         },
 
         categoriesBase() {

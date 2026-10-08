@@ -70,6 +70,25 @@ document.addEventListener('alpine:init', () => {
             return window.location.origin + '/s/' + slug;
         },
 
+        // اقدامِ اصلیِ بلوکِ دعوت (DESIGN.md §5a): برگه‌ی اشتراکِ خودِ گوشی. مرورگری که
+        // Web Share ندارد (یا context ناامن) به همان کپی برمی‌گردد؛ بستنِ برگه توسط
+        // کاربر (AbortError) خطا نیست.
+        async share(slug) {
+            if (!navigator.share) {
+                return this.copy(slug);
+            }
+            this.errorMessage = '';
+            this.successMessage = '';
+            try {
+                await navigator.share({ url: this.entryUrl(slug) });
+            } catch (e) {
+                if (e && e.name === 'AbortError') {
+                    return;
+                }
+                return this.copy(slug);
+            }
+        },
+
         async copy(slug) {
             this.errorMessage = '';
             this.successMessage = '';

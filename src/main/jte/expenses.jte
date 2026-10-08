@@ -2,7 +2,7 @@
 
 @param NavbarModel navbar
 
-@template.layout.main(title = "هزینه‌های مدرسه", scripts = java.util.List.of("/js/navbar.js", "/js/jalali.js", "/js/calendar.js", "/js/money.js", "/js/expenses.js"), content = @`
+@template.layout.main(title = "هزینه‌های مدرسه", scripts = java.util.List.of("/js/navbar.js", "/js/digits.js", "/js/jalali.js", "/js/calendar.js", "/js/money.js", "/js/list-search.js", "/js/expenses.js"), content = @`
 @template.layout.navbar(navbar = navbar)
 
 <section class="section" id="main-content" role="main" tabindex="-1" x-data="expensesPage()">
@@ -186,46 +186,45 @@
                         </div>
 
                         <h2 class="title is-6">فهرست هزینه‌ها</h2>
-                        <div class="table-container">
-                        <table class="table is-fullwidth is-striped">
-                            <thead>
-                            <tr>
-                                <th scope="col">تاریخ</th>
-                                <th scope="col">دسته</th>
-                                <th scope="col">طرف حساب</th>
-                                <th scope="col">مبلغ</th>
-                                <th scope="col">وضعیت</th>
-                                <th scope="col"><span class="is-sr-only">عملیات</span></th>
-                            </tr>
-                            </thead>
-                            <tbody>
-                            <template x-for="expense in expenses" :key="expense.id">
-                                <tr>
-                                    <td dir="ltr" x-text="expense.expenseDate"></td>
-                                    <td x-text="categoryName(expense.categoryId)"></td>
-                                    <td x-text="vendorName(expense.vendorId)"></td>
-                                    <td x-text="Money.formatAmount(expense.amount)"></td>
-                                    <td>
-                                        <span class="tag" :class="statusClass(expense.status)" x-text="statusLabel(expense.status)"></span>
-                                    </td>
-                                    <td>
-                                        <div class="buttons are-small">
-                                            <button class="button" x-show="expense.status === 'DRAFT'"
-                                                    @click="approveExpense(expense)">تأیید</button>
-                                            <button class="button" x-show="expense.status === 'APPROVED'"
-                                                    @click="payExpense(expense)">پرداخت</button>
-                                            <button class="button is-danger is-light"
-                                                    x-show="expense.status === 'DRAFT' || expense.status === 'APPROVED'"
-                                                    @click="cancelExpense(expense)">لغو</button>
-                                            <button class="button" :class="{ 'is-link': expandedExpenseId === expense.id }"
-                                                    @click="toggleAttachments(expense)">پیوست‌ها</button>
+                        <%-- فهرست ردیفی (DESIGN.md §5a): جست‌وجو روی دسته و طرف حساب، و هر هزینه یک ردیف با مبلغ،
+                             وضعیت به کلمه و اقدام‌ها. --%>
+                        <template x-if="expenses.length > 0">
+                            <div>
+                                <div class="field">
+                                    <label class="label is-sr-only" for="expenseSearch">جست‌وجو در هزینه‌ها</label>
+                                    <div class="control">
+                                        <input class="input" id="expenseSearch" type="search" x-model="filterText"
+                                               placeholder="جست‌وجوی دسته یا طرف حساب">
+                                    </div>
+                                </div>
+                                <div class="app-list" role="list">
+                                    <template x-for="expense in visibleExpenses()" :key="expense.id">
+                                        <div class="app-expense-row" role="listitem">
+                                            <div class="app-expense-row__main">
+                                                <span class="app-expense-row__name" x-text="Money.formatAmount(expense.amount)"></span>
+                                                <span class="is-size-7 has-text-grey" x-text="categoryName(expense.categoryId) + ' · ' + vendorName(expense.vendorId)"></span>
+                                                <span class="is-size-7 has-text-grey" dir="ltr" x-text="expense.expenseDate"></span>
+                                            </div>
+                                            <span class="tag" :class="statusClass(expense.status)" x-text="statusLabel(expense.status)"></span>
+                                            <div class="app-expense-row__actions">
+                                                <button class="button is-light" x-show="expense.status === 'DRAFT'"
+                                                        @click="approveExpense(expense)">تأیید</button>
+                                                <button class="button is-light" x-show="expense.status === 'APPROVED'"
+                                                        @click="payExpense(expense)">پرداخت</button>
+                                                <button class="button is-danger is-light"
+                                                        x-show="expense.status === 'DRAFT' || expense.status === 'APPROVED'"
+                                                        @click="cancelExpense(expense)">لغو</button>
+                                                <button class="button is-light" :class="{ 'is-link': expandedExpenseId === expense.id }"
+                                                        @click="toggleAttachments(expense)">پیوست‌ها</button>
+                                            </div>
                                         </div>
-                                    </td>
-                                </tr>
-                            </template>
-                            </tbody>
-                        </table>
-                        </div>
+                                    </template>
+                                </div>
+                                <p class="has-text-grey mt-3" x-show="visibleExpenses().length === 0">
+                                    هزینه‌ای با این جست‌وجو پیدا نشد.
+                                </p>
+                            </div>
+                        </template>
                         @template.layout.empty-state(
                             show = "!loading && expenses.length === 0",
                             art = "money",

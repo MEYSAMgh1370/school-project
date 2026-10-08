@@ -76,39 +76,32 @@
                     </div>
                 </div>
 
-                <div class="table-container">
-                <table class="table is-fullwidth is-striped">
-                    <thead>
-                    <tr>
-                        <th scope="col">نام کلاس</th>
-                        <th scope="col">سال</th>
-                        <th scope="col">پایه</th>
-                        <th scope="col">بخش</th>
-                        <th scope="col">معلم</th>
-                        <th scope="col">دانش‌آموزان کلاس</th>
-                    </tr>
-                    </thead>
-                    <tbody>
-                    <template x-for="classItem in classes" :key="classItem.id">
-                        <tr>
-                            <td x-text="classItem.name"></td>
-                            <td x-text="yearLabel(classItem.academicYear)"></td>
-                            <td x-text="classItem.gradeLevel"></td>
-                            <td x-text="classItem.section || '—'"></td>
-                            <td x-text="teacherName(classItem.teacherId)"></td>
-                            <td>
-                                <button class="button is-small" type="button"
+                <%-- فهرست ردیفی (DESIGN.md §5a): هر کلاس یک ردیف با نام، سال، پایه، بخش و معلم، و دکمه‌ی فهرست
+                     دانش‌آموزان با شمارش. --%>
+                <template x-if="classes.length > 0">
+                    <div class="app-list" role="list">
+                        <template x-for="classItem in classes" :key="classItem.id">
+                            <div class="app-class-row" role="listitem">
+                                <span class="app-avatar" aria-hidden="true" x-text="classItem.name.charAt(0)"></span>
+                                <div class="app-class-row__main">
+                                    <span class="app-class-row__name" x-text="classItem.name"></span>
+                                    <span class="is-size-7 has-text-grey">
+                                        <span x-text="yearLabel(classItem.academicYear)"></span>
+                                        · پایه <span x-text="classItem.gradeLevel"></span>
+                                        <span x-show="classItem.section">· بخش <span x-text="classItem.section"></span></span>
+                                    </span>
+                                    <span class="is-size-7 has-text-grey" x-text="'معلم: ' + teacherName(classItem.teacherId)"></span>
+                                </div>
+                                <button class="button is-light" type="button"
                                         @click="toggleRoster(classItem.id)"
                                         :aria-expanded="selectedClassId === classItem.id ? 'true' : 'false'">
                                     <span x-text="selectedClassId === classItem.id ? 'بستن فهرست' : 'مشاهده دانش‌آموزان'"></span>
                                     <span class="tag is-light app-inline-gap" x-text="rosterFor(classItem.id).length"></span>
                                 </button>
-                            </td>
-                        </tr>
-                    </template>
-                    </tbody>
-                </table>
-                </div>
+                            </div>
+                        </template>
+                    </div>
+                </template>
 
                 @template.layout.empty-state(
                     show = "!loading && classes.length === 0",

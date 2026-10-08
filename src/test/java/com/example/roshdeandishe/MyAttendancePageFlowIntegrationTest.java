@@ -123,7 +123,7 @@ class MyAttendancePageFlowIntegrationTest {
             assertThat(html).contains("href=\"/my-attendance\"");
 
             // کارتِ «دسترسی سریع» پیشخوان از همان منبع
-            assertThat(page(session, "/dashboard")).contains("class=\"box app-shortcut\" href=\"/my-attendance\"");
+            assertThat(page(session, "/dashboard")).contains("href=\"/my-attendance\" data-shortcut");
         }
 
         String parentDashboard = HtmlUtils.htmlUnescape(page(parent, "/dashboard"));
