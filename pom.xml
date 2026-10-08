@@ -294,6 +294,29 @@
 
     <build>
         <plugins>
+            <!-- Spring Session در تست‌ها خاموش می‌شود. دلیلش مکانیکی است و نه سلیقه‌ای:
+                 ۴۴ فایل تست، وضعیتِ لاگین را با
+                 {@code (MockHttpSession) result.getRequest().getSession(false)}
+                 بین درخواست‌های MockMvc جابه‌جا می‌کنند. وقتی Spring Session فعال باشد،
+                 نشست در repository می‌نشیند و نه روی خودِ MockHttpServletRequest، پس آن
+                 getSession(false) مقدار null می‌دهد و MockMvc با
+                 «'session' must not be null» می‌افتد - ۱۹۳ شکست و ۳۸ خطا در یک اجرا.
+                 با این exclude، context تست برای نشست عیناً همان چیزی می‌شود که پیش از
+                 این تغییر بود (نشستِ کانتینر/JSESSIONID) و آن ۴۴ فایل دست‌نخورده می‌مانند.
+                 چیزی از پوشش کم نمی‌شود که امروز وجود داشته باشد: آن تست‌ها هیچ‌وقت
+                 نشستِ واقعیِ production را تمرین نمی‌کردند، MockHttpSession را می‌کردند.
+                 WebSessionPersistenceFlowIntegrationTest همین exclude را برای خودش پاک
+                 می‌کند و تنها جایی است که مسیر واقعی JDBC را می‌سنجد.
+                 رجوع به openspec/changes/jdbc-backed-web-sessions.md -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-surefire-plugin</artifactId>
+                <configuration>
+                    <systemPropertyVariables>
+                        <spring.autoconfigure.exclude>org.springframework.boot.session.autoconfigure.SessionAutoConfiguration,org.springframework.boot.session.jdbc.autoconfigure.JdbcSessionAutoConfiguration</spring.autoconfigure.exclude>
+                    </systemPropertyVariables>
+                </configuration>
+            </plugin>
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-compiler-plugin</artifactId>

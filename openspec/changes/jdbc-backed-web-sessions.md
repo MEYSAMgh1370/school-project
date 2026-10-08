@@ -72,9 +72,10 @@ Rather than depend on that, the table name is configured schema-qualified as
   and Spring Session must not create or alter tables behind it.
 - Set `spring.session.jdbc.table-name: iam.spring_session`.
 - Configure this in `application.yml`, not only in the production profile, so
-  development and the Testcontainers suites exercise the same session store as
-  production. A session mechanism that differs between profiles is a defect
-  waiting for a deploy.
+  development runs the same session store as production. A session mechanism
+  that differs between profiles is a defect waiting for a deploy.
+- **Except under test**, where Spring Session is switched off. This was not the
+  original intent and is forced by the existing suite — see below.
 - Session timeout is left at its existing default. This change moves where
   sessions live, not how long they last.
 
@@ -154,6 +155,43 @@ one precondition for it and nothing more.
    metadata plus rows in Postgres. That is the trade worth making, and it is
    the reason this change was proposed as a memory measure in the first place.
    What it is not is a reduction, and it should not be recorded as one.
+
+## Spring Session is switched off under test, and why
+
+The first CI run of this change produced **193 failures and 38 errors out of
+820 tests**, every one of them `IllegalArgumentException: 'session' must not be
+null`.
+
+The cause is mechanical, not a defect in either side. **44 test files** carry
+login state between MockMvc requests with
+
+```java
+MockHttpSession session = (MockHttpSession) loginResult.getRequest().getSession(false);
+```
+
+With Spring Session active, `SessionRepositoryFilter` wraps the request and the
+session lives in the repository, not on the `MockHttpServletRequest` that
+`getRequest()` hands back. So `getSession(false)` returns `null`, and
+`MockMvcRequestBuilders.session(null)` rejects it.
+
+The fix excludes `SessionAutoConfiguration` and `JdbcSessionAutoConfiguration`
+for the test run, through `systemPropertyVariables` on the surefire plugin. The
+test context's session behavior then becomes exactly what it was before this
+change — container sessions — which is the configuration those 820 tests were
+written against and passed under.
+
+What this costs, stated plainly: the suite does not exercise the production
+session store. That sounds worse than it is, because **it never did**. Those
+tests used `MockHttpSession`, which is not Spring Session and is not the
+servlet container's session either. No coverage that exists today is lost.
+[`WebSessionPersistenceFlowIntegrationTest`](../../src/test/java/com/example/roshdeandishe/WebSessionPersistenceFlowIntegrationTest.java)
+clears the exclusion for itself and is the one place the real JDBC path is
+asserted.
+
+The alternative — rewriting 44 test files to carry the session cookie instead
+of a `MockHttpSession` — would exercise the real store everywhere. It is a
+large change to tests this proposal did not otherwise touch, and it belongs in
+its own change if the parity is judged worth it.
 
 ## Discovered: JWT auth is not stateless
 

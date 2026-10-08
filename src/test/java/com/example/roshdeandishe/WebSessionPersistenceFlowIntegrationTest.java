@@ -28,7 +28,10 @@ import static org.assertj.core.api.Assertions.assertThat;
  * <p>
  * هر تست ردیف خودش را پاک می‌کند، چون دیتابیس بین تست‌ها ریست نمی‌شود.
  */
-@SpringBootTest
+// exclude سراسریِ تست‌ها (در پیکربندی surefire داخل pom.xml) اینجا عمداً پاک می‌شود:
+// این تنها تستی است که باید مسیر واقعیِ Spring Session روی JDBC را ببیند. propertyهای
+// inline یک تست، بر system property های surefire اولویت دارند.
+@SpringBootTest(properties = "spring.autoconfigure.exclude=")
 @Import(TestcontainersConfiguration.class)
 class WebSessionPersistenceFlowIntegrationTest {
 
