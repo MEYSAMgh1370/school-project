@@ -102,7 +102,7 @@
                             <label class="checkbox" for="academicYearAutoPromotionToggle">
                                 <input id="academicYearAutoPromotionToggle" type="checkbox"
                                        :checked="autoPromotion" :disabled="autoSaving"
-                                       @change="setAutoPromotion($event.target.checked)">
+                                       @change="askAutoPromotion($event)">
                                 ارتقای خودکار دانش‌آموزان هنگام تعویض سال تحصیلی
                             </label>
                             <p class="help">
@@ -142,6 +142,49 @@
                             <button class="button is-warning" type="button" id="academicYearAttributeConfirm"
                                     :class="{ 'is-loading': attributing }" @click="attribute">نسبت دادن</button>
                             <button class="button" type="button" @click="closeConfirm">انصراف</button>
+                        </footer>
+                    </div>
+                </div>
+
+                <%-- ------------------------------------------------ تأیید ارتقای خودکار --%>
+                <div class="modal" role="dialog" aria-modal="true" aria-labelledby="academicYearAutoConfirmTitle"
+                     tabindex="-1" x-ref="autoConfirmModal" :class="{ 'is-active': autoConfirm }" x-cloak
+                     @keydown.tab="window.ModalFocus.trap($event, $el)" @keydown.escape.stop="closeAutoConfirm">
+                    <div class="modal-background" @click="closeAutoConfirm"></div>
+                    <div class="modal-card">
+                        <header class="modal-card-head">
+                            <p class="modal-card-title" id="academicYearAutoConfirmTitle"
+                               x-text="autoConfirm && autoConfirm.enabled ? 'تأیید روشن کردن ارتقای خودکار' : 'تأیید خاموش کردن ارتقای خودکار'"></p>
+                            <button class="delete" type="button" aria-label="بستن" @click="closeAutoConfirm"></button>
+                        </header>
+                        <section class="modal-card-body">
+                            <div class="notification is-danger" role="alert"
+                                 x-show="autoConfirm && autoConfirm.error"><span class="app-notice">@template.layout.icon(name = "alert", size = 20)<span x-text="autoConfirm ? autoConfirm.error : ''"></span></span></div>
+                            <template x-if="autoConfirm && autoConfirm.enabled">
+                                <div>
+                                    <p class="has-text-weight-semibold">ارتقای خودکار دانش‌آموزان روشن شود؟</p>
+                                    <p class="has-text-grey is-size-7">
+                                        از تعویض بعدیِ سالِ جاری، هر بار که سالِ جاری به سالی بعدی عوض شود همه‌ی دانش‌آموزان به پایه‌ی بعد می‌روند
+                                        و در «انتظار جا دادن در کلاس» می‌مانند تا کلاس‌های سالِ جدید را بسازید و آن‌ها را جا بدهید؛
+                                        آخرین پایه‌ی مدرسه فارغ‌التحصیل می‌شود. تا پیش از جا دادن دانش‌آموزان در کلاس، هر اجرا از صفحه‌ی ارتقای پایه قابل برگرداندن است.
+                                    </p>
+                                </div>
+                            </template>
+                            <template x-if="autoConfirm && !autoConfirm.enabled">
+                                <div>
+                                    <p class="has-text-weight-semibold">ارتقای خودکار دانش‌آموزان خاموش شود؟</p>
+                                    <p class="has-text-grey is-size-7">
+                                        از این پس با عوض شدنِ سالِ جاری هیچ دانش‌آموزی خودکار ارتقا نمی‌گیرد؛ ارتقا فقط دستی و از صفحه‌ی ارتقای پایه انجام می‌شود.
+                                        ارتقاهای قبلی تغییر نمی‌کنند.
+                                    </p>
+                                </div>
+                            </template>
+                        </section>
+                        <footer class="modal-card-foot">
+                            <button class="button is-link" type="button" id="academicYearAutoConfirmButton"
+                                    :class="{ 'is-loading': autoSaving }" @click="setAutoPromotion"
+                                    x-text="autoConfirm && autoConfirm.enabled ? 'روشن کردن' : 'خاموش کردن'"></button>
+                            <button class="button" type="button" @click="closeAutoConfirm">انصراف</button>
                         </footer>
                     </div>
                 </div>

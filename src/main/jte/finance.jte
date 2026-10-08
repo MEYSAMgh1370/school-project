@@ -53,7 +53,7 @@
                                     </div>
                                 </div>
                                 <div class="control app-control-align-end">
-                                    <button class="button is-warning" type="button" @click="attribute()"
+                                    <button class="button is-warning" type="button" @click="askAttribute()"
                                             :disabled="attributing" :class="{ 'is-loading': attributing }">
                                         نسبت دادن
                                     </button>
@@ -257,6 +257,36 @@
                             <button class="button is-link" type="button" id="financeConfirmBackfill"
                                     :class="{ 'is-loading': backfilling }" @click="backfill">صدور فاکتورها</button>
                             <button class="button" type="button" @click="closeConfirm">انصراف</button>
+                        </footer>
+                    </div>
+                </div>
+
+                <%-- ------------------------------------------------ تأیید نسبت دادن به سال --%>
+                <div class="modal" role="dialog" aria-modal="true" aria-labelledby="financeAttributeConfirmTitle"
+                     tabindex="-1" x-ref="attributeModal" :class="{ 'is-active': attributeConfirm }" x-cloak
+                     @keydown.tab="window.ModalFocus.trap($event, $el)" @keydown.escape.stop="closeAttributeConfirm">
+                    <div class="modal-background" @click="closeAttributeConfirm"></div>
+                    <div class="modal-card">
+                        <header class="modal-card-head">
+                            <p class="modal-card-title" id="financeAttributeConfirmTitle">تأیید نسبت دادن به سال</p>
+                            <button class="delete" type="button" aria-label="بستن" @click="closeAttributeConfirm"></button>
+                        </header>
+                        <section class="modal-card-body">
+                            <div class="notification is-danger" role="alert"
+                                 x-show="attributeConfirm && attributeConfirm.error"><span class="app-notice">@template.layout.icon(name = "alert", size = 20)<span x-text="attributeConfirm ? attributeConfirm.error : ''"></span></span></div>
+                            <p class="has-text-weight-semibold">
+                                <span x-text="attributeConfirm ? Calendar.digits(String(attributeConfirm.invoices)) : ''"></span> فاکتورِ قبلی<span x-show="attributeConfirm && attributeConfirm.tuitionFee"> و شهریه‌ی قبلی</span> به سال
+                                <span dir="ltr" x-text="attributeConfirm ? Calendar.digits(attributeConfirm.year) : ''"></span>
+                                نسبت داده شود؟
+                            </p>
+                            <p class="has-text-grey is-size-7">
+                                بعد از این کار، این اطلاعات جزو آن سال حساب می‌شوند و «صدور فاکتور» برای یک سال دوباره ممکن می‌شود.
+                            </p>
+                        </section>
+                        <footer class="modal-card-foot">
+                            <button class="button is-link" type="button" id="financeConfirmAttribute"
+                                    :class="{ 'is-loading': attributing }" @click="attribute">نسبت دادن</button>
+                            <button class="button" type="button" @click="closeAttributeConfirm">انصراف</button>
                         </footer>
                     </div>
                 </div>

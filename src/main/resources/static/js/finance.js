@@ -29,6 +29,8 @@ document.addEventListener('alpine:init', () => {
         backfilling: false,
         // تأییدِ صدورِ گروهیِ فاکتور: null یا { year, error }
         confirm: null,
+        // تأییدِ «نسبت دادن به سال»: null یا { year, invoices, tuitionFee, error }
+        attributeConfirm: null,
         // شهریه و فاکتور به‌تفکیک سال (academic-year.md فاز ۲): سال‌های قابل‌انتخاب و سالِ انتخاب‌شده؛
         // مدرسه‌ای که سالِ جاری ندارد فهرست خالی دارد و مثل پیش از فاز ۲ بدون سال کار می‌کند
         years: [],
@@ -52,6 +54,7 @@ document.addEventListener('alpine:init', () => {
                 this.error = '';
                 this.notice = '';
                 this.confirm = null;
+                this.attributeConfirm = null;
                 // داده‌های مدرسه‌ی قبلی تا پاسخِ مدرسه‌ی تازه نمایش داده نمی‌شوند
                 this.invoices = [];
                 this.students = [];
@@ -363,14 +366,34 @@ document.addEventListener('alpine:init', () => {
             await this.load();
         },
 
-        // اقدامِ صریحِ ادمین: شهریه و فاکتورهای «بدون سال» را به یک سال نسبت می‌دهد
-        async attribute() {
+        // نسبت دادنِ اطلاعاتِ مالیِ قبلی به یک سال برگشت‌پذیر نیست: اول تأیید (modal) گرفته می‌شود
+        askAttribute() {
             if (this.attributing) {
                 return;
             }
+            this.error = '';
+            this.notice = '';
             if (!this.attributeYear) {
-                this.notice = '';
                 this.error = 'یک سال تحصیلی را انتخاب کنید.';
+                return;
+            }
+            this.attributeConfirm = {
+                year: this.attributeYear,
+                invoices: this.unattributed.invoices,
+                tuitionFee: this.unattributed.tuitionFee,
+                error: ''
+            };
+            this.$nextTick(() => window.ModalFocus.focusFirst(this.$refs.attributeModal));
+        },
+
+        closeAttributeConfirm() {
+            this.attributeConfirm = null;
+        },
+
+        // اقدامِ صریحِ ادمین: شهریه و فاکتورهای «بدون سال» را به یک سال نسبت می‌دهد
+        async attribute() {
+            const target = this.attributeConfirm;
+            if (!target || this.attributing) {
                 return;
             }
             this.attributing = true;
@@ -384,20 +407,22 @@ document.addEventListener('alpine:init', () => {
                         'X-School-ID': this.schoolId,
                         'X-XSRF-TOKEN': this.csrfToken()
                     },
-                    body: JSON.stringify({ academicYear: this.attributeYear })
+                    body: JSON.stringify({ academicYear: target.year })
                 });
                 if (!response.ok) {
                     const classified = await this.classifyError(response);
-                    this.error = classified.message;
+                    // خطا داخل modal نشان داده می‌شود (پشتِ لایه‌ی modal دیده نمی‌شد)
+                    target.error = classified.message;
                     return;
                 }
                 const result = await response.json();
-                this.notice = `اطلاعاتِ مالیِ قبلی به سالِ ${Calendar.digits(this.attributeYear)} نسبت داده شد `
+                this.attributeConfirm = null;
+                this.notice = `اطلاعاتِ مالیِ قبلی به سالِ ${Calendar.digits(target.year)} نسبت داده شد `
                     + `(${Calendar.digits(String(result.invoicesAttributed))} فاکتور`
                     + `${result.tuitionAttributed ? ' و شهریه' : ''}).`;
                 await this.load();
             } catch (e) {
-                this.error = 'ارتباط با سرور برقرار نشد.';
+                target.error = 'ارتباط با سرور برقرار نشد.';
             } finally {
                 this.attributing = false;
             }

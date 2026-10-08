@@ -87,7 +87,7 @@ class AcademicYearPageRenderTest {
                 .contains("x-for=\"year in attributableYears\"").contains("id=\"academicYearAttributeButton\"")
                 .contains(":disabled=\"attributing\"");
         // ارتقای خودکار: انتخابگرِ روشن/خاموش و لینک به صفحه‌ی دستی
-        assertThat(html).contains("id=\"academicYearAutoPromotionToggle\"").contains("setAutoPromotion($event.target.checked)")
+        assertThat(html).contains("id=\"academicYearAutoPromotionToggle\"").contains("askAutoPromotion($event)")
                 .contains("href=\"/promotion\"").contains("آخرین پایه‌ی مدرسه فارغ‌التحصیل می‌شود");
     }
 }

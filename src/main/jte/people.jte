@@ -2,7 +2,7 @@
 
 @param NavbarModel navbar
 
-@template.layout.main(title = "اعضای مدرسه", scripts = java.util.List.of("/js/navbar.js", "/js/digits.js", "/js/list-search.js", "/js/people.js"), content = @`
+@template.layout.main(title = "اعضای مدرسه", scripts = java.util.List.of("/js/navbar.js", "/js/digits.js", "/js/list-search.js", "/js/modal-focus.js", "/js/people.js"), content = @`
 @template.layout.navbar(navbar = navbar)
 
 <section class="section" id="main-content" role="main" tabindex="-1" x-data="peoplePage()">
@@ -88,7 +88,7 @@
                                         <span class="tag is-warning" x-show="!member.hasPassword">در انتظار فعال‌سازی</span>
                                     </div>
                                     <div class="app-member-row__actions">
-                                        <button class="button is-light" type="button" @click="toggleActive(member)">
+                                        <button class="button is-light" type="button" @click="member.active ? askDeactivate(member) : toggleActive(member)">
                                             <span x-show="member.active">غیرفعال کردن</span>
                                             <span x-show="!member.active">فعال کردن</span>
                                         </button>
@@ -114,6 +114,34 @@
                     show = "!loading && members.length === 0",
                     art = "people",
                     message = @`هنوز عضوی در این مدرسه ثبت نشده است.`)
+
+                <%-- ------------------------------------------------ تأیید غیرفعال کردن عضو --%>
+                <div class="modal" role="dialog" aria-modal="true" aria-labelledby="peopleConfirmTitle"
+                     tabindex="-1" x-ref="confirmModal" :class="{ 'is-active': confirm }" x-cloak
+                     @keydown.tab="window.ModalFocus.trap($event, $el)" @keydown.escape.stop="closeConfirm">
+                    <div class="modal-background" @click="closeConfirm"></div>
+                    <div class="modal-card">
+                        <header class="modal-card-head">
+                            <p class="modal-card-title" id="peopleConfirmTitle">تأیید غیرفعال کردن عضو</p>
+                            <button class="delete" type="button" aria-label="بستن" @click="closeConfirm"></button>
+                        </header>
+                        <section class="modal-card-body">
+                            <div class="notification is-danger" role="alert"
+                                 x-show="confirm && confirm.error"><span class="app-notice">@template.layout.icon(name = "alert", size = 20)<span x-text="confirm ? confirm.error : ''"></span></span></div>
+                            <p class="has-text-weight-semibold">
+                                عضویتِ <span x-text="confirm ? confirm.member.fullName : ''"></span> در این مدرسه غیرفعال شود؟
+                            </p>
+                            <p class="has-text-grey is-size-7">
+                                دسترسیِ این عضو با این نقش به مدرسه بسته می‌شود. حساب کاربری و اطلاعاتش حذف نمی‌شود و هر وقت خواستید می‌توانید دوباره فعالش کنید.
+                            </p>
+                        </section>
+                        <footer class="modal-card-foot">
+                            <button class="button is-danger" type="button" id="peopleConfirmDeactivate"
+                                    :class="{ 'is-loading': toggling }" @click="deactivate">غیرفعال کردن</button>
+                            <button class="button" type="button" @click="closeConfirm">انصراف</button>
+                        </footer>
+                    </div>
+                </div>
             `)
     </div>
 </section>

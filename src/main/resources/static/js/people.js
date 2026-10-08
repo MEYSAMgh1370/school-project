@@ -4,6 +4,10 @@ document.addEventListener('alpine:init', () => {
         members: [],
         loading: false,
         submitting: false,
+        // یک تغییرِ فعال/غیرفعال در حال انجام (دوبار کلیک نباید دو درخواست بفرستد)
+        toggling: false,
+        // تأیید «غیرفعال کردن»: null یا { member, error }
+        confirm: null,
         error: '',
         notice: '',
         invite: null,
@@ -44,6 +48,7 @@ document.addEventListener('alpine:init', () => {
             window.addEventListener('school-changed', (e) => {
                 this.schoolId = e.detail.id;
                 this.invite = null;
+                this.confirm = null;
                 this.filterText = '';
                 this.shown = this.pageSize;
                 this.error = '';
@@ -96,12 +101,13 @@ document.addEventListener('alpine:init', () => {
             return `/api/admin/schools/${this.schoolId}/roles`;
         },
 
-        async showError(response) {
+        // target: جایی که پیام خطا نوشته می‌شود؛ پیش‌فرض خطای صفحه، و برای modal تأیید خودِ آن
+        async showError(response, target = this) {
             try {
                 const body = await response.json();
-                this.error = body.detail || body.title || 'خطایی رخ داد.';
+                target.error = body.detail || body.title || 'خطایی رخ داد.';
             } catch (e) {
-                this.error = 'خطایی رخ داد. (' + response.status + ')';
+                target.error = 'خطایی رخ داد. (' + response.status + ')';
             }
         },
 
@@ -160,7 +166,35 @@ document.addEventListener('alpine:init', () => {
             }
         },
 
-        async toggleActive(member) {
+        // غیرفعال کردن دسترسیِ یک عضو اول تأیید (modal) می‌گیرد؛ فعال کردن دوباره بی‌خطر است و مستقیم انجام می‌شود
+        askDeactivate(member) {
+            if (this.toggling) {
+                return;
+            }
+            this.error = '';
+            this.notice = '';
+            this.confirm = { member, error: '' };
+            this.$nextTick(() => window.ModalFocus.focusFirst(this.$refs.confirmModal));
+        },
+
+        closeConfirm() {
+            this.confirm = null;
+        },
+
+        deactivate() {
+            const target = this.confirm;
+            if (!target || this.toggling) {
+                return;
+            }
+            return this.toggleActive(target.member, target);
+        },
+
+        // confirmTarget: وقتی از modal تأیید می‌آید، خطا داخل همان modal نشان داده می‌شود
+        async toggleActive(member, confirmTarget = null) {
+            if (this.toggling) {
+                return;
+            }
+            this.toggling = true;
             this.error = '';
             this.notice = '';
             try {
@@ -174,14 +208,17 @@ document.addEventListener('alpine:init', () => {
                     body: JSON.stringify({ active: !member.active })
                 });
                 if (!response.ok) {
-                    await this.showError(response);
+                    await this.showError(response, confirmTarget || this);
                     return;
                 }
+                this.confirm = null;
                 // member.active هنوز مقدار قبل از تغییر است
                 this.notice = member.active ? 'عضویت غیرفعال شد.' : 'عضویت فعال شد.';
                 await this.load();
             } catch (e) {
-                this.error = 'ارتباط با سرور برقرار نشد.';
+                (confirmTarget || this).error = 'ارتباط با سرور برقرار نشد.';
+            } finally {
+                this.toggling = false;
             }
         },
 

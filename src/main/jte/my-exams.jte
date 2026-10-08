@@ -2,7 +2,7 @@
 
 @param NavbarModel navbar
 
-@template.layout.main(title = "آزمون‌های من", scripts = java.util.List.of("/js/navbar.js", "/js/jalali.js", "/js/calendar.js", "/js/my-exams.js"), content = @`
+@template.layout.main(title = "آزمون‌های من", scripts = java.util.List.of("/js/navbar.js", "/js/jalali.js", "/js/calendar.js", "/js/modal-focus.js", "/js/my-exams.js"), content = @`
 @template.layout.navbar(navbar = navbar)
 
 <section class="section" id="main-content" role="main" tabindex="-1" x-data="myExamsPage()">
@@ -35,7 +35,7 @@
                                     <button class="button is-link" type="button"
                                             x-show="hasStarted(exam) && !hasEnded(exam)"
                                             :class="{ 'is-loading': starting === exam.id }"
-                                            @click="startAttempt(exam)">
+                                            @click="askStart(exam)">
                                         شروع آزمون
                                     </button>
                                     <span class="tag is-warning" x-show="!hasStarted(exam)">هنوز شروع نشده</span>
@@ -79,6 +79,37 @@
                     show = "!loading && !error && exams.length === 0",
                     art = "exam",
                     message = @`آزمونی برای شما ثبت نشده است.`)
+
+                <%-- ------------------------------------------------ تأیید شروع آزمون --%>
+                <div class="modal" role="dialog" aria-modal="true" aria-labelledby="myExamsConfirmTitle"
+                     tabindex="-1" x-ref="confirmModal" :class="{ 'is-active': confirm }" x-cloak
+                     @keydown.tab="window.ModalFocus.trap($event, $el)" @keydown.escape.stop="closeConfirm">
+                    <div class="modal-background" @click="closeConfirm"></div>
+                    <div class="modal-card">
+                        <header class="modal-card-head">
+                            <p class="modal-card-title" id="myExamsConfirmTitle">تأیید شروع آزمون</p>
+                            <button class="delete" type="button" aria-label="بستن" @click="closeConfirm"></button>
+                        </header>
+                        <section class="modal-card-body">
+                            <div class="notification is-danger" role="alert"
+                                 x-show="confirm && confirm.error"><span class="app-notice">@template.layout.icon(name = "alert", size = 20)<span x-text="confirm ? confirm.error : ''"></span></span></div>
+                            <p class="has-text-weight-semibold">
+                                «<span x-text="confirm ? examLabel(confirm.exam) : ''"></span>» همین حالا شروع شود؟
+                            </p>
+                            <p class="has-text-grey is-size-7">
+                                با شروع آزمون، زمان‌سنج هم شروع می‌شود؛ مدت آزمون
+                                <span x-text="confirm ? Calendar.digits(confirm.exam.durationMinutes) : ''"></span> دقیقه است.
+                                وقتی آماده‌اید شروع کنید.
+                            </p>
+                        </section>
+                        <footer class="modal-card-foot">
+                            <button class="button is-link" type="button" id="myExamsConfirmStart"
+                                    :class="{ 'is-loading': starting !== null }"
+                                    @click="startAttempt(confirm.exam)">شروع آزمون</button>
+                            <button class="button" type="button" @click="closeConfirm">انصراف</button>
+                        </footer>
+                    </div>
+                </div>
             `)
     </div>
 </section>

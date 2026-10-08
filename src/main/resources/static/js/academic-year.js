@@ -17,6 +17,8 @@ document.addEventListener('alpine:init', () => {
         attributing: false,
         // تأیید «نسبت دادن»: null یا { year, classes, students, error }
         confirm: null,
+        // تأیید «ارتقای خودکار»: null یا { enabled, error }
+        autoConfirm: null,
         blocked: false,
         error: '',
         notice: '',
@@ -34,6 +36,7 @@ document.addEventListener('alpine:init', () => {
                 this.error = '';
                 this.notice = '';
                 this.confirm = null;
+                this.autoConfirm = null;
                 // ذخیره‌ی در جریان (مدرسه‌ی قبلی) دیگر به این مدرسه ربطی ندارد
                 this.saveSeq++;
                 this.saving = false;
@@ -176,7 +179,32 @@ document.addEventListener('alpine:init', () => {
             }
         },
 
-        async setAutoPromotion(enabled) {
+        // روشن/خاموش‌کردنِ ارتقای خودکار روی همه‌ی دانش‌آموزانِ تعویضِ بعدیِ سال اثر می‌گذارد: اول تأیید (modal)
+        // گرفته می‌شود. چک‌باکس با کلیک می‌چرخد ولی وضعیتِ واقعی فقط بعد از تأیید عوض می‌شود، پس همان لحظه
+        // به وضعیتِ واقعی برمی‌گردد (انصراف دیگر کاری لازم ندارد)
+        askAutoPromotion(event) {
+            const box = event.target;
+            const enabled = box.checked;
+            box.checked = this.autoPromotion;
+            if (this.autoSaving) {
+                return;
+            }
+            this.error = '';
+            this.notice = '';
+            this.autoConfirm = { enabled, error: '' };
+            this.$nextTick(() => window.ModalFocus.focusFirst(this.$refs.autoConfirmModal));
+        },
+
+        closeAutoConfirm() {
+            this.autoConfirm = null;
+        },
+
+        async setAutoPromotion() {
+            const target = this.autoConfirm;
+            if (!target || this.autoSaving) {
+                return;
+            }
+            const enabled = target.enabled;
             const schoolId = this.schoolId;
             this.autoSaving = true;
             this.error = '';
@@ -195,18 +223,18 @@ document.addEventListener('alpine:init', () => {
                     return;
                 }
                 if (!response.ok) {
-                    this.autoPromotion = !enabled; // سرور نپذیرفت؛ انتخابگر به حالت قبل برمی‌گردد
-                    this.error = (await this.classifyError(response)).message;
+                    // سرور نپذیرفت؛ وضعیت همان قبلی می‌ماند و خطا داخل modal نشان داده می‌شود
+                    target.error = (await this.classifyError(response)).message;
                     return;
                 }
                 const settings = await response.json();
+                this.autoConfirm = null;
                 this.autoPromotion = !!settings.autoPromotion;
                 this.notice = this.autoPromotion
                     ? 'ارتقای خودکار روشن شد؛ از تعویض بعدیِ سال اثر می‌کند.'
                     : 'ارتقای خودکار خاموش شد.';
             } catch (e) {
-                this.autoPromotion = !enabled;
-                this.error = 'ارتباط با سرور برقرار نشد.';
+                target.error = 'ارتباط با سرور برقرار نشد.';
             } finally {
                 this.autoSaving = false;
             }
