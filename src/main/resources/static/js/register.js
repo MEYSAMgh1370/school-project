@@ -34,6 +34,13 @@ document.addEventListener('alpine:init', () => {
         },
 
         async submit() {
+            if (this.submitting) {
+                return;
+            }
+            if (this.password !== this.passwordConfirm) {
+                this.errorMessage = 'رمز عبور و تکرار آن یکسان نیستند.';
+                return;
+            }
             this.submitting = true;
             this.errorMessage = '';
             try {

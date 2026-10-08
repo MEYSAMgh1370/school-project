@@ -46,6 +46,8 @@ document.addEventListener('alpine:init', () => {
         loadingWeek: false,
         suggesting: false,
         clearing: false,
+        // تأییدِ خالی‌کردن هفته: null یا { studentId, studentName, weekStart, weekLabel, error }
+        confirm: null,
         submittingInterval: false,
         intervalForm: { topicId: '', start: '', end: '' },
 
@@ -70,6 +72,7 @@ document.addEventListener('alpine:init', () => {
                 this.error = '';
                 this.notice = '';
                 this.blocked = false;
+                this.confirm = null;
                 this.selectedStudentId = '';
                 this.expandedPlanId = null;
                 this.copyPanelOpen = false;
@@ -350,6 +353,16 @@ document.addEventListener('alpine:init', () => {
         },
 
         async createWeekCourse(planId) {
+            if (this.submittingWeekCourse) {
+                return;
+            }
+            if (!this.weekCourseForm.weekStart || !this.weekCourseForm.courseTopicId) {
+                this.notice = '';
+                this.error = !this.weekCourseForm.weekStart
+                    ? 'یک روز از هفته‌ی مورد نظر را انتخاب کنید.'
+                    : 'سرفصل درس را انتخاب کنید.';
+                return;
+            }
             this.submittingWeekCourse = true;
             this.error = '';
             this.notice = '';
@@ -394,6 +407,14 @@ document.addEventListener('alpine:init', () => {
         },
 
         async copyWeekToOthers() {
+            if (this.copyingWeek) {
+                return;
+            }
+            if (this.copyTargetIds.length === 0) {
+                this.notice = '';
+                this.error = 'دست‌کم یک دانش‌آموز را برای کپی انتخاب کنید.';
+                return;
+            }
             this.copyingWeek = true;
             this.error = '';
             this.notice = '';
@@ -426,6 +447,14 @@ document.addEventListener('alpine:init', () => {
         },
 
         async assignStudent(planId) {
+            if (this.submittingAssignment) {
+                return;
+            }
+            if (!this.assignStudentIdInput) {
+                this.notice = '';
+                this.error = 'یک دانش‌آموز را برای تخصیص انتخاب کنید.';
+                return;
+            }
             this.submittingAssignment = true;
             this.error = '';
             this.notice = '';
@@ -685,26 +714,65 @@ document.addEventListener('alpine:init', () => {
             }
         },
 
+        // خالی‌کردن هفته همه‌ی بازه‌های آن هفته را پاک می‌کند: اول تأیید (modal)
+        askClearWeek() {
+            if (this.clearing) {
+                return;
+            }
+            this.error = '';
+            this.notice = '';
+            if (!this.selectedStudentId) {
+                this.error = 'اول یک دانش‌آموز را انتخاب کنید.';
+                return;
+            }
+            if (!this.weekDate) {
+                this.error = 'یک روز از هفته‌ی مورد نظر را انتخاب کنید.';
+                return;
+            }
+            const weekStart = this.weekStartOf(this.weekDate);
+            this.confirm = {
+                studentId: this.selectedStudentId,
+                studentName: this.studentLabel(this.selectedStudentId),
+                weekStart,
+                weekLabel: Calendar.formatDate(new Date(weekStart + 'T00:00:00')),
+                error: ''
+            };
+            this.$nextTick(() => window.ModalFocus.focusFirst(this.$refs.confirmModal));
+        },
+
+        closeConfirm() {
+            this.confirm = null;
+        },
+
         async clearWeek() {
+            const target = this.confirm;
+            if (!target || this.clearing) {
+                return;
+            }
             this.clearing = true;
             this.error = '';
             this.notice = '';
             try {
-                const weekStart = this.weekStartOf(this.weekDate);
-                const response = await fetch(`${this.intervalsBase(this.selectedStudentId)}/clear?weekStart=${weekStart}`, {
+                const response = await fetch(`${this.intervalsBase(target.studentId)}/clear?weekStart=${target.weekStart}`, {
                     method: 'POST',
                     headers: { 'X-School-ID': this.schoolId, 'X-XSRF-TOKEN': this.csrfToken() }
                 });
                 if (!response.ok) {
                     const classified = await this.classifyError(response);
-                    this.error = classified.message;
                     this.blocked = classified.blocking;
+                    if (classified.blocking) {
+                        this.confirm = null;
+                        this.error = classified.message;
+                    } else {
+                        target.error = classified.message;
+                    }
                     return;
                 }
+                this.confirm = null;
                 this.notice = 'بازه‌های این هفته پاک شد.';
                 await this.loadWeek();
             } catch (e) {
-                this.error = 'ارتباط با سرور برقرار نشد.';
+                target.error = 'ارتباط با سرور برقرار نشد.';
             } finally {
                 this.clearing = false;
             }

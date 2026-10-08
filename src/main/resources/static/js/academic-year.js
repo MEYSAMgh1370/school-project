@@ -15,6 +15,8 @@ document.addEventListener('alpine:init', () => {
         unattributed: { classes: 0, students: 0 },
         attributeYear: '',
         attributing: false,
+        // تأیید «نسبت دادن»: null یا { year, classes, students, error }
+        confirm: null,
         blocked: false,
         error: '',
         notice: '',
@@ -31,6 +33,7 @@ document.addEventListener('alpine:init', () => {
                 this.schoolId = e.detail.id;
                 this.error = '';
                 this.notice = '';
+                this.confirm = null;
                 // ذخیره‌ی در جریان (مدرسه‌ی قبلی) دیگر به این مدرسه ربطی ندارد
                 this.saveSeq++;
                 this.saving = false;
@@ -109,8 +112,33 @@ document.addEventListener('alpine:init', () => {
             }
         },
 
+        // نسبت دادنِ داده‌ی قبلی به یک سال برگشت‌پذیر نیست: اول تأیید (modal) گرفته می‌شود
+        askAttribute() {
+            if (this.attributing) {
+                return;
+            }
+            this.error = '';
+            this.notice = '';
+            if (!this.attributeYear) {
+                this.error = 'یک سال تحصیلی را انتخاب کنید.';
+                return;
+            }
+            this.confirm = {
+                year: this.attributeYear,
+                classes: this.unattributed.classes,
+                students: this.unattributed.students,
+                error: ''
+            };
+            this.$nextTick(() => window.ModalFocus.focusFirst(this.$refs.confirmModal));
+        },
+
+        closeConfirm() {
+            this.confirm = null;
+        },
+
         async attribute() {
-            if (!this.attributeYear || this.attributing) {
+            const target = this.confirm;
+            if (!target || this.attributing) {
                 return;
             }
             const schoolId = this.schoolId;
@@ -125,22 +153,24 @@ document.addEventListener('alpine:init', () => {
                         'X-School-ID': schoolId,
                         'X-XSRF-TOKEN': this.csrfToken()
                     },
-                    body: JSON.stringify({ academicYear: this.attributeYear })
+                    body: JSON.stringify({ academicYear: target.year })
                 });
                 if (schoolId !== this.schoolId) {
                     return;
                 }
                 if (!response.ok) {
-                    this.error = (await this.classifyError(response)).message;
+                    // خطا داخل modal نشان داده می‌شود (پشتِ لایه‌ی modal دیده نمی‌شد)
+                    target.error = (await this.classifyError(response)).message;
                     return;
                 }
                 const result = await response.json();
+                this.confirm = null;
                 this.notice = `کلاس‌ها و دانش‌آموزان قبلی به سال ${Calendar.digits(result.academicYear)} نسبت داده شد `
                     + `(${Calendar.digits(String(result.classes))} کلاس، ${Calendar.digits(String(result.students))} دانش‌آموز).`;
                 this.attributeYear = '';
                 await this.loadUnattributed();
             } catch (e) {
-                this.error = 'ارتباط با سرور برقرار نشد.';
+                target.error = 'ارتباط با سرور برقرار نشد.';
             } finally {
                 this.attributing = false;
             }
@@ -228,7 +258,17 @@ document.addEventListener('alpine:init', () => {
         },
 
         async save() {
+            if (this.saving) {
+                return;
+            }
+            if (this.selectedId === '') {
+                this.notice = '';
+                this.error = 'یک سال تحصیلی را انتخاب کنید.';
+                return;
+            }
             if (!this.canSave()) {
+                this.notice = '';
+                this.error = 'این سال هم‌اکنون سال تحصیلی جاری است؛ برای تغییر، سال دیگری را انتخاب کنید.';
                 return;
             }
             const schoolId = this.schoolId;

@@ -32,9 +32,17 @@ document.addEventListener('alpine:init', () => {
         },
 
         async submit() {
-            this.submitting = true;
+            if (this.submitting) {
+                return;
+            }
             this.resultMessage = '';
             this.resultType = '';
+            if (this.newPassword !== this.confirmPassword) {
+                this.resultType = 'danger';
+                this.resultMessage = 'رمزهای عبور یکسان نیستند.';
+                return;
+            }
+            this.submitting = true;
             try {
                 const response = await fetch('/api/auth/activate', {
                     method: 'POST',

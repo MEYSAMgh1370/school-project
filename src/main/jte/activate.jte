@@ -40,7 +40,7 @@
 
                             <div class="field">
                                 <div class="control">
-                                    <button class="button is-link is-fullwidth" type="submit" :disabled="!canSubmit" :class="{ 'is-loading': submitting }">
+                                    <button class="button is-link is-fullwidth" type="submit" :disabled="submitting" :class="{ 'is-loading': submitting }">
                                         فعال‌سازی حساب
                                     </button>
                                 </div>

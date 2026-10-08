@@ -27,6 +27,8 @@ document.addEventListener('alpine:init', () => {
         // یک ثبتِ پرداخت در حال انجام: فرمِ دوباره‌فرستاده‌شده (Enter دوبار) همان مبلغ را دوباره ثبت می‌کرد
         recordingPayment: false,
         backfilling: false,
+        // تأییدِ صدورِ گروهیِ فاکتور: null یا { year, error }
+        confirm: null,
         // شهریه و فاکتور به‌تفکیک سال (academic-year.md فاز ۲): سال‌های قابل‌انتخاب و سالِ انتخاب‌شده؛
         // مدرسه‌ای که سالِ جاری ندارد فهرست خالی دارد و مثل پیش از فاز ۲ بدون سال کار می‌کند
         years: [],
@@ -49,6 +51,7 @@ document.addEventListener('alpine:init', () => {
                 this.schoolId = e.detail.id;
                 this.error = '';
                 this.notice = '';
+                this.confirm = null;
                 // داده‌های مدرسه‌ی قبلی تا پاسخِ مدرسه‌ی تازه نمایش داده نمی‌شوند
                 this.invoices = [];
                 this.students = [];
@@ -362,7 +365,12 @@ document.addEventListener('alpine:init', () => {
 
         // اقدامِ صریحِ ادمین: شهریه و فاکتورهای «بدون سال» را به یک سال نسبت می‌دهد
         async attribute() {
+            if (this.attributing) {
+                return;
+            }
             if (!this.attributeYear) {
+                this.notice = '';
+                this.error = 'یک سال تحصیلی را انتخاب کنید.';
                 return;
             }
             this.attributing = true;
@@ -480,7 +488,25 @@ document.addEventListener('alpine:init', () => {
 
         // صدور فاکتور برای دانش‌آموزانی که فاکتوری ندارند (مثلاً قبل از تنظیم
         // شهریه ثبت‌نام شده‌اند) - backfill سمت سرور idempotent است
+        askBackfill() {
+            if (this.backfilling) {
+                return;
+            }
+            this.error = '';
+            this.notice = '';
+            this.confirm = { year: this.year, error: '' };
+            this.$nextTick(() => window.ModalFocus.focusFirst(this.$refs.confirmModal));
+        },
+
+        closeConfirm() {
+            this.confirm = null;
+        },
+
         async backfill() {
+            const target = this.confirm;
+            if (!target || this.backfilling) {
+                return;
+            }
             this.backfilling = true;
             this.error = '';
             this.notice = '';
@@ -494,16 +520,18 @@ document.addEventListener('alpine:init', () => {
                 });
                 if (!response.ok) {
                     const classified = await this.classifyError(response);
-                    this.error = classified.message;
+                    // خطا داخل modal نشان داده می‌شود (پشتِ لایه‌ی modal دیده نمی‌شد)
+                    target.error = classified.message;
                     return;
                 }
                 const result = await response.json();
+                this.confirm = null;
                 this.notice = result.issuedCount > 0
                     ? `${result.issuedCount} فاکتور جدید صادر شد.`
                     : 'همه‌ی دانش‌آموزان برای این سال از قبل فاکتور دارند - چیزی صادر نشد.';
                 await this.load();
             } catch (e) {
-                this.error = 'ارتباط با سرور برقرار نشد.';
+                target.error = 'ارتباط با سرور برقرار نشد.';
             } finally {
                 this.backfilling = false;
             }

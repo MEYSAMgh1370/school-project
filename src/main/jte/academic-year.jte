@@ -2,7 +2,7 @@
 
 @param NavbarModel navbar
 
-@template.layout.main(title = "سال تحصیلی", scripts = java.util.List.of("/js/navbar.js", "/js/jalali.js", "/js/calendar.js", "/js/academic-year.js"), content = @`
+@template.layout.main(title = "سال تحصیلی", scripts = java.util.List.of("/js/navbar.js", "/js/jalali.js", "/js/calendar.js", "/js/modal-focus.js", "/js/academic-year.js"), content = @`
 @template.layout.navbar(navbar = navbar)
 
 <section class="section" id="main-content" role="main" tabindex="-1" x-data="academicYearPage()">
@@ -49,7 +49,7 @@
                                 </div>
                                 <div class="control app-control-align-end">
                                     <button class="button is-link" type="submit"
-                                            :disabled="!canSave()" :class="{ 'is-loading': saving }">
+                                            :disabled="saving" :class="{ 'is-loading': saving }">
                                         ثبت سال تحصیلی
                                     </button>
                                 </div>
@@ -88,7 +88,7 @@
                                 </div>
                                 <div class="control app-control-align-end">
                                     <button class="button is-warning" type="button" id="academicYearAttributeButton"
-                                            @click="attribute()" :disabled="!attributeYear || attributing"
+                                            @click="askAttribute()" :disabled="attributing"
                                             :class="{ 'is-loading': attributing }">
                                         نسبت دادن
                                     </button>
@@ -114,6 +114,37 @@
                         </div>
                     </div>
                 </template>
+
+                <%-- ------------------------------------------------ تأیید نسبت دادن --%>
+                <div class="modal" role="dialog" aria-modal="true" aria-labelledby="academicYearConfirmTitle"
+                     tabindex="-1" x-ref="confirmModal" :class="{ 'is-active': confirm }" x-cloak
+                     @keydown.tab="window.ModalFocus.trap($event, $el)" @keydown.escape.stop="closeConfirm">
+                    <div class="modal-background" @click="closeConfirm"></div>
+                    <div class="modal-card">
+                        <header class="modal-card-head">
+                            <p class="modal-card-title" id="academicYearConfirmTitle">تأیید نسبت دادن به سال</p>
+                            <button class="delete" type="button" aria-label="بستن" @click="closeConfirm"></button>
+                        </header>
+                        <section class="modal-card-body">
+                            <div class="notification is-danger" role="alert"
+                                 x-show="confirm && confirm.error"><span class="app-notice">@template.layout.icon(name = "alert", size = 20)<span x-text="confirm ? confirm.error : ''"></span></span></div>
+                            <p class="has-text-weight-semibold">
+                                <span x-text="confirm ? Calendar.digits(String(confirm.classes)) : ''"></span> کلاس و
+                                <span x-text="confirm ? Calendar.digits(String(confirm.students)) : ''"></span> دانش‌آموزِ قبلی به سال
+                                <span dir="ltr" x-text="confirm ? Calendar.digits(confirm.year) : ''"></span>
+                                نسبت داده شوند؟
+                            </p>
+                            <p class="has-text-grey is-size-7">
+                                بعد از این کار، این کلاس‌ها و دانش‌آموزان جزو آن سال حساب می‌شوند و ارتقای سالِ بعد و ثبت‌نامِ سال‌به‌سال برای این مدرسه شروع می‌شود.
+                            </p>
+                        </section>
+                        <footer class="modal-card-foot">
+                            <button class="button is-warning" type="button" id="academicYearAttributeConfirm"
+                                    :class="{ 'is-loading': attributing }" @click="attribute">نسبت دادن</button>
+                            <button class="button" type="button" @click="closeConfirm">انصراف</button>
+                        </footer>
+                    </div>
+                </div>
             `)
     </div>
 </section>

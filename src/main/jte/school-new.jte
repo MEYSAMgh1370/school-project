@@ -77,7 +77,7 @@
 
                 <div class="field is-grouped">
                     <div class="control">
-                        <button class="button is-link" type="submit" :disabled="!canSubmit" :class="{ 'is-loading': submitting }">
+                        <button class="button is-link" type="submit" :disabled="submitting" :class="{ 'is-loading': submitting }">
                             ثبت مدرسه
                         </button>
                     </div>

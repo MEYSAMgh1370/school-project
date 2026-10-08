@@ -123,7 +123,7 @@
                                             </div>
                                             <div class="field">
                                                 <button class="button is-link" type="submit"
-                                                        :disabled="!manualSectionForm.topicId || manualSectionForm.questionIds.length === 0"
+                                                        :disabled="submittingManualSection"
                                                         :class="{ 'is-loading': submittingManualSection }">
                                                     افزودن بخش
                                                 </button>
@@ -197,7 +197,7 @@
                                             </div>
                                             <div class="control">
                                                 <button class="button is-link" type="button"
-                                                        :disabled="!assignStudentIdInput"
+                                                        :disabled="submittingAssignment"
                                                         :class="{ 'is-loading': submittingAssignment }"
                                                         @click="assignStudent(exam.id)">
                                                     تخصیص
@@ -316,7 +316,7 @@
                                 </div>
                                 <div class="control app-control-align-end">
                                     <button class="button is-link" type="button"
-                                            :disabled="!weeklyForm.studentId"
+                                            :disabled="generatingWeekly"
                                             :class="{ 'is-loading': generatingWeekly }" @click="generateWeekly">
                                         ساخت آزمون هفتگی
                                     </button>

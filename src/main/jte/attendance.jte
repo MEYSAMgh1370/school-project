@@ -23,7 +23,7 @@
             </div>
             <div class="level-right" x-cloak x-show="schoolId">
                 <button class="button is-link" type="button" id="attendanceSave"
-                        :class="{ 'is-loading': saving }" :disabled="!canSave()" @click="save">ثبت حضور و غیاب</button>
+                        :class="{ 'is-loading': saving }" :disabled="saving" @click="save">ثبت حضور و غیاب</button>
             </div>
         </div>
 

@@ -42,7 +42,7 @@
                                 <div class="field">
                                     <div class="control">
                                         <button class="button is-link is-fullwidth" type="submit"
-                                                :disabled="!canSubmitPassword" :class="{ 'is-loading': submittingPassword }">
+                                                :disabled="submittingPassword" :class="{ 'is-loading': submittingPassword }">
                                             ورود
                                         </button>
                                     </div>
@@ -68,7 +68,7 @@
                                     <div class="field">
                                         <div class="control">
                                             <button class="button is-link is-fullwidth" type="submit"
-                                                    :disabled="!canRequestOtp" :class="{ 'is-loading': submittingOtp }">
+                                                    :disabled="submittingOtp" :class="{ 'is-loading': submittingOtp }">
                                                 دریافت کد
                                             </button>
                                         </div>
@@ -89,7 +89,7 @@
                                     <div class="field">
                                         <div class="control">
                                             <button class="button is-link is-fullwidth" type="submit"
-                                                    :disabled="!canVerifyOtp" :class="{ 'is-loading': submittingOtp }">
+                                                    :disabled="submittingOtp" :class="{ 'is-loading': submittingOtp }">
                                                 ورود
                                             </button>
                                         </div>
