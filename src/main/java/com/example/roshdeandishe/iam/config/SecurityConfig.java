@@ -57,6 +57,19 @@ import java.util.function.Supplier;
 @Configuration
 public class SecurityConfig {
 
+    /**
+     * کوکی XSRF-TOKEN عمداً قابل‌خواندن برای JavaScript است (httpOnly=false)؛ صفحه
+     * باید آن را بخواند و در هدر برگرداند. SameSite=Lax صریح است: Spring برای این
+     * کوکی مقداری نمی‌گذارد و مرورگر خودش پیش‌فرض را انتخاب می‌کند، در حالی که کوکی
+     * نشست همین مقدار را صریحاً دارد. Secure هم از درخواست HTTPS (با forwarded
+     * headers) می‌آید و نیازی به تنظیم دستی نیست.
+     */
+    static CookieCsrfTokenRepository csrfCookieRepository() {
+        CookieCsrfTokenRepository repository = CookieCsrfTokenRepository.withHttpOnlyFalse();
+        repository.setCookieCustomizer(cookie -> cookie.sameSite("Lax"));
+        return repository;
+    }
+
     @Bean
     public PasswordEncoder passwordEncoder() {
         return new BCryptPasswordEncoder();
@@ -71,7 +84,7 @@ public class SecurityConfig {
     public SecurityFilterChain securityFilterChain(HttpSecurity http, JwtTokenProvider jwtTokenProvider) throws Exception {
         http
                 .csrf(csrf -> csrf
-                        .csrfTokenRepository(CookieCsrfTokenRepository.withHttpOnlyFalse())
+                        .csrfTokenRepository(csrfCookieRepository())
                         .csrfTokenRequestHandler(new SpaCsrfTokenRequestHandler())
                         // وب‌هوک بله را از CSRF مستثنا می‌کند: فراخوان‌کننده سرور
                         // بله است، نه یک مرورگر با کوکی XSRF-TOKEN - امنیت این
