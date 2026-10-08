@@ -99,6 +99,11 @@
                                 </div>
                             </template>
                         </div>
+                        <div class="mt-3" x-show="remainingCount() > 0">
+                            <button class="button is-light" type="button" @click="showMore">
+                                نمایش بیشتر (<span x-text="remainingLabel()"></span> مورد دیگر)
+                            </button>
+                        </div>
                         <p class="has-text-grey mt-3" x-show="visibleMembers().length === 0">
                             عضوی با این جست‌وجو پیدا نشد.
                         </p>
