@@ -11,6 +11,11 @@ document.addEventListener('alpine:init', () => {
         selectedStudentId: null,
         // جست‌وجوی آزاد روی نام، ایمیل و کلاس (فهرست ردیفی؛ DESIGN.md §6)
         filterText: '',
+        // chip وضعیت (DESIGN.md §5a): 'all' یا یکی از کدهای وضعیتِ دانش‌آموز
+        statusChip: 'all',
+        // صفحه‌بندی سمت کلاینت (DESIGN.md §6): ۲۵ ردیف در هر بار، «نمایش بیشتر» ۲۵ تا اضافه می‌کند
+        pageSize: 25,
+        shown: 25,
         guardiansByStudent: {},
         guardiansLoading: false,
         guardianForm: { guardianUserId: '' },
@@ -30,12 +35,17 @@ document.addEventListener('alpine:init', () => {
         init() {
             const saved = parseInt(localStorage.getItem('selectedSchoolId') || '', 10);
             this.schoolId = Number.isInteger(saved) ? saved : null;
+            // با هر تغییرِ جست‌وجو یا chip، صفحه‌بندی از اول شروع می‌شود
+            this.$watch('filterText', () => { this.shown = this.pageSize; });
+            this.$watch('statusChip', () => { this.shown = this.pageSize; });
             window.addEventListener('school-changed', (e) => {
                 this.schoolId = e.detail.id;
                 this.error = '';
                 this.notice = '';
                 this.selectedStudentId = null;
                 this.filterText = '';
+                this.statusChip = 'all';
+                this.shown = this.pageSize;
                 this.guardiansByStudent = {};
                 this.pendingInviteStudent = null;
                 this.pendingInviteResult = null;
@@ -46,16 +56,55 @@ document.addEventListener('alpine:init', () => {
             }
         },
 
-        visibleStudents() {
+        // ارقام فارسی برای نمایش، بدون وابستگی به calendar.js
+        fa(value) {
+            return Number(value).toLocaleString('fa-IR-u-nu-arabext');
+        },
+
+        statusOf(student) {
+            return student.status || 'ACTIVE';
+        },
+
+        // فهرست فقط ACTIVE و PENDING برمی‌گرداند (AcademicFacadeImpl.listStudents)؛
+        // برچسبِ PENDING همان است که classLabel برای دانش‌آموزِ بدون کلاس نشان می‌دهد
+        chips() {
+            return [
+                { key: 'all', label: 'همه', count: this.students.length },
+                { key: 'ACTIVE', label: 'در کلاس', count: this.students.filter(s => this.statusOf(s) === 'ACTIVE').length },
+                { key: 'PENDING', label: 'در انتظار جا دادن در کلاس', count: this.students.filter(s => this.statusOf(s) === 'PENDING').length }
+            ];
+        },
+
+        selectChip(key) {
+            this.statusChip = key;
+        },
+
+        // فهرستِ فیلترشده (جست‌وجو + chip)، پیش از صفحه‌بندی
+        filteredStudents() {
             const query = this.filterText.trim();
-            if (!query) {
-                return this.students;
-            }
-            return this.students.filter(student => ListSearch.matches(query, [
-                this.studentName(student.userId),
-                this.studentEmail(student.userId),
-                this.classLabel(student)
-            ]));
+            return this.students.filter(student => {
+                if (this.statusChip !== 'all' && this.statusOf(student) !== this.statusChip) {
+                    return false;
+                }
+                return !query || ListSearch.matches(query, [
+                    this.studentName(student.userId),
+                    this.studentEmail(student.userId),
+                    this.classLabel(student)
+                ]);
+            });
+        },
+
+        // ردیف‌های نمایش‌داده‌شده: فهرستِ فیلترشده تا سقفِ shown
+        visibleStudents() {
+            return this.filteredStudents().slice(0, this.shown);
+        },
+
+        remainingCount() {
+            return Math.max(0, this.filteredStudents().length - this.shown);
+        },
+
+        showMore() {
+            this.shown += this.pageSize;
         },
 
         csrfToken() {

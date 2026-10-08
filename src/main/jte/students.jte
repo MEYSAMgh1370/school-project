@@ -2,7 +2,7 @@
 
 @param NavbarModel navbar
 
-@template.layout.main(title = "دانش‌آموزان مدرسه", scripts = java.util.List.of("/js/navbar.js", "/js/digits.js", "/js/member-names.js", "/js/list-search.js", "/js/students.js"), content = @`
+@template.layout.main(title = "دانش‌آموزان مدرسه", styles = java.util.List.of("/css/grades.css"), scripts = java.util.List.of("/js/navbar.js", "/js/digits.js", "/js/member-names.js", "/js/list-search.js", "/js/students.js"), content = @`
 @template.layout.navbar(navbar = navbar)
 
 <section class="section" id="main-content" role="main" tabindex="-1"
@@ -94,6 +94,16 @@
                             </div>
                         </div>
 
+                        <div class="app-chips" role="group" aria-label="فیلتر فهرست">
+                            <template x-for="item in chips()" :key="item.key">
+                                <button class="app-chip" type="button" :class="{ 'is-selected': statusChip === item.key }"
+                                        :aria-pressed="statusChip === item.key ? 'true' : 'false'" @click="selectChip(item.key)">
+                                    <span x-text="item.label"></span>
+                                    (<span x-text="fa(item.count)"></span>)
+                                </button>
+                            </template>
+                        </div>
+
                         <div class="app-list" role="list">
                             <template x-for="student in visibleStudents()" :key="student.studentId">
                                 <div class="app-student-row" role="listitem">
@@ -113,7 +123,10 @@
                                 </div>
                             </template>
                         </div>
-                        <p class="has-text-grey mt-3" x-show="visibleStudents().length === 0">
+                        <button class="button is-light mt-3" type="button" x-show="filteredStudents().length > shown"
+                                @click="showMore()"
+                                x-text="'نمایش بیشتر (' + remainingCount().toLocaleString('fa-IR-u-nu-arabext') + ' مورد دیگر)'"></button>
+                        <p class="has-text-grey mt-3" x-show="filteredStudents().length === 0">
                             دانش‌آموزی با این جست‌وجو پیدا نشد.
                         </p>
                     </div>

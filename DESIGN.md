@@ -432,9 +432,13 @@ list rendered all its rows with no errors: load 210–800 ms, search response
 130–240 ms. **Exams** took 6.5 s, because all 50 management panels were built,
 hidden, at page load, each with the full student and question lists. The panel
 is now built only for the opened exam (`expandedExams()`), and the same page
-loads in about 0.3 s. **Open gap:** §6 asks for pagination or filter chips
-above 25 rows; the lists show every row with a search box only (grades has the
-chips). That is a design decision, not a bug fix, and is not done here.
+loads in about 0.3 s. **Resolved 2026-10-08 (§6):** the lists over 25 rows
+(students, members, finance invoices, expenses, curriculum) render 25 rows at a
+time with «نمایش بیشتر (N مورد دیگر)». Students and finance also have status
+chips (`app-chips`, as on grades). The counter resets on search, chip, filter or
+school change, and not on reload, so an action does not collapse the list.
+Open: the ACTIVE chip label on students («در کلاس») was chosen in the code, not
+decided by the school.
 
 **List row.** 56px minimum height, label at inline-start, optional value
 (e.g. the current academic year) and a `‹` glyph (`.app-dir-glyph`) at
