@@ -54,7 +54,7 @@
                                         <div class="select is-fullwidth" x-cloak x-show="years.length > 0">
                                             <select id="gradeYear" dir="ltr" x-model="filter.academicYear" :disabled="years.length === 0">
                                                 <template x-for="year in years" :key="year">
-                                                    <option :value="year" x-text="year"></option>
+                                                    <option :value="year" x-text="Calendar.digits(year)"></option>
                                                 </template>
                                             </select>
                                         </div>
@@ -102,8 +102,7 @@
                                         </p>
 
                                         <%-- مرور پس از ثبتِ ناموفق (DESIGN.md §5a): خلاصه با شمارش، چه اشتباهی شده و چه باید کرد --%>
-                                        <div class="notification is-danger" role="alert" x-show="reviewSummary"
-                                             x-text="reviewSummary"></div>
+                                        <div class="notification is-danger" role="alert" x-show="reviewSummary"><span class="app-notice">@template.layout.icon(name = "alert", size = 20)<span x-text="reviewSummary"></span></span></div>
 
                                         <%-- نمای فهرست --%>
                                         <div x-show="view === 'list'">
@@ -141,7 +140,7 @@
                                                             <p class="is-size-7 has-text-grey" x-show="row.previous">
                                                                 نوبت اول: <span x-text="row.previous"></span>
                                                             </p>
-                                                            <p class="help is-danger" x-show="row.validationError" x-text="row.validationError"></p>
+                                                            <p class="help is-danger" role="alert" x-show="row.validationError"><span class="app-notice">@template.layout.icon(name = "alert", size = 16)<span x-text="row.validationError"></span></span></p>
                                                             <p class="help" x-show="row.suggestion">
                                                                 شاید منظورتان <span x-text="faNumber(row.suggestion)"></span> بوده؟
                                                                 <button class="button is-light is-small" type="button"
@@ -222,8 +221,7 @@
                                                             </select>
                                                         </div>
                                                     </div>
-                                                    <p class="help is-danger" x-show="focusRow().validationError"
-                                                       x-text="focusRow().validationError"></p>
+                                                    <p class="help is-danger" role="alert" x-show="focusRow().validationError"><span class="app-notice">@template.layout.icon(name = "alert", size = 16)<span x-text="focusRow().validationError"></span></span></p>
                                                     <p class="help" x-show="focusRow().suggestion">
                                                         شاید منظورتان <span x-text="faNumber(focusRow().suggestion)"></span> بوده؟
                                                         <button class="button is-light is-small" type="button"

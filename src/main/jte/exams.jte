@@ -77,7 +77,7 @@
                                                 <tr>
                                                     <td x-text="topicName(section.topicId)"></td>
                                                     <td x-text="section.name || '—'"></td>
-                                                    <td dir="ltr" x-text="section.questionCount"></td>
+                                                    <td dir="ltr" x-text="Calendar.digits(section.questionCount)"></td>
                                                 </tr>
                                             </template>
                                             </tbody>
@@ -214,7 +214,7 @@
                                             <template x-for="attempt in attemptedStudents" :key="attempt.studentId">
                                                 <tr>
                                                     <td x-text="studentLabel(attempt.studentId)"></td>
-                                                    <td dir="ltr" x-text="attempt.startedAt"></td>
+                                                    <td dir="ltr" x-text="Calendar.formatDate(attempt.startedAt) + ' ' + new Date(attempt.startedAt).toLocaleTimeString('fa-IR', { hour: '2-digit', minute: '2-digit', hourCycle: 'h23' })"></td>
                                                     <td>
                                                         <button type="button" class="button is-small"
                                                                 :class="{ 'is-link': expandedResultStudentId === attempt.studentId }"
@@ -235,7 +235,7 @@
                                             <div class="box">
                                                 <p class="mb-3">
                                                     نمره‌ی کل:
-                                                    <strong dir="ltr" x-text="studentResult.overallScore"></strong>
+                                                    <strong dir="ltr" x-text="Calendar.digits(studentResult.overallScore)"></strong>
                                                 </p>
                                                 <div class="table-container">
                                                 <table class="table is-fullwidth is-narrow">
@@ -248,10 +248,10 @@
                                                     <template x-for="section in studentResult.sections" :key="section.sectionId">
                                                         <tr>
                                                             <td x-text="section.name || topicName(section.topicId)"></td>
-                                                            <td dir="ltr" x-text="section.correctCount"></td>
-                                                            <td dir="ltr" x-text="section.incorrectCount"></td>
-                                                            <td dir="ltr" x-text="section.unansweredCount"></td>
-                                                            <td dir="ltr" x-text="section.score"></td>
+                                                            <td dir="ltr" x-text="Calendar.digits(section.correctCount)"></td>
+                                                            <td dir="ltr" x-text="Calendar.digits(section.incorrectCount)"></td>
+                                                            <td dir="ltr" x-text="Calendar.digits(section.unansweredCount)"></td>
+                                                            <td dir="ltr" x-text="Calendar.digits(section.score)"></td>
                                                         </tr>
                                                     </template>
                                                     </tbody>
@@ -325,7 +325,7 @@
 
                             <template x-if="weeklyResult">
                                 <div class="box">
-                                    <p class="mb-2">آزمون هفتگی برای هفته‌ی <span dir="ltr" x-text="weeklyResult.weekStart"></span> ساخته شد:</p>
+                                    <p class="mb-2">آزمون هفتگی برای هفته‌ی <span dir="ltr" x-text="Calendar.formatDate(weeklyResult.weekStart)"></span> ساخته شد:</p>
                                     <div class="table-container">
                                     <table class="table is-fullwidth is-narrow">
                                         <thead><tr><th scope="col">سرفصل</th><th scope="col">تعداد سؤال</th></tr></thead>
@@ -333,7 +333,7 @@
                                         <template x-for="section in weeklyResult.sections" :key="section.id">
                                             <tr>
                                                 <td x-text="topicName(section.topicId)"></td>
-                                                <td dir="ltr" x-text="section.questionCount"></td>
+                                                <td dir="ltr" x-text="Calendar.digits(section.questionCount)"></td>
                                             </tr>
                                         </template>
                                         </tbody>

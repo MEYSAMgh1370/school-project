@@ -49,7 +49,7 @@
                             <template x-if="results[exam.id]">
                                 <div class="mt-3">
                                     <p class="mb-2">
-                                        نمره‌ی کل: <strong dir="ltr" x-text="results[exam.id].overallScore"></strong>
+                                        نمره‌ی کل: <strong dir="ltr" x-text="Calendar.digits(results[exam.id].overallScore)"></strong>
                                     </p>
                                     <div class="table-container">
                                     <table class="table is-fullwidth is-narrow">
@@ -57,13 +57,13 @@
                                         <tr><th scope="col">بخش</th><th scope="col">درست</th><th scope="col">غلط</th><th scope="col">بی‌پاسخ</th><th scope="col">نمره</th></tr>
                                         </thead>
                                         <tbody>
-                                        <template x-for="section in results[exam.id].sections" :key="section.sectionId">
+                                        <template x-for="(section, sectionIndex) in results[exam.id].sections" :key="section.sectionId">
                                             <tr>
-                                                <td x-text="section.name || 'سرفصل #' + section.topicId"></td>
-                                                <td dir="ltr" x-text="section.correctCount"></td>
-                                                <td dir="ltr" x-text="section.incorrectCount"></td>
-                                                <td dir="ltr" x-text="section.unansweredCount"></td>
-                                                <td dir="ltr" x-text="section.score"></td>
+                                                <td x-text="section.name || 'بخش ' + Calendar.digits(sectionIndex + 1)"></td>
+                                                <td dir="ltr" x-text="Calendar.digits(section.correctCount)"></td>
+                                                <td dir="ltr" x-text="Calendar.digits(section.incorrectCount)"></td>
+                                                <td dir="ltr" x-text="Calendar.digits(section.unansweredCount)"></td>
+                                                <td dir="ltr" x-text="Calendar.digits(section.score)"></td>
                                             </tr>
                                         </template>
                                         </tbody>

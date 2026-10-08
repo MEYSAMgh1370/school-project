@@ -83,7 +83,7 @@
                                 <tbody>
                                 <template x-for="grade in (selectedGroup() ? selectedGroup().grades : [])" :key="grade.id">
                                     <tr>
-                                        <td dir="ltr" x-text="grade.academicYear"></td>
+                                        <td dir="ltr" x-text="Calendar.digits(grade.academicYear)"></td>
                                         <td x-text="termLabel(grade.term)"></td>
                                         <td x-text="grade.courseName || 'نمره‌ی کل'" :class="{ 'has-text-grey': !grade.courseName }"></td>
                                         <td x-text="gradeValue(grade)"></td>

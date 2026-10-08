@@ -204,7 +204,7 @@
                                             <div class="app-expense-row__main">
                                                 <span class="app-expense-row__name" x-text="Money.formatAmount(expense.amount)"></span>
                                                 <span class="is-size-7 has-text-grey" x-text="categoryName(expense.categoryId) + ' · ' + vendorName(expense.vendorId)"></span>
-                                                <span class="is-size-7 has-text-grey" dir="ltr" x-text="expense.expenseDate"></span>
+                                                <span class="is-size-7 has-text-grey" dir="ltr" x-text="Calendar.formatDate(expense.expenseDate)"></span>
                                             </div>
                                             <span class="tag" :class="statusClass(expense.status)" x-text="statusLabel(expense.status)"></span>
                                             <div class="app-expense-row__actions">
@@ -244,7 +244,7 @@
                                     <template x-for="attachment in attachments" :key="attachment.id">
                                         <tr>
                                             <td x-text="attachment.fileName"></td>
-                                            <td dir="ltr" x-text="Math.round(attachment.sizeBytes / 1024) + ' KB'"></td>
+                                            <td dir="ltr" x-text="Calendar.digits(Math.round(attachment.sizeBytes / 1024)) + ' کیلوبایت'"></td>
                                             <td>
                                                 <div class="buttons are-small">
                                                     <button class="button" @click="downloadAttachment(expense, attachment)">دانلود</button>
@@ -315,7 +315,7 @@
                                     <tr>
                                         <td x-text="summaryRowLabel(row)"></td>
                                         <td x-text="Money.formatAmount(row.total)"></td>
-                                        <td dir="ltr" x-text="row.count"></td>
+                                        <td dir="ltr" x-text="Calendar.digits(row.count)"></td>
                                     </tr>
                                 </template>
                                 </tbody>
