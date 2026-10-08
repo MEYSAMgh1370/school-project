@@ -200,6 +200,12 @@ document.addEventListener('alpine:init', () => {
             }
         },
 
+        // پنلِ مدیریتِ آزمون فقط برای آزمونِ بازشده ساخته می‌شود: پنل‌های بسته (با همه‌ی فهرست‌های تودرتو) در
+        // DOM نمی‌آیند. پیش از این همه‌ی پنل‌ها با x-show ساخته می‌شدند و یک صفحه‌ی ۵۰ آزمونی ۶ ثانیه طول می‌کشید.
+        expandedExams() {
+            return this.exams.filter(exam => exam.id === this.expandedExamId);
+        },
+
         async toggleExam(examId) {
             if (this.expandedExamId === examId) {
                 this.expandedExamId = null;

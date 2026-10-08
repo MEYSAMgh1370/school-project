@@ -407,6 +407,15 @@ class is not listed. Digits: one helper, `static/js/digits.js` (`Digits.toAscii`
 used by money, grades and list search; `page-scripts.test.js` checks each page loads
 the helpers it uses.
 
+**Large-data check (2026-10-08, 200 rows per list, Chromium, 390px).** Every
+list rendered all its rows with no errors: load 210–800 ms, search response
+130–240 ms. **Exams** took 6.5 s, because all 50 management panels were built,
+hidden, at page load, each with the full student and question lists. The panel
+is now built only for the opened exam (`expandedExams()`), and the same page
+loads in about 0.3 s. **Open gap:** §6 asks for pagination or filter chips
+above 25 rows; the lists show every row with a search box only (grades has the
+chips). That is a design decision, not a bug fix, and is not done here.
+
 **List row.** 56px minimum height, label at inline-start, optional value
 (e.g. the current academic year) and a `‹` glyph (`.app-dir-glyph`) at
 inline-end, hairline divider. For destinations used rarely.
