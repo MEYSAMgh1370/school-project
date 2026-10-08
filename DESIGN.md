@@ -269,6 +269,26 @@ Hues stay; lightness and saturation change.
   no dark control border. **This file now sets one:** `hsl(215 12% 48%)`,
   3.9:1 on `#151A21` — a value the implementation chose; amend it here if you
   prefer another.
+- **Hover, focus and error states swept 2026-10-08** (same harness, both
+  schemes, all 32 pages plus the interactive states: guardian panel, payment
+  panel, exam management panel, classes roster, expense attachments, grade
+  focus and review modes). Four changes came out of it, all in `app.css`:
+  (1) Bulma lightens a button on hover in dark by +5%; on the tinted
+  `.button.is-light` that dropped the label to 4.12:1, so the tint darkens
+  on hover instead (`--bulma-button-hover-background-l-delta: -3%`; 24%/92%
+  text is 5.52:1 at rest). (2) The dark focus lightness is raised to 60%
+  (`--bulma-focus-l`): the primary focus border was 2.38:1 on the card. (3)
+  The global `:focus-visible` outline is `--bulma-link-text`, not the primary
+  fill, which is 2.4:1 in dark. (4) Bulma sets `outline: none` on buttons,
+  inputs and selects and draws a 25%-alpha halo that is invisible on a filled
+  button; a control `:focus-visible` rule after Bulma restores a 2px outline
+  with a 2px offset. On the school-entry teal hero the link-text ring is the
+  same teal (1:1), so the ring there is white. After these changes the sweep
+  has no focus failures except two date inputs (`datetime-local`, `date`) that
+  report no ring; their computed style does carry a solid outline and the
+  focus shadow in both schemes, so the script is at fault there, not the page.
+  **Still not measured:** pressed states and pages with real data.
+  The sweep is a floor, as above.
 
 ---
 

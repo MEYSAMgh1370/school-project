@@ -366,6 +366,20 @@
     --bulma-button-color-l: 92%;
   }
 
+  /* Bulma lightens a button on hover in the dark scheme (+5%). On a tinted
+     fill that lifts the label to 4.1:1 (measured on the expanded «پرداخت‌ها»
+     toggle after a click). The tint keeps its fill on hover; the darkening
+     below still shows the state. */
+  .button.is-light {
+    --bulma-button-hover-background-l-delta: -3%;
+  }
+
+  /* Focused inputs use Bulma's focus lightness; the dark primary is 2.4:1 on
+     the dark card (WCAG 1.4.11 needs 3:1). A lifted focus teal clears it. */
+  :root {
+    --bulma-focus-l: 60%;
+  }
+
   .tag:is(.is-primary, .is-link, .is-info, .is-success, .is-warning, .is-danger).is-light {
     --bulma-tag-background-l: 24%;
     --bulma-tag-color-l: 92%;
@@ -470,9 +484,30 @@
    (DESIGN.md §2): 2px primary outline + 3px primary-soft halo. The same
    --focus-ring marks the "current item" in data entry. */
 :focus-visible {
-  outline: 2px solid hsl(var(--bulma-primary-h) var(--bulma-primary-s) var(--bulma-primary-l));
+  /* link-text, not the primary fill: in dark the fill is 2.4:1 on the card; the
+     text variant is lifted per scheme and clears 3:1 (DESIGN.md §7). */
+  outline: 2px solid var(--bulma-link-text);
   outline-offset: 0;
   box-shadow: var(--focus-ring);
+}
+
+/* Bulma removes the outline on buttons, inputs and selects and draws a 25%-alpha
+   halo instead; on a filled button the halo is transparent and the border is the
+   fill colour, so keyboard focus was invisible (measured 2026-10-08). The same ring
+   as above, placed after Bulma so it wins at equal specificity. */
+.button:focus-visible,
+.input:focus-visible,
+.textarea:focus-visible,
+.select select:focus-visible {
+  outline: 2px solid var(--bulma-link-text);
+  outline-offset: 2px;
+  box-shadow: var(--focus-ring);
+}
+
+/* The school-entry hero is a teal field; its link-text ring is the same teal, so
+   focus was invisible there (ratio 1:1). White reads on the field in both schemes. */
+.hero.is-link :is(a, .button):focus-visible {
+  outline-color: #fff;
 }
 
 /* Placeholders carry no meaning (the label does); weak ink keeps them 4.5:1. */
