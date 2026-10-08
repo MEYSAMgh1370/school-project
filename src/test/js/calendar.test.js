@@ -114,10 +114,13 @@ test('fa: output is unchanged - names, digits and date text are exactly what the
     // W2b: صفحه‌ها از Jalali.toPersianDigits به Calendar.digits رفتند. در fa این «همان تابع»
     // است، نه یک تابع هم‌ارز - پس خروجی فارسیِ آن ۱۱ فراخوان ضرورتاً یکی می‌ماند.
     assert.equal(fa.digits, Jalali.toPersianDigits);
+    // DESIGN §8: ماه و روز دو رقمی، مثل «۱۴۰۵/۰۴/۲۲»
+    assert.equal(fa.formatDate(new Date(2026, 2, 21, 12)), '۱۴۰۵/۰۱/۰۱');
+    assert.equal(fa.formatDate(new Date(2026, 6, 20, 12)), '۱۴۰۵/۰۴/۲۹');
+    assert.equal(fa.formatDate(new Date(2026, 9, 20, 12)), '۱۴۰۵/۰۷/۲۸');
     for (const value of ['2026-10-03T08:15:00Z', '2026-10-05', new Date(2026, 2, 21, 12), 1700000000000]) {
-        assert.equal(fa.formatDate(value), new Date(value).toLocaleDateString('fa-IR'));
+        assert.match(fa.formatDate(value), /^[۰-۹]{4}\/[۰-۹]{2}\/[۰-۹]{2}$/);
     }
-    assert.equal(fa.formatDate(new Date(2026, 2, 21, 12)), '۱۴۰۵/۱/۱');
 });
 
 // منطق قدیمیِ weekRangeLabel در my-study-plan.js، عیناً (فقط نام فیلدها همان jy/jm/jd

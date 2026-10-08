@@ -373,9 +373,10 @@ People: search over name, email and role; each row shows the status in words
 plain `is-light` buttons. Classes: rows with year, grade, section and teacher;
 the roster stays a panel below. Finance: invoice rows with status in words, a
 search over student name, and the payments panels unchanged. Money amounts
-still come from `money.js`, which currently prints Latin commas (`12,000,000`);
-DESIGN.md §8 asks for `٬` with Persian digits, so that is a pending fix in
-`money.js`, not in these rows.
+still come from `money.js`, which groups with `٬` and Persian digits
+(`۱٬۲۳۴٬۵۶۷`, as §8 asks; `money.test.js` pins it). **Resolved 2026-10-08:** the
+earlier note that it printed Latin commas was stale. What is still open is the
+currency unit (Rial or Toman, §13.7); amounts are not converted.
 
 **Exams page (2026-10-07).** The list of assessments is rows (name, time range,
 duration, a «مدیریت» button that opens the panel below). The management panels
@@ -385,10 +386,9 @@ fixed here: the exam time range shows ISO dates (`2026-10-20 08:00`), which
 `Calendar.formatDateTimeRange` shows the Jalali date, a 24-hour clock and Persian
 digits, with the date once when the range is one day (`۱۴۰۵/۷/۲۸ ۰۸:۰۰ تا ۱۰:۰۰`)
 and both dates otherwise. Used on `/exams` and `/my-exams` (the student's list).
-The date comes from the existing `Calendar.formatDate`,
-which prints **without** zero padding (`۱۴۰۵/۷/۲۸`), while §8 specifies padded
-numeric dates (`۱۴۰۵/۰۴/۲۲`). That mismatch predates this change and affects
-every numeric date; fixing it belongs in `formatDate`, not in exams. Other pages that format times by hand
+The date comes from the existing `Calendar.formatDate`. **Resolved 2026-10-08:**
+it now pads month and day (`۱۴۰۵/۰۷/۲۸`), as §8 specifies, for every numeric date
+in the app. Other pages that format times by hand
 (`my-study-plan.js`, `study-plans.js`) are study-interval times, not exams, and
 still format by hand — a separate decision.
 
