@@ -472,12 +472,25 @@
 /* --- Accessibility floor (DESIGN.md §7) ----------------------------------- */
 
 /* Touch targets ≥ 44px on interactive controls, enforced globally rather
-   than per page. `is-small` controls inside dense tables are exempted —
-   they are pointer-first surfaces; revisit if a table must be touch-first. */
-.button:not(.is-small),
-.input:not(.is-small),
-.select:not(.is-small) select {
+   than per page, `is-small` included (DESIGN.md §7; the exemption was removed
+   2026-10-08). Dense rows get taller buttons, not smaller ones. */
+.button,
+.input,
+.select select {
   min-block-size: 44px;
+}
+
+/* An error or success line: the icon sits before the text, and the text stays
+   a single element so Alpine's x-text can replace it (DESIGN.md §4.3, §5b). */
+.app-notice {
+  display: inline-flex;
+  align-items: flex-start;
+  gap: 0.5em;
+}
+
+.app-notice .app-icon {
+  flex: none;
+  margin-block-start: 0.15em;
 }
 
 /* Visible keyboard focus — never removed without replacement. One ring

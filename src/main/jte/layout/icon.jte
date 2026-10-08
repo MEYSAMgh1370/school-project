@@ -48,5 +48,8 @@
         <circle cx="6" cy="12" r="2.5"/>
         <circle cx="18" cy="19" r="2.5"/>
         <path d="m8.2 10.8 7.6-4.5M8.2 13.2l7.6 4.5"/>
+    @elseif("alert".equals(name))
+        <circle cx="12" cy="12" r="9"/>
+        <path d="M12 8v5M12 16.5v.5"/>
     @endif
 </svg>
