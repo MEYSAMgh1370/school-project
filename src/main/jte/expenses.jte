@@ -108,6 +108,7 @@
                                         <input class="input" id="expenseAmount" dir="ltr" type="text" inputmode="numeric"
                                                pattern="[0-9]+" x-model="expenseForm.amount"
                                                @input="expenseForm.amount = Money.normalizeAmountInput($event)" required>
+                                        <p class="help" x-show="Money.tomanWords(expenseForm.amount)" x-text="Money.tomanWords(expenseForm.amount)"></p>
                                     </div>
                                     <div class="control">
                                         <label class="label" for="expenseCategory">دسته</label>

@@ -76,6 +76,7 @@
                                         <input class="input" dir="ltr" id="tuitionAmount" type="text" inputmode="numeric"
                                                pattern="[0-9]+" x-model="form.amount"
                                                @input="form.amount = Money.normalizeAmountInput($event)" required>
+                                        <p class="help" x-show="Money.tomanWords(form.amount)" x-text="Money.tomanWords(form.amount)"></p>
                                     </div>
                                     <div class="control app-control-align-end">
                                         <button class="button is-link" type="submit" :class="{ 'is-loading': submitting }">
@@ -193,6 +194,7 @@
                                                    type="text" inputmode="numeric" pattern="[0-9]+"
                                                    x-model="paymentForm.amount"
                                                    @input="paymentForm.amount = Money.normalizeAmountInput($event)" required>
+                                            <p class="help" x-show="Money.tomanWords(paymentForm.amount)" x-text="Money.tomanWords(paymentForm.amount)"></p>
                                         </div>
                                         <div class="control">
                                             <label class="label" :for="'paymentMethod-' + invoice.id">روش پرداخت</label>

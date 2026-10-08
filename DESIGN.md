@@ -375,8 +375,14 @@ the roster stays a panel below. Finance: invoice rows with status in words, a
 search over student name, and the payments panels unchanged. Money amounts
 still come from `money.js`, which groups with `٬` and Persian digits
 (`۱٬۲۳۴٬۵۶۷`, as §8 asks; `money.test.js` pins it). **Resolved 2026-10-08:** the
-earlier note that it printed Latin commas was stale. What is still open is the
-currency unit (Rial or Toman, §13.7); amounts are not converted.
+earlier note that it printed Latin commas was stale. **Decided 2026-10-08
+(§13.7):** amounts are entered in Rial. Under each money input the same amount
+is written in Persian words in Toman (`۲۰۰۰۰۰۰` → «دویست هزار تومان»; ten rials
+make one toman, and any remaining rials follow as «و پنج ریال»). `Money.tomanWords`
+computes it, with tests. The stored and API value stays whole Rial. The words are
+a reading aid, not a conversion of the stored value. The unit proposal in
+`openspec/changes/finance-monetary-unit.md` still says Toman for entry; it needs
+the same decision recorded before it is approved.
 
 **Exams page (2026-10-07).** The list of assessments is rows (name, time range,
 duration, a «مدیریت» button that opens the panel below). The management panels
