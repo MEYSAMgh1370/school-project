@@ -279,12 +279,28 @@ measurement method are in
 
 These are real constraints on this deployment, not a wishlist.
 
-**Sessions are in-memory, so you can run exactly one instance.** Web auth uses
-`HttpSession` held in the container's memory. Every deploy or restart logs
-everyone out, and scaling past one instance breaks login outright — requests
-would land on an instance that has never seen the session. Scaling needs either
-sticky sessions or `spring-session-jdbc` to move sessions into Postgres. Neither
-is built; decide it deliberately when you actually need to scale.
+**You can still run exactly one instance — but no longer because of sessions.**
+Sessions now live in Postgres (`spring-session-jdbc`, tables created by
+`V20__spring_session.sql`), so a deploy or restart **no longer logs everyone
+out**. The remaining blocker is scheduled work: `EventReminderJob` (hourly) and
+`AcademicYearProvisioner` (daily) have no leader election or lock, so on two
+instances both run on every instance. `EventReminderJob` writes its sent-log
+row before sending with `on conflict do nothing`, so duplicate *messages* are
+unlikely; `AcademicYearProvisioner` has no such guard. Fix that before scaling.
+See [`openspec/changes/jdbc-backed-web-sessions.md`](openspec/changes/jdbc-backed-web-sessions.md).
+
+One-time cost: the deploy that introduces this logs everyone out once more,
+because in-memory sessions cannot be migrated into the table. Every deploy
+after it keeps people signed in.
+
+**Bearer-token requests also create session rows.** `JwtAuthenticationFilter`
+documents itself as stateless, but every Bearer-authenticated request creates a
+session carrying the security context. This predates the move to Postgres —
+unmodified builds hand back a `JSESSIONID` for the same request — and it was
+simply invisible while sessions lived in heap. Expired rows are cleaned up
+automatically, and phone login does not work in production anyway (see below),
+so there is no live cost today. Fix it before mobile login goes live; the same
+proposal explains why and how.
 
 **Every entity change needs a migration file.** Flyway owns the schema and
 `ddl-auto` is `validate`, so Hibernate no longer creates or alters anything: if
