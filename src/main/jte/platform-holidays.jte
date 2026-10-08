@@ -29,7 +29,7 @@
         </div>
 
         <%-- ناحیه‌ی مشترکِ خطا و پیام موفقیت --%>
-        <div class="notification is-danger" role="alert" x-cloak x-show="error" x-text="error"></div>
+        <div class="notification is-danger" role="alert" x-cloak x-show="error"><span class="app-notice">@template.layout.icon(name = "alert", size = 20)<span x-text="error"></span></span></div>
         <div class="notification is-success" role="status" x-cloak x-show="notice" x-text="notice"></div>
 
         <div class="level is-mobile is-flex-wrap-wrap is-gap-2" x-cloak x-show="years.length > 0">
@@ -113,7 +113,7 @@
                         <button class="delete" type="button" aria-label="بستن" @click="closeAdd"></button>
                     </header>
                     <section class="modal-card-body">
-                        <div class="notification is-danger" role="alert" x-show="add.error" x-text="add.error"></div>
+                        <div class="notification is-danger" role="alert" x-show="add.error"><span class="app-notice">@template.layout.icon(name = "alert", size = 20)<span x-text="add.error"></span></span></div>
 
                         <div class="field">
                             <label class="label" for="platformHolidaysDate">تاریخ</label>
@@ -122,7 +122,7 @@
                                        autocomplete="off" :placeholder="exampleDate()"
                                        x-model="add.date" :class="{ 'is-danger': add.dateError }">
                             </div>
-                            <p class="help is-danger" x-show="add.dateError" x-text="add.dateError"></p>
+                            <p class="help is-danger" role="alert" x-show="add.dateError"><span class="app-notice">@template.layout.icon(name = "alert", size = 16)<span x-text="add.dateError"></span></span></p>
                             <p class="help" x-show="!add.dateError" x-text="rangeHelp()"></p>
                         </div>
 
@@ -132,7 +132,7 @@
                                 <input class="input" id="platformHolidaysTitleInput" type="text" maxlength="128"
                                        x-model="add.title" :class="{ 'is-danger': add.titleError }">
                             </div>
-                            <p class="help is-danger" x-show="add.titleError" x-text="add.titleError"></p>
+                            <p class="help is-danger" role="alert" x-show="add.titleError"><span class="app-notice">@template.layout.icon(name = "alert", size = 16)<span x-text="add.titleError"></span></span></p>
                         </div>
                     </section>
                     <footer class="modal-card-foot">
@@ -156,7 +156,7 @@
                 </header>
                 <section class="modal-card-body">
                     <div class="notification is-danger" role="alert"
-                         x-show="confirm && confirm.error" x-text="confirm ? confirm.error : ''"></div>
+                         x-show="confirm && confirm.error"><span class="app-notice">@template.layout.icon(name = "alert", size = 20)<span x-text="confirm ? confirm.error : ''"></span></span></div>
                     <p class="has-text-weight-semibold">
                         آیا از حذف تعطیلیِ «<span x-text="confirm ? confirm.title : ''"></span>»
                         (<span x-text="confirm ? dayShort(confirm.day) : ''"></span>) مطمئن هستید؟

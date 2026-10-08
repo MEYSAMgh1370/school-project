@@ -9,7 +9,7 @@
     <div class="container">
         @template.layout.page-header(
             title = "نقش‌ها و دسترسی‌ها",
-            subtitle = "نقش‌های سیستمی ثابت‌اند؛ می‌توانید نقش سفارشیِ تازه با ترکیبی از Permissionهای موجود بسازید.")
+            subtitle = "نقش‌های سیستمی ثابت‌اند؛ می‌توانید نقش سفارشیِ تازه با ترکیبی از دسترسی‌های موجود بسازید.")
 
         @template.layout.school-scope(
             noSchoolMessage = "برای مدیریت نقش‌ها، یک مدرسه از سوییچر بالا انتخاب کنید.",
@@ -30,7 +30,7 @@
                                     </div>
                                 </div>
                                 <div class="field">
-                                    <label class="label">Permissionها</label>
+                                    <label class="label">دسترسی‌ها</label>
                                     <div class="control">
                                         <template x-for="permission in permissions" :key="permission.code">
                                             <label class="checkbox app-checkbox-inline">
@@ -54,7 +54,7 @@
                                 <th scope="col">کد</th>
                                 <th scope="col">عنوان</th>
                                 <th scope="col">نوع</th>
-                                <th scope="col">Permissionها</th>
+                                <th scope="col">دسترسی‌ها</th>
                             </tr>
                             </thead>
                             <tbody>

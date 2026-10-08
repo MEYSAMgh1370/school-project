@@ -50,7 +50,7 @@
                             </form>
 
                             <div class="notification is-danger mt-4" role="alert"
-                                 x-cloak x-show="passwordErrorMessage" x-text="passwordErrorMessage"></div>
+                                 x-cloak x-show="passwordErrorMessage"><span class="app-notice">@template.layout.icon(name = "alert", size = 20)<span x-text="passwordErrorMessage"></span></span></div>
                         </div>
 
                         <div x-show="activeTab === 'otp'">
@@ -104,7 +104,7 @@
                             <div class="notification is-success mt-4" role="status" aria-live="polite"
                                  x-cloak x-show="otpInfoMessage" x-text="otpInfoMessage"></div>
                             <div class="notification is-danger mt-4" role="alert"
-                                 x-cloak x-show="otpErrorMessage" x-text="otpErrorMessage"></div>
+                                 x-cloak x-show="otpErrorMessage"><span class="app-notice">@template.layout.icon(name = "alert", size = 20)<span x-text="otpErrorMessage"></span></span></div>
                         </div>
 
                         <p class="has-text-centered mt-4">
