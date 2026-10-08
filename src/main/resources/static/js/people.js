@@ -101,13 +101,20 @@ document.addEventListener('alpine:init', () => {
             return `/api/admin/schools/${this.schoolId}/roles`;
         },
 
-        // target: جایی که پیام خطا نوشته می‌شود؛ پیش‌فرض خطای صفحه، و برای modal تأیید خودِ آن
-        async showError(response, target = this) {
+        // confirmTarget: modal تأیید که درخواست از آن آمده (یا null). پیام بعد از خواندنِ بدنه
+        // نوشته می‌شود؛ اگر modal در این فاصله بسته شده باشد، به خطای صفحه می‌رود.
+        async showError(response, confirmTarget = null) {
+            let message;
             try {
                 const body = await response.json();
-                target.error = body.detail || body.title || 'خطایی رخ داد.';
+                message = body.detail || body.title || 'خطایی رخ داد.';
             } catch (e) {
-                target.error = 'خطایی رخ داد. (' + response.status + ')';
+                message = 'خطایی رخ داد. (' + response.status + ')';
+            }
+            if (confirmTarget && this.confirm === confirmTarget) {
+                confirmTarget.error = message;
+            } else {
+                this.error = message;
             }
         },
 
@@ -197,8 +204,6 @@ document.addEventListener('alpine:init', () => {
             this.toggling = true;
             this.error = '';
             this.notice = '';
-            // اگر modal در این فاصله بسته شده باشد، خطا بالای صفحه نشان داده می‌شود
-            const errorTarget = () => (confirmTarget && this.confirm === confirmTarget ? confirmTarget : this);
             try {
                 const response = await fetch(`${this.base()}/${member.membershipId}/active`, {
                     method: 'PATCH',
@@ -210,7 +215,7 @@ document.addEventListener('alpine:init', () => {
                     body: JSON.stringify({ active: !member.active })
                 });
                 if (!response.ok) {
-                    await this.showError(response, errorTarget());
+                    await this.showError(response, confirmTarget);
                     return;
                 }
                 this.confirm = null;
@@ -218,7 +223,12 @@ document.addEventListener('alpine:init', () => {
                 this.notice = member.active ? 'عضویت غیرفعال شد.' : 'عضویت فعال شد.';
                 await this.load();
             } catch (e) {
-                errorTarget().error = 'ارتباط با سرور برقرار نشد.';
+                // اگر modal بسته شده باشد، خطا بالای صفحه نشان داده می‌شود
+                if (confirmTarget && this.confirm === confirmTarget) {
+                    confirmTarget.error = 'ارتباط با سرور برقرار نشد.';
+                } else {
+                    this.error = 'ارتباط با سرور برقرار نشد.';
+                }
             } finally {
                 this.toggling = false;
             }
