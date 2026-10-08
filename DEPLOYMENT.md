@@ -293,14 +293,11 @@ One-time cost: the deploy that introduces this logs everyone out once more,
 because in-memory sessions cannot be migrated into the table. Every deploy
 after it keeps people signed in.
 
-**Bearer-token requests also create session rows.** `JwtAuthenticationFilter`
-documents itself as stateless, but every Bearer-authenticated request creates a
-session carrying the security context. This predates the move to Postgres —
-unmodified builds hand back a `JSESSIONID` for the same request — and it was
-simply invisible while sessions lived in heap. Expired rows are cleaned up
-automatically, and phone login does not work in production anyway (see below),
-so there is no live cost today. Fix it before mobile login goes live; the same
-proposal explains why and how.
+**Bearer-token requests no longer create sessions.** Mobile API calls authenticate
+through a stateless filter chain (see
+[`openspec/changes/stateless-bearer-auth.md`](openspec/changes/stateless-bearer-auth.md)),
+so a token-authenticated request leaves no session row. Before that change, every
+such request created one, which was invisible while sessions lived in heap.
 
 **Every entity change needs a migration file.** Flyway owns the schema and
 `ddl-auto` is `validate`, so Hibernate no longer creates or alters anything: if

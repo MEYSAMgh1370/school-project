@@ -128,14 +128,10 @@ one precondition for it and nothing more.
    restart. This change relocates those sessions to Postgres, which is what
    made the defect observable.
 
-   The corrected criterion: a Bearer request creates a session row, matching the
-   behavior that already existed. See "Discovered: JWT auth is not stateless"
-   below. Nothing about it is made worse here beyond visibility and durability,
-   and it is not fixed here because the remedy is a change to the security
-   filter chain, which needs its own proposal and its own authorization test
-   matrix per [`../conventions.md`](../conventions.md).
-5. `ModularityTests.verifyModularStructure()` still passes.
-6. ~~Production memory does not regress.~~ **It does, measurably: +14 MB.**
+   **Resolved.** The criterion as corrected here (a Bearer request creates a
+   session row) described the defect, not a requirement. The fix landed in
+   [`stateless-bearer-auth.md`](stateless-bearer-auth.md), and a Bearer request
+   now creates no session. The mobile test asserts that directly.
 
    Three `prod`-profile runs each, same tree, same session, same load:
 
@@ -193,9 +189,12 @@ of a `MockHttpSession` — would exercise the real store everywhere. It is a
 large change to tests this proposal did not otherwise touch, and it belongs in
 its own change if the parity is judged worth it.
 
-## Discovered: JWT auth is not stateless
+## Discovered: JWT auth is not stateless (fixed)
 
-Reported rather than fixed, per the convention on adjacent bugs.
+Found while implementing this change and reported rather than fixed here.
+**Fixed in [`stateless-bearer-auth.md`](stateless-bearer-auth.md), merged on
+2026-10-08 as `8e14d8f`.** The text below is kept as the record of what was
+found.
 
 [`JwtAuthenticationFilter.java`](../../src/main/java/com/example/roshdeandishe/iam/config/JwtAuthenticationFilter.java)
 documents Bearer authentication as leaving no `HttpSession`. Measured
@@ -224,16 +223,14 @@ Consequences, in order of how much they matter today:
   `requestOtp` fails closed, as [`../../DEPLOYMENT.md`](../../DEPLOYMENT.md)
   records under "Known limitations". So this is a latent cost, not a live one.
 
-The remedy is a security-filter-chain change — most plausibly a separate
-`SecurityFilterChain` matched on Bearer requests with
-`SessionCreationPolicy.STATELESS`, so that the two authentication paths stop
-sharing one session policy. That touches authorization behavior and needs
-protected and negative scenarios, so it belongs in its own change proposal
-rather than being folded in here.
+The remedy was the one proposed here: a separate `SecurityFilterChain` for
+Bearer requests with `SessionCreationPolicy.STATELESS`. The implementation,
+including why an attempt to skip the security-context save did not work, is in
+[`stateless-bearer-auth.md`](stateless-bearer-auth.md).
 
-**Sequencing note:** if mobile login is ever made to work, fix this first.
-Shipping a working phone login on top of a session-per-request path would put
-real churn into the session table.
+**Sequencing requirement, met:** this had to land before mobile login could
+ship, because a working phone login on a session-per-request path would put
+real churn into the session table. The fix landed first.
 
 ## Migration and Compatibility Concerns
 
