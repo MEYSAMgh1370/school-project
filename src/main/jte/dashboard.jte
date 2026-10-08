@@ -172,7 +172,7 @@
                 </p>
 
                 <p x-show="loading">در حال بارگذاری...</p>
-                <div class="notification is-danger" role="alert" x-show="error" x-text="error"></div>
+                <div class="notification is-danger" role="alert" x-show="error"><span class="app-notice">@template.layout.icon(name = "alert", size = 20)<span x-text="error"></span></span></div>
 
                 <div x-show="loaded && !error">
                     <p id="dashboardTimetableNotEnrolled" x-show="!enrolled">
@@ -348,7 +348,7 @@
                     </div>
                 @endfor
                 <div class="notification is-danger mt-3" role="alert"
-                     x-cloak x-show="errorMessage" x-text="errorMessage"></div>
+                     x-cloak x-show="errorMessage"><span class="app-notice">@template.layout.icon(name = "alert", size = 20)<span x-text="errorMessage"></span></span></div>
                 <div class="notification is-success mt-3" role="status" aria-live="polite"
                      x-cloak x-show="successMessage" x-text="successMessage"></div>
             </div>
@@ -380,7 +380,7 @@
                 </div>
             </form>
             <div class="notification is-danger mt-3" role="alert"
-                 x-cloak x-show="errorMessage" x-text="errorMessage"></div>
+                 x-cloak x-show="errorMessage"><span class="app-notice">@template.layout.icon(name = "alert", size = 20)<span x-text="errorMessage"></span></span></div>
             <div class="notification is-success mt-3" role="status" aria-live="polite"
                  x-cloak x-show="successMessage" x-text="successMessage"></div>
         </div>

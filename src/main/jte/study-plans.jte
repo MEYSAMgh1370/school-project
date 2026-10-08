@@ -38,7 +38,7 @@
                                 <template x-for="plan in plans" :key="plan.id">
                                     <tr>
                                         <td x-text="plan.title"></td>
-                                        <td x-text="plan.weights.length"></td>
+                                        <td x-text="Calendar.digits(plan.weights.length)"></td>
                                         <td>
                                             <button type="button" class="button is-small"
                                                     :class="{ 'is-link': expandedPlanId === plan.id }"
@@ -120,7 +120,7 @@
                                                 <tbody>
                                                 <template x-for="weekCourse in weekCourses" :key="weekCourse.id">
                                                     <tr>
-                                                        <td dir="ltr" x-text="weekCourse.weekStart"></td>
+                                                        <td dir="ltr" x-text="Calendar.formatDate(weekCourse.weekStart)"></td>
                                                         <td x-text="topicName(weekCourse.courseTopicId)"></td>
                                                         <td x-text="subTopicNames(weekCourse.subTopicIds) || '—'"></td>
                                                     </tr>

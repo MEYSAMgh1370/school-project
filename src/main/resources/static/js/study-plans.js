@@ -135,7 +135,7 @@ document.addEventListener('alpine:init', () => {
 
         topicName(topicId) {
             const topic = this.flatTopics.find(t => t.id === topicId);
-            return topic ? topic.name : `سرفصل #${topicId}`;
+            return topic ? topic.name : `سرفصل #${this.faDigits(topicId)}`;
         },
 
         subTopicNames(subTopicIds) {
@@ -149,10 +149,23 @@ document.addEventListener('alpine:init', () => {
         studentLabel(studentId) {
             const student = this.students.find(s => s.studentId === studentId);
             if (!student) {
-                return `دانش‌آموز #${studentId}`;
+                return `دانش‌آموز #${this.faDigits(studentId)}`;
             }
             const pupil = this.pupils.find(p => p.userId === student.userId);
-            return pupil ? pupil.fullName : `دانش‌آموز #${studentId}`;
+            return pupil ? pupil.fullName : `دانش‌آموز #${this.faDigits(studentId)}`;
+        },
+
+        // رقم فارسی برای نمایش (DESIGN.md §8)؛ همان قرارداد my-study-plan.js.
+        faDigits(value) {
+            return Calendar.digits(value);
+        },
+
+        timeLabel(date) {
+            return this.faDigits(String(date.getHours()).padStart(2, '0')) + ':' + this.faDigits(String(date.getMinutes()).padStart(2, '0'));
+        },
+
+        timeRangeLabel(start, end) {
+            return this.timeLabel(start) + ' – ' + this.timeLabel(end);
         },
 
         // toISOString() به UTC تبدیل می‌کند و نزدیک نیمه‌شب در timezoneهای
@@ -200,7 +213,7 @@ document.addEventListener('alpine:init', () => {
                 }
                 return { blocking: false, message: body.detail || body.title || 'خطایی رخ داد.' };
             } catch (e) {
-                return { blocking: false, message: 'خطایی رخ داد. (' + response.status + ')' };
+                return { blocking: false, message: 'خطایی رخ داد. (' + this.faDigits(response.status) + ')' };
             }
         },
 
@@ -404,7 +417,7 @@ document.addEventListener('alpine:init', () => {
                 }
                 this.copyResults = await response.json();
                 const successCount = this.copyResults.filter(r => r.ok).length;
-                this.notice = `کپی هفته انجام شد: ${successCount} از ${this.copyResults.length} مورد با موفقیت.`;
+                this.notice = `کپی هفته انجام شد: ${this.faDigits(successCount)} از ${this.faDigits(this.copyResults.length)} مورد با موفقیت.`;
             } catch (e) {
                 this.error = 'ارتباط با سرور برقرار نشد.';
             } finally {
@@ -547,7 +560,7 @@ document.addEventListener('alpine:init', () => {
                 days.push({
                     iso,
                     name: this.weekdays[i].label,
-                    dateNum: d.getDate(),
+                    dateNum: this.faDigits(Calendar.fromDate(d).d),
                     isToday: iso === todayIso,
                     blocks: this.blocksForDay(iso)
                 });
@@ -569,7 +582,6 @@ document.addEventListener('alpine:init', () => {
             const durationHours = (end - start) / 3600000;
             const top = Math.max(0, Math.round((startHour - this.hourStart) * this.hourPx));
             const height = Math.max(16, Math.round(durationHours * this.hourPx - 2));
-            const pad2 = n => String(n).padStart(2, '0');
             return {
                 id: iv.id,
                 interval: iv,
@@ -578,7 +590,7 @@ document.addEventListener('alpine:init', () => {
                 top,
                 height,
                 showTime: durationHours > 1,
-                timeLabel: `${pad2(start.getHours())}:${pad2(start.getMinutes())} – ${pad2(end.getHours())}:${pad2(end.getMinutes())}`
+                timeLabel: this.timeRangeLabel(start, end)
             };
         },
 
@@ -595,7 +607,7 @@ document.addEventListener('alpine:init', () => {
         },
 
         hourMarkLabel(h) {
-            return String(h).padStart(2, '0') + ':00';
+            return this.faDigits(String(h).padStart(2, '0') + ':00');
         },
 
         openGridBlock(block) {
