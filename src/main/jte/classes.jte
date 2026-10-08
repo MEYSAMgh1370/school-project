@@ -87,8 +87,8 @@
                                     <span class="app-class-row__name" x-text="classItem.name"></span>
                                     <span class="is-size-7 has-text-grey">
                                         <span x-text="yearLabel(classItem.academicYear)"></span>
-                                        · پایه <span x-text="classItem.gradeLevel"></span>
-                                        <span x-show="classItem.section">· بخش <span x-text="classItem.section"></span></span>
+                                        · پایه <span x-text="Calendar.digits(classItem.gradeLevel)"></span>
+                                        <span x-show="classItem.section">· بخش <span x-text="Calendar.digits(classItem.section)"></span></span>
                                     </span>
                                     <span class="is-size-7 has-text-grey" x-text="'معلم: ' + teacherName(classItem.teacherId)"></span>
                                 </div>
@@ -96,7 +96,7 @@
                                         @click="toggleRoster(classItem.id)"
                                         :aria-expanded="selectedClassId === classItem.id ? 'true' : 'false'">
                                     <span x-text="selectedClassId === classItem.id ? 'بستن فهرست' : 'مشاهده دانش‌آموزان'"></span>
-                                    <span class="tag is-light app-inline-gap" x-text="rosterFor(classItem.id).length"></span>
+                                    <span class="tag is-light app-inline-gap" x-text="Calendar.digits(rosterFor(classItem.id).length)"></span>
                                 </button>
                             </div>
                         </template>

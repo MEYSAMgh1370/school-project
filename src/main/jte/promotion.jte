@@ -85,11 +85,11 @@
                                             </tbody>
                                         </table>
                                     </div>
-                                    <p class="help is-danger mb-2" x-show="classesOfGradeMissing()">
-                                        برای بعضی پایه‌ها کلاسی در این سال نیست.
+                                    <p class="help is-danger mb-2" role="alert" x-show="classesOfGradeMissing()">
+                                        <span class="app-notice">@template.layout.icon(name = "alert", size = 16)<span>برای بعضی پایه‌ها کلاسی در این سال نیست.</span></span>
                                     </p>
                                     <button class="button is-link" type="button" id="promotionPlaceButton"
-                                            @click="place()" :disabled="placementCount() === 0 || placing"
+                                            @click="place()" :disabled="placing"
                                             :class="{ 'is-loading': placing }">
                                         جا دادن در کلاس‌ها
                                     </button>
@@ -190,7 +190,7 @@
                                     <p class="mb-3" id="promotionSummary" x-show="plan.length > 0" x-text="summaryText()"></p>
                                     <button class="button is-link" type="button" id="promotionRunButton"
                                             @click="openConfirm('run', null, $event)"
-                                            :disabled="plan.length === 0 || running" :class="{ 'is-loading': running }">
+                                            :disabled="running" :class="{ 'is-loading': running }">
                                         اجرای ارتقا
                                     </button>
                                 </div>

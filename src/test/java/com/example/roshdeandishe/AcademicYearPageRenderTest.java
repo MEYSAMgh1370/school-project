@@ -59,10 +59,11 @@ class AcademicYearPageRenderTest {
     }
 
     @Test
-    void theSaveButtonIsDisabledUnlessAnotherYearIsSelected() {
+    void theSaveButtonIsDisabledOnlyWhileSaving() {
         String html = render();
 
-        assertThat(html).contains(":disabled=\"!canSave()\"");
+        // دکمه برای ورودیِ ناقص فعال می‌ماند و خودِ ذخیره توضیح می‌دهد (DESIGN.md §6)
+        assertThat(html).contains(":disabled=\"saving\"").doesNotContain(":disabled=\"!canSave()\"");
     }
 
     @Test
@@ -84,9 +85,9 @@ class AcademicYearPageRenderTest {
         // بنرِ داده‌ی انتساب‌نشده فقط وقتی سالِ جاری هست و چیزی مانده؛ هیچ سالی پیش‌فرض نیست (فقط گزینه‌ی راهنما)
         assertThat(html).contains("id=\"academicYearUnattributed\"").contains("x-show=\"hasUnattributed()\"")
                 .contains("x-for=\"year in attributableYears\"").contains("id=\"academicYearAttributeButton\"")
-                .contains(":disabled=\"!attributeYear || attributing\"");
+                .contains(":disabled=\"attributing\"");
         // ارتقای خودکار: انتخابگرِ روشن/خاموش و لینک به صفحه‌ی دستی
-        assertThat(html).contains("id=\"academicYearAutoPromotionToggle\"").contains("setAutoPromotion($event.target.checked)")
+        assertThat(html).contains("id=\"academicYearAutoPromotionToggle\"").contains("askAutoPromotion($event)")
                 .contains("href=\"/promotion\"").contains("آخرین پایه‌ی مدرسه فارغ‌التحصیل می‌شود");
     }
 }

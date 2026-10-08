@@ -46,6 +46,8 @@ document.addEventListener('alpine:init', () => {
         loadingWeek: false,
         suggesting: false,
         clearing: false,
+        // تأییدِ خالی‌کردن هفته: null یا { studentId, studentName, weekStart, weekLabel, error }
+        confirm: null,
         submittingInterval: false,
         intervalForm: { topicId: '', start: '', end: '' },
 
@@ -70,6 +72,7 @@ document.addEventListener('alpine:init', () => {
                 this.error = '';
                 this.notice = '';
                 this.blocked = false;
+                this.confirm = null;
                 this.selectedStudentId = '';
                 this.expandedPlanId = null;
                 this.copyPanelOpen = false;
@@ -135,7 +138,7 @@ document.addEventListener('alpine:init', () => {
 
         topicName(topicId) {
             const topic = this.flatTopics.find(t => t.id === topicId);
-            return topic ? topic.name : `سرفصل #${topicId}`;
+            return topic ? topic.name : `سرفصل #${this.faDigits(topicId)}`;
         },
 
         subTopicNames(subTopicIds) {
@@ -147,12 +150,26 @@ document.addEventListener('alpine:init', () => {
         },
 
         studentLabel(studentId) {
-            const student = this.students.find(s => s.studentId === studentId);
+            // شناسه از select به صورت رشته می‌آید؛ مقایسه‌ی رشته‌ای تا نام پیدا شود
+            const student = this.students.find(s => String(s.studentId) === String(studentId));
             if (!student) {
-                return `دانش‌آموز #${studentId}`;
+                return `دانش‌آموز #${this.faDigits(studentId)}`;
             }
             const pupil = this.pupils.find(p => p.userId === student.userId);
-            return pupil ? pupil.fullName : `دانش‌آموز #${studentId}`;
+            return pupil ? pupil.fullName : `دانش‌آموز #${this.faDigits(studentId)}`;
+        },
+
+        // رقم فارسی برای نمایش (DESIGN.md §8)؛ همان قرارداد my-study-plan.js.
+        faDigits(value) {
+            return Calendar.digits(value);
+        },
+
+        timeLabel(date) {
+            return this.faDigits(String(date.getHours()).padStart(2, '0')) + ':' + this.faDigits(String(date.getMinutes()).padStart(2, '0'));
+        },
+
+        timeRangeLabel(start, end) {
+            return this.timeLabel(start) + ' – ' + this.timeLabel(end);
         },
 
         // toISOString() به UTC تبدیل می‌کند و نزدیک نیمه‌شب در timezoneهای
@@ -200,7 +217,7 @@ document.addEventListener('alpine:init', () => {
                 }
                 return { blocking: false, message: body.detail || body.title || 'خطایی رخ داد.' };
             } catch (e) {
-                return { blocking: false, message: 'خطایی رخ داد. (' + response.status + ')' };
+                return { blocking: false, message: 'خطایی رخ داد. (' + this.faDigits(response.status) + ')' };
             }
         },
 
@@ -337,6 +354,16 @@ document.addEventListener('alpine:init', () => {
         },
 
         async createWeekCourse(planId) {
+            if (this.submittingWeekCourse) {
+                return;
+            }
+            if (!this.weekCourseForm.weekStart || !this.weekCourseForm.courseTopicId) {
+                this.notice = '';
+                this.error = !this.weekCourseForm.weekStart
+                    ? 'یک روز از هفته‌ی مورد نظر را انتخاب کنید.'
+                    : 'سرفصل درس را انتخاب کنید.';
+                return;
+            }
             this.submittingWeekCourse = true;
             this.error = '';
             this.notice = '';
@@ -381,6 +408,14 @@ document.addEventListener('alpine:init', () => {
         },
 
         async copyWeekToOthers() {
+            if (this.copyingWeek) {
+                return;
+            }
+            if (this.copyTargetIds.length === 0) {
+                this.notice = '';
+                this.error = 'دست‌کم یک دانش‌آموز را برای کپی انتخاب کنید.';
+                return;
+            }
             this.copyingWeek = true;
             this.error = '';
             this.notice = '';
@@ -404,7 +439,7 @@ document.addEventListener('alpine:init', () => {
                 }
                 this.copyResults = await response.json();
                 const successCount = this.copyResults.filter(r => r.ok).length;
-                this.notice = `کپی هفته انجام شد: ${successCount} از ${this.copyResults.length} مورد با موفقیت.`;
+                this.notice = `کپی هفته انجام شد: ${this.faDigits(successCount)} از ${this.faDigits(this.copyResults.length)} مورد با موفقیت.`;
             } catch (e) {
                 this.error = 'ارتباط با سرور برقرار نشد.';
             } finally {
@@ -413,6 +448,14 @@ document.addEventListener('alpine:init', () => {
         },
 
         async assignStudent(planId) {
+            if (this.submittingAssignment) {
+                return;
+            }
+            if (!this.assignStudentIdInput) {
+                this.notice = '';
+                this.error = 'یک دانش‌آموز را برای تخصیص انتخاب کنید.';
+                return;
+            }
             this.submittingAssignment = true;
             this.error = '';
             this.notice = '';
@@ -547,7 +590,7 @@ document.addEventListener('alpine:init', () => {
                 days.push({
                     iso,
                     name: this.weekdays[i].label,
-                    dateNum: d.getDate(),
+                    dateNum: this.faDigits(Calendar.fromDate(d).d),
                     isToday: iso === todayIso,
                     blocks: this.blocksForDay(iso)
                 });
@@ -569,7 +612,6 @@ document.addEventListener('alpine:init', () => {
             const durationHours = (end - start) / 3600000;
             const top = Math.max(0, Math.round((startHour - this.hourStart) * this.hourPx));
             const height = Math.max(16, Math.round(durationHours * this.hourPx - 2));
-            const pad2 = n => String(n).padStart(2, '0');
             return {
                 id: iv.id,
                 interval: iv,
@@ -578,7 +620,7 @@ document.addEventListener('alpine:init', () => {
                 top,
                 height,
                 showTime: durationHours > 1,
-                timeLabel: `${pad2(start.getHours())}:${pad2(start.getMinutes())} – ${pad2(end.getHours())}:${pad2(end.getMinutes())}`
+                timeLabel: this.timeRangeLabel(start, end)
             };
         },
 
@@ -595,7 +637,7 @@ document.addEventListener('alpine:init', () => {
         },
 
         hourMarkLabel(h) {
-            return String(h).padStart(2, '0') + ':00';
+            return this.faDigits(String(h).padStart(2, '0') + ':00');
         },
 
         openGridBlock(block) {
@@ -673,26 +715,65 @@ document.addEventListener('alpine:init', () => {
             }
         },
 
+        // خالی‌کردن هفته همه‌ی بازه‌های آن هفته را پاک می‌کند: اول تأیید (modal)
+        askClearWeek() {
+            if (this.clearing) {
+                return;
+            }
+            this.error = '';
+            this.notice = '';
+            if (!this.selectedStudentId) {
+                this.error = 'اول یک دانش‌آموز را انتخاب کنید.';
+                return;
+            }
+            if (!this.weekDate) {
+                this.error = 'یک روز از هفته‌ی مورد نظر را انتخاب کنید.';
+                return;
+            }
+            const weekStart = this.weekStartOf(this.weekDate);
+            this.confirm = {
+                studentId: this.selectedStudentId,
+                studentName: this.studentLabel(this.selectedStudentId),
+                weekStart,
+                weekLabel: Calendar.formatDate(new Date(weekStart + 'T00:00:00')),
+                error: ''
+            };
+            this.$nextTick(() => window.ModalFocus.focusFirst(this.$refs.confirmModal));
+        },
+
+        closeConfirm() {
+            this.confirm = null;
+        },
+
         async clearWeek() {
+            const target = this.confirm;
+            if (!target || this.clearing) {
+                return;
+            }
             this.clearing = true;
             this.error = '';
             this.notice = '';
             try {
-                const weekStart = this.weekStartOf(this.weekDate);
-                const response = await fetch(`${this.intervalsBase(this.selectedStudentId)}/clear?weekStart=${weekStart}`, {
+                const response = await fetch(`${this.intervalsBase(target.studentId)}/clear?weekStart=${target.weekStart}`, {
                     method: 'POST',
                     headers: { 'X-School-ID': this.schoolId, 'X-XSRF-TOKEN': this.csrfToken() }
                 });
                 if (!response.ok) {
                     const classified = await this.classifyError(response);
-                    this.error = classified.message;
                     this.blocked = classified.blocking;
+                    if (classified.blocking) {
+                        this.confirm = null;
+                        this.error = classified.message;
+                    } else {
+                        target.error = classified.message;
+                    }
                     return;
                 }
+                this.confirm = null;
                 this.notice = 'بازه‌های این هفته پاک شد.';
                 await this.loadWeek();
             } catch (e) {
-                this.error = 'ارتباط با سرور برقرار نشد.';
+                target.error = 'ارتباط با سرور برقرار نشد.';
             } finally {
                 this.clearing = false;
             }

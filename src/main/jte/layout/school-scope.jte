@@ -16,9 +16,11 @@
 
 <template x-if="schoolId">
     <div>
-        <div class="notification is-danger" x-show="error" x-text="error"></div>
+        <div class="notification is-danger" role="alert" x-show="error">
+            <span class="app-notice">@template.layout.icon(name = "alert", size = 20)<span x-text="error"></span></span>
+        </div>
         @if(successNotice)
-            <div class="notification is-success" x-show="notice" x-text="notice"></div>
+            <div class="notification is-success" role="status" x-show="notice" x-text="notice"></div>
         @endif
         ${content}
     </div>

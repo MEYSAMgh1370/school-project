@@ -42,7 +42,7 @@
                                 <div class="field">
                                     <div class="control">
                                         <button class="button is-link is-fullwidth" type="submit"
-                                                :disabled="!canSubmitPassword" :class="{ 'is-loading': submittingPassword }">
+                                                :disabled="submittingPassword" :class="{ 'is-loading': submittingPassword }">
                                             ورود
                                         </button>
                                     </div>
@@ -50,7 +50,7 @@
                             </form>
 
                             <div class="notification is-danger mt-4" role="alert"
-                                 x-cloak x-show="passwordErrorMessage" x-text="passwordErrorMessage"></div>
+                                 x-cloak x-show="passwordErrorMessage"><span class="app-notice">@template.layout.icon(name = "alert", size = 20)<span x-text="passwordErrorMessage"></span></span></div>
                         </div>
 
                         <div x-show="activeTab === 'otp'">
@@ -68,7 +68,7 @@
                                     <div class="field">
                                         <div class="control">
                                             <button class="button is-link is-fullwidth" type="submit"
-                                                    :disabled="!canRequestOtp" :class="{ 'is-loading': submittingOtp }">
+                                                    :disabled="submittingOtp" :class="{ 'is-loading': submittingOtp }">
                                                 دریافت کد
                                             </button>
                                         </div>
@@ -89,7 +89,7 @@
                                     <div class="field">
                                         <div class="control">
                                             <button class="button is-link is-fullwidth" type="submit"
-                                                    :disabled="!canVerifyOtp" :class="{ 'is-loading': submittingOtp }">
+                                                    :disabled="submittingOtp" :class="{ 'is-loading': submittingOtp }">
                                                 ورود
                                             </button>
                                         </div>
@@ -104,7 +104,7 @@
                             <div class="notification is-success mt-4" role="status" aria-live="polite"
                                  x-cloak x-show="otpInfoMessage" x-text="otpInfoMessage"></div>
                             <div class="notification is-danger mt-4" role="alert"
-                                 x-cloak x-show="otpErrorMessage" x-text="otpErrorMessage"></div>
+                                 x-cloak x-show="otpErrorMessage"><span class="app-notice">@template.layout.icon(name = "alert", size = 20)<span x-text="otpErrorMessage"></span></span></div>
                         </div>
 
                         <p class="has-text-centered mt-4">

@@ -3,7 +3,7 @@
 <section class="section" id="main-content" role="main" tabindex="-1" x-data="examTakePage()">
     <div class="container">
         <template x-if="fatalError">
-            <div class="notification is-danger" x-text="fatalError"></div>
+            <div class="notification is-danger" role="alert"><span class="app-notice">@template.layout.icon(name = "alert", size = 20)<span x-text="fatalError"></span></span></div>
         </template>
 
         <template x-if="!fatalError && loading">
@@ -32,12 +32,12 @@
 
                     <div class="tabs" x-show="exam.sections.length > 0">
                     <ul>
-                        <template x-for="section in exam.sections" :key="section.id">
+                        <template x-for="(section, sectionIndex) in exam.sections" :key="section.id">
                             <li :class="{ 'is-active': selectedSectionId === section.id }">
                                     <a href="#"
                                        @click.prevent="selectSection(section.id)">
-                                        <span x-text="section.name || ('سرفصل #' + section.topicId)"></span>
-                                        <span class="tag is-light app-inline-gap" x-text="answeredCount(section.id) + '/' + section.questionCount"></span>
+                                        <span x-text="section.name || ('بخش ' + toPersianDigits(sectionIndex + 1))"></span>
+                                        <span class="tag is-light app-inline-gap" x-text="toPersianDigits(answeredCount(section.id) + '/' + section.questionCount)"></span>
                                     </a>
                             </li>
                         </template>
@@ -54,13 +54,12 @@
                 <p class="has-text-info-on-scheme mb-4" role="status" aria-live="polite"
                    x-cloak x-show="saveStatusMessage()" x-text="saveStatusMessage()"></p>
 
-                <div class="notification is-danger" role="alert" x-cloak x-show="saveErrorBySection[selectedSectionId]"
-                     x-text="saveErrorBySection[selectedSectionId]"></div>
+                <div class="notification is-danger" role="alert" x-cloak x-show="saveErrorBySection[selectedSectionId]"><span class="app-notice">@template.layout.icon(name = "alert", size = 20)<span x-text="saveErrorBySection[selectedSectionId]"></span></span></div>
 
                 <template x-for="(question, index) in currentQuestions()" :key="question.questionId">
                     <div class="box">
                         <p class="mb-3">
-                            <strong x-text="(index + 1) + '. '"></strong>
+                            <strong x-text="toPersianDigits(index + 1) + '. '"></strong>
                             <span x-text="question.text"></span>
                         </p>
                         <template x-for="n in [1, 2, 3, 4]" :key="'choice-' + question.questionId + '-' + n">

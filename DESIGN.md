@@ -375,8 +375,14 @@ the roster stays a panel below. Finance: invoice rows with status in words, a
 search over student name, and the payments panels unchanged. Money amounts
 still come from `money.js`, which groups with `٬` and Persian digits
 (`۱٬۲۳۴٬۵۶۷`, as §8 asks; `money.test.js` pins it). **Resolved 2026-10-08:** the
-earlier note that it printed Latin commas was stale. What is still open is the
-currency unit (Rial or Toman, §13.7); amounts are not converted.
+earlier note that it printed Latin commas was stale. **Decided 2026-10-08
+(§13.7):** amounts are entered in Rial. Under each money input the same amount
+is written in Persian words in Toman (`۲۰۰۰۰۰۰` → «دویست هزار تومان»; ten rials
+make one toman, and any remaining rials follow as «و پنج ریال»). `Money.tomanWords`
+computes it, with tests. The stored and API value stays whole Rial. The words are
+a reading aid, not a conversion of the stored value. The unit proposal in
+`openspec/changes/finance-monetary-unit.md` still says Toman for entry; it needs
+the same decision recorded before it is approved.
 
 **Exams page (2026-10-07).** The list of assessments is rows (name, time range,
 duration, a «مدیریت» button that opens the panel below). The management panels
@@ -437,8 +443,8 @@ loads in about 0.3 s. **Resolved 2026-10-08 (§6):** the lists over 25 rows
 time with «نمایش بیشتر (N مورد دیگر)». Students and finance also have status
 chips (`app-chips`, as on grades). The counter resets on search, chip, filter or
 school change, and not on reload, so an action does not collapse the list.
-Open: the ACTIVE chip label on students («در کلاس») was chosen in the code, not
-decided by the school.
+**Accepted 2026-10-08 by the user (product decision):** the ACTIVE chip on students
+is «در کلاس».
 
 **List row.** 56px minimum height, label at inline-start, optional value
 (e.g. the current academic year) and a `‹` glyph (`.app-dir-glyph`) at
@@ -514,8 +520,8 @@ alongside text.
 - **Built 2026-10-07** (`layout/icon.jte`, used by the dashboard): chevron,
   calendar, clock, people, class, exam, finance, check, **grades** (a document;
   added to the starting list — the featured «دفتر نمرات» card needs it), share.
-  menu, back, search and alert are not built yet; add them with their first
-  page. `NavSharedSourceRenderTest` fails if a `NavCatalog` link names an icon
+  **Built 2026-10-08:** **alert** (the error notices, §4.3). menu, back and
+  search are not built yet; add them with their first page. `NavSharedSourceRenderTest` fails if a `NavCatalog` link names an icon
   the partial does not draw.
 - **An icon never stands alone except** back, menu and close, which require
   `aria-label`. Everywhere else it accompanies a text label and is
@@ -711,9 +717,12 @@ modal and loading rules, all voice and date/digit conventions, the
    with the PWA strategy) or server-side draft; decide before building.
 6. **Undo bar mechanics** — how the reversal is implemented server-side
    (soft state vs compensating request) per action.
-7. **Currency contract** (carried over) — persisted, entry and display unit
-   (Rial/Toman), conversion and rounding. Neutral grouped output via
-   `money.js` until then.
+7. **Currency contract** (carried over) — **partly decided 2026-10-08:** the
+   persisted value is whole Rial, and amounts are entered in Rial. Under each money
+   input the same amount is written in Persian words in Toman
+   (`Money.tomanWords`). Still open: the read-only display unit in tables, the
+   printed and notification wording (Toman or Rial, labelled), and rounding for
+   non-whole values. Neutral grouped output via `money.js` until then.
 8. **Empty-state copy** (carried over) — every empty state names the action
    that creates the first item.
 9. **Per-page dark verification** — text, placeholder and field-border

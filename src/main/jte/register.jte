@@ -42,12 +42,12 @@
                                     <input class="input" id="passwordConfirm" type="password" x-model="passwordConfirm"
                                            autocomplete="new-password" required>
                                 </div>
-                                <p class="help is-danger" x-cloak x-show="passwordsMismatch">رمز عبور و تکرار آن یکسان نیستند.</p>
+                                <p class="help is-danger" role="alert" x-cloak x-show="passwordsMismatch"><span class="app-notice">@template.layout.icon(name = "alert", size = 16)<span>رمز عبور و تکرار آن یکسان نیستند.</span></span></p>
                             </div>
 
                             <div class="field">
                                 <div class="control">
-                                    <button class="button is-link is-fullwidth" type="submit" :disabled="!canSubmit" :class="{ 'is-loading': submitting }">
+                                    <button class="button is-link is-fullwidth" type="submit" :disabled="submitting" :class="{ 'is-loading': submitting }">
                                         ثبت‌نام
                                     </button>
                                 </div>
@@ -55,7 +55,7 @@
                         </form>
 
                         <div class="notification is-danger mt-4" role="alert"
-                             x-cloak x-show="errorMessage" x-text="errorMessage"></div>
+                             x-cloak x-show="errorMessage"><span class="app-notice">@template.layout.icon(name = "alert", size = 20)<span x-text="errorMessage"></span></span></div>
 
                         <p class="has-text-centered mt-4">
                             @if(postAuthenticationDestination.equals("/schools/new"))

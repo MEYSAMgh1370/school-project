@@ -27,6 +27,10 @@ document.addEventListener('alpine:init', () => {
         attachments: [],
         attachmentsLoading: false,
 
+        // modal تأیید لغو هزینه / حذف پیوست (DESIGN.md §6): null = بسته
+        // { kind: 'expense' | 'attachment', expense, attachment, message, confirmLabel, error }
+        confirm: null,
+
         // انتخابگر بازه‌ی گزارش - سال/ماه/فصل در تقویم فعالِ صفحه (calendar.js)؛ سالِ
         // پیش‌فرض همیشه «سال جاری» است، نه یک عدد ثابت که فقط در یک تقویم معنا دارد
         summaryYear: Calendar.fromDate(new Date()).y,
@@ -259,14 +263,77 @@ document.addEventListener('alpine:init', () => {
                 () => { this.notice = 'پرداخت هزینه ثبت شد.'; }, 'POST');
         },
 
+        // ---------------------------------------------------------------- تأیید در modal
+
+        askCancel(expense) {
+            const name = expense.description
+                || (this.categoryName(expense.categoryId) + ' · ' + Money.formatAmount(expense.amount));
+            this.openConfirm({
+                kind: 'expense',
+                expense,
+                attachment: null,
+                message: `آیا از لغو این هزینه‌ی «${name}» مطمئن هستید؟`,
+                confirmLabel: 'لغو هزینه'
+            });
+        },
+
+        askDeleteAttachment(expense, attachment) {
+            this.openConfirm({
+                kind: 'attachment',
+                expense,
+                attachment,
+                message: `آیا از حذف پیوست «${attachment.fileName}» مطمئن هستید؟`,
+                confirmLabel: 'حذف پیوست'
+            });
+        },
+
+        openConfirm(target) {
+            this.notice = '';
+            this.confirm = { ...target, error: '' };
+            this.$nextTick(() => {
+                if (window.ModalFocus) {
+                    window.ModalFocus.focusFirst(this.$refs.confirmModal);
+                }
+            });
+        },
+
+        closeConfirm() {
+            this.confirm = null;
+        },
+
+        async runConfirm() {
+            const target = this.confirm;
+            if (!target || this.submitting) {
+                return;
+            }
+            if (target.kind === 'expense') {
+                await this.cancelExpense(target.expense);
+            } else {
+                await this.deleteAttachment(target.expense, target.attachment);
+            }
+        },
+
+        // خطای درخواستِ تأییدشده داخل modal نشان داده می‌شود، نه بالای صفحه
+        setConfirmError(message) {
+            if (this.confirm) {
+                this.confirm.error = message;
+            } else {
+                this.error = message;
+            }
+        },
+
         async cancelExpense(expense) {
             await this.submitJson(`${this.expensesBase()}/${expense.id}/cancel`, null,
-                () => { this.notice = 'هزینه لغو شد.'; }, 'POST');
+                () => {
+                    this.confirm = null;
+                    this.notice = 'هزینه لغو شد.';
+                }, 'POST', (message) => this.setConfirmError(message));
         },
 
         // کمک‌تابع مشترک POST/PUT با بدنه‌ی JSON - همه‌ی فرم‌های این صفحه از
         // همین یک مسیر رد می‌شوند تا CSRF/خطا/بارگذاری‌مجدد یک‌جا مدیریت شود
-        async submitJson(url, body, onSuccess, method) {
+        // onFailure (اختیاری): پیام خطا را به‌جای this.error می‌گیرد
+        async submitJson(url, body, onSuccess, method, onFailure) {
             this.submitting = true;
             this.error = '';
             this.notice = '';
@@ -282,13 +349,21 @@ document.addEventListener('alpine:init', () => {
                 });
                 if (!response.ok) {
                     const classified = await this.classifyError(response);
-                    this.error = classified.message;
+                    if (onFailure) {
+                        onFailure(classified.message);
+                    } else {
+                        this.error = classified.message;
+                    }
                     return;
                 }
                 onSuccess();
                 await this.load();
             } catch (e) {
-                this.error = 'ارتباط با سرور برقرار نشد.';
+                if (onFailure) {
+                    onFailure('ارتباط با سرور برقرار نشد.');
+                } else {
+                    this.error = 'ارتباط با سرور برقرار نشد.';
+                }
             } finally {
                 this.submitting = false;
             }
@@ -386,13 +461,14 @@ document.addEventListener('alpine:init', () => {
                     { method: 'DELETE', headers: { 'X-School-ID': this.schoolId, 'X-XSRF-TOKEN': this.csrfToken() } });
                 if (!response.ok) {
                     const classified = await this.classifyError(response);
-                    this.error = classified.message;
+                    this.setConfirmError(classified.message);
                     return;
                 }
+                this.confirm = null;
                 this.expandedExpenseId = null;
                 await this.toggleAttachments(expense);
             } catch (e) {
-                this.error = 'ارتباط با سرور برقرار نشد.';
+                this.setConfirmError('ارتباط با سرور برقرار نشد.');
             } finally {
                 this.submitting = false;
             }

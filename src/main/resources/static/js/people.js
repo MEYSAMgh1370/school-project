@@ -4,6 +4,10 @@ document.addEventListener('alpine:init', () => {
         members: [],
         loading: false,
         submitting: false,
+        // یک تغییرِ فعال/غیرفعال در حال انجام (دوبار کلیک نباید دو درخواست بفرستد)
+        toggling: false,
+        // تأیید «غیرفعال کردن»: null یا { member, error }
+        confirm: null,
         error: '',
         notice: '',
         invite: null,
@@ -44,6 +48,7 @@ document.addEventListener('alpine:init', () => {
             window.addEventListener('school-changed', (e) => {
                 this.schoolId = e.detail.id;
                 this.invite = null;
+                this.confirm = null;
                 this.filterText = '';
                 this.shown = this.pageSize;
                 this.error = '';
@@ -96,12 +101,20 @@ document.addEventListener('alpine:init', () => {
             return `/api/admin/schools/${this.schoolId}/roles`;
         },
 
-        async showError(response) {
+        // confirmTarget: modal تأیید که درخواست از آن آمده (یا null). پیام بعد از خواندنِ بدنه
+        // نوشته می‌شود؛ اگر modal در این فاصله بسته شده باشد، به خطای صفحه می‌رود.
+        async showError(response, confirmTarget = null) {
+            let message;
             try {
                 const body = await response.json();
-                this.error = body.detail || body.title || 'خطایی رخ داد.';
+                message = body.detail || body.title || 'خطایی رخ داد.';
             } catch (e) {
-                this.error = 'خطایی رخ داد. (' + response.status + ')';
+                message = 'خطایی رخ داد. (' + response.status + ')';
+            }
+            if (confirmTarget && this.confirm === confirmTarget) {
+                confirmTarget.error = message;
+            } else {
+                this.error = message;
             }
         },
 
@@ -160,7 +173,35 @@ document.addEventListener('alpine:init', () => {
             }
         },
 
-        async toggleActive(member) {
+        // غیرفعال کردن دسترسیِ یک عضو اول تأیید (modal) می‌گیرد؛ فعال کردن دوباره بی‌خطر است و مستقیم انجام می‌شود
+        askDeactivate(member) {
+            if (this.toggling) {
+                return;
+            }
+            this.error = '';
+            this.notice = '';
+            this.confirm = { member, error: '' };
+            this.$nextTick(() => window.ModalFocus.focusFirst(this.$refs.confirmModal));
+        },
+
+        closeConfirm() {
+            this.confirm = null;
+        },
+
+        deactivate() {
+            const target = this.confirm;
+            if (!target || this.toggling) {
+                return;
+            }
+            return this.toggleActive(target.member, target);
+        },
+
+        // confirmTarget: وقتی از modal تأیید می‌آید، خطا داخل همان modal نشان داده می‌شود
+        async toggleActive(member, confirmTarget = null) {
+            if (this.toggling) {
+                return;
+            }
+            this.toggling = true;
             this.error = '';
             this.notice = '';
             try {
@@ -174,14 +215,22 @@ document.addEventListener('alpine:init', () => {
                     body: JSON.stringify({ active: !member.active })
                 });
                 if (!response.ok) {
-                    await this.showError(response);
+                    await this.showError(response, confirmTarget);
                     return;
                 }
+                this.confirm = null;
                 // member.active هنوز مقدار قبل از تغییر است
                 this.notice = member.active ? 'عضویت غیرفعال شد.' : 'عضویت فعال شد.';
                 await this.load();
             } catch (e) {
-                this.error = 'ارتباط با سرور برقرار نشد.';
+                // اگر modal بسته شده باشد، خطا بالای صفحه نشان داده می‌شود
+                if (confirmTarget && this.confirm === confirmTarget) {
+                    confirmTarget.error = 'ارتباط با سرور برقرار نشد.';
+                } else {
+                    this.error = 'ارتباط با سرور برقرار نشد.';
+                }
+            } finally {
+                this.toggling = false;
             }
         },
 

@@ -22,18 +22,19 @@ document.addEventListener('alpine:init', () => {
             return this.passwordConfirm.length > 0 && this.password !== this.passwordConfirm;
         },
 
-        get canSubmit() {
-            return this.fullName.length > 0 && this.email.length > 0
-                && this.password.length >= 8 && this.password === this.passwordConfirm
-                && !this.submitting;
-        },
-
         csrfToken() {
             const match = document.cookie.match(/(?:^|;\s*)XSRF-TOKEN=([^;]*)/);
             return match ? decodeURIComponent(match[1]) : '';
         },
 
         async submit() {
+            if (this.submitting) {
+                return;
+            }
+            if (this.password !== this.passwordConfirm) {
+                this.errorMessage = 'رمز عبور و تکرار آن یکسان نیستند.';
+                return;
+            }
             this.submitting = true;
             this.errorMessage = '';
             try {

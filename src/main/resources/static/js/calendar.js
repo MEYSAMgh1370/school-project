@@ -128,6 +128,13 @@ window.Calendar = (function () {
     // بازه‌ی زمانِ محلی (مثلاً «2026-10-20T08:00») → تاریخ و ساعت از خودِ متن.
     // عمداً از Date(string) استفاده نمی‌کنیم: آن برای رشته‌ی بدون منطقه گاهی
     // ساعت را جابه‌جا می‌کند. Date محلی از اجزا ساخته می‌شود، پس روزِ جلالی درست است.
+    // «YYYY-MM-DD» را روزِ محلیِ همان تاریخ می‌خواند. new Date('2026-10-08') نیمه‌شبِ UTC است و
+    // در مرورگرهای غربِ UTC یک روز عقب نشان داده می‌شد.
+    function toLocalDate(value) {
+        const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(String(value));
+        return match ? new Date(Number(match[1]), Number(match[2]) - 1, Number(match[3])) : new Date(value);
+    }
+
     function parseLocalDateTime(value) {
         const match = /^(\d{4})-(\d{2})-(\d{2})(?:[T ](\d{2}):(\d{2}))?/.exec(String(value));
         if (!match) {
@@ -170,7 +177,7 @@ window.Calendar = (function () {
             // «۱۴۰۵/۰۴/۲۲»: ماه و روز دو رقمی (DESIGN.md §8). پیش از این toLocaleDateString('fa-IR')
             // بی‌صفر می‌داد («۱۴۰۵/۴/۲۲»)، که با §8 نمی‌خواند.
             formatDate(value) {
-                return new Date(value).toLocaleDateString('fa-IR', { year: 'numeric', month: '2-digit', day: '2-digit' });
+                return toLocalDate(value).toLocaleDateString('fa-IR', { year: 'numeric', month: '2-digit', day: '2-digit' });
             },
 
             // برچسب بازه‌ی یک هفته. عیناً منطق قدیمیِ weekRangeLabel در
@@ -244,7 +251,7 @@ window.Calendar = (function () {
             },
 
             formatDate(value) {
-                return dateFormat.format(new Date(value));
+                return dateFormat.format(toLocalDate(value));
             },
 
             formatRange(startDate, endDate) {

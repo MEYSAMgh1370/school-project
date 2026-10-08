@@ -118,7 +118,7 @@
                                             :aria-expanded="selectedStudentId === student.studentId ? 'true' : 'false'">
                                         <span x-text="selectedStudentId === student.studentId ? 'بستن' : 'مدیریت والدین'"></span>
                                         <span class="tag is-light app-inline-gap" x-show="guardiansByStudent[student.studentId]"
-                                              x-text="(guardiansByStudent[student.studentId] || []).length"></span>
+                                              x-text="fa((guardiansByStudent[student.studentId] || []).length)"></span>
                                     </button>
                                 </div>
                             </template>

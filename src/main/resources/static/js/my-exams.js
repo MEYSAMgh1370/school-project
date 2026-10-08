@@ -5,6 +5,8 @@ document.addEventListener('alpine:init', () => {
         loading: false,
         error: '',
         starting: null,
+        // تأیید «شروع آزمون»: null یا { exam, error }
+        confirm: null,
         results: {},
 
         init() {
@@ -13,6 +15,7 @@ document.addEventListener('alpine:init', () => {
             window.addEventListener('school-changed', (e) => {
                 this.schoolId = e.detail.id;
                 this.error = '';
+                this.confirm = null;
                 this.load();
             });
             if (this.schoolId) {
@@ -64,9 +67,38 @@ document.addEventListener('alpine:init', () => {
             return new Date(exam.end) <= new Date();
         },
 
+        // با باز شدنِ تلاش، زمان‌سنجِ آزمون شروع می‌شود: اول تأیید (modal) گرفته می‌شود
+        askStart(exam) {
+            if (this.starting !== null) {
+                return;
+            }
+            this.error = '';
+            this.confirm = { exam, error: '' };
+            this.$nextTick(() => window.ModalFocus.focusFirst(this.$refs.confirmModal));
+        },
+
+        closeConfirm() {
+            this.confirm = null;
+        },
+
         async startAttempt(exam) {
+            // خطا داخل modal نشان داده می‌شود (پشتِ لایه‌ی modal دیده نمی‌شد)
+            const target = this.confirm || this;
+            if (this.starting !== null) {
+                return;
+            }
+            // اگر modal در این فاصله بسته شده باشد، خطا بالای صفحه نشان داده می‌شود
+            const fail = (message) => {
+                if (target !== this && this.confirm === target) {
+                    target.error = message;
+                } else {
+                    this.error = message;
+                }
+            };
+            let navigating = false;
             this.starting = exam.id;
             this.error = '';
+            target.error = '';
             try {
                 const response = await fetch(`/api/me/schools/${this.schoolId}/exams/${exam.id}/attempts`, {
                     method: 'POST',
@@ -75,18 +107,22 @@ document.addEventListener('alpine:init', () => {
                 if (!response.ok) {
                     try {
                         const body = await response.json();
-                        this.error = body.detail || body.title || 'خطایی رخ داد.';
+                        fail(body.detail || body.title || 'خطایی رخ داد.');
                     } catch (e) {
-                        this.error = 'خطایی رخ داد. (' + response.status + ')';
+                        fail('خطایی رخ داد. (' + response.status + ')');
                     }
                     return;
                 }
                 const attempt = await response.json();
+                // تا بارگذاری صفحه‌ی بعد، starting باقی می‌ماند تا کلیک دوم درخواست دوباره نفرستد
+                navigating = true;
                 window.location.href = `/exam-take?token=${encodeURIComponent(attempt.token)}&expireAt=${encodeURIComponent(attempt.expireAt)}`;
             } catch (e) {
-                this.error = 'ارتباط با سرور برقرار نشد.';
+                fail('ارتباط با سرور برقرار نشد.');
             } finally {
-                this.starting = null;
+                if (!navigating) {
+                    this.starting = null;
+                }
             }
         },
 

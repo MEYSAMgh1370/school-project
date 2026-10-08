@@ -20,7 +20,7 @@
 
                 <%-- فیلتر یک فرزند (از لینک پیشخوان): همیشه دیده می‌شود و راه برگشت دارد. --%>
                 <div class="notification is-light" x-cloak x-show="studentFilter !== null">
-                    فقط فاکتورهای دانش‌آموز #<span x-text="studentFilter"></span> نمایش داده می‌شود.
+                    فقط فاکتورهای دانش‌آموز #<span x-text="Calendar.digits(studentFilter)"></span> نمایش داده می‌شود.
                     <a href="/my-invoices">نمایش همه</a>
                 </div>
 
@@ -41,7 +41,7 @@
                     <template x-for="invoice in visibleInvoices()" :key="invoice.id">
                         <tr>
                             <td>
-                                دانش‌آموز #<span x-text="invoice.studentId"></span>
+                                دانش‌آموز #<span x-text="Calendar.digits(invoice.studentId)"></span>
                                 <%-- سالِ فاکتور: فاکتورِ مانده‌دارِ سال‌های قبل هم در این فهرست می‌آید --%>
                                 <span class="tag is-light" dir="ltr" x-show="invoice.academicYear"
                                       x-text="invoice.academicYear ? Calendar.digits(invoice.academicYear) : ''"></span>

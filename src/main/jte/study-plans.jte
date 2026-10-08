@@ -38,7 +38,7 @@
                                 <template x-for="plan in plans" :key="plan.id">
                                     <tr>
                                         <td x-text="plan.title"></td>
-                                        <td x-text="plan.weights.length"></td>
+                                        <td x-text="Calendar.digits(plan.weights.length)"></td>
                                         <td>
                                             <button type="button" class="button is-small"
                                                     :class="{ 'is-link': expandedPlanId === plan.id }"
@@ -95,7 +95,7 @@
                                                 </div>
                                                 <div class="control">
                                                     <button class="button is-link" type="button"
-                                                            :disabled="!assignStudentIdInput"
+                                                            :disabled="submittingAssignment"
                                                             :class="{ 'is-loading': submittingAssignment }"
                                                             @click="assignStudent(plan.id)">
                                                         تخصیص
@@ -120,7 +120,7 @@
                                                 <tbody>
                                                 <template x-for="weekCourse in weekCourses" :key="weekCourse.id">
                                                     <tr>
-                                                        <td dir="ltr" x-text="weekCourse.weekStart"></td>
+                                                        <td dir="ltr" x-text="Calendar.formatDate(weekCourse.weekStart)"></td>
                                                         <td x-text="topicName(weekCourse.courseTopicId)"></td>
                                                         <td x-text="subTopicNames(weekCourse.subTopicIds) || '—'"></td>
                                                     </tr>
@@ -166,7 +166,7 @@
 
                                             <div class="field">
                                                 <button class="button is-link" type="button"
-                                                        :disabled="!weekCourseForm.weekStart || !weekCourseForm.courseTopicId"
+                                                        :disabled="submittingWeekCourse"
                                                         :class="{ 'is-loading': submittingWeekCourse }"
                                                         @click="createWeekCourse(plan.id)">
                                                     افزودن سرفصل هفتگی
@@ -297,7 +297,7 @@
                                         </div>
                                         <div class="control app-control-align-end">
                                             <button class="button is-danger is-light" type="button"
-                                                    :class="{ 'is-loading': clearing }" @click="clearWeek">
+                                                    :class="{ 'is-loading': clearing }" @click="askClearWeek">
                                                 خالی‌کردن این هفته
                                             </button>
                                         </div>
@@ -325,7 +325,7 @@
                                         </div>
                                         <div class="field">
                                             <button class="button is-link" type="button"
-                                                    :disabled="copyTargetIds.length === 0"
+                                                    :disabled="copyingWeek"
                                                     :class="{ 'is-loading': copyingWeek }" @click="copyWeekToOthers">
                                                 کپی کردن
                                             </button>
@@ -430,6 +430,36 @@
                     </div>
                 </template>
             `)
+    </div>
+
+    <%-- ------------------------------------------------------- تأیید خالی‌کردن هفته --%>
+    <div class="modal" role="dialog" aria-modal="true" aria-labelledby="studyPlansConfirmTitle"
+         tabindex="-1" x-ref="confirmModal" :class="{ 'is-active': confirm }" x-cloak
+         @keydown.tab="window.ModalFocus.trap($event, $el)" @keydown.escape.stop="closeConfirm">
+        <div class="modal-background" @click="closeConfirm"></div>
+        <div class="modal-card">
+            <header class="modal-card-head">
+                <p class="modal-card-title" id="studyPlansConfirmTitle">تأیید خالی‌کردن هفته</p>
+                <button class="delete" type="button" aria-label="بستن" @click="closeConfirm"></button>
+            </header>
+            <section class="modal-card-body">
+                <div class="notification is-danger" role="alert"
+                     x-show="confirm && confirm.error"><span class="app-notice">@template.layout.icon(name = "alert", size = 20)<span x-text="confirm ? confirm.error : ''"></span></span></div>
+                <p class="has-text-weight-semibold">
+                    آیا از خالی‌کردن هفته‌ی شروع‌شده از
+                    <span x-text="confirm ? confirm.weekLabel : ''"></span>
+                    برای «<span x-text="confirm ? confirm.studentName : ''"></span>» مطمئن هستید؟
+                </p>
+                <p class="has-text-grey is-size-7">
+                    همه‌ی بازه‌های مطالعه‌ی این دانش‌آموز در آن هفته پاک می‌شود.
+                </p>
+            </section>
+            <footer class="modal-card-foot">
+                <button class="button is-danger" type="button" id="studyPlansConfirmClear"
+                        :class="{ 'is-loading': clearing }" @click="clearWeek">خالی‌کردن</button>
+                <button class="button" type="button" @click="closeConfirm">انصراف</button>
+            </footer>
+        </div>
     </div>
 
     <%-- ------------------------------------------------------- بازه‌ی انتخاب‌شده --%>

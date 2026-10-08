@@ -2,7 +2,7 @@
 
 @param NavbarModel navbar
 
-@template.layout.main(title = "هزینه‌های مدرسه", scripts = java.util.List.of("/js/navbar.js", "/js/digits.js", "/js/jalali.js", "/js/calendar.js", "/js/money.js", "/js/list-search.js", "/js/expenses.js"), content = @`
+@template.layout.main(title = "هزینه‌های مدرسه", scripts = java.util.List.of("/js/navbar.js", "/js/digits.js", "/js/jalali.js", "/js/calendar.js", "/js/money.js", "/js/list-search.js", "/js/modal-focus.js", "/js/expenses.js"), content = @`
 @template.layout.navbar(navbar = navbar)
 
 <section class="section" id="main-content" role="main" tabindex="-1" x-data="expensesPage()">
@@ -108,6 +108,7 @@
                                         <input class="input" id="expenseAmount" dir="ltr" type="text" inputmode="numeric"
                                                pattern="[0-9]+" x-model="expenseForm.amount"
                                                @input="expenseForm.amount = Money.normalizeAmountInput($event)" required>
+                                        <p class="help" x-show="Money.tomanWords(expenseForm.amount)" x-text="Money.tomanWords(expenseForm.amount)"></p>
                                     </div>
                                     <div class="control">
                                         <label class="label" for="expenseCategory">دسته</label>
@@ -203,7 +204,7 @@
                                             <div class="app-expense-row__main">
                                                 <span class="app-expense-row__name" x-text="Money.formatAmount(expense.amount)"></span>
                                                 <span class="is-size-7 has-text-grey" x-text="categoryName(expense.categoryId) + ' · ' + vendorName(expense.vendorId)"></span>
-                                                <span class="is-size-7 has-text-grey" dir="ltr" x-text="expense.expenseDate"></span>
+                                                <span class="is-size-7 has-text-grey" dir="ltr" x-text="Calendar.formatDate(expense.expenseDate)"></span>
                                             </div>
                                             <span class="tag" :class="statusClass(expense.status)" x-text="statusLabel(expense.status)"></span>
                                             <div class="app-expense-row__actions">
@@ -213,7 +214,7 @@
                                                         @click="payExpense(expense)">پرداخت</button>
                                                 <button class="button is-danger is-light"
                                                         x-show="expense.status === 'DRAFT' || expense.status === 'APPROVED'"
-                                                        @click="cancelExpense(expense)">لغو</button>
+                                                        @click="askCancel(expense)">لغو</button>
                                                 <button class="button is-light" :class="{ 'is-link': expandedExpenseId === expense.id }"
                                                         @click="toggleAttachments(expense)">پیوست‌ها</button>
                                             </div>
@@ -243,12 +244,12 @@
                                     <template x-for="attachment in attachments" :key="attachment.id">
                                         <tr>
                                             <td x-text="attachment.fileName"></td>
-                                            <td dir="ltr" x-text="Math.round(attachment.sizeBytes / 1024) + ' KB'"></td>
+                                            <td dir="ltr" x-text="Calendar.digits(Math.round(attachment.sizeBytes / 1024)) + ' کیلوبایت'"></td>
                                             <td>
                                                 <div class="buttons are-small">
                                                     <button class="button" @click="downloadAttachment(expense, attachment)">دانلود</button>
                                                     <button class="button is-danger is-light"
-                                                            @click="deleteAttachment(expense, attachment)">حذف</button>
+                                                            @click="askDeleteAttachment(expense, attachment)">حذف</button>
                                                 </div>
                                             </td>
                                         </tr>
@@ -314,7 +315,7 @@
                                     <tr>
                                         <td x-text="summaryRowLabel(row)"></td>
                                         <td x-text="Money.formatAmount(row.total)"></td>
-                                        <td dir="ltr" x-text="row.count"></td>
+                                        <td dir="ltr" x-text="Calendar.digits(row.count)"></td>
                                     </tr>
                                 </template>
                                 </tbody>
@@ -329,6 +330,30 @@
                     </div>
                 </template>
             `)
+    </div>
+
+    <%-- ------------------------------------------------ تأیید لغو هزینه / حذف پیوست --%>
+    <div class="modal" role="dialog" aria-modal="true" aria-labelledby="expensesConfirmTitle"
+         tabindex="-1" x-ref="confirmModal" :class="{ 'is-active': confirm }" x-cloak
+         @keydown.tab="window.ModalFocus && window.ModalFocus.trap($event, $el)" @keydown.escape.stop="closeConfirm">
+        <div class="modal-background" @click="closeConfirm"></div>
+        <div class="modal-card">
+            <header class="modal-card-head">
+                <p class="modal-card-title" id="expensesConfirmTitle" x-text="confirm ? confirm.confirmLabel : ''"></p>
+                <button class="delete" type="button" aria-label="بستن" @click="closeConfirm"></button>
+            </header>
+            <section class="modal-card-body">
+                <div class="notification is-danger" role="alert"
+                     x-show="confirm && confirm.error"><span class="app-notice">@template.layout.icon(name = "alert", size = 20)<span x-text="confirm ? confirm.error : ''"></span></span></div>
+                <p class="has-text-weight-semibold" x-text="confirm ? confirm.message : ''"></p>
+            </section>
+            <footer class="modal-card-foot">
+                <button class="button is-danger" type="button" id="expensesConfirmSubmit"
+                        :class="{ 'is-loading': submitting }" @click="runConfirm"
+                        x-text="confirm ? confirm.confirmLabel : ''"></button>
+                <button class="button is-light" type="button" @click="closeConfirm">انصراف</button>
+            </footer>
+        </div>
     </div>
 </section>
 `)

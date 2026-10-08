@@ -40,14 +40,14 @@
                                 <input class="input app-input-w-8" id="myAttFrom" type="text" dir="ltr" inputmode="numeric"
                                        autocomplete="off" :placeholder="exampleDate()" x-model="fromText"
                                        :class="{ 'is-danger': fromError }" @keydown.enter.prevent="load()">
-                                <p class="help is-danger" id="myAttFromError" x-show="fromError" x-text="fromError"></p>
+                                <p class="help is-danger" role="alert" id="myAttFromError" x-show="fromError"><span class="app-notice">@template.layout.icon(name = "alert", size = 16)<span x-text="fromError"></span></span></p>
                             </div>
                             <div class="control">
                                 <label class="label" for="myAttTo">تا تاریخ</label>
                                 <input class="input app-input-w-8" id="myAttTo" type="text" dir="ltr" inputmode="numeric"
                                        autocomplete="off" :placeholder="exampleDate()" x-model="toText"
                                        :class="{ 'is-danger': toError }" @keydown.enter.prevent="load()">
-                                <p class="help is-danger" id="myAttToError" x-show="toError" x-text="toError"></p>
+                                <p class="help is-danger" role="alert" id="myAttToError" x-show="toError"><span class="app-notice">@template.layout.icon(name = "alert", size = 16)<span x-text="toError"></span></span></p>
                             </div>
                         </div>
                         <p class="help">بازه حداکثر ۳۶۶ روز است؛ ارقام فارسی هم پذیرفته می‌شود.</p>
@@ -130,7 +130,7 @@
                                 <button class="delete" type="button" aria-label="بستن" @click="closeExcuse"></button>
                             </header>
                             <section class="modal-card-body">
-                                <div class="notification is-danger" role="alert" x-show="excuse.error" x-text="excuse.error"></div>
+                                <div class="notification is-danger" role="alert" x-show="excuse.error"><span class="app-notice">@template.layout.icon(name = "alert", size = 20)<span x-text="excuse.error"></span></span></div>
 
                                 <p class="mb-3">
                                     <span x-text="excuse.studentName"></span>
@@ -144,7 +144,7 @@
                                         <textarea class="textarea" id="myAttNote" rows="4" x-model="excuse.note"
                                                   :class="{ 'is-danger': excuse.noteError }"></textarea>
                                     </div>
-                                    <p class="help is-danger" x-show="excuse.noteError" x-text="excuse.noteError"></p>
+                                    <p class="help is-danger" role="alert" x-show="excuse.noteError"><span class="app-notice">@template.layout.icon(name = "alert", size = 16)<span x-text="excuse.noteError"></span></span></p>
                                     <p class="help" id="myAttNoteCounter">
                                         <span x-text="Calendar.digits(noteLength())"></span> از <span x-text="Calendar.digits(maxNote)"></span> نویسه
                                     </p>

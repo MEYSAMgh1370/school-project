@@ -15,6 +15,10 @@ document.addEventListener('alpine:init', () => {
         unattributed: { classes: 0, students: 0 },
         attributeYear: '',
         attributing: false,
+        // تأیید «نسبت دادن»: null یا { year, classes, students, error }
+        confirm: null,
+        // تأیید «ارتقای خودکار»: null یا { enabled, error }
+        autoConfirm: null,
         blocked: false,
         error: '',
         notice: '',
@@ -31,6 +35,8 @@ document.addEventListener('alpine:init', () => {
                 this.schoolId = e.detail.id;
                 this.error = '';
                 this.notice = '';
+                this.confirm = null;
+                this.autoConfirm = null;
                 // ذخیره‌ی در جریان (مدرسه‌ی قبلی) دیگر به این مدرسه ربطی ندارد
                 this.saveSeq++;
                 this.saving = false;
@@ -109,8 +115,33 @@ document.addEventListener('alpine:init', () => {
             }
         },
 
+        // نسبت دادنِ داده‌ی قبلی به یک سال برگشت‌پذیر نیست: اول تأیید (modal) گرفته می‌شود
+        askAttribute() {
+            if (this.attributing) {
+                return;
+            }
+            this.error = '';
+            this.notice = '';
+            if (!this.attributeYear) {
+                this.error = 'یک سال تحصیلی را انتخاب کنید.';
+                return;
+            }
+            this.confirm = {
+                year: this.attributeYear,
+                classes: this.unattributed.classes,
+                students: this.unattributed.students,
+                error: ''
+            };
+            this.$nextTick(() => window.ModalFocus.focusFirst(this.$refs.confirmModal));
+        },
+
+        closeConfirm() {
+            this.confirm = null;
+        },
+
         async attribute() {
-            if (!this.attributeYear || this.attributing) {
+            const target = this.confirm;
+            if (!target || this.attributing) {
                 return;
             }
             const schoolId = this.schoolId;
@@ -125,28 +156,64 @@ document.addEventListener('alpine:init', () => {
                         'X-School-ID': schoolId,
                         'X-XSRF-TOKEN': this.csrfToken()
                     },
-                    body: JSON.stringify({ academicYear: this.attributeYear })
+                    body: JSON.stringify({ academicYear: target.year })
                 });
                 if (schoolId !== this.schoolId) {
                     return;
                 }
                 if (!response.ok) {
-                    this.error = (await this.classifyError(response)).message;
+                    // خطا داخل modal نشان داده می‌شود (پشتِ لایه‌ی modal دیده نمی‌شد)
+                    const message = (await this.classifyError(response)).message;
+                    if (this.confirm === target) {
+                        target.error = message;
+                    } else {
+                        this.error = message;
+                    }
                     return;
                 }
                 const result = await response.json();
+                this.confirm = null;
                 this.notice = `کلاس‌ها و دانش‌آموزان قبلی به سال ${Calendar.digits(result.academicYear)} نسبت داده شد `
                     + `(${Calendar.digits(String(result.classes))} کلاس، ${Calendar.digits(String(result.students))} دانش‌آموز).`;
                 this.attributeYear = '';
                 await this.loadUnattributed();
             } catch (e) {
-                this.error = 'ارتباط با سرور برقرار نشد.';
+                if (this.confirm === target) {
+                    target.error = 'ارتباط با سرور برقرار نشد.';
+                } else {
+                    this.error = 'ارتباط با سرور برقرار نشد.';
+                }
             } finally {
                 this.attributing = false;
             }
         },
 
-        async setAutoPromotion(enabled) {
+        // روشن/خاموش‌کردنِ ارتقای خودکار روی همه‌ی دانش‌آموزانِ تعویضِ بعدیِ سال اثر می‌گذارد: اول تأیید (modal)
+        // گرفته می‌شود. چک‌باکس با کلیک می‌چرخد ولی وضعیتِ واقعی فقط بعد از تأیید عوض می‌شود، پس همان لحظه
+        // به وضعیتِ واقعی برمی‌گردد (انصراف دیگر کاری لازم ندارد)
+        askAutoPromotion(event) {
+            const box = event.target;
+            const enabled = box.checked;
+            box.checked = this.autoPromotion;
+            if (this.autoSaving) {
+                return;
+            }
+            this.error = '';
+            this.notice = '';
+            this.autoConfirm = { enabled, error: '' };
+            this.$nextTick(() => window.ModalFocus.focusFirst(this.$refs.autoConfirmModal));
+        },
+
+        closeAutoConfirm() {
+            this.autoConfirm = null;
+        },
+
+        async setAutoPromotion() {
+            const target = this.autoConfirm;
+            if (!target || this.autoSaving) {
+                return;
+            }
+            const enabled = target.enabled;
             const schoolId = this.schoolId;
             this.autoSaving = true;
             this.error = '';
@@ -165,18 +232,27 @@ document.addEventListener('alpine:init', () => {
                     return;
                 }
                 if (!response.ok) {
-                    this.autoPromotion = !enabled; // سرور نپذیرفت؛ انتخابگر به حالت قبل برمی‌گردد
-                    this.error = (await this.classifyError(response)).message;
+                    // سرور نپذیرفت؛ وضعیت همان قبلی می‌ماند و خطا داخل modal نشان داده می‌شود
+                    const message = (await this.classifyError(response)).message;
+                    if (this.autoConfirm === target) {
+                        target.error = message;
+                    } else {
+                        this.error = message;
+                    }
                     return;
                 }
                 const settings = await response.json();
+                this.autoConfirm = null;
                 this.autoPromotion = !!settings.autoPromotion;
                 this.notice = this.autoPromotion
                     ? 'ارتقای خودکار روشن شد؛ از تعویض بعدیِ سال اثر می‌کند.'
                     : 'ارتقای خودکار خاموش شد.';
             } catch (e) {
-                this.autoPromotion = !enabled;
-                this.error = 'ارتباط با سرور برقرار نشد.';
+                if (this.autoConfirm === target) {
+                    target.error = 'ارتباط با سرور برقرار نشد.';
+                } else {
+                    this.error = 'ارتباط با سرور برقرار نشد.';
+                }
             } finally {
                 this.autoSaving = false;
             }
@@ -228,7 +304,17 @@ document.addEventListener('alpine:init', () => {
         },
 
         async save() {
+            if (this.saving) {
+                return;
+            }
+            if (this.selectedId === '') {
+                this.notice = '';
+                this.error = 'یک سال تحصیلی را انتخاب کنید.';
+                return;
+            }
             if (!this.canSave()) {
+                this.notice = '';
+                this.error = 'این سال هم‌اکنون سال تحصیلی جاری است؛ برای تغییر، سال دیگری را انتخاب کنید.';
                 return;
             }
             const schoolId = this.schoolId;

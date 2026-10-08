@@ -2,7 +2,7 @@
 
 @param NavbarModel navbar
 
-@template.layout.main(title = "امور مالی مدرسه", scripts = java.util.List.of("/js/navbar.js", "/js/digits.js", "/js/jalali.js", "/js/calendar.js", "/js/member-names.js", "/js/money.js", "/js/list-search.js", "/js/finance.js"), content = @`
+@template.layout.main(title = "امور مالی مدرسه", scripts = java.util.List.of("/js/navbar.js", "/js/digits.js", "/js/jalali.js", "/js/calendar.js", "/js/member-names.js", "/js/money.js", "/js/list-search.js", "/js/modal-focus.js", "/js/finance.js"), content = @`
 @template.layout.navbar(navbar = navbar)
 
 <section class="section" id="main-content" role="main" tabindex="-1" x-data="financePage()">
@@ -53,8 +53,8 @@
                                     </div>
                                 </div>
                                 <div class="control app-control-align-end">
-                                    <button class="button is-warning" type="button" @click="attribute()"
-                                            :disabled="!attributeYear || attributing" :class="{ 'is-loading': attributing }">
+                                    <button class="button is-warning" type="button" @click="askAttribute()"
+                                            :disabled="attributing" :class="{ 'is-loading': attributing }">
                                         نسبت دادن
                                     </button>
                                 </div>
@@ -76,6 +76,7 @@
                                         <input class="input" dir="ltr" id="tuitionAmount" type="text" inputmode="numeric"
                                                pattern="[0-9]+" x-model="form.amount"
                                                @input="form.amount = Money.normalizeAmountInput($event)" required>
+                                        <p class="help" x-show="Money.tomanWords(form.amount)" x-text="Money.tomanWords(form.amount)"></p>
                                     </div>
                                     <div class="control app-control-align-end">
                                         <button class="button is-link" type="submit" :class="{ 'is-loading': submitting }">
@@ -91,7 +92,7 @@
                                 <h2 class="title is-6 mb-0">فاکتورها</h2>
                             </div>
                             <div class="level-right">
-                                <button class="button is-small" @click="backfill" :class="{ 'is-loading': backfilling }">
+                                <button class="button is-small" type="button" @click="askBackfill" :class="{ 'is-loading': backfilling }">
                                     صدور فاکتورهای این سال برای دانش‌آموزان بدون فاکتور
                                 </button>
                             </div>
@@ -193,6 +194,7 @@
                                                    type="text" inputmode="numeric" pattern="[0-9]+"
                                                    x-model="paymentForm.amount"
                                                    @input="paymentForm.amount = Money.normalizeAmountInput($event)" required>
+                                            <p class="help" x-show="Money.tomanWords(paymentForm.amount)" x-text="Money.tomanWords(paymentForm.amount)"></p>
                                         </div>
                                         <div class="control">
                                             <label class="label" :for="'paymentMethod-' + invoice.id">روش پرداخت</label>
@@ -228,6 +230,66 @@
                             message = @`هنوز فاکتوری برای این مدرسه صادر نشده است.`)
                     </div>
                 </template>
+
+                <%-- ------------------------------------------------ تأیید صدور گروهی فاکتور --%>
+                <div class="modal" role="dialog" aria-modal="true" aria-labelledby="financeConfirmTitle"
+                     tabindex="-1" x-ref="confirmModal" :class="{ 'is-active': confirm }" x-cloak
+                     @keydown.tab="window.ModalFocus.trap($event, $el)" @keydown.escape.stop="closeConfirm">
+                    <div class="modal-background" @click="closeConfirm"></div>
+                    <div class="modal-card">
+                        <header class="modal-card-head">
+                            <p class="modal-card-title" id="financeConfirmTitle">تأیید صدور فاکتورها</p>
+                            <button class="delete" type="button" aria-label="بستن" @click="closeConfirm"></button>
+                        </header>
+                        <section class="modal-card-body">
+                            <div class="notification is-danger" role="alert"
+                                 x-show="confirm && confirm.error"><span class="app-notice">@template.layout.icon(name = "alert", size = 20)<span x-text="confirm ? confirm.error : ''"></span></span></div>
+                            <p class="has-text-weight-semibold">
+                                برای همه‌ی دانش‌آموزانِ بدون فاکتور<span x-show="confirm && confirm.year"> در سال
+                                <span dir="ltr" x-text="confirm ? Calendar.digits(confirm.year) : ''"></span></span>
+                                فاکتور صادر شود؟
+                            </p>
+                            <p class="has-text-grey is-size-7">
+                                دانش‌آموزی که از قبل فاکتور دارد دوباره فاکتور نمی‌گیرد. فاکتورهای صادرشده در همین صفحه دیده می‌شوند.
+                            </p>
+                        </section>
+                        <footer class="modal-card-foot">
+                            <button class="button is-link" type="button" id="financeConfirmBackfill"
+                                    :class="{ 'is-loading': backfilling }" @click="backfill">صدور فاکتورها</button>
+                            <button class="button" type="button" @click="closeConfirm">انصراف</button>
+                        </footer>
+                    </div>
+                </div>
+
+                <%-- ------------------------------------------------ تأیید نسبت دادن به سال --%>
+                <div class="modal" role="dialog" aria-modal="true" aria-labelledby="financeAttributeConfirmTitle"
+                     tabindex="-1" x-ref="attributeModal" :class="{ 'is-active': attributeConfirm }" x-cloak
+                     @keydown.tab="window.ModalFocus.trap($event, $el)" @keydown.escape.stop="closeAttributeConfirm">
+                    <div class="modal-background" @click="closeAttributeConfirm"></div>
+                    <div class="modal-card">
+                        <header class="modal-card-head">
+                            <p class="modal-card-title" id="financeAttributeConfirmTitle">تأیید نسبت دادن به سال</p>
+                            <button class="delete" type="button" aria-label="بستن" @click="closeAttributeConfirm"></button>
+                        </header>
+                        <section class="modal-card-body">
+                            <div class="notification is-danger" role="alert"
+                                 x-show="attributeConfirm && attributeConfirm.error"><span class="app-notice">@template.layout.icon(name = "alert", size = 20)<span x-text="attributeConfirm ? attributeConfirm.error : ''"></span></span></div>
+                            <p class="has-text-weight-semibold">
+                                <span x-text="attributeConfirm ? Calendar.digits(String(attributeConfirm.invoices)) : ''"></span> فاکتورِ قبلی<span x-show="attributeConfirm && attributeConfirm.tuitionFee"> و شهریه‌ی قبلی</span> به سال
+                                <span dir="ltr" x-text="attributeConfirm ? Calendar.digits(attributeConfirm.year) : ''"></span>
+                                نسبت داده شود؟
+                            </p>
+                            <p class="has-text-grey is-size-7">
+                                بعد از این کار، این اطلاعات جزو آن سال حساب می‌شوند و «صدور فاکتور» برای یک سال دوباره ممکن می‌شود.
+                            </p>
+                        </section>
+                        <footer class="modal-card-foot">
+                            <button class="button is-link" type="button" id="financeConfirmAttribute"
+                                    :class="{ 'is-loading': attributing }" @click="attribute">نسبت دادن</button>
+                            <button class="button" type="button" @click="closeAttributeConfirm">انصراف</button>
+                        </footer>
+                    </div>
+                </div>
             `)
     </div>
 </section>

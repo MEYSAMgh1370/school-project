@@ -41,18 +41,28 @@ document.addEventListener('alpine:init', () => {
             const s = this.slug.trim().toLowerCase();
             return window.location.origin + '/s/' + (s || 'tizhooshan');
         },
-        get canSubmit() {
-            return this.name.trim().length > 0 && this.timezone.trim().length > 0
-                && this.locale.trim().length > 0 && !this.submitting
-                && (!this.slug.trim() || this.slugValid);
-        },
         csrfToken() {
             const match = document.cookie.match(/(?:^|;\s*)XSRF-TOKEN=([^;]*)/);
             return match ? decodeURIComponent(match[1]) : '';
         },
         async submit() {
-            this.submitting = true;
+            if (this.submitting) {
+                return;
+            }
             this.errorMessage = '';
+            if (!this.name.trim()) {
+                this.errorMessage = 'نام مدرسه را وارد کنید.';
+                return;
+            }
+            if (!this.timezone.trim() || !this.locale.trim()) {
+                this.errorMessage = 'منطقه‌ی زمانی و زبان/منطقه را وارد کنید.';
+                return;
+            }
+            if (this.slug.trim() && !this.slugValid) {
+                this.errorMessage = 'نشانی اختصاصی معتبر نیست؛ فقط حروف کوچک انگلیسی، رقم و خط تیره (۳ تا ۶۳ نویسه) مجاز است.';
+                return;
+            }
+            this.submitting = true;
             try {
                 const response = await fetch('/api/admin/schools', {
                     method: 'POST',

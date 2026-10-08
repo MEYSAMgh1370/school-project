@@ -72,14 +72,12 @@
                         حروف کوچک انگلیسی، رقم و خط تیره (۳ تا ۶۳ نویسه). درِ ورودی مدرسه‌تان می‌شود:
                         <span dir="ltr" x-text="slugPreview"></span>
                     </p>
-                    <p class="help is-danger" x-show="slug.trim() && !slugValid">
-                        فقط حروف کوچک انگلیسی، رقم و خط تیره (نه در ابتدا/انتها)، بین ۳ تا ۶۳ نویسه.
-                    </p>
+                    <p class="help is-danger" role="alert" x-show="slug.trim() && !slugValid"><span class="app-notice">@template.layout.icon(name = "alert", size = 16)<span>فقط حروف کوچک انگلیسی، رقم و خط تیره (نه در ابتدا/انتها)، بین ۳ تا ۶۳ نویسه.</span></span></p>
                 </div>
 
                 <div class="field is-grouped">
                     <div class="control">
-                        <button class="button is-link" type="submit" :disabled="!canSubmit" :class="{ 'is-loading': submitting }">
+                        <button class="button is-link" type="submit" :disabled="submitting" :class="{ 'is-loading': submitting }">
                             ثبت مدرسه
                         </button>
                     </div>
@@ -89,7 +87,7 @@
                 </div>
             </form>
 
-            <div class="notification is-danger mt-4" x-show="errorMessage" x-text="errorMessage"></div>
+            <div class="notification is-danger mt-4" role="alert" x-show="errorMessage"><span class="app-notice">@template.layout.icon(name = "alert", size = 20)<span x-text="errorMessage"></span></span></div>
         </div>
     </div>
 </section>

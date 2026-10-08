@@ -235,6 +235,12 @@ document.addEventListener('alpine:init', () => {
         openConfirm(kind, run, event) {
             this.error = '';
             this.notice = '';
+            if (kind === 'run' && this.plan.length === 0) {
+                this.error = this.fromYear
+                    ? 'دانش‌آموزی برای ارتقا از این سال نمانده است.'
+                    : 'یک سال را برای ارتقا انتخاب کنید.';
+                return;
+            }
             this.opener = event ? event.currentTarget : null;
             this.confirm = { kind, run };
             this.$nextTick(() => window.ModalFocus.focusFirst(this.$refs.confirmModal));
@@ -334,7 +340,12 @@ document.addEventListener('alpine:init', () => {
             const placements = this.pending
                 .filter(item => this.placements[item.studentId])
                 .map(item => ({ studentId: item.studentId, classId: parseInt(this.placements[item.studentId], 10) }));
+            if (this.placing) {
+                return;
+            }
             if (placements.length === 0) {
+                this.error = 'برای دست‌کم یک دانش‌آموز کلاس را انتخاب کنید.';
+                this.notice = '';
                 return;
             }
             this.placing = true;

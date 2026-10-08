@@ -21,20 +21,23 @@ document.addEventListener('alpine:init', () => {
             return this.confirmPassword.length > 0 && this.newPassword !== this.confirmPassword;
         },
 
-        get canSubmit() {
-            return this.token.length > 0 && this.newPassword.length >= 8
-                && this.newPassword === this.confirmPassword && !this.submitting;
-        },
-
         csrfToken() {
             const match = document.cookie.match(/(?:^|;\s*)XSRF-TOKEN=([^;]*)/);
             return match ? decodeURIComponent(match[1]) : '';
         },
 
         async submit() {
-            this.submitting = true;
+            if (this.submitting) {
+                return;
+            }
             this.resultMessage = '';
             this.resultType = '';
+            if (this.newPassword !== this.confirmPassword) {
+                this.resultType = 'danger';
+                this.resultMessage = 'رمزهای عبور یکسان نیستند.';
+                return;
+            }
+            this.submitting = true;
             try {
                 const response = await fetch('/api/auth/activate', {
                     method: 'POST',

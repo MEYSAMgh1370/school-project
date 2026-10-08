@@ -156,19 +156,19 @@
                                             <label class="label" for="ttPeriodLabel">برچسب</label>
                                             <input class="input" id="ttPeriodLabel" type="text" maxlength="64"
                                                    x-model="periodForm.label" :class="{ 'is-danger': periodErrors.label }">
-                                            <p class="help is-danger" x-show="periodErrors.label" x-text="periodErrors.label"></p>
+                                            <p class="help is-danger" role="alert" x-show="periodErrors.label"><span class="app-notice">@template.layout.icon(name = "alert", size = 16)<span x-text="periodErrors.label"></span></span></p>
                                         </div>
                                         <div class="control">
                                             <label class="label" for="ttPeriodStart">شروع</label>
                                             <input class="input" id="ttPeriodStart" type="time" dir="ltr"
                                                    x-model="periodForm.start" :class="{ 'is-danger': periodErrors.start }">
-                                            <p class="help is-danger" x-show="periodErrors.start" x-text="periodErrors.start"></p>
+                                            <p class="help is-danger" role="alert" x-show="periodErrors.start"><span class="app-notice">@template.layout.icon(name = "alert", size = 16)<span x-text="periodErrors.start"></span></span></p>
                                         </div>
                                         <div class="control">
                                             <label class="label" for="ttPeriodEnd">پایان</label>
                                             <input class="input" id="ttPeriodEnd" type="time" dir="ltr"
                                                    x-model="periodForm.end" :class="{ 'is-danger': periodErrors.end }">
-                                            <p class="help is-danger" x-show="periodErrors.end" x-text="periodErrors.end"></p>
+                                            <p class="help is-danger" role="alert" x-show="periodErrors.end"><span class="app-notice">@template.layout.icon(name = "alert", size = 16)<span x-text="periodErrors.end"></span></span></p>
                                         </div>
                                         <div class="control app-control-align-end">
                                             <button class="button is-link" type="submit"
@@ -233,7 +233,7 @@
                                             <label class="label" for="ttActivityName">نام فعالیت</label>
                                             <input class="input" id="ttActivityName" type="text" maxlength="128"
                                                    x-model="activityForm.name" :class="{ 'is-danger': activityError }">
-                                            <p class="help is-danger" x-show="activityError" x-text="activityError"></p>
+                                            <p class="help is-danger" role="alert" x-show="activityError"><span class="app-notice">@template.layout.icon(name = "alert", size = 16)<span x-text="activityError"></span></span></p>
                                         </div>
                                         <div class="control app-control-align-end">
                                             <button class="button is-link" type="submit"
@@ -307,7 +307,7 @@
                         </header>
                         <template x-if="cell">
                             <section class="modal-card-body">
-                                <div class="notification is-danger" role="alert" x-show="cellError" x-text="cellError"></div>
+                                <div class="notification is-danger" role="alert" x-show="cellError"><span class="app-notice">@template.layout.icon(name = "alert", size = 20)<span x-text="cellError"></span></span></div>
 
                                 <div class="field">
                                     <div class="tabs is-toggle is-toggle-rounded is-small">
@@ -389,7 +389,7 @@
                         </header>
                         <section class="modal-card-body">
                             <div class="notification is-danger" role="alert"
-                                 x-show="confirm && confirm.error" x-text="confirm ? confirm.error : ''"></div>
+                                 x-show="confirm && confirm.error"><span class="app-notice">@template.layout.icon(name = "alert", size = 20)<span x-text="confirm ? confirm.error : ''"></span></span></div>
                             <p class="has-text-weight-semibold">
                                 آیا از حذف «<span x-text="confirm ? confirm.name : ''"></span>» مطمئن هستید؟
                             </p>

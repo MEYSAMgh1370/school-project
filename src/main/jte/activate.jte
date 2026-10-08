@@ -26,7 +26,7 @@
                                     <input class="input" id="newPassword" type="password" x-model="newPassword"
                                            autocomplete="new-password" required minlength="8">
                                 </div>
-                                <p class="help is-danger" x-cloak x-show="passwordTooShort">رمز عبور باید حداقل ۸ کاراکتر باشد.</p>
+                                <p class="help is-danger" role="alert" x-cloak x-show="passwordTooShort"><span class="app-notice">@template.layout.icon(name = "alert", size = 16)<span>رمز عبور باید حداقل ۸ کاراکتر باشد.</span></span></p>
                             </div>
 
                             <div class="field">
@@ -35,12 +35,12 @@
                                     <input class="input" id="confirmPassword" type="password" x-model="confirmPassword"
                                            autocomplete="new-password" required>
                                 </div>
-                                <p class="help is-danger" x-cloak x-show="passwordsMismatch">رمزهای عبور یکسان نیستند.</p>
+                                <p class="help is-danger" role="alert" x-cloak x-show="passwordsMismatch"><span class="app-notice">@template.layout.icon(name = "alert", size = 16)<span>رمزهای عبور یکسان نیستند.</span></span></p>
                             </div>
 
                             <div class="field">
                                 <div class="control">
-                                    <button class="button is-link is-fullwidth" type="submit" :disabled="!canSubmit" :class="{ 'is-loading': submitting }">
+                                    <button class="button is-link is-fullwidth" type="submit" :disabled="submitting" :class="{ 'is-loading': submitting }">
                                         فعال‌سازی حساب
                                     </button>
                                 </div>
@@ -50,7 +50,7 @@
                         <div class="notification is-success mt-4" role="status" aria-live="polite"
                              x-cloak x-show="resultType === 'success'" x-text="resultMessage"></div>
                         <div class="notification is-danger mt-4" role="alert"
-                             x-cloak x-show="resultType === 'danger'" x-text="resultMessage"></div>
+                             x-cloak x-show="resultType === 'danger'"><span class="app-notice">@template.layout.icon(name = "alert", size = 20)<span x-text="resultMessage"></span></span></div>
                         <p class="has-text-centered mt-4" x-cloak x-show="resultType === 'success'">
                             <a class="button is-link is-light" href="/login">ورود به حساب</a>
                         </p>

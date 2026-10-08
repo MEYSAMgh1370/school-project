@@ -254,6 +254,19 @@ document.addEventListener('alpine:init', () => {
         },
 
         async createManualSection(examId) {
+            if (this.submittingManualSection) {
+                return;
+            }
+            if (!this.manualSectionForm.topicId) {
+                this.notice = '';
+                this.error = 'سرفصل بخش را انتخاب کنید.';
+                return;
+            }
+            if (this.manualSectionForm.questionIds.length === 0) {
+                this.notice = '';
+                this.error = 'دست‌کم یک سؤال را برای بخش انتخاب کنید.';
+                return;
+            }
             this.submittingManualSection = true;
             this.error = '';
             this.notice = '';
@@ -335,6 +348,14 @@ document.addEventListener('alpine:init', () => {
         },
 
         async assignStudent(examId) {
+            if (this.submittingAssignment) {
+                return;
+            }
+            if (!this.assignStudentIdInput) {
+                this.notice = '';
+                this.error = 'یک دانش‌آموز را برای تخصیص انتخاب کنید.';
+                return;
+            }
             this.submittingAssignment = true;
             this.error = '';
             this.notice = '';
@@ -400,6 +421,14 @@ document.addEventListener('alpine:init', () => {
         },
 
         async generateWeekly() {
+            if (this.generatingWeekly) {
+                return;
+            }
+            if (!this.weeklyForm.studentId) {
+                this.notice = '';
+                this.error = 'یک دانش‌آموز را برای ساخت آزمون هفتگی انتخاب کنید.';
+                return;
+            }
             this.generatingWeekly = true;
             this.error = '';
             this.notice = '';

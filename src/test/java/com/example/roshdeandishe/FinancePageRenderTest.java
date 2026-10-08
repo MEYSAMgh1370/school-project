@@ -51,7 +51,7 @@ class FinancePageRenderTest {
         String html = render();
 
         assertThat(html).contains("id=\"financeUnattributedBanner\"").contains("x-show=\"hasUnattributed()\"");
-        assertThat(html).contains("id=\"financeAttributeYear\"").contains("@click=\"attribute()\"");
+        assertThat(html).contains("id=\"financeAttributeYear\"").contains("@click=\"askAttribute()\"");
         assertThat(html).contains("x-show=\"currentYear && !invoice.academicYear\"").contains(">بدون سال</span>");
         assertThat(html).contains("صدور فاکتورهای این سال برای دانش‌آموزان بدون فاکتور");
     }
