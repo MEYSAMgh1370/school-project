@@ -15,6 +15,21 @@ test('Arabic ي and ك match the Persian letters stored in names', () => {
     assert.equal(ListSearch.matches('علي', ['علی رضایی']), true);
 });
 
+test('other Arabic-keyboard letters match their Persian forms', () => {
+    assert.equal(ListSearch.matches('مدرسه', ['مدرسة']), true);
+    assert.equal(ListSearch.matches('مدرسة', ['مدرسه']), true);
+    assert.equal(ListSearch.matches('مصطفى', ['مصطفی']), true);
+    assert.equal(ListSearch.matches('أحمد', ['احمد']), true);
+    assert.equal(ListSearch.matches('إسماعيل', ['اسماعیل']), true);
+    assert.equal(ListSearch.matches('مؤمن', ['مومن']), true);
+    assert.equal(ListSearch.matches('رئيس', ['رئیس']), true);
+});
+
+test('tatweel (kashida) is ignored on both sides', () => {
+    assert.equal(ListSearch.matches('مـدرسه', ['مدرسه']), true);
+    assert.equal(ListSearch.matches('مدرسه', ['مــدرســه']), true);
+});
+
 test('Persian and Arabic-Indic digits match ASCII digits', () => {
     assert.equal(ListSearch.matches('۱۴۰۵', ['1405-1406']), true);
     assert.equal(ListSearch.matches('١٤٠٥', ['۱۴۰۵']), true);
