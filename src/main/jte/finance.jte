@@ -107,6 +107,18 @@
                                                placeholder="جست‌وجوی نام دانش‌آموز">
                                     </div>
                                 </div>
+
+                                <%-- chip وضعیت پرداخت (§5a): همیشه نمایش داده می‌شود؛ برچسب‌ها همان statusLabel() است --%>
+                                <div class="app-chips" role="group" aria-label="فیلتر وضعیت پرداخت">
+                                    <template x-for="item in chips()" :key="item.key">
+                                        <button class="app-chip" type="button" :class="{ 'is-selected': activeChip() === item.key }"
+                                                :aria-pressed="activeChip() === item.key ? 'true' : 'false'" @click="selectChip(item.key)">
+                                            <span x-text="item.label"></span>
+                                            (<span x-text="fa(item.count)"></span>)
+                                        </button>
+                                    </template>
+                                </div>
+
                                 <div class="app-list" role="list">
                                     <template x-for="invoice in visibleInvoices()" :key="invoice.id">
                                         <div class="app-invoice-row" role="listitem">
@@ -131,6 +143,8 @@
                                         </div>
                                     </template>
                                 </div>
+                                <button class="button is-light mt-3" type="button" x-show="hasMoreInvoices()" @click="showMoreInvoices()"
+                                        x-text="'نمایش بیشتر (' + moreInvoicesLabel() + ' مورد دیگر)'"></button>
                                 <p class="has-text-grey mt-3" x-show="visibleInvoices().length === 0">
                                     فاکتوری با این جست‌وجو پیدا نشد.
                                 </p>

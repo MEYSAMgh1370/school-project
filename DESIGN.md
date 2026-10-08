@@ -269,6 +269,26 @@ Hues stay; lightness and saturation change.
   no dark control border. **This file now sets one:** `hsl(215 12% 48%)`,
   3.9:1 on `#151A21` — a value the implementation chose; amend it here if you
   prefer another.
+- **Hover, focus and error states swept 2026-10-08** (same harness, both
+  schemes, all 32 pages plus the interactive states: guardian panel, payment
+  panel, exam management panel, classes roster, expense attachments, grade
+  focus and review modes). Four changes came out of it, all in `app.css`:
+  (1) Bulma lightens a button on hover in dark by +5%; on the tinted
+  `.button.is-light` that dropped the label to 4.12:1, so the tint darkens
+  on hover instead (`--bulma-button-hover-background-l-delta: -3%`; 24%/92%
+  text is 5.52:1 at rest). (2) The dark focus lightness is raised to 60%
+  (`--bulma-focus-l`): the primary focus border was 2.38:1 on the card. (3)
+  The global `:focus-visible` outline is `--bulma-link-text`, not the primary
+  fill, which is 2.4:1 in dark. (4) Bulma sets `outline: none` on buttons,
+  inputs and selects and draws a 25%-alpha halo that is invisible on a filled
+  button; a control `:focus-visible` rule after Bulma restores a 2px outline
+  with a 2px offset. On the school-entry teal hero the link-text ring is the
+  same teal (1:1), so the ring there is white. After these changes the sweep
+  has no focus failures except two date inputs (`datetime-local`, `date`) that
+  report no ring; their computed style does carry a solid outline and the
+  focus shadow in both schemes, so the script is at fault there, not the page.
+  **Still not measured:** pressed states and pages with real data.
+  The sweep is a floor, as above.
 
 ---
 
@@ -353,9 +373,10 @@ People: search over name, email and role; each row shows the status in words
 plain `is-light` buttons. Classes: rows with year, grade, section and teacher;
 the roster stays a panel below. Finance: invoice rows with status in words, a
 search over student name, and the payments panels unchanged. Money amounts
-still come from `money.js`, which currently prints Latin commas (`12,000,000`);
-DESIGN.md §8 asks for `٬` with Persian digits, so that is a pending fix in
-`money.js`, not in these rows.
+still come from `money.js`, which groups with `٬` and Persian digits
+(`۱٬۲۳۴٬۵۶۷`, as §8 asks; `money.test.js` pins it). **Resolved 2026-10-08:** the
+earlier note that it printed Latin commas was stale. What is still open is the
+currency unit (Rial or Toman, §13.7); amounts are not converted.
 
 **Exams page (2026-10-07).** The list of assessments is rows (name, time range,
 duration, a «مدیریت» button that opens the panel below). The management panels
@@ -365,10 +386,9 @@ fixed here: the exam time range shows ISO dates (`2026-10-20 08:00`), which
 `Calendar.formatDateTimeRange` shows the Jalali date, a 24-hour clock and Persian
 digits, with the date once when the range is one day (`۱۴۰۵/۷/۲۸ ۰۸:۰۰ تا ۱۰:۰۰`)
 and both dates otherwise. Used on `/exams` and `/my-exams` (the student's list).
-The date comes from the existing `Calendar.formatDate`,
-which prints **without** zero padding (`۱۴۰۵/۷/۲۸`), while §8 specifies padded
-numeric dates (`۱۴۰۵/۰۴/۲۲`). That mismatch predates this change and affects
-every numeric date; fixing it belongs in `formatDate`, not in exams. Other pages that format times by hand
+The date comes from the existing `Calendar.formatDate`. **Resolved 2026-10-08:**
+it now pads month and day (`۱۴۰۵/۰۷/۲۸`), as §8 specifies, for every numeric date
+in the app. Other pages that format times by hand
 (`my-study-plan.js`, `study-plans.js`) are study-interval times, not exams, and
 still format by hand — a separate decision.
 
@@ -406,6 +426,19 @@ that accepts a grade, so nobody listed is ungradeable, and a student who left th
 class is not listed. Digits: one helper, `static/js/digits.js` (`Digits.toAscii`),
 used by money, grades and list search; `page-scripts.test.js` checks each page loads
 the helpers it uses.
+
+**Large-data check (2026-10-08, 200 rows per list, Chromium, 390px).** Every
+list rendered all its rows with no errors: load 210–800 ms, search response
+130–240 ms. **Exams** took 6.5 s, because all 50 management panels were built,
+hidden, at page load, each with the full student and question lists. The panel
+is now built only for the opened exam (`expandedExams()`), and the same page
+loads in about 0.3 s. **Resolved 2026-10-08 (§6):** the lists over 25 rows
+(students, members, finance invoices, expenses, curriculum) render 25 rows at a
+time with «نمایش بیشتر (N مورد دیگر)». Students and finance also have status
+chips (`app-chips`, as on grades). The counter resets on search, chip, filter or
+school change, and not on reload, so an action does not collapse the list.
+Open: the ACTIVE chip label on students («در کلاس») was chosen in the code, not
+decided by the school.
 
 **List row.** 56px minimum height, label at inline-start, optional value
 (e.g. the current academic year) and a `‹` glyph (`.app-dir-glyph`) at

@@ -108,9 +108,13 @@
                                                 </div>
                                             </template>
                                         </div>
-                                        <p class="has-text-grey mt-3" x-show="visibleQuestions().length === 0">
+                                        <p class="has-text-grey mt-3" x-show="filteredQuestions().length === 0">
                                             سؤالی با این جست‌وجو پیدا نشد.
                                         </p>
+                                        <button type="button" class="button is-light mt-3"
+                                                x-show="filteredQuestions().length > shown"
+                                                @click="showMore()"
+                                                x-text="'نمایش بیشتر (' + remainingLabel() + ' مورد دیگر)'"></button>
                                     </div>
                                 </template>
 

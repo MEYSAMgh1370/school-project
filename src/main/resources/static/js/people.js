@@ -9,6 +9,9 @@ document.addEventListener('alpine:init', () => {
         invite: null,
         // جست‌وجوی آزاد روی نام، ایمیل و نقش (فهرست ردیفی؛ DESIGN.md §6)
         filterText: '',
+        // صفحه‌بندی «نمایش بیشتر» (DESIGN.md §6): ۲۵ ردیف در هر نوبت
+        pageSize: 25,
+        shown: 25,
         form: { email: '', fullName: '', roleCode: 'STUDENT' },
         roleLabels: {
             STUDENT: 'دانش‌آموز',
@@ -37,10 +40,12 @@ document.addEventListener('alpine:init', () => {
         init() {
             const saved = parseInt(localStorage.getItem('selectedSchoolId') || '', 10);
             this.schoolId = Number.isInteger(saved) ? saved : null;
+            this.$watch('filterText', () => { this.shown = this.pageSize; });
             window.addEventListener('school-changed', (e) => {
                 this.schoolId = e.detail.id;
                 this.invite = null;
                 this.filterText = '';
+                this.shown = this.pageSize;
                 this.error = '';
                 this.notice = '';
                 this.load();
@@ -50,7 +55,7 @@ document.addEventListener('alpine:init', () => {
             }
         },
 
-        visibleMembers() {
+        filteredMembers() {
             const query = this.filterText.trim();
             if (!query) {
                 return this.members;
@@ -60,6 +65,22 @@ document.addEventListener('alpine:init', () => {
                 member.email,
                 this.labelFor(member.roleCode)
             ]));
+        },
+
+        visibleMembers() {
+            return this.filteredMembers().slice(0, this.shown);
+        },
+
+        remainingCount() {
+            return this.filteredMembers().length - this.shown;
+        },
+
+        remainingLabel() {
+            return this.remainingCount().toLocaleString('fa-IR-u-nu-arabext');
+        },
+
+        showMore() {
+            this.shown += this.pageSize;
         },
 
         csrfToken() {

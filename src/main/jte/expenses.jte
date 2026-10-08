@@ -220,6 +220,9 @@
                                         </div>
                                     </template>
                                 </div>
+                                <button class="button is-light mt-3" type="button"
+                                        x-show="remainingCount() > 0" @click="showMore()"
+                                        x-text="moreLabel()"></button>
                                 <p class="has-text-grey mt-3" x-show="visibleExpenses().length === 0">
                                     هزینه‌ای با این جست‌وجو پیدا نشد.
                                 </p>

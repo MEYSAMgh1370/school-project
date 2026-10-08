@@ -1,10 +1,16 @@
 document.addEventListener('alpine:init', () => {
+    // اندازه‌ی صفحه‌ی فهرست فاکتورها (DESIGN.md §6)
+    const PAGE_SIZE = 25;
+
     Alpine.data('financePage', () => ({
         schoolId: null,
         tuitionFee: null,
         invoices: [],
         // جست‌وجوی نام دانش‌آموز روی فهرست فاکتورها (DESIGN.md §6)
         filterText: '',
+        // chip وضعیت پرداخت ('all' یا یکی از وضعیت‌های فاکتور) و تعداد ردیف‌های نمایش‌داده‌شده
+        chip: 'all',
+        shown: PAGE_SIZE,
         students: [],
         pupils: [],
         blocked: false,
@@ -57,15 +63,21 @@ document.addEventListener('alpine:init', () => {
                 this.attributeYear = '';
                 this.unattributed = { tuitionFee: false, invoices: 0 };
                 this.filterText = '';
+                this.chip = 'all';
+                this.shown = PAGE_SIZE;
                 this.load();
             });
             // پنل پرداخت‌های یک فاکتور که جست‌وجو پنهانش کرده باز نمی‌ماند: با هیچ ردیفی قابل بستن نیست
-            this.$watch('filterText', () => {
+            // با تغییر جست‌وجو یا chip، صفحه‌بندی هم به ۲۵ ردیفِ اول برمی‌گردد
+            const onFilterChange = () => {
+                this.shown = PAGE_SIZE;
                 if (this.expandedInvoiceId !== null
                     && !this.visibleInvoices().some(invoice => invoice.id === this.expandedInvoiceId)) {
                     this.expandedInvoiceId = null;
                 }
-            });
+            };
+            this.$watch('filterText', onFilterChange);
+            this.$watch('chip', onFilterChange);
             if (this.schoolId) {
                 this.load();
             }
@@ -107,12 +119,55 @@ document.addEventListener('alpine:init', () => {
         // نام) ترکیب شود. FINANCE_ADMIN حالا STUDENT_VIEW و MEMBER_NAMES_VIEW
         // را دارد (UX_ROADMAP.md §6.4) پس این resolve معمولاً موفق می‌شود؛ اگر
         // به هر دلیلی موفق نشد، صفحه نمی‌شکند، فقط شناسه‌ی خام نشان داده می‌شود.
-        visibleInvoices() {
+        // فهرستِ فیلترشده (جست‌وجو + chip وضعیت) بدون برش؛ شمارنده‌ی «نمایش بیشتر» از همین می‌آید
+        filteredInvoices() {
             const query = this.filterText.trim();
-            if (!query) {
-                return this.invoices;
-            }
-            return this.invoices.filter(invoice => ListSearch.matches(query, [this.studentName(invoice.studentId)]));
+            const chip = this.activeChip();
+            return this.invoices.filter(invoice => (chip === 'all' || invoice.status === chip)
+                && (!query || ListSearch.matches(query, [this.studentName(invoice.studentId)])));
+        },
+
+        // ردیف‌های نمایش‌داده‌شده: ۲۵ تا و با هر «نمایش بیشتر» ۲۵ تای دیگر (DESIGN.md §6)
+        visibleInvoices() {
+            return this.filteredInvoices().slice(0, this.shown);
+        },
+
+        hasMoreInvoices() {
+            return this.filteredInvoices().length > this.shown;
+        },
+
+        // رقم فارسی بدون وابستگی به calendar.js
+        moreInvoicesLabel() {
+            return (this.filteredInvoices().length - this.shown).toLocaleString('fa-IR-u-nu-arabext');
+        },
+
+        showMoreInvoices() {
+            this.shown += PAGE_SIZE;
+        },
+
+        fa(value) {
+            return window.Calendar ? window.Calendar.digits(String(value)) : String(value);
+        },
+
+        // chip ها فقط برای وضعیت‌هایی‌اند که در فاکتورهای همین فهرست هست؛ برچسب‌ها همان statusLabel است
+        chips() {
+            const chips = [{ key: 'all', label: 'همه', count: this.invoices.length }];
+            ['PAID', 'PARTIAL', 'UNPAID', 'OVERDUE'].forEach(status => {
+                const count = this.invoices.filter(invoice => invoice.status === status).length;
+                if (count > 0) {
+                    chips.push({ key: status, label: this.statusLabel(status), count });
+                }
+            });
+            return chips;
+        },
+
+        // chip ی که با بارگذاری تازه دیگر وضعیتش در فهرست نیست، فهرست را خالی نمی‌کند
+        activeChip() {
+            return this.invoices.some(invoice => invoice.status === this.chip) ? this.chip : 'all';
+        },
+
+        selectChip(key) {
+            this.chip = key;
         },
 
         studentName(studentId) {
@@ -296,6 +351,8 @@ document.addEventListener('alpine:init', () => {
         },
 
         async onYearChange() {
+            this.chip = 'all';
+            this.shown = PAGE_SIZE;
             this.expandedInvoiceId = null;
             this.payments = [];
             this.error = '';

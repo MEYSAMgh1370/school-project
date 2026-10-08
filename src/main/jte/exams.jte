@@ -48,8 +48,8 @@
                                 </template>
                             </div>
 
-                            <template x-for="exam in exams" :key="'panel-' + exam.id">
-                                <div class="box" x-show="expandedExamId === exam.id" x-cloak>
+                            <template x-for="exam in expandedExams()" :key="'panel-' + exam.id">
+                                <div class="box">
                                     <h3 class="title is-6" x-text="'مدیریت آزمون: ' + exam.title"></h3>
 
                                         <div class="tabs">

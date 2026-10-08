@@ -167,9 +167,10 @@ window.Calendar = (function () {
                 return J.toGregorian(y, m, d);
             },
 
-            // دقیقاً همان toLocaleDateString('fa-IR') که قالب‌ها قبلاً مستقیم صدا می‌زدند
+            // «۱۴۰۵/۰۴/۲۲»: ماه و روز دو رقمی (DESIGN.md §8). پیش از این toLocaleDateString('fa-IR')
+            // بی‌صفر می‌داد («۱۴۰۵/۴/۲۲»)، که با §8 نمی‌خواند.
             formatDate(value) {
-                return new Date(value).toLocaleDateString('fa-IR');
+                return new Date(value).toLocaleDateString('fa-IR', { year: 'numeric', month: '2-digit', day: '2-digit' });
             },
 
             // برچسب بازه‌ی یک هفته. عیناً منطق قدیمیِ weekRangeLabel در

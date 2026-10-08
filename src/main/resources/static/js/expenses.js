@@ -1,10 +1,13 @@
 document.addEventListener('alpine:init', () => {
+    const PAGE_SIZE = 25;
+
     Alpine.data('expensesPage', () => ({
         schoolId: null,
         categories: [],
         vendors: [],
         expenses: [],
         filterText: '',
+        shown: PAGE_SIZE,
         blocked: false,
         loading: false,
         submitting: false,
@@ -37,6 +40,9 @@ document.addEventListener('alpine:init', () => {
         init() {
             const saved = parseInt(localStorage.getItem('selectedSchoolId') || '', 10);
             this.schoolId = Number.isInteger(saved) ? saved : null;
+            // جست‌وجو یا هر فیلتر عوض شود، فهرست به ۲۵ ردیف اول برمی‌گردد
+            this.$watch('filterText', () => { this.shown = PAGE_SIZE; });
+            this.$watch('filters', () => { this.shown = PAGE_SIZE; });
             window.addEventListener('school-changed', (e) => {
                 this.schoolId = e.detail.id;
                 this.error = '';
@@ -55,7 +61,7 @@ document.addEventListener('alpine:init', () => {
         },
 
         // جست‌وجو روی نام دسته و طرف حساب (فهرست ردیفی؛ DESIGN.md §6)
-        visibleExpenses() {
+        filteredExpenses() {
             const query = this.filterText.trim();
             if (!query) {
                 return this.expenses;
@@ -64,6 +70,24 @@ document.addEventListener('alpine:init', () => {
                 this.categoryName(expense.categoryId),
                 this.vendorName(expense.vendorId)
             ]));
+        },
+
+        // صفحه‌بندی سمت کلاینت: هر بار ۲۵ ردیف (DESIGN.md §6)
+        visibleExpenses() {
+            return this.filteredExpenses().slice(0, this.shown);
+        },
+
+        remainingCount() {
+            return Math.max(0, this.filteredExpenses().length - this.shown);
+        },
+
+        // رقم فارسی بدون وابستگی به calendar.js
+        moreLabel() {
+            return `نمایش بیشتر (${this.remainingCount().toLocaleString('fa-IR-u-nu-arabext')} مورد دیگر)`;
+        },
+
+        showMore() {
+            this.shown += PAGE_SIZE;
         },
 
         categoriesBase() {

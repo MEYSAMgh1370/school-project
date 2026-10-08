@@ -5,6 +5,8 @@ document.addEventListener('alpine:init', () => {
         questions: [],
         // جست‌وجوی متن سؤال روی فهرست ردیفی (DESIGN.md §6)
         filterText: '',
+        pageSize: 25,
+        shown: 25,
         selectedTopicId: null,
         difficultyFilter: [],
         loading: false,
@@ -30,6 +32,7 @@ document.addEventListener('alpine:init', () => {
         init() {
             const saved = parseInt(localStorage.getItem('selectedSchoolId') || '', 10);
             this.schoolId = Number.isInteger(saved) ? saved : null;
+            this.$watch('filterText', () => { this.shown = this.pageSize; });
             window.addEventListener('school-changed', (e) => {
                 this.schoolId = e.detail.id;
                 this.error = '';
@@ -37,6 +40,7 @@ document.addEventListener('alpine:init', () => {
                 this.blocked = false;
                 this.selectedTopicId = null;
                 this.filterText = '';
+                this.shown = this.pageSize;
                 this.difficultyFilter = [];
                 this.load();
             });
@@ -75,12 +79,25 @@ document.addEventListener('alpine:init', () => {
             return topic ? topic.name : '';
         },
 
-        visibleQuestions() {
+        filteredQuestions() {
             const query = this.filterText.trim();
             if (!query) {
                 return this.questions;
             }
             return this.questions.filter(question => ListSearch.matches(query, [question.text]));
+        },
+
+        // فقط یک صفحه‌ی ۲۵تایی از فهرست پالایش‌شده رندر می‌شود (DESIGN.md §6).
+        visibleQuestions() {
+            return this.filteredQuestions().slice(0, this.shown);
+        },
+
+        remainingLabel() {
+            return (this.filteredQuestions().length - this.shown).toLocaleString('fa-IR-u-nu-arabext');
+        },
+
+        showMore() {
+            this.shown += this.pageSize;
         },
 
         difficultyLabel(code) {
@@ -91,6 +108,7 @@ document.addEventListener('alpine:init', () => {
         selectTopic(topicId) {
             this.selectedTopicId = topicId;
             this.filterText = '';
+            this.shown = this.pageSize;
             this.loadQuestions();
         },
 
@@ -100,6 +118,7 @@ document.addEventListener('alpine:init', () => {
             } else {
                 this.difficultyFilter = [...this.difficultyFilter, value];
             }
+            this.shown = this.pageSize;
             this.loadQuestions();
         },
 
