@@ -70,9 +70,17 @@ class MobileAuthFlowIntegrationTest {
 
         // بدون .session(...): یعنی هیچ HttpSession ای اینجا وجود ندارد -
         // فقط هدر Authorization کل احراز هویت را انجام می‌دهد.
-        mockMvc.perform(get("/api/me").header(HttpHeaders.AUTHORIZATION, "Bearer " + token))
+        MvcResult meResult = mockMvc.perform(get("/api/me").header(HttpHeaders.AUTHORIZATION, "Bearer " + token))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.email").value("admin@roshdeandishe.test"));
+                .andExpect(jsonPath("$.email").value("admin@roshdeandishe.test"))
+                .andReturn();
+
+        // ادعای بالا باید راستی‌آزمایی شود، نه فقط نوشته شود: یک درخواست Bearer
+        // نباید HttpSession بسازد. تا پیش از openspec/changes/stateless-bearer-auth.md
+        // این assertion شکست می‌خورد، چون SecurityContext در نشست ذخیره می‌شد.
+        assertThat(meResult.getRequest().getSession(false))
+                .as("درخواست Bearer نباید HttpSession بسازد - JWT باید stateless بماند")
+                .isNull();
 
         mockMvc.perform(get("/api/me/memberships").header(HttpHeaders.AUTHORIZATION, "Bearer " + token))
                 .andExpect(status().isOk())

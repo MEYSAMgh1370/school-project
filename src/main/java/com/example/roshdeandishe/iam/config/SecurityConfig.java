@@ -2,12 +2,14 @@ package com.example.roshdeandishe.iam.config;
 
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.core.annotation.Order;
 import org.springframework.http.HttpHeaders;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.dao.DaoAuthenticationProvider;
 import org.springframework.security.config.annotation.authentication.configuration.AuthenticationConfiguration;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
+import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.core.AuthenticationException;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -67,9 +69,31 @@ public class SecurityConfig {
         return config.getAuthenticationManager();
     }
 
+    /**
+     * زنجیره‌ی Bearer (اپ موبایل). بدون HttpSession: STATELESS یعنی Spring Security
+     * هیچ context ای را در نشست نمی‌نویسد و هیچ نشستی را ثبت نمی‌کند. بدون این، همان
+     * SessionManagementFilter که هر Authentication «تازه» را می‌بیند برای هر فراخوانی
+     * موبایل یک نشست می‌ساخت. قواعد مجوز از helper مشترک می‌آیند، پس این زنجیره
+     * هیچ مسیری را جز نحوه‌ی نشست تغییر نمی‌دهد.
+     * <p>
+     * رجوع به openspec/changes/stateless-bearer-auth.md
+     */
+    @Bean
+    @Order(1)
+    public SecurityFilterChain bearerSecurityFilterChain(HttpSecurity http, JwtTokenProvider jwtTokenProvider) throws Exception {
+        return webSecurity(http, jwtTokenProvider, SessionCreationPolicy.STATELESS)
+                .securityMatcher(SecurityConfig::isBearerRequest)
+                .build();
+    }
+
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http, JwtTokenProvider jwtTokenProvider) throws Exception {
-        http
+        return webSecurity(http, jwtTokenProvider, SessionCreationPolicy.IF_REQUIRED).build();
+    }
+
+    private static HttpSecurity webSecurity(HttpSecurity http, JwtTokenProvider jwtTokenProvider,
+                                            SessionCreationPolicy sessionPolicy) throws Exception {
+        return http
                 .csrf(csrf -> csrf
                         .csrfTokenRepository(CookieCsrfTokenRepository.withHttpOnlyFalse())
                         .csrfTokenRequestHandler(new SpaCsrfTokenRequestHandler())
@@ -98,10 +122,7 @@ public class SecurityConfig {
                         // (مرورگر هرگز این کار را خودکار نمی‌کند) از این نوع حمله
                         // در اصل مصون است. مسیر session/cookie وب هرگز این هدر را
                         // نمی‌فرستد، پس این استثنا آن مسیر را ضعیف نمی‌کند.
-                        .ignoringRequestMatchers(request -> {
-                            String header = request.getHeader(HttpHeaders.AUTHORIZATION);
-                            return StringUtils.hasText(header) && header.startsWith("Bearer ");
-                        })
+                        .ignoringRequestMatchers(SecurityConfig::isBearerRequest)
                 )
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers(
@@ -137,7 +158,7 @@ public class SecurityConfig {
                         )
                 )
                 .sessionManagement(session -> session
-                        .sessionCreationPolicy(org.springframework.security.config.http.SessionCreationPolicy.IF_REQUIRED)
+                        .sessionCreationPolicy(sessionPolicy)
                 )
                 .httpBasic(AbstractHttpConfigurer::disable)
                 .formLogin(form -> form.disable())
@@ -147,8 +168,12 @@ public class SecurityConfig {
                 // bean) تا Boot آن را دوباره به‌عنوان یک servlet filter سراسری
                 // ثبت نکند - رجوع به توضیح JwtAuthenticationFilter.
                 .addFilterBefore(new JwtAuthenticationFilter(jwtTokenProvider), UsernamePasswordAuthenticationFilter.class);
+    }
 
-        return http.build();
+    /** یک درخواست Bearer-authenticated، یعنی هدر Authorization با پیشوند Bearer. */
+    static boolean isBearerRequest(HttpServletRequest request) {
+        String header = request.getHeader(HttpHeaders.AUTHORIZATION);
+        return StringUtils.hasText(header) && header.startsWith("Bearer ");
     }
 
     /**
