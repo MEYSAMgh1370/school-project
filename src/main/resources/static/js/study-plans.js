@@ -150,7 +150,8 @@ document.addEventListener('alpine:init', () => {
         },
 
         studentLabel(studentId) {
-            const student = this.students.find(s => s.studentId === studentId);
+            // شناسه از select به صورت رشته می‌آید؛ مقایسه‌ی رشته‌ای تا نام پیدا شود
+            const student = this.students.find(s => String(s.studentId) === String(studentId));
             if (!student) {
                 return `دانش‌آموز #${this.faDigits(studentId)}`;
             }

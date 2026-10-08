@@ -41,11 +41,6 @@ document.addEventListener('alpine:init', () => {
             const s = this.slug.trim().toLowerCase();
             return window.location.origin + '/s/' + (s || 'tizhooshan');
         },
-        get canSubmit() {
-            return this.name.trim().length > 0 && this.timezone.trim().length > 0
-                && this.locale.trim().length > 0 && !this.submitting
-                && (!this.slug.trim() || this.slugValid);
-        },
         csrfToken() {
             const match = document.cookie.match(/(?:^|;\s*)XSRF-TOKEN=([^;]*)/);
             return match ? decodeURIComponent(match[1]) : '';

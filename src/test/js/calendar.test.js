@@ -121,6 +121,9 @@ test('fa: output is unchanged - names, digits and date text are exactly what the
     for (const value of ['2026-10-03T08:15:00Z', '2026-10-05', new Date(2026, 2, 21, 12), 1700000000000]) {
         assert.match(fa.formatDate(value), /^[۰-۹]{4}\/[۰-۹]{2}\/[۰-۹]{2}$/);
     }
+    // تاریخِ بدونِ ساعت همان روزِ محلی است، در هر منطقه‌ی زمانی (نه یک روز عقب، مثل نیمه‌شبِ UTC)
+    assert.equal(fa.formatDate('2026-10-08'), fa.formatDate(new Date(2026, 9, 8, 12)));
+    assert.equal(fa.formatDate('2026-10-08'), '۱۴۰۵/۰۷/۱۶');
 });
 
 // منطق قدیمیِ weekRangeLabel در my-study-plan.js، عیناً (فقط نام فیلدها همان jy/jm/jd

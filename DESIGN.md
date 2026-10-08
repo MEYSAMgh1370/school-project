@@ -443,8 +443,8 @@ loads in about 0.3 s. **Resolved 2026-10-08 (§6):** the lists over 25 rows
 time with «نمایش بیشتر (N مورد دیگر)». Students and finance also have status
 chips (`app-chips`, as on grades). The counter resets on search, chip, filter or
 school change, and not on reload, so an action does not collapse the list.
-**Accepted 2026-10-08:** the ACTIVE chip on students is «در کلاس», as the school
-confirmed.
+**Accepted 2026-10-08 by the user (product decision):** the ACTIVE chip on students
+is «در کلاس».
 
 **List row.** 56px minimum height, label at inline-start, optional value
 (e.g. the current academic year) and a `‹` glyph (`.app-dir-glyph`) at
@@ -520,8 +520,8 @@ alongside text.
 - **Built 2026-10-07** (`layout/icon.jte`, used by the dashboard): chevron,
   calendar, clock, people, class, exam, finance, check, **grades** (a document;
   added to the starting list — the featured «دفتر نمرات» card needs it), share.
-  menu, back, search and alert are not built yet; add them with their first
-  page. `NavSharedSourceRenderTest` fails if a `NavCatalog` link names an icon
+  **Built 2026-10-08:** **alert** (the error notices, §4.3). menu, back and
+  search are not built yet; add them with their first page. `NavSharedSourceRenderTest` fails if a `NavCatalog` link names an icon
   the partial does not draw.
 - **An icon never stands alone except** back, menu and close, which require
   `aria-label`. Everywhere else it accompanies a text label and is

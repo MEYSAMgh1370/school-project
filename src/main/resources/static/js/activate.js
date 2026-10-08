@@ -21,11 +21,6 @@ document.addEventListener('alpine:init', () => {
             return this.confirmPassword.length > 0 && this.newPassword !== this.confirmPassword;
         },
 
-        get canSubmit() {
-            return this.token.length > 0 && this.newPassword.length >= 8
-                && this.newPassword === this.confirmPassword && !this.submitting;
-        },
-
         csrfToken() {
             const match = document.cookie.match(/(?:^|;\s*)XSRF-TOKEN=([^;]*)/);
             return match ? decodeURIComponent(match[1]) : '';

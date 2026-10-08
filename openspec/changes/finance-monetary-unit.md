@@ -3,7 +3,7 @@
 Status: proposed for product approval on 2026-08-17. This is a
 decision-first, documentation-only change. It changes no application behavior.
 
-**Partly decided 2026-10-08 (product owner):** form entry is in **Rial**, not
+**Partly decided 2026-10-08 (by the user):** form entry is in **Rial**, not
 Toman as proposed below. Under each money input the same amount is written in
 Persian words in Toman (for example `2000000` → «دویست هزار تومان»), computed by
 `Money.tomanWords` (PR #111). The canonical unit, whole Rial, stands. Still open:

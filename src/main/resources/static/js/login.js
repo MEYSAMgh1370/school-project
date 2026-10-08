@@ -22,18 +22,6 @@ document.addEventListener('alpine:init', () => {
         otpErrorMessage: '',
         otpInfoMessage: '',
 
-        get canSubmitPassword() {
-            return this.email.length > 0 && this.password.length > 0 && !this.submittingPassword;
-        },
-
-        get canRequestOtp() {
-            return this.otpPhone.length > 0 && !this.submittingOtp;
-        },
-
-        get canVerifyOtp() {
-            return this.otpCode.length > 0 && !this.submittingOtp;
-        },
-
         csrfToken() {
             const match = document.cookie.match(/(?:^|;\s*)XSRF-TOKEN=([^;]*)/);
             return match ? decodeURIComponent(match[1]) : '';

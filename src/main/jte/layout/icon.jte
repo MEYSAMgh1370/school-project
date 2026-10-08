@@ -4,7 +4,7 @@
 
      پارامترها:
        name — یکی از: chevron | calendar | clock | people | class | exam |
-              finance | check | grades | share. هر آیکنِ تازه یک خط در
+              finance | check | grades | share | alert. هر آیکنِ تازه یک خط در
               DESIGN.md §۵b می‌خواهد؛ چیزی «محض احتیاط» اضافه نمی‌شود.
        size — ۱۶، ۲۰ یا ۲۴ (px)
 
