@@ -443,8 +443,8 @@ loads in about 0.3 s. **Resolved 2026-10-08 (§6):** the lists over 25 rows
 time with «نمایش بیشتر (N مورد دیگر)». Students and finance also have status
 chips (`app-chips`, as on grades). The counter resets on search, chip, filter or
 school change, and not on reload, so an action does not collapse the list.
-Open: the ACTIVE chip label on students («در کلاس») was chosen in the code, not
-decided by the school.
+**Accepted 2026-10-08:** the ACTIVE chip on students is «در کلاس», as the school
+confirmed.
 
 **List row.** 56px minimum height, label at inline-start, optional value
 (e.g. the current academic year) and a `‹` glyph (`.app-dir-glyph`) at
@@ -717,9 +717,12 @@ modal and loading rules, all voice and date/digit conventions, the
    with the PWA strategy) or server-side draft; decide before building.
 6. **Undo bar mechanics** — how the reversal is implemented server-side
    (soft state vs compensating request) per action.
-7. **Currency contract** (carried over) — persisted, entry and display unit
-   (Rial/Toman), conversion and rounding. Neutral grouped output via
-   `money.js` until then.
+7. **Currency contract** (carried over) — **partly decided 2026-10-08:** the
+   persisted value is whole Rial, and amounts are entered in Rial. Under each money
+   input the same amount is written in Persian words in Toman
+   (`Money.tomanWords`). Still open: the read-only display unit in tables, the
+   printed and notification wording (Toman or Rial, labelled), and rounding for
+   non-whole values. Neutral grouped output via `money.js` until then.
 8. **Empty-state copy** (carried over) — every empty state names the action
    that creates the first item.
 9. **Per-page dark verification** — text, placeholder and field-border
