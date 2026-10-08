@@ -85,8 +85,8 @@
                                             </tbody>
                                         </table>
                                     </div>
-                                    <p class="help is-danger mb-2" x-show="classesOfGradeMissing()">
-                                        برای بعضی پایه‌ها کلاسی در این سال نیست.
+                                    <p class="help is-danger mb-2" role="alert" x-show="classesOfGradeMissing()">
+                                        <span class="app-notice">@template.layout.icon(name = "alert", size = 16)<span>برای بعضی پایه‌ها کلاسی در این سال نیست.</span></span>
                                     </p>
                                     <button class="button is-link" type="button" id="promotionPlaceButton"
                                             @click="place()" :disabled="placementCount() === 0 || placing"

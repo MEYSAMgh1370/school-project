@@ -63,7 +63,7 @@
                                     <button class="button is-light" type="button" id="attToday" @click="goToday">امروز</button>
                                 </div>
                             </div>
-                            <p class="help is-danger" id="attDayError" x-show="dayError" x-text="dayError"></p>
+                            <p class="help is-danger" role="alert" id="attDayError" x-show="dayError"><span class="app-notice">@template.layout.icon(name = "alert", size = 16)<span x-text="dayError"></span></span></p>
                             <p class="is-size-7 has-text-grey" id="attDayTitle" x-show="!dayError" x-text="dayTitle()"></p>
                         </div>
 
@@ -121,7 +121,7 @@
                                                 <input class="input" type="text" maxlength="255"
                                                        placeholder="یادداشت (اختیاری)" :aria-label="'یادداشت ' + row.studentName"
                                                        x-model="row.note" :class="{ 'is-danger': noteErrors[row.studentId] }">
-                                                <p class="help is-danger" x-show="noteErrors[row.studentId]" x-text="noteErrors[row.studentId]"></p>
+                                                <p class="help is-danger" role="alert" x-show="noteErrors[row.studentId]"><span class="app-notice">@template.layout.icon(name = "alert", size = 16)<span x-text="noteErrors[row.studentId]"></span></span></p>
                                             </div>
                                         </div>
                                     </li>

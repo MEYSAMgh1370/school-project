@@ -122,7 +122,7 @@
                                 <button class="delete" type="button" aria-label="بستن" @click="closeAdd"></button>
                             </header>
                             <section class="modal-card-body">
-                                <div class="notification is-danger" role="alert" x-show="add.error" x-text="add.error"></div>
+                                <div class="notification is-danger" role="alert" x-show="add.error"><span class="app-notice">@template.layout.icon(name = "alert", size = 20)<span x-text="add.error"></span></span></div>
 
                                 <div class="field">
                                     <label class="label" for="yearlyPlanDate">تاریخ</label>
@@ -131,7 +131,7 @@
                                                autocomplete="off" :placeholder="exampleDate()"
                                                x-model="add.date" :class="{ 'is-danger': add.dateError }">
                                     </div>
-                                    <p class="help is-danger" x-show="add.dateError" x-text="add.dateError"></p>
+                                    <p class="help is-danger" role="alert" x-show="add.dateError"><span class="app-notice">@template.layout.icon(name = "alert", size = 16)<span x-text="add.dateError"></span></span></p>
                                     <p class="help" x-show="!add.dateError" x-text="rangeHelp()"></p>
                                 </div>
 
@@ -141,7 +141,7 @@
                                         <input class="input" id="yearlyPlanTitleInput" type="text" maxlength="128"
                                                x-model="add.title" :class="{ 'is-danger': add.titleError }">
                                     </div>
-                                    <p class="help is-danger" x-show="add.titleError" x-text="add.titleError"></p>
+                                    <p class="help is-danger" role="alert" x-show="add.titleError"><span class="app-notice">@template.layout.icon(name = "alert", size = 16)<span x-text="add.titleError"></span></span></p>
                                 </div>
 
                                 <div class="field">
@@ -179,7 +179,7 @@
                                 <button class="delete" type="button" aria-label="بستن" @click="closeRange"></button>
                             </header>
                             <section class="modal-card-body">
-                                <div class="notification is-danger" role="alert" x-show="rangeForm.error" x-text="rangeForm.error"></div>
+                                <div class="notification is-danger" role="alert" x-show="rangeForm.error"><span class="app-notice">@template.layout.icon(name = "alert", size = 20)<span x-text="rangeForm.error"></span></span></div>
                                 <p class="help mb-4" id="yearlyPlanRangeHelp" x-text="defaultRangeHelp()"></p>
 
                                 <div class="field">
@@ -189,7 +189,7 @@
                                                autocomplete="off" x-model="rangeForm.start"
                                                :class="{ 'is-danger': rangeForm.startError }">
                                     </div>
-                                    <p class="help is-danger" x-show="rangeForm.startError" x-text="rangeForm.startError"></p>
+                                    <p class="help is-danger" role="alert" x-show="rangeForm.startError"><span class="app-notice">@template.layout.icon(name = "alert", size = 16)<span x-text="rangeForm.startError"></span></span></p>
                                 </div>
 
                                 <div class="field">
@@ -199,7 +199,7 @@
                                                autocomplete="off" x-model="rangeForm.end"
                                                :class="{ 'is-danger': rangeForm.endError }">
                                     </div>
-                                    <p class="help is-danger" x-show="rangeForm.endError" x-text="rangeForm.endError"></p>
+                                    <p class="help is-danger" role="alert" x-show="rangeForm.endError"><span class="app-notice">@template.layout.icon(name = "alert", size = 16)<span x-text="rangeForm.endError"></span></span></p>
                                 </div>
                             </section>
                             <footer class="modal-card-foot">
@@ -225,7 +225,7 @@
                         </header>
                         <section class="modal-card-body">
                             <div class="notification is-danger" role="alert"
-                                 x-show="confirm && confirm.error" x-text="confirm ? confirm.error : ''"></div>
+                                 x-show="confirm && confirm.error"><span class="app-notice">@template.layout.icon(name = "alert", size = 20)<span x-text="confirm ? confirm.error : ''"></span></span></div>
                             <p class="has-text-weight-semibold">
                                 آیا از حذف رویدادِ «<span x-text="confirm ? confirm.title : ''"></span>»
                                 (<span x-text="confirm ? dayShort(confirm.day) : ''"></span>) مطمئن هستید؟
@@ -254,7 +254,7 @@
                                 <button class="delete" type="button" aria-label="بستن" @click="closeRoles"></button>
                             </header>
                             <section class="modal-card-body">
-                                <div class="notification is-danger" role="alert" x-show="rolesForm.error" x-text="rolesForm.error"></div>
+                                <div class="notification is-danger" role="alert" x-show="rolesForm.error"><span class="app-notice">@template.layout.icon(name = "alert", size = 20)<span x-text="rolesForm.error"></span></span></div>
                                 <p x-show="rolesForm.loading">در حال بارگذاری...</p>
 
                                 <div x-show="!rolesForm.loading">
@@ -270,7 +270,7 @@
                                             </div>
                                         </div>
                                     </template>
-                                    <p class="help is-danger" id="yearlyPlanRolesError" x-show="rolesForm.rolesError" x-text="rolesForm.rolesError"></p>
+                                    <p class="help is-danger" role="alert" id="yearlyPlanRolesError" x-show="rolesForm.rolesError"><span class="app-notice">@template.layout.icon(name = "alert", size = 16)<span x-text="rolesForm.rolesError"></span></span></p>
                                 </div>
                             </section>
                             <footer class="modal-card-foot">

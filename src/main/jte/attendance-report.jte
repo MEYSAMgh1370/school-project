@@ -64,7 +64,7 @@
                                     <button class="button is-light" type="button" id="attReportToday" @click="goToday">امروز</button>
                                 </div>
                             </div>
-                            <p class="help is-danger" id="attReportDayError" x-show="dayError" x-text="dayError"></p>
+                            <p class="help is-danger" role="alert" id="attReportDayError" x-show="dayError"><span class="app-notice">@template.layout.icon(name = "alert", size = 16)<span x-text="dayError"></span></span></p>
                             <p class="is-size-7 has-text-grey" x-show="!dayError" x-text="dayTitle()"></p>
                         </div>
 
@@ -150,14 +150,14 @@
                                     <input class="input app-input-w-8" id="attFrom" type="text" dir="ltr" inputmode="numeric"
                                            autocomplete="off" :placeholder="exampleDate()" x-model="fromText"
                                            :class="{ 'is-danger': fromError }" @keydown.enter.prevent="loadRange()">
-                                    <p class="help is-danger" id="attFromError" x-show="fromError" x-text="fromError"></p>
+                                    <p class="help is-danger" role="alert" id="attFromError" x-show="fromError"><span class="app-notice">@template.layout.icon(name = "alert", size = 16)<span x-text="fromError"></span></span></p>
                                 </div>
                                 <div class="control">
                                     <label class="label" for="attTo">تا تاریخ</label>
                                     <input class="input app-input-w-8" id="attTo" type="text" dir="ltr" inputmode="numeric"
                                            autocomplete="off" :placeholder="exampleDate()" x-model="toText"
                                            :class="{ 'is-danger': toError }" @keydown.enter.prevent="loadRange()">
-                                    <p class="help is-danger" id="attToError" x-show="toError" x-text="toError"></p>
+                                    <p class="help is-danger" role="alert" id="attToError" x-show="toError"><span class="app-notice">@template.layout.icon(name = "alert", size = 16)<span x-text="toError"></span></span></p>
                                 </div>
                                 <div class="control">
                                     <label class="label" for="attClassFilter">کلاس</label>
@@ -251,14 +251,14 @@
                                     <input class="input app-input-w-8" id="attExcFrom" type="text" dir="ltr" inputmode="numeric"
                                            autocomplete="off" :placeholder="exampleDate()" x-model="excFromText"
                                            :class="{ 'is-danger': excFromError }" @keydown.enter.prevent="loadExcuses()">
-                                    <p class="help is-danger" id="attExcFromError" x-show="excFromError" x-text="excFromError"></p>
+                                    <p class="help is-danger" role="alert" id="attExcFromError" x-show="excFromError"><span class="app-notice">@template.layout.icon(name = "alert", size = 16)<span x-text="excFromError"></span></span></p>
                                 </div>
                                 <div class="control">
                                     <label class="label" for="attExcTo">تا تاریخ</label>
                                     <input class="input app-input-w-8" id="attExcTo" type="text" dir="ltr" inputmode="numeric"
                                            autocomplete="off" :placeholder="exampleDate()" x-model="excToText"
                                            :class="{ 'is-danger': excToError }" @keydown.enter.prevent="loadExcuses()">
-                                    <p class="help is-danger" id="attExcToError" x-show="excToError" x-text="excToError"></p>
+                                    <p class="help is-danger" role="alert" id="attExcToError" x-show="excToError"><span class="app-notice">@template.layout.icon(name = "alert", size = 16)<span x-text="excToError"></span></span></p>
                                 </div>
                             </div>
                             <p class="help">تاریخ‌ها اختیاری‌اند و روزِ غیبت را فیلتر می‌کنند؛ ارقام فارسی هم پذیرفته می‌شود.</p>
