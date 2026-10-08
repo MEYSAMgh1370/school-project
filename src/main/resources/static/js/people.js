@@ -197,6 +197,8 @@ document.addEventListener('alpine:init', () => {
             this.toggling = true;
             this.error = '';
             this.notice = '';
+            // اگر modal در این فاصله بسته شده باشد، خطا بالای صفحه نشان داده می‌شود
+            const errorTarget = () => (confirmTarget && this.confirm === confirmTarget ? confirmTarget : this);
             try {
                 const response = await fetch(`${this.base()}/${member.membershipId}/active`, {
                     method: 'PATCH',
@@ -208,7 +210,7 @@ document.addEventListener('alpine:init', () => {
                     body: JSON.stringify({ active: !member.active })
                 });
                 if (!response.ok) {
-                    await this.showError(response, confirmTarget || this);
+                    await this.showError(response, errorTarget());
                     return;
                 }
                 this.confirm = null;
@@ -216,7 +218,7 @@ document.addEventListener('alpine:init', () => {
                 this.notice = member.active ? 'عضویت غیرفعال شد.' : 'عضویت فعال شد.';
                 await this.load();
             } catch (e) {
-                (confirmTarget || this).error = 'ارتباط با سرور برقرار نشد.';
+                errorTarget().error = 'ارتباط با سرور برقرار نشد.';
             } finally {
                 this.toggling = false;
             }

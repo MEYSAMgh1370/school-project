@@ -163,7 +163,12 @@ document.addEventListener('alpine:init', () => {
                 }
                 if (!response.ok) {
                     // خطا داخل modal نشان داده می‌شود (پشتِ لایه‌ی modal دیده نمی‌شد)
-                    target.error = (await this.classifyError(response)).message;
+                    const message = (await this.classifyError(response)).message;
+                    if (this.confirm === target) {
+                        target.error = message;
+                    } else {
+                        this.error = message;
+                    }
                     return;
                 }
                 const result = await response.json();
@@ -173,7 +178,11 @@ document.addEventListener('alpine:init', () => {
                 this.attributeYear = '';
                 await this.loadUnattributed();
             } catch (e) {
-                target.error = 'ارتباط با سرور برقرار نشد.';
+                if (this.confirm === target) {
+                    target.error = 'ارتباط با سرور برقرار نشد.';
+                } else {
+                    this.error = 'ارتباط با سرور برقرار نشد.';
+                }
             } finally {
                 this.attributing = false;
             }
@@ -224,7 +233,12 @@ document.addEventListener('alpine:init', () => {
                 }
                 if (!response.ok) {
                     // سرور نپذیرفت؛ وضعیت همان قبلی می‌ماند و خطا داخل modal نشان داده می‌شود
-                    target.error = (await this.classifyError(response)).message;
+                    const message = (await this.classifyError(response)).message;
+                    if (this.autoConfirm === target) {
+                        target.error = message;
+                    } else {
+                        this.error = message;
+                    }
                     return;
                 }
                 const settings = await response.json();
@@ -234,7 +248,11 @@ document.addEventListener('alpine:init', () => {
                     ? 'ارتقای خودکار روشن شد؛ از تعویض بعدیِ سال اثر می‌کند.'
                     : 'ارتقای خودکار خاموش شد.';
             } catch (e) {
-                target.error = 'ارتباط با سرور برقرار نشد.';
+                if (this.autoConfirm === target) {
+                    target.error = 'ارتباط با سرور برقرار نشد.';
+                } else {
+                    this.error = 'ارتباط با سرور برقرار نشد.';
+                }
             } finally {
                 this.autoSaving = false;
             }

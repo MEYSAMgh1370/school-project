@@ -317,6 +317,8 @@ document.addEventListener('alpine:init', () => {
         setConfirmError(message) {
             if (this.confirm) {
                 this.confirm.error = message;
+            } else {
+                this.error = message;
             }
         },
 

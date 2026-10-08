@@ -107,8 +107,8 @@ document.addEventListener('alpine:init', () => {
         },
 
         // «?academicYear=…» برای سالِ انتخاب‌شده؛ بدون فهرست سال (مدرسه‌ای که سالِ جاری ندارد) خالی
-        yearQuery() {
-            return this.year ? `?academicYear=${encodeURIComponent(this.year)}` : '';
+        yearQuery(year = this.year) {
+            return year ? `?academicYear=${encodeURIComponent(year)}` : '';
         },
 
         studentsBase() {
@@ -412,7 +412,11 @@ document.addEventListener('alpine:init', () => {
                 if (!response.ok) {
                     const classified = await this.classifyError(response);
                     // خطا داخل modal نشان داده می‌شود (پشتِ لایه‌ی modal دیده نمی‌شد)
-                    target.error = classified.message;
+                    if (this.attributeConfirm === target) {
+                        target.error = classified.message;
+                    } else {
+                        this.error = classified.message;
+                    }
                     return;
                 }
                 const result = await response.json();
@@ -422,7 +426,11 @@ document.addEventListener('alpine:init', () => {
                     + `${result.tuitionAttributed ? ' و شهریه' : ''}).`;
                 await this.load();
             } catch (e) {
-                target.error = 'ارتباط با سرور برقرار نشد.';
+                if (this.attributeConfirm === target) {
+                    target.error = 'ارتباط با سرور برقرار نشد.';
+                } else {
+                    this.error = 'ارتباط با سرور برقرار نشد.';
+                }
             } finally {
                 this.attributing = false;
             }
@@ -536,7 +544,7 @@ document.addEventListener('alpine:init', () => {
             this.error = '';
             this.notice = '';
             try {
-                const response = await fetch(`${this.invoicesBase()}/backfill${this.yearQuery()}`, {
+                const response = await fetch(`${this.invoicesBase()}/backfill${this.yearQuery(target.year)}`, {
                     method: 'POST',
                     headers: {
                         'X-School-ID': this.schoolId,
@@ -546,7 +554,11 @@ document.addEventListener('alpine:init', () => {
                 if (!response.ok) {
                     const classified = await this.classifyError(response);
                     // خطا داخل modal نشان داده می‌شود (پشتِ لایه‌ی modal دیده نمی‌شد)
-                    target.error = classified.message;
+                    if (this.confirm === target) {
+                        target.error = classified.message;
+                    } else {
+                        this.error = classified.message;
+                    }
                     return;
                 }
                 const result = await response.json();
@@ -556,7 +568,11 @@ document.addEventListener('alpine:init', () => {
                     : 'همه‌ی دانش‌آموزان برای این سال از قبل فاکتور دارند - چیزی صادر نشد.';
                 await this.load();
             } catch (e) {
-                target.error = 'ارتباط با سرور برقرار نشد.';
+                if (this.confirm === target) {
+                    target.error = 'ارتباط با سرور برقرار نشد.';
+                } else {
+                    this.error = 'ارتباط با سرور برقرار نشد.';
+                }
             } finally {
                 this.backfilling = false;
             }

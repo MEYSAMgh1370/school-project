@@ -87,6 +87,15 @@ document.addEventListener('alpine:init', () => {
             if (this.starting !== null) {
                 return;
             }
+            // اگر modal در این فاصله بسته شده باشد، خطا بالای صفحه نشان داده می‌شود
+            const fail = (message) => {
+                if (target !== this && this.confirm === target) {
+                    target.error = message;
+                } else {
+                    this.error = message;
+                }
+            };
+            let navigating = false;
             this.starting = exam.id;
             this.error = '';
             target.error = '';
@@ -98,18 +107,22 @@ document.addEventListener('alpine:init', () => {
                 if (!response.ok) {
                     try {
                         const body = await response.json();
-                        target.error = body.detail || body.title || 'خطایی رخ داد.';
+                        fail(body.detail || body.title || 'خطایی رخ داد.');
                     } catch (e) {
-                        target.error = 'خطایی رخ داد. (' + response.status + ')';
+                        fail('خطایی رخ داد. (' + response.status + ')');
                     }
                     return;
                 }
                 const attempt = await response.json();
+                // تا بارگذاری صفحه‌ی بعد، starting باقی می‌ماند تا کلیک دوم درخواست دوباره نفرستد
+                navigating = true;
                 window.location.href = `/exam-take?token=${encodeURIComponent(attempt.token)}&expireAt=${encodeURIComponent(attempt.expireAt)}`;
             } catch (e) {
-                target.error = 'ارتباط با سرور برقرار نشد.';
+                fail('ارتباط با سرور برقرار نشد.');
             } finally {
-                this.starting = null;
+                if (!navigating) {
+                    this.starting = null;
+                }
             }
         },
 

@@ -270,6 +270,8 @@ document.addEventListener('alpine:init', () => {
             }, (message) => {
                 if (this.confirm) {
                     this.confirm.error = message;
+                } else {
+                    this.error = message;
                 }
             });
         },

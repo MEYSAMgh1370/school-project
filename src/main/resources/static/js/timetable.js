@@ -518,6 +518,8 @@ document.addEventListener('alpine:init', () => {
                 // خطا کنار همان modal می‌ماند (مثلاً «زنگ خانه دارد»)
                 if (this.confirm) {
                     this.confirm.error = message;
+                } else {
+                    this.error = message;
                 }
             });
         },
