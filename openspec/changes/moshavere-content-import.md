@@ -73,7 +73,7 @@ check for `22254` (D12), and the teacher review of repeated codes (D13).
 | ID | Answer | Status |
 |---|---|---|
 | O1 | Read as keeping the generic stem for all 10 questions. | To confirm |
-| O2 | Read as plain Unicode conversion. The explanation was given; the choice was not confirmed. | To confirm |
+| O2 | Use a math renderer (option b). It needs a WebJar, and the frontend rules require that approval. | Decided; WebJar approval needed |
 | O3 | Tir–Shahrivar 1406, the next summer (option a). | Decided |
 | O4 | The week containing 1 Tir (option a). | Decided |
 | O5 | Each school's own week-start day (option a). | Decided |
@@ -192,7 +192,7 @@ Checks that passed:
 | `f12e8f54` | Two choices end with a stray `C40` | Delete | High |
 | `f12e8f54` | All 10 questions share the stem «کدام یک از گزینه‌های زیر صحیح است.» | Keep the generic stem | O1 |
 | `f12e8f54` | «در سلول گالوانی Zn-SHE هیدروژن نقش کاتد را ایفا می‌کند» is marked false in questions 1, 6 and 9. In a Zn–SHE cell the SHE is the cathode, so it is arguably true, which would give those questions two correct answers | Teacher ruling; key unchanged meanwhile | D11 |
-| `f12e8f54` | Text contains HTML tags and TeX (`$\displaystyle SO_{3}^{2-} $`) | Convert to plain Unicode | O2 |
+| `f12e8f54` | Text contains HTML tags and TeX (`$\displaystyle SO_{3}^{2-} $`) | Keep TeX in the stored text and render it with the math library | O2 |
 
 ## Proposed Design
 
