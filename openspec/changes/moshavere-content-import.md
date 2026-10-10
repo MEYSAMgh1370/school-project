@@ -77,7 +77,7 @@ check for `22254` (D12), and the teacher review of repeated codes (D13).
 | O3 | Tir–Shahrivar 1406, the next summer (option a). | Decided |
 | O4 | The week containing 1 Tir (option a). | Decided |
 | O5 | Each school's own week-start day (option a). | Decided |
-| O6 | Ask the school which code belongs to which week (option c). | Waiting for the school |
+| O6 | In sheet order: 26522 goes to the 3rd Mordad week, and 26523 goes to the 4th Mordad week. | Decided |
 | O7 | Skip the «ازمون» row (option a). | Decided |
 | O8 | Drop the Physics 1 codes until their weights exist (option a). | Decided |
 | O9 | Lesson level, matching the weights (option a). | Decided |
