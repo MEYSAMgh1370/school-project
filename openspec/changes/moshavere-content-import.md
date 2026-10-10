@@ -74,8 +74,8 @@ check for `22254` (D12), and the teacher review of repeated codes (D13).
 |---|---|---|
 | O1 | Read as keeping the generic stem for all 10 questions. | To confirm |
 | O2 | Read as plain Unicode conversion. The explanation was given; the choice was not confirmed. | To confirm |
-| O3 | No answer. | Open |
-| O4 | No answer. | Open |
+| O3 | Tir–Shahrivar 1406, the next summer (option a). | Decided |
+| O4 | The week containing 1 Tir (option a). | Decided |
 | O5 | Each school's own week-start day (option a). | Decided |
 | O6 | Ask the school which code belongs to which week (option c). | Waiting for the school |
 | O7 | Skip the «ازمون» row (option a). | Decided |
