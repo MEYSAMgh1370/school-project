@@ -72,8 +72,8 @@ check for `22254` (D12), and the teacher review of repeated codes (D13).
 
 | ID | Answer | Status |
 |---|---|---|
-| O1 | Read as keeping the generic stem for all 10 questions. | To confirm |
-| O2 | Use a math renderer (option b). It needs a WebJar, and the frontend rules require that approval. | Decided; WebJar approval needed |
+| O1 | Keep the generic stem for all 10 questions (option b). Read from the answer «همان شکل باشد» and confirmed 2026-10-10. | Decided |
+| O2 | Render math in the browser (front), using KaTeX from a WebJar. The TeX is stored as plain text, and no server conversion is used. The WebJar needs approval. | Decided; WebJar approval needed |
 | O3 | Tir–Shahrivar 1406, the next summer (option a). | Decided |
 | O4 | The week containing 1 Tir (option a). | Decided |
 | O5 | Each school's own week-start day (option a). | Decided |
@@ -198,6 +198,20 @@ Checks that passed:
 
 Plans, week courses, exams and student data stay per school. Only topics,
 courses and platform questions become global.
+
+### 0. Math rendering (O2)
+
+- Question and explanation text keeps its TeX inside `$…$` in the database.
+- The browser renders it. A small Alpine directive splits the text on `$…$`:
+  plain segments are shown with `x-text`, and each formula is rendered by KaTeX
+  into its own elements.
+- No `x-html` and no HTML sanitisation are needed, because KaTeX builds its own
+  elements and no arbitrary HTML is inserted. KaTeX's `trust` option, which
+  enables links, stays off.
+- The library comes as a WebJar and needs approval before it is added (the
+  frontend rules in `openspec/conventions.md`).
+- Teachers' own questions use the same format, so no server conversion is needed
+  on save.
 
 ### 1. Data model (a new migration; applied migrations are not edited)
 
