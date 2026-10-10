@@ -83,8 +83,8 @@ check for `22254` (D12), and the teacher review of repeated codes (D13).
 | O9 | Lesson level, matching the weights (option a). | Decided |
 | O10 | The school enters course weights in the app (option a). | Decided |
 | O11 | Topic-level weights only (option a). | Decided |
-| O12 | No answer. | Open |
-| O13 | No answer. | Open |
+| O12 | Tracks are ریاضی, تجربی and انسانی. Courses without a track are common to all. | Decided |
+| O13 | No school has created topics or questions yet, so existing school-owned rows need no migration. Re-check before the migration runs. | Decided; re-check |
 
 Outside input received: the source-book check for `22254` (D12) and the teacher
 review of repeated codes (D13) were both answered «check first», so both stay
