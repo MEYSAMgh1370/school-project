@@ -68,6 +68,28 @@ These block the phases shown. Each has a proposed default.
 Outside input, not a product decision: the Zn–SHE ruling (D11), the source-book
 check for `22254` (D12), and the teacher review of repeated codes (D13).
 
+## Answers Received (2026-10-10)
+
+| ID | Answer | Status |
+|---|---|---|
+| O1 | Read as keeping the generic stem for all 10 questions. | To confirm |
+| O2 | Read as plain Unicode conversion. The explanation was given; the choice was not confirmed. | To confirm |
+| O3 | No answer. | Open |
+| O4 | No answer. | Open |
+| O5 | Each school's own week-start day (option a). | Decided |
+| O6 | Ask the school which code belongs to which week (option c). | Waiting for the school |
+| O7 | Skip the «ازمون» row (option a). | Decided |
+| O8 | Drop the Physics 1 codes until their weights exist (option a). | Decided |
+| O9 | Lesson level, matching the weights (option a). | Decided |
+| O10 | The school enters course weights in the app (option a). | Decided |
+| O11 | Topic-level weights only (option a). | Decided |
+| O12 | No answer. | Open |
+| O13 | No answer. | Open |
+
+Outside input received: the source-book check for `22254` (D12) and the teacher
+review of repeated codes (D13) were both answered «check first», so both stay
+open until the checks are done.
+
 ## Verified Baseline
 
 From code, not from earlier docs. Items marked **changes** are what D3–D6 change.
