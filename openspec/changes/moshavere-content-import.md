@@ -41,6 +41,7 @@ Recorded from the product owner's answers on 2026-10-09.
 | D14 | The Zn–SHE statement in questions 1, 6 and 9 is true: in the galvanic cell the SHE is the cathode, where hydrogen is reduced. Keeping it true would give each question two correct answers. The distractor is reworded to the anode version «در سلول گالوانی Zn-SHE هیدروژن نقش آند را ایفا می‌کند» and its explanation is rewritten. The keys stay 1, 1, 1. Decided by the product owner (2026-10-11). |
 | D15 | Physics code `301222` is corrected to `30122` (Newton's third law). It is already applied in the weights copy (cell B33). Decided by the product owner (2026-10-11). |
 | D16 | Each chemistry question is placed on the topic chosen by hand in `scripts/moshavere_convert.py` (`QUESTION_TOPICS`), not on the sheet's «مبحث» label, because some labels do not match the question (question 3's label names the fuel cell). Decided by the product owner's delegation (2026-10-11). |
+| D17 | A track-specific course name carries its track, for example «فیزیک (3) پایه دوازدهم (ریاضی)». The platform key is (grade, name), so the same name in two tracks would otherwise overwrite one row. Decided by the product owner (2026-10-11, option A). |
 
 ## Answers
 
