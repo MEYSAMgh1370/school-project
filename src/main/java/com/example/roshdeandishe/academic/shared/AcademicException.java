@@ -40,6 +40,10 @@ public final class AcademicException extends RuntimeException {
                     "کلاس " + e.classId() + " برای سال «" + e.classYear() + "» است، نه «" + e.expectedYear() + "».";
             case AcademicError.ClassGradeMismatch e ->
                     "کلاس " + e.classId() + " پایه‌ی " + e.classGrade() + " است ولی دانش‌آموز پایه‌ی " + e.expectedGrade() + " می‌شود.";
+            case AcademicError.InvalidTrack e ->
+                    "رشته‌ی «" + e.track() + "» نامعتبر است؛ فقط ریاضی، تجربی یا انسانی.";
+            case AcademicError.TrackNeedsCurrentYear e ->
+                    "مدرسه سال تحصیلی جاری ندارد و رشته را نمی‌توان ذخیره کرد.";
             case AcademicError.PromotionRunNotFound e -> "اجرای ارتقای " + e.runId() + " یافت نشد.";
             case AcademicError.PromotionRunNotUndoable e -> e.reason();
             case AcademicError.PeriodNotFound e -> "زنگی با شناسه " + e.periodId() + " یافت نشد.";

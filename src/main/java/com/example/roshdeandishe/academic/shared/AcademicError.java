@@ -147,6 +147,14 @@ public sealed interface AcademicError {
     record ClassGradeMismatch(Long classId, int classGrade, int expectedGrade) implements AcademicError {
     }
 
+    /** رشته‌ی داده‌شده یکی از «ریاضی»، «تجربی» و «انسانی» نیست. */
+    record InvalidTrack(String track) implements AcademicError {
+    }
+
+    /** رشته فقط روی ردیفِ ثبت‌نامِ سالِ جاری ذخیره می‌شود و این مدرسه ردیفی ندارد (سالِ جاری ندارد). */
+    record TrackNeedsCurrentYear() implements AcademicError {
+    }
+
     record PromotionRunNotFound(Long runId) implements AcademicError {
     }
 

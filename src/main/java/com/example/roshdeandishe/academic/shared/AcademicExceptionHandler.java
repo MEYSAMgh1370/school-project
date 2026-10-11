@@ -115,6 +115,16 @@ public class AcademicExceptionHandler {
                     "پایه‌ی کلاس با پایه‌ی دانش‌آموز نمی‌خواند",
                     "کلاس " + e.classId() + " پایه‌ی " + e.classGrade() + " است ولی این دانش‌آموز پایه‌ی " + e.expectedGrade() + " می‌شود."
             );
+            case AcademicError.InvalidTrack e -> ProblemDetailFactory.problem(
+                    HttpStatus.BAD_REQUEST, "invalid-track",
+                    "رشته نامعتبر است",
+                    "رشته‌ی «" + e.track() + "» نامعتبر است؛ فقط ریاضی، تجربی یا انسانی."
+            );
+            case AcademicError.TrackNeedsCurrentYear e -> ProblemDetailFactory.problem(
+                    HttpStatus.CONFLICT, "track-needs-current-year",
+                    "مدرسه سال تحصیلی جاری ندارد",
+                    "رشته روی ثبت‌نامِ سالِ جاری ذخیره می‌شود؛ اول در صفحه‌ی «سال تحصیلی» سالِ جاری مدرسه را انتخاب کنید."
+            );
             case AcademicError.PromotionRunNotFound e -> ProblemDetailFactory.problem(
                     HttpStatus.NOT_FOUND, "promotion-run-not-found",
                     "اجرای ارتقا یافت نشد",

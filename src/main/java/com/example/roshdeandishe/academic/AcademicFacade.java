@@ -20,7 +20,16 @@ public interface AcademicFacade {
      * SchoolController برای ساخت خودکار SCHOOL_ADMIN هنگام ساخت مدرسه
      * استفاده کرد.
      */
-    StudentId enrollStudent(String email, String fullName, Long schoolId, Long classId);
+    default StudentId enrollStudent(String email, String fullName, Long schoolId, Long classId) {
+        return enrollStudent(email, fullName, schoolId, classId, null);
+    }
+
+    /**
+     * همان ثبت‌نام با رشته‌ی دانش‌آموز ({@code ریاضی}، {@code تجربی} یا {@code انسانی}) روی ردیفِ ثبت‌نامِ سالِ جاری.
+     * {@code track} تهی = رشته دست نمی‌خورد (برای ردیفِ تازه تهی می‌ماند). رشته‌ی نامعتبر InvalidTrack؛ رشته برای مدرسه‌ای
+     * که سالِ جاری ندارد (ردیفی نیست که ذخیره شود) TrackNeedsCurrentYear و هیچ اثری نمی‌گذارد.
+     */
+    StudentId enrollStudent(String email, String fullName, Long schoolId, Long classId, String track);
 
     StudentInfo getStudentInfo(Long studentId);
 

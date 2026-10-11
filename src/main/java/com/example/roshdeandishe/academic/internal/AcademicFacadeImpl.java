@@ -69,7 +69,8 @@ class AcademicFacadeImpl implements AcademicFacade {
 
     @Override
     @Transactional
-    public StudentId enrollStudent(String email, String fullName, Long schoolId, Long classId) {
+    public StudentId enrollStudent(String email, String fullName, Long schoolId, Long classId, String track) {
+        EnrollmentLedger.requireValidTrack(track);
         ClassEntity classEntity = requireClassInSchool(schoolId, classId);
 
         // «ردیاب‌شده» بودنِ مدرسه پیش از افزودنِ این دانش‌آموز سنجیده می‌شود (academic-year.md فاز ۳)
@@ -79,6 +80,10 @@ class AcademicFacadeImpl implements AcademicFacade {
                 && !classEntity.getAcademicYear().equals(currentYear.get().code())) {
             throw new AcademicException(new AcademicError.ClassNotInYear(
                     classId, classEntity.getAcademicYear(), currentYear.get().code()));
+        }
+        // رشته فقط روی ردیفِ ثبت‌نام می‌نشیند و مدرسه‌ی غیرردیاب‌شده ردیف ندارد؛ پیش از هر اثری رد می‌شود
+        if (track != null && !tracked) {
+            throw new AcademicException(new AcademicError.TrackNeedsCurrentYear());
         }
 
         // همان الگوی SchoolController: پیدا/ساخت کاربر در iam، سپس Membership
@@ -97,7 +102,7 @@ class AcademicFacadeImpl implements AcademicFacade {
         StudentEntity saved = studentRepository.save(student);
 
         if (tracked) {
-            enrollmentLedger.place(saved, classEntity, currentYear.get().code());
+            enrollmentLedger.place(saved, classEntity, currentYear.get().code(), track);
         }
 
         if (existingStudent.isEmpty() || returning) {
