@@ -2,7 +2,7 @@
 
 @param NavbarModel navbar
 
-@template.layout.main(title = "سرفصل‌ها و بانک سؤال", scripts = java.util.List.of("/js/navbar.js", "/js/digits.js", "/js/jalali.js", "/js/calendar.js", "/js/list-search.js", "/js/curriculum.js"), content = @`
+@template.layout.main(title = "سرفصل‌ها و بانک سؤال", styles = java.util.List.of("/webjars/katex/0.16.22/dist/katex.min.css"), scripts = java.util.List.of("/js/navbar.js", "/js/digits.js", "/js/jalali.js", "/js/calendar.js", "/js/list-search.js", "/webjars/katex/0.16.22/dist/katex.min.js", "/js/math.js", "/js/curriculum.js"), content = @`
 @template.layout.navbar(navbar = navbar)
 
 <section class="section" id="main-content" role="main" tabindex="-1" x-data="curriculumPage()">
@@ -101,7 +101,7 @@
                                             <template x-for="question in visibleQuestions()" :key="question.id">
                                                 <div class="app-question-row" role="listitem">
                                                     <div class="app-question-row__main">
-                                                        <span class="app-question-row__name" x-text="question.text"></span>
+                                                        <span class="app-question-row__name" x-math="question.text"></span>
                                                         <span class="is-size-7 has-text-grey" x-text="'گزینه‌ی درست: ' + Calendar.digits(question.correctChoice)"></span>
                                                     </div>
                                                     <span class="tag is-light" x-text="difficultyLabel(question.difficulty)"></span>

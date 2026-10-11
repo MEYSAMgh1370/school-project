@@ -36,8 +36,10 @@ Recorded from the product owner's answers on 2026-10-09.
 | D9 | A report goes to a platform-admin queue. The reporting school can see its reports and their status: open, reviewed, fixed or closed. |
 | D10 | A report never changes a question. Only the platform admin edits platform questions. |
 | D11 | The Zn–SHE verdict (questions 1, 6, 9) waits for a chemistry teacher's ruling. The current key stays until then. |
-| D12 | Biology code `22254` is checked against the source book before it is changed. |
+| D12 | Biology code `22254` is changed to `26254` (decided by the product owner, 2026-10-11). |
 | D13 | A teacher checks each repeated code before it is kept or removed. |
+| D14 | The Zn–SHE statement in questions 1, 6 and 9 is true: in the galvanic cell the SHE is the cathode, where hydrogen is reduced. Keeping it true would give each question two correct answers. The distractor is reworded to the anode version «در سلول گالوانی Zn-SHE هیدروژن نقش آند را ایفا می‌کند» and its explanation is rewritten. The keys stay 1, 1, 1. Decided by the product owner (2026-10-11). |
+| D15 | Physics code `301222` is corrected to `30122` (Newton's third law). It is already applied in the weights copy (cell B33). Decided by the product owner (2026-10-11). |
 
 ## Answers
 
@@ -46,7 +48,7 @@ Recorded from the product owner's answers on 2026-10-10.
 | ID | Answer | Status |
 |---|---|---|
 | O1 | Keep the generic stem for all 10 questions (option b), from the answer «همان شکل باشد». | Decided |
-| O2 | Render math in the browser with KaTeX from a WebJar. The TeX stays as plain text; no server conversion. | Decided; WebJar needs approval |
+| O2 | Render math in the browser with KaTeX from a WebJar. The TeX stays as plain text; no server conversion. | Decided; WebJar approved (`org.webjars.npm:katex:0.16.22`, used in `curriculum.jte` through `static/js/math.js`) |
 | O3 | Tir–Shahrivar 1406, the next summer. | Decided |
 | O4 | The week containing 1 Tir. | Decided |
 | O5 | Each school's own week-start day. | Decided |
@@ -63,9 +65,9 @@ Recorded from the product owner's answers on 2026-10-10.
 | O16 | The corrected tree (`69df89ac`, UTF-8) is committed under `data/moshavere/` (D1). | Decided |
 | O17 | Courses that have no matching tree node are imported with no topic link (`topicSourceCode` null). They are linked to a topic later, once the mapping is checked. The bundle has 73 such courses out of 85; the 12 with a name match are linked. | Decided |
 
-Still open outside the product decisions: the source-book check for `22254`
-(D12) and the teacher review of repeated codes (D13). Both are checks, not
-decisions, and both must be done before the affected rows are changed.
+Still open outside the product decisions: the teacher review of repeated codes
+(D13). It is a check, not a decision, and must be done before the affected rows
+are changed.
 
 ## Proposed Defaults From The Review (P1–P6)
 

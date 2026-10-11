@@ -62,6 +62,12 @@
             <artifactId>bulma</artifactId>
             <version>1.0.4</version>
         </dependency>
+        <!-- KaTeX برای رندر فرمول‌های TeX سؤال در مرورگر (O2 در openspec/changes/moshavere-content-import.md) -->
+        <dependency>
+            <groupId>org.webjars.npm</groupId>
+            <artifactId>katex</artifactId>
+            <version>0.16.22</version>
+        </dependency>
 
         <dependency>
             <groupId>org.springdoc</groupId>
