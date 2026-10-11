@@ -43,6 +43,11 @@ public class CurriculumExceptionHandler {
                     "سؤال نامعتبر",
                     e.reason()
             );
+            case CurriculumError.InvalidMoshavereBundle e -> ProblemDetailFactory.problem(
+                    HttpStatus.BAD_REQUEST, "moshavere-bundle-invalid",
+                    "بسته‌ی مشاوره نامعتبر",
+                    e.reason()
+            );
         };
     }
 }

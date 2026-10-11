@@ -141,6 +141,11 @@ class AcademicFacadeImpl implements AcademicFacade {
     }
 
     @Override
+    public boolean platformCourseExists(int gradeLevel, String name) {
+        return name != null && courseRepository.findByGradeLevelAndName(gradeLevel, name.strip()).isPresent();
+    }
+
+    @Override
     public StudentInfo getStudentInfo(Long studentId) {
         return findStudentInfo(studentId)
                 .orElseThrow(() -> new AcademicException(new AcademicError.StudentNotFound(studentId)));
