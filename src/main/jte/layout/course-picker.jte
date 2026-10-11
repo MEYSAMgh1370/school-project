@@ -34,7 +34,7 @@
                         <option value="">— انتخاب درس —</option>
                         <template x-for="course in pickerCourses" :key="'course-' + course.id">
                             <option :value="course.id"
-                                    x-text="course.name + (course.track ? ' (' + course.track + ')' : ' (مشترک)')"></option>
+                                    x-text="course.name + (course.track ? '' : ' (مشترک)')"></option>
                         </template>
                     </select>
                 </div>
