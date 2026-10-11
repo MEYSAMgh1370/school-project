@@ -68,6 +68,14 @@ class AcademicFacadeImpl implements AcademicFacade {
         this.eventPublisher = eventPublisher;
     }
 
+    // نسخه‌ی بدون رشته خودِ پیاده‌سازی را دارد، نه default متدِ اینترفیس: default از داخلِ شیء صدا می‌زند و
+    // @Transactional روی ثبت‌نامِ پنج‌آرگومانی دور زده می‌شود، پس رویدادِ ثبت‌نام پس از commit منتشر نمی‌شود
+    @Override
+    @Transactional
+    public StudentId enrollStudent(String email, String fullName, Long schoolId, Long classId) {
+        return enrollStudent(email, fullName, schoolId, classId, null);
+    }
+
     @Override
     @Transactional
     public StudentId enrollStudent(String email, String fullName, Long schoolId, Long classId, String track) {

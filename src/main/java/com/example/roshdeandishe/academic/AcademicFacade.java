@@ -20,9 +20,7 @@ public interface AcademicFacade {
      * SchoolController برای ساخت خودکار SCHOOL_ADMIN هنگام ساخت مدرسه
      * استفاده کرد.
      */
-    default StudentId enrollStudent(String email, String fullName, Long schoolId, Long classId) {
-        return enrollStudent(email, fullName, schoolId, classId, null);
-    }
+    StudentId enrollStudent(String email, String fullName, Long schoolId, Long classId);
 
     /**
      * همان ثبت‌نام با رشته‌ی دانش‌آموز ({@code ریاضی}، {@code تجربی} یا {@code انسانی}) روی ردیفِ ثبت‌نامِ سالِ جاری.
