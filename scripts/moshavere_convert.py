@@ -141,8 +141,6 @@ QUESTION_SOURCE = "f12e8f54"
 # reworded to the anode version. Each match must be found exactly once.
 ZN_SHE_OLD = "در سلول گالوانی $\\displaystyle Zn-SHE $ هیدروژن نقش کاتد را ایفا می‌کند."
 ZN_SHE_NEW = "در سلول گالوانی $\\displaystyle Zn-SHE $ هیدروژن نقش آند را ایفا می‌کند."
-ZN_SHE_EXPLANATION = ("نادرست. در سلول Zn-SHE، روی آند اکسید می‌شود و در SHE هیدروژن کاهش می‌یابد؛ "
-                      "پس SHE کاتد است و هیدروژن نقش آند ندارد.")
 ZN_SHE_QUESTIONS = {1, 6, 9}
 # Topic of each question (reviewed by hand, D16). The sheet's own «مبحث» labels are not
 # used: for question 3 the label names the fuel-cell topic, not the electrochemical cell.
