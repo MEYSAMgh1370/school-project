@@ -45,9 +45,21 @@ class CourseEntity {
     @Column(name = "valid_until_year")
     private Integer validUntilYear;
 
+    /**
+     * رشته‌ای که درس مخصوص آن است (ریاضی/تجربی/انسانی)؛ خالی = درس مشترکِ پایه. خالی «همهٔ رشته‌ها» نیست:
+     * فقط درسِ مشترک است و دانش‌آموزِ بدون رشته هم آن را می‌بیند. مقدارها را مهاجرتِ داده می‌گذارد، نه برنامه.
+     */
+    @Column(length = 16)
+    private String track;
+
     /** آیا درس برای سالِ تحصیلیِ با این سالِ شروع ارائه می‌شود؟ */
     boolean isOfferedIn(int startYear) {
         return (validFromYear == null || validFromYear <= startYear)
                 && (validUntilYear == null || startYear <= validUntilYear);
+    }
+
+    /** درسِ مشترک برای همه‌ی دانش‌آموزان پایه است؛ درسِ رشته‌ای فقط برای همان رشته (دانش‌آموزِ بدون رشته مشترک‌ها را می‌بیند). */
+    boolean isOpenToTrack(String studentTrack) {
+        return track == null || track.equals(studentTrack);
     }
 }

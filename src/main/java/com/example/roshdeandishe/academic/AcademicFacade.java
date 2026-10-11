@@ -161,6 +161,23 @@ public interface AcademicFacade {
         return listCoursesForClass(schoolId, classId, null);
     }
 
+    /**
+     * درس‌های یک دانش‌آموز: درس‌های نمره‌پذیرِ پایه‌ی ثبت‌نامِ او، به ترتیب نام. پایه و رشته از ردیفِ ثبت‌نامِ
+     * همان دانش‌آموز در {@code academicYear} خوانده می‌شود؛ تهی = سالِ جاریِ مدرسه. درسِ بدون رشته (مشترک) به همه‌ی
+     * دانش‌آموزان پایه نشان داده می‌شود و درسِ رشته‌ای فقط به دانش‌آموزِ همان رشته. تهی بودنِ رشته‌ی دانش‌آموز
+     * «همهٔ رشته‌ها» نیست: او فقط درس‌های مشترک را می‌بیند. بازه‌ی اعتبارِ درس برای همان سال اعمال می‌شود (مثل
+     * {@link #listCoursesForClass}). فقط این فهرستِ دانش‌آموز بر اساس رشته فیلتر می‌شود؛
+     * {@link #listCoursesForClass} و فهرست‌های معلم/بانک رشته را نمی‌شناسند و بدون فیلتر می‌مانند.
+     * <p>
+     * اگر دانش‌آموز در آن سال ردیفِ ثبت‌نام ندارد (یا مدرسه سالِ جاری ندارد و سالی داده نشده)
+     * AcademicError.StudentNotEnrolledInYear؛ سالِ ناشناخته InvalidAcademicYear؛
+     * دانش‌آموزی که از این مدرسه نباشد StudentNotFound.
+     */
+    List<CourseInfo> listCoursesForStudent(Long schoolId, Long studentId, String academicYear);
+
+    /** مثل {@link #listCoursesForStudent(Long, Long, String)} برای سالِ جاریِ مدرسه. */
+    List<CourseInfo> listCoursesForStudent(Long schoolId, Long studentId);
+
     GradeInfo getGrade(Long gradeId);
 
     /**
