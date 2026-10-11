@@ -1,5 +1,7 @@
 document.addEventListener('alpine:init', () => {
     Alpine.data('curriculumPage', () => ({
+        ...CoursePicker.state(),
+        ...CoursePicker.methods,
         schoolId: null,
         flatTopics: [],
         questions: [],
@@ -42,6 +44,10 @@ document.addEventListener('alpine:init', () => {
                 this.filterText = '';
                 this.shown = this.pageSize;
                 this.difficultyFilter = [];
+                this.pickerGrade = '';
+                this.pickerCourses = [];
+                this.pickerCourseId = '';
+                this.flatTopics = [];
                 this.load();
             });
             if (this.schoolId) {
@@ -166,23 +172,12 @@ document.addEventListener('alpine:init', () => {
             }
         },
 
+        // سرفصل‌ها از انتخابگر پایه و درس می‌آیند (course-picker.js)؛ کلِ درخت دیگر خوانده نمی‌شود.
         async load() {
             this.loading = true;
             this.error = '';
             this.blocked = false;
             try {
-                const treeResponse = await fetch(`${this.topicsBase()}/tree`, {
-                    headers: { 'X-School-ID': this.schoolId }
-                });
-                if (!treeResponse.ok) {
-                    const classified = await this.classifyError(treeResponse);
-                    this.error = classified.message;
-                    this.blocked = classified.blocking;
-                    this.flatTopics = [];
-                    return;
-                }
-                const tree = await treeResponse.json();
-                this.flatTopics = this.flattenTree(tree, 0);
                 await this.loadQuestions();
             } catch (e) {
                 this.error = 'ارتباط با سرور برقرار نشد.';
@@ -217,7 +212,7 @@ document.addEventListener('alpine:init', () => {
                 }
                 this.notice = 'سرفصل اضافه شد.';
                 this.topicForm = { name: '', parentId: '' };
-                await this.load();
+                await this.pickerLoadTopics();
             } catch (e) {
                 this.error = 'ارتباط با سرور برقرار نشد.';
             } finally {

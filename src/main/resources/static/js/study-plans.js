@@ -1,5 +1,7 @@
 document.addEventListener('alpine:init', () => {
     Alpine.data('studyPlansPage', () => ({
+        ...CoursePicker.state(),
+        ...CoursePicker.methods,
         schoolId: null,
         loading: false,
         error: '',
@@ -78,6 +80,10 @@ document.addEventListener('alpine:init', () => {
                 this.copyPanelOpen = false;
                 this.copyTargetIds = [];
                 this.copyResults = [];
+                this.pickerGrade = '';
+                this.pickerCourses = [];
+                this.pickerCourseId = '';
+                this.flatTopics = [];
                 this.load();
             });
             if (this.schoolId) {
@@ -226,9 +232,9 @@ document.addEventListener('alpine:init', () => {
             this.error = '';
             this.blocked = false;
             try {
-                const [plansResponse, treeResponse, studentsResponse, membershipsResponse] = await Promise.all([
+                // سرفصل‌ها از انتخابگر پایه و درس می‌آیند (course-picker.js)؛ کلِ درخت دیگر خوانده نمی‌شود.
+                const [plansResponse, studentsResponse, membershipsResponse] = await Promise.all([
                     fetch(this.plansBase(), { headers: { 'X-School-ID': this.schoolId } }),
-                    fetch(`${this.topicsBase()}/tree`, { headers: { 'X-School-ID': this.schoolId } }),
                     fetch(this.studentsBase(), { headers: { 'X-School-ID': this.schoolId } }),
                     fetch(this.membershipsBase(), { headers: { 'X-School-ID': this.schoolId } })
                 ]);
@@ -239,7 +245,6 @@ document.addEventListener('alpine:init', () => {
                     return;
                 }
                 this.plans = await plansResponse.json();
-                this.flatTopics = treeResponse.ok ? this.flattenTree(await treeResponse.json(), 0) : [];
                 this.students = studentsResponse.ok ? await studentsResponse.json() : [];
                 if (membershipsResponse.ok) {
                     const memberships = await membershipsResponse.json();

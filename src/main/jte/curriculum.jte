@@ -2,7 +2,7 @@
 
 @param NavbarModel navbar
 
-@template.layout.main(title = "سرفصل‌ها و بانک سؤال", styles = java.util.List.of("/webjars/katex/0.16.22/dist/katex.min.css"), scripts = java.util.List.of("/js/navbar.js", "/js/digits.js", "/js/jalali.js", "/js/calendar.js", "/js/list-search.js", "/webjars/katex/0.16.22/dist/katex.min.js", "/js/math.js", "/js/curriculum.js"), content = @`
+@template.layout.main(title = "سرفصل‌ها و بانک سؤال", styles = java.util.List.of("/webjars/katex/0.16.22/dist/katex.min.css"), scripts = java.util.List.of("/js/navbar.js", "/js/digits.js", "/js/jalali.js", "/js/calendar.js", "/js/list-search.js", "/webjars/katex/0.16.22/dist/katex.min.js", "/js/math.js", "/js/course-picker.js", "/js/curriculum.js"), content = @`
 @template.layout.navbar(navbar = navbar)
 
 <section class="section" id="main-content" role="main" tabindex="-1" x-data="curriculumPage()">
@@ -13,6 +13,8 @@
         @template.layout.school-scope(
             noSchoolMessage = "برای مدیریت سرفصل‌ها و سؤال‌ها، یک مدرسه از سوییچر بالا انتخاب کنید.",
             content = @`
+
+                @template.layout.course-picker()
 
                 <template x-if="!blocked">
                     <div class="columns">

@@ -179,6 +179,13 @@ public interface AcademicFacade {
     List<CourseInfo> listCoursesForStudent(Long schoolId, Long studentId);
 
     /**
+     * فهرست درس‌های یک پایه برای انتخابگرِ درس در بانک/آزمون/برنامه‌ی مطالعه (معلم و مدیر، بدون دانش‌آموز):
+     * همه‌ی رشته‌ها با برچسب رشته، و {@code topicId} تا سرفصلِ درس انتخاب شود. {@code academicYear} تهی = بدون
+     * فیلتر بازه‌ی اعتبار. پایه خارج از ۱ تا ۱۲ InvalidCourseGradeLevel.
+     */
+    List<CourseCatalogInfo> listCourseCatalog(Long schoolId, int gradeLevel, String academicYear);
+
+    /**
      * ثبت/به‌روزرسانیِ یک درسِ سراسریِ پلتفرمی با کلیدِ (gradeLevel، name). درسِ موجود: فقط رشته و topicId عوض
      * می‌شود؛ درسِ تازه graded=true و بدون بازه‌ی اعتبار. {@code track} تهی یا یکی از «ریاضی»، «تجربی»، «انسانی»
      * (InvalidTrack وگرنه)؛ پایه خارج از ۱ تا ۱۲ InvalidCourseGradeLevel؛ نامِ خالی InvalidCourse. {@code topicId}
@@ -265,6 +272,10 @@ public interface AcademicFacade {
     }
 
     record CourseInfo(CourseId id, int gradeLevel, String name) {
+    }
+
+    /** {@code track} تهی = درس مشترک پایه؛ {@code topicId} تهی = درسی که هنوز به سرفصل وصل نشده. */
+    record CourseCatalogInfo(CourseId id, int gradeLevel, String name, String track, Long topicId) {
     }
 
     /**
