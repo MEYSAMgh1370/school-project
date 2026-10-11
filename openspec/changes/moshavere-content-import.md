@@ -61,6 +61,7 @@ Recorded from the product owner's answers on 2026-10-10.
 | O14 | Grades 10–12 are high school. Each of them has the three tracks ریاضی, تجربی and انسانی. Grade-level course names in the tree carry the grade (for example «ریاضی هشتم»), so the grade-to-course mapping needs the product owner's check before the import. | Decided; mapping to confirm |
 | O15 | The academic year starts on 1 Mehr. Some schools start earlier, which the per-school range (`school_year_ranges`) already allows. This supersedes P5's 1 Mordad start. | Decided |
 | O16 | The corrected tree (`69df89ac`, UTF-8) is committed under `data/moshavere/` (D1). | Decided |
+| O17 | Courses that have no matching tree node are imported with no topic link (`topicSourceCode` null). They are linked to a topic later, once the mapping is checked. The bundle has 73 such courses out of 85; the 12 with a name match are linked. | Decided |
 
 Still open outside the product decisions: the source-book check for `22254`
 (D12) and the teacher review of repeated codes (D13). Both are checks, not
