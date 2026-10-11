@@ -292,13 +292,33 @@ def match_courses(courses, topics):
     return report
 
 
+def qualify_track_names(courses):
+    """Add the track to each track-specific course name, as in the tree (D6, O14).
+
+    The platform key is (grade, name). Without the track, a name shared by two
+    tracks (for example «فیزیک (3)» in ریاضی and تجربی) would overwrite one row.
+    Runs after matching, so the topic match still uses the sheet's own name.
+    """
+    for c in courses:
+        if c["track"] is not None:
+            c["name"] = "%s (%s)" % (c["name"], c["track"])
+    seen = set()
+    for c in courses:
+        key = (c["gradeLevel"], c["name"])
+        if key in seen:
+            raise ConversionError("duplicate course key after qualifying: grade %d %r" % key)
+        seen.add(key)
+
+
 def build(tree_path, csv_path, questions_path=None):
     topics = parse_tree(tree_path)
     courses = parse_courses(csv_path)
     report = match_courses(courses, topics)
+    qualify_track_names(courses)
     questions = parse_questions(questions_path, topics) if questions_path else []
     bundle = {"format": FORMAT, "source": SOURCE, "topics": topics, "courses": courses,
               "questions": questions}
+    return bundle, report
     return bundle, report
 
 

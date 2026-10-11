@@ -2,13 +2,13 @@
   "courses": [
     {
       "gradeLevel": 12,
-      "name": "عربی زبان قرآن پایه دوازدهم",
+      "name": "عربی زبان قرآن پایه دوازدهم (ریاضی)",
       "topicSourceCode": null,
       "track": "ریاضی"
     },
     {
       "gradeLevel": 12,
-      "name": "فارسی (۳) پایه دوازدهم",
+      "name": "فارسی (۳) پایه دوازدهم (ریاضی)",
       "topicSourceCode": null,
       "track": "ریاضی"
     },
@@ -20,31 +20,31 @@
     },
     {
       "gradeLevel": 12,
-      "name": "فیزیک (3) پایه دوازدهم",
+      "name": "فیزیک (3) پایه دوازدهم (ریاضی)",
       "topicSourceCode": null,
       "track": "ریاضی"
     },
     {
       "gradeLevel": 12,
-      "name": "ریاضیات گسسته پایه دوازدهم",
+      "name": "ریاضیات گسسته پایه دوازدهم (ریاضی)",
       "topicSourceCode": "418",
       "track": "ریاضی"
     },
     {
       "gradeLevel": 12,
-      "name": "شیمی (3) پایه دوازدهم",
+      "name": "شیمی (3) پایه دوازدهم (ریاضی)",
       "topicSourceCode": null,
       "track": "ریاضی"
     },
     {
       "gradeLevel": 12,
-      "name": "حسابان (2) پایه دوازدهم",
+      "name": "حسابان (2) پایه دوازدهم (ریاضی)",
       "topicSourceCode": null,
       "track": "ریاضی"
     },
     {
       "gradeLevel": 12,
-      "name": "هندسه (3) پایه دوازدهم",
+      "name": "هندسه (3) پایه دوازدهم (ریاضی)",
       "topicSourceCode": null,
       "track": "ریاضی"
     },
@@ -62,7 +62,7 @@
     },
     {
       "gradeLevel": 12,
-      "name": "هویت اجتماعی پایه دوازدهم",
+      "name": "هویت اجتماعی پایه دوازدهم (ریاضی)",
       "topicSourceCode": "443",
       "track": "ریاضی"
     },
@@ -86,97 +86,97 @@
     },
     {
       "gradeLevel": 12,
-      "name": "فارسی (3) پایه دوازدهم",
+      "name": "فارسی (3) پایه دوازدهم (تجربی)",
       "topicSourceCode": null,
       "track": "تجربی"
     },
     {
       "gradeLevel": 12,
-      "name": "هویت اجتماعی پایه دوازدهم",
+      "name": "هویت اجتماعی پایه دوازدهم (تجربی)",
       "topicSourceCode": "443",
       "track": "تجربی"
     },
     {
       "gradeLevel": 12,
-      "name": "زیست شناسی پایه دوازدهم",
+      "name": "زیست شناسی پایه دوازدهم (تجربی)",
       "topicSourceCode": "12",
       "track": "تجربی"
     },
     {
       "gradeLevel": 12,
-      "name": "ریاضی (3) پایه دوازدهم",
+      "name": "ریاضی (3) پایه دوازدهم (تجربی)",
       "topicSourceCode": null,
       "track": "تجربی"
     },
     {
       "gradeLevel": 12,
-      "name": "عربی زبان قرآن پایه دوازدهم",
+      "name": "عربی زبان قرآن پایه دوازدهم (تجربی)",
       "topicSourceCode": null,
       "track": "تجربی"
     },
     {
       "gradeLevel": 12,
-      "name": "فیزیک (3) پایه دوازدهم",
+      "name": "فیزیک (3) پایه دوازدهم (تجربی)",
       "topicSourceCode": null,
       "track": "تجربی"
     },
     {
       "gradeLevel": 12,
-      "name": "شیمی (3) پایه دوازدهم",
+      "name": "شیمی (3) پایه دوازدهم (تجربی)",
       "topicSourceCode": null,
       "track": "تجربی"
     },
     {
       "gradeLevel": 12,
-      "name": "فارسی (3) پایه دوازدهم",
+      "name": "فارسی (3) پایه دوازدهم (انسانی)",
       "topicSourceCode": null,
       "track": "انسانی"
     },
     {
       "gradeLevel": 12,
-      "name": "جامعه شناسی (3) پایه دوازدهم",
+      "name": "جامعه شناسی (3) پایه دوازدهم (انسانی)",
       "topicSourceCode": null,
       "track": "انسانی"
     },
     {
       "gradeLevel": 12,
-      "name": "جغرافیا (3) پایه دوازدهم",
+      "name": "جغرافیا (3) پایه دوازدهم (انسانی)",
       "topicSourceCode": null,
       "track": "انسانی"
     },
     {
       "gradeLevel": 12,
-      "name": "تاریخ (3) - ایران و جهان معاصر پایه دوازدهم",
+      "name": "تاریخ (3) - ایران و جهان معاصر پایه دوازدهم (انسانی)",
       "topicSourceCode": null,
       "track": "انسانی"
     },
     {
       "gradeLevel": 12,
-      "name": "عربی، زبان قرآن (3) پایه دوازدهم",
+      "name": "عربی، زبان قرآن (3) پایه دوازدهم (انسانی)",
       "topicSourceCode": null,
       "track": "انسانی"
     },
     {
       "gradeLevel": 12,
-      "name": "فلسفه (2) پایه دوازدهم",
+      "name": "فلسفه (2) پایه دوازدهم (انسانی)",
       "topicSourceCode": null,
       "track": "انسانی"
     },
     {
       "gradeLevel": 12,
-      "name": "تحلیل فرهنگی پایه دوازدهم",
+      "name": "تحلیل فرهنگی پایه دوازدهم (انسانی)",
       "topicSourceCode": null,
       "track": "انسانی"
     },
     {
       "gradeLevel": 12,
-      "name": "ریاضی و آمار (3) پایه دوازدهم",
+      "name": "ریاضی و آمار (3) پایه دوازدهم (انسانی)",
       "topicSourceCode": null,
       "track": "انسانی"
     },
     {
       "gradeLevel": 12,
-      "name": "علوم و فنون ادبی (3) پایه دوازدهم",
+      "name": "علوم و فنون ادبی (3) پایه دوازدهم (انسانی)",
       "topicSourceCode": null,
       "track": "انسانی"
     },
@@ -194,7 +194,7 @@
     },
     {
       "gradeLevel": 11,
-      "name": "عربی،زبان قرآن (2) پایه یازدهم",
+      "name": "عربی،زبان قرآن (2) پایه یازدهم (ریاضی)",
       "topicSourceCode": null,
       "track": "ریاضی"
     },
@@ -212,49 +212,49 @@
     },
     {
       "gradeLevel": 11,
-      "name": "فیزیک (2) پایه یازدهم",
+      "name": "فیزیک (2) پایه یازدهم (ریاضی)",
       "topicSourceCode": null,
       "track": "ریاضی"
     },
     {
       "gradeLevel": 11,
-      "name": "شیمی (2) پایه یازدهم",
+      "name": "شیمی (2) پایه یازدهم (ریاضی)",
       "topicSourceCode": null,
       "track": "ریاضی"
     },
     {
       "gradeLevel": 11,
-      "name": "هندسه (2) پایه یازدهم",
+      "name": "هندسه (2) پایه یازدهم (ریاضی)",
       "topicSourceCode": null,
       "track": "ریاضی"
     },
     {
       "gradeLevel": 11,
-      "name": "حسابان (1) پایه یازدهم",
+      "name": "حسابان (1) پایه یازدهم (ریاضی)",
       "topicSourceCode": null,
       "track": "ریاضی"
     },
     {
       "gradeLevel": 11,
-      "name": "آمار و احتمال پایه یازدهم",
+      "name": "آمار و احتمال پایه یازدهم (ریاضی)",
       "topicSourceCode": "370",
       "track": "ریاضی"
     },
     {
       "gradeLevel": 11,
-      "name": "آزمایشگاه علوم تجربی (2) پایه یازدهم",
+      "name": "آزمایشگاه علوم تجربی (2) پایه یازدهم (ریاضی)",
       "topicSourceCode": null,
       "track": "ریاضی"
     },
     {
       "gradeLevel": 11,
-      "name": "تاریخ معاصر ایران پایه یازدهم",
+      "name": "تاریخ معاصر ایران پایه یازدهم (ریاضی)",
       "topicSourceCode": null,
       "track": "ریاضی"
     },
     {
       "gradeLevel": 11,
-      "name": "زمین شناسی پایه یازدهم",
+      "name": "زمین شناسی پایه یازدهم (ریاضی)",
       "topicSourceCode": "450",
       "track": "ریاضی"
     },
@@ -266,97 +266,97 @@
     },
     {
       "gradeLevel": 11,
-      "name": "عربی، زبان قرآن (2) پایه یازدهم",
+      "name": "عربی، زبان قرآن (2) پایه یازدهم (تجربی)",
       "topicSourceCode": null,
       "track": "تجربی"
     },
     {
       "gradeLevel": 11,
-      "name": "زیست شناسی (2) پایه یازدهم",
+      "name": "زیست شناسی (2) پایه یازدهم (تجربی)",
       "topicSourceCode": null,
       "track": "تجربی"
     },
     {
       "gradeLevel": 11,
-      "name": "زمین شناسی پایه یازدهم",
+      "name": "زمین شناسی پایه یازدهم (تجربی)",
       "topicSourceCode": "450",
       "track": "تجربی"
     },
     {
       "gradeLevel": 11,
-      "name": "فیزیک (2) پایه یازدهم",
+      "name": "فیزیک (2) پایه یازدهم (تجربی)",
       "topicSourceCode": null,
       "track": "تجربی"
     },
     {
       "gradeLevel": 11,
-      "name": "شیمی (2) پایه یازدهم",
+      "name": "شیمی (2) پایه یازدهم (تجربی)",
       "topicSourceCode": null,
       "track": "تجربی"
     },
     {
       "gradeLevel": 11,
-      "name": "ریاضی (2) پایه یازدهم",
+      "name": "ریاضی (2) پایه یازدهم (تجربی)",
       "topicSourceCode": null,
       "track": "تجربی"
     },
     {
       "gradeLevel": 11,
-      "name": "تاریخ معاصر ایران پایه یازدهم",
+      "name": "تاریخ معاصر ایران پایه یازدهم (تجربی)",
       "topicSourceCode": null,
       "track": "تجربی"
     },
     {
       "gradeLevel": 11,
-      "name": "آزمایشگاه علوم تجربی (2) پایه یازدهم",
+      "name": "آزمایشگاه علوم تجربی (2) پایه یازدهم (تجربی)",
       "topicSourceCode": null,
       "track": "تجربی"
     },
     {
       "gradeLevel": 11,
-      "name": "فلسفه پایه یازدهم",
+      "name": "فلسفه پایه یازدهم (انسانی)",
       "topicSourceCode": null,
       "track": "انسانی"
     },
     {
       "gradeLevel": 11,
-      "name": "جامعه‌شناسی (2) پایه یازدهم",
+      "name": "جامعه‌شناسی (2) پایه یازدهم (انسانی)",
       "topicSourceCode": null,
       "track": "انسانی"
     },
     {
       "gradeLevel": 11,
-      "name": "روانشناسی پایه یازدهم",
+      "name": "روانشناسی پایه یازدهم (انسانی)",
       "topicSourceCode": "430",
       "track": "انسانی"
     },
     {
       "gradeLevel": 11,
-      "name": "علوم و فنون ادبی (2) پایه یازدهم",
+      "name": "علوم و فنون ادبی (2) پایه یازدهم (انسانی)",
       "topicSourceCode": null,
       "track": "انسانی"
     },
     {
       "gradeLevel": 11,
-      "name": "جغرافیا (2) پایه یازدهم",
+      "name": "جغرافیا (2) پایه یازدهم (انسانی)",
       "topicSourceCode": null,
       "track": "انسانی"
     },
     {
       "gradeLevel": 11,
-      "name": "ریاضی و آمار (2) پایه یازدهم",
+      "name": "ریاضی و آمار (2) پایه یازدهم (انسانی)",
       "topicSourceCode": null,
       "track": "انسانی"
     },
     {
       "gradeLevel": 11,
-      "name": "عربی، زبان قرآن (2) پایه یازدهم",
+      "name": "عربی، زبان قرآن (2) پایه یازدهم (انسانی)",
       "topicSourceCode": null,
       "track": "انسانی"
     },
     {
       "gradeLevel": 11,
-      "name": "تاریخ (2) پایه یازدهم",
+      "name": "تاریخ (2) پایه یازدهم (انسانی)",
       "topicSourceCode": null,
       "track": "انسانی"
     },
@@ -416,97 +416,97 @@
     },
     {
       "gradeLevel": 10,
-      "name": "فیزیک (۱)",
+      "name": "فیزیک (۱) (ریاضی)",
       "topicSourceCode": null,
       "track": "ریاضی"
     },
     {
       "gradeLevel": 10,
-      "name": "آزمایشگاه علوم تجربی (۱)",
+      "name": "آزمایشگاه علوم تجربی (۱) (ریاضی)",
       "topicSourceCode": null,
       "track": "ریاضی"
     },
     {
       "gradeLevel": 10,
-      "name": "هندسه (۱)",
+      "name": "هندسه (۱) (ریاضی)",
       "topicSourceCode": null,
       "track": "ریاضی"
     },
     {
       "gradeLevel": 10,
-      "name": "ریاضی (۱)",
+      "name": "ریاضی (۱) (ریاضی)",
       "topicSourceCode": null,
       "track": "ریاضی"
     },
     {
       "gradeLevel": 10,
-      "name": "شیمی (۱)",
+      "name": "شیمی (۱) (ریاضی)",
       "topicSourceCode": null,
       "track": "ریاضی"
     },
     {
       "gradeLevel": 10,
-      "name": "فیزیک (۱)",
+      "name": "فیزیک (۱) (تجربی)",
       "topicSourceCode": null,
       "track": "تجربی"
     },
     {
       "gradeLevel": 10,
-      "name": "آزمایشگاه علوم تجربی (۱)",
+      "name": "آزمایشگاه علوم تجربی (۱) (تجربی)",
       "topicSourceCode": null,
       "track": "تجربی"
     },
     {
       "gradeLevel": 10,
-      "name": "زیست‌شناسی (۱)",
+      "name": "زیست‌شناسی (۱) (تجربی)",
       "topicSourceCode": null,
       "track": "تجربی"
     },
     {
       "gradeLevel": 10,
-      "name": "ریاضی (۱)",
+      "name": "ریاضی (۱) (تجربی)",
       "topicSourceCode": null,
       "track": "تجربی"
     },
     {
       "gradeLevel": 10,
-      "name": "شیمی (۱)",
+      "name": "شیمی (۱) (تجربی)",
       "topicSourceCode": null,
       "track": "تجربی"
     },
     {
       "gradeLevel": 10,
-      "name": "علوم و فنون ادبی (۱)",
+      "name": "علوم و فنون ادبی (۱) (انسانی)",
       "topicSourceCode": null,
       "track": "انسانی"
     },
     {
       "gradeLevel": 10,
-      "name": "اقتصاد",
+      "name": "اقتصاد (انسانی)",
       "topicSourceCode": "26",
       "track": "انسانی"
     },
     {
       "gradeLevel": 10,
-      "name": "جامعه‌شناسی (۱)",
+      "name": "جامعه‌شناسی (۱) (انسانی)",
       "topicSourceCode": null,
       "track": "انسانی"
     },
     {
       "gradeLevel": 10,
-      "name": "تاریخ (۱) ایران و جهان باستان",
+      "name": "تاریخ (۱) ایران و جهان باستان (انسانی)",
       "topicSourceCode": null,
       "track": "انسانی"
     },
     {
       "gradeLevel": 10,
-      "name": "ریاضی و آمار (۱)",
+      "name": "ریاضی و آمار (۱) (انسانی)",
       "topicSourceCode": null,
       "track": "انسانی"
     },
     {
       "gradeLevel": 10,
-      "name": "منطق",
+      "name": "منطق (انسانی)",
       "topicSourceCode": null,
       "track": "انسانی"
     }

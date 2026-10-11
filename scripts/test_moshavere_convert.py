@@ -99,6 +99,13 @@ class ConverterTest(Base):
         self.assertEqual(physics[0]["gradeLevel"], 12)
         self.assertEqual(physics[0]["topicSourceCode"], "1")
 
+    def test_track_name_is_qualified_and_keys_stay_unique(self):
+        bundle, _ = self.build()
+        names = [(c["gradeLevel"], c["name"]) for c in bundle["courses"]]
+        self.assertEqual(len(names), len(set(names)))
+        physics = [c for c in bundle["courses"] if c["name"].startswith("فیزیک")]
+        self.assertTrue(all(c["name"].endswith("(%s)" % c["track"]) for c in physics))
+
     def test_arabic_yeh_matches(self):
         csv = "grade,group,title,track\n12,g,عربي,common\n"
         bundle, report = self.build(csv=csv)
