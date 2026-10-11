@@ -186,6 +186,9 @@ public interface AcademicFacade {
      */
     CourseInfo upsertPlatformCourse(int gradeLevel, String name, String track, Long topicId);
 
+    /** آیا درسی با کلیدِ (gradeLevel، name) از قبل هست؟ (نام strip می‌شود، مثل {@link #upsertPlatformCourse}). */
+    boolean platformCourseExists(int gradeLevel, String name);
+
     GradeInfo getGrade(Long gradeId);
 
     /**

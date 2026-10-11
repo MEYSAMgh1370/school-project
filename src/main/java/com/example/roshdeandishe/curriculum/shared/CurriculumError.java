@@ -22,4 +22,8 @@ public sealed interface CurriculumError {
 
     record InvalidQuestion(String reason) implements CurriculumError {
     }
+
+    /** بسته‌ی ایمپورت مشاوره نامعتبر است؛ {@code reason} اولین مشکل را نام می‌برد. هیچ چیزی نوشته نشده است. */
+    record InvalidMoshavereBundle(String reason) implements CurriculumError {
+    }
 }
