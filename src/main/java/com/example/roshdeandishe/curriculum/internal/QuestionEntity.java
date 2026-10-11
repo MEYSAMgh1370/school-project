@@ -30,8 +30,12 @@ class QuestionEntity {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(name = "school_id", nullable = false)
+    /** null = سؤال پلتفرمی (برای همه‌ی مدرسه‌ها قابل‌مشاهده). */
+    @Column(name = "school_id")
     private Long schoolId;
+
+    @Column(name = "source_code", length = 64)
+    private String sourceCode;
 
     @Column(name = "topic_id", nullable = false)
     private Long topicId;

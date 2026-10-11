@@ -6,14 +6,10 @@ import com.example.roshdeandishe.curriculum.shared.CurriculumException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Comparator;
-import java.util.Deque;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 import java.util.stream.Collectors;
 
 @Service
@@ -45,14 +41,14 @@ class CurriculumFacadeImpl implements CurriculumFacade {
 
     @Override
     public List<TopicInfo> listTopics(Long schoolId) {
-        return topicRepository.findBySchoolIdOrderBySortOrderAscIdAsc(schoolId).stream()
+        return topicRepository.findVisibleToSchool(schoolId).stream()
                 .map(CurriculumFacadeImpl::toInfo)
                 .toList();
     }
 
     @Override
     public List<TopicTreeNode> getTopicTree(Long schoolId) {
-        List<TopicEntity> topics = topicRepository.findBySchoolIdOrderBySortOrderAscIdAsc(schoolId);
+        List<TopicEntity> topics = topicRepository.findVisibleToSchool(schoolId);
         Map<Long, List<TopicEntity>> byParent = topics.stream()
                 .filter(t -> t.getParentId() != null)
                 .collect(Collectors.groupingBy(TopicEntity::getParentId));
@@ -61,6 +57,16 @@ class CurriculumFacadeImpl implements CurriculumFacade {
                 .filter(t -> t.getParentId() == null)
                 .map(root -> toTreeNode(root, byParent))
                 .toList();
+    }
+
+    @Override
+    public TopicTreeNode getTopicSubtree(Long schoolId, Long topicId) {
+        TopicEntity root = requireTopicInSchool(schoolId, topicId);
+        List<TopicEntity> topics = topicRepository.findAllById(topicRepository.findSubtreeIds(topicId, schoolId));
+        Map<Long, List<TopicEntity>> byParent = topics.stream()
+                .filter(t -> t.getParentId() != null)
+                .collect(Collectors.groupingBy(TopicEntity::getParentId));
+        return toTreeNode(root, byParent);
     }
 
     @Override
@@ -103,12 +109,12 @@ class CurriculumFacadeImpl implements CurriculumFacade {
 
         List<QuestionEntity> questions;
         if (effective.topicId() == null) {
-            questions = questionRepository.findBySchoolIdOrderByIdAsc(schoolId);
+            questions = questionRepository.findVisibleToSchool(schoolId);
         } else {
             requireTopicInSchool(schoolId, effective.topicId());
             // سمنتیک پورت‌شده از moshavere: فیلترِ سرفصل یعنی کل زیر درخت آن
-            questions = questionRepository.findBySchoolIdAndTopicIdInOrderByIdAsc(
-                    schoolId, subtreeTopicIds(schoolId, effective.topicId())
+            questions = questionRepository.findVisibleToSchoolByTopicIds(
+                    schoolId, topicRepository.findSubtreeIds(effective.topicId(), schoolId)
             );
         }
 
@@ -119,32 +125,6 @@ class CurriculumFacadeImpl implements CurriculumFacade {
                 .toList();
     }
 
-    /**
-     * شناسه‌ی سرفصل + همه‌ی نوادگانش - جایگزین value.descendants() در
-     * QuestionFilter منبع. یک بار همه‌ی سرفصل‌های مدرسه بارگذاری و در
-     * حافظه پیمایش می‌شود؛ اگر روزی خواندن آن واقعاً گلوگاه شد، جدول
-     * closure مادی‌شده گزینه‌ی بعدی است (MOSHAVERE_PORT_SPEC.md §4).
-     */
-    private Set<Long> subtreeTopicIds(Long schoolId, Long rootTopicId) {
-        Map<Long, List<Long>> childrenByParent = topicRepository
-                .findBySchoolIdOrderBySortOrderAscIdAsc(schoolId).stream()
-                .filter(t -> t.getParentId() != null)
-                .collect(Collectors.groupingBy(
-                        TopicEntity::getParentId,
-                        Collectors.mapping(TopicEntity::getId, Collectors.toList())
-                ));
-
-        Set<Long> ids = new HashSet<>();
-        Deque<Long> pending = new ArrayDeque<>(List.of(rootTopicId));
-        while (!pending.isEmpty()) {
-            Long current = pending.pop();
-            if (ids.add(current)) {
-                pending.addAll(childrenByParent.getOrDefault(current, List.of()));
-            }
-        }
-        return ids;
-    }
-
     private TopicTreeNode toTreeNode(TopicEntity topic, Map<Long, List<TopicEntity>> byParent) {
         List<TopicTreeNode> children = byParent.getOrDefault(topic.getId(), List.of()).stream()
                 .sorted(Comparator.comparingInt(TopicEntity::getSortOrder).thenComparing(TopicEntity::getId))
@@ -153,13 +133,15 @@ class CurriculumFacadeImpl implements CurriculumFacade {
         return new TopicTreeNode(new TopicId(topic.getId()), topic.getName(), topic.getSortOrder(), children);
     }
 
-    private void requireTopicInSchool(Long schoolId, Long topicId) {
+    private TopicEntity requireTopicInSchool(Long schoolId, Long topicId) {
         TopicEntity topic = topicRepository.findById(topicId)
                 .orElseThrow(() -> new CurriculumException(new CurriculumError.TopicNotFound(topicId)));
-        if (!topic.getSchoolId().equals(schoolId)) {
+        // school_id خالی = سرفصل پلتفرمی، برای همه‌ی مدرسه‌ها قابل‌مشاهده
+        if (topic.getSchoolId() != null && !topic.getSchoolId().equals(schoolId)) {
             // سرفصل متعلق به مدرسه‌ی دیگری است - از دید این مدرسه «یافت نشد»
             throw new CurriculumException(new CurriculumError.TopicNotFound(topicId));
         }
+        return topic;
     }
 
     private void requireNonBlank(String value, String reason) {

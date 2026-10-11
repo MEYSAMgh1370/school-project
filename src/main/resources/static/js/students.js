@@ -24,7 +24,7 @@ document.addEventListener('alpine:init', () => {
         submitting: false,
         error: '',
         notice: '',
-        form: { email: '', fullName: '', classId: '' },
+        form: { email: '', fullName: '', classId: '', track: '' },
 
         // میان‌بر دعوت بعد از ثبت‌نام (UX_ROADMAP.md §6.3) - دانش‌آموزِ تازه‌
         // ثبت‌نام‌شده‌ای که هنوز رمز عبور ندارد
@@ -320,7 +320,8 @@ document.addEventListener('alpine:init', () => {
                         fullName: this.form.fullName,
                         // select همیشه رشته برمی‌گرداند؛ تبدیل صریح به عدد چون
                         // classId سمت سرور Long است
-                        classId: this.form.classId ? parseInt(this.form.classId, 10) : null
+                        classId: this.form.classId ? parseInt(this.form.classId, 10) : null,
+                        track: this.form.track || null
                     })
                 });
                 if (!response.ok) {
@@ -329,7 +330,7 @@ document.addEventListener('alpine:init', () => {
                 }
                 const enrolled = await response.json();
                 this.notice = 'دانش‌آموز با موفقیت ثبت‌نام شد.';
-                this.form = { email: '', fullName: '', classId: '' };
+                this.form = { email: '', fullName: '', classId: '', track: '' };
                 await this.load();
 
                 // عضویتِ متناظرِ دانش‌آموزِ تازه‌ثبت‌نام‌شده را از همان فهرست
