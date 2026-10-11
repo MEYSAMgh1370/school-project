@@ -1,8 +1,9 @@
 #!/usr/bin/env python3
 """Offline converter for Phase 1 of the Moshavere import.
 
-Reads the canonical tree (tree v2, HTML) and the official grade 10-12 course
-CSV, and writes data/moshavere/bundle_phase1.json. It imports nothing.
+Reads the canonical tree (tree v2, HTML), the official grade 10-12 course CSV
+and the corrected question sheet, and writes data/moshavere/bundle_phase1.json.
+It imports nothing.
 
 Run from the repo root:  python3 -I scripts/moshavere_convert.py
 Standard library only.
@@ -12,12 +13,14 @@ import csv
 import json
 import re
 import sys
+from html import unescape as html_unescape
 from html.parser import HTMLParser
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
 DEFAULT_TREE = ROOT / "data" / "moshavere" / "tree_v2_utf8.html"
 DEFAULT_CSV = ROOT / "data" / "moshavere" / "official_grade10_12.csv"
+DEFAULT_QUESTIONS = ROOT / "data" / "moshavere" / "questions_f12e8f54_chemistry3.html"
 DEFAULT_OUT = ROOT / "data" / "moshavere" / "bundle_phase1.json"
 
 FORMAT = 1
@@ -132,6 +135,28 @@ def parse_tree(path):
 
 SKIPPED_OUT_OF_SCOPE = 0
 
+QUESTION_STEM = "کدام یک از گزینه‌های زیر صحیح است."
+QUESTION_SOURCE = "f12e8f54"
+# Reviewed correction (D14): the Zn–SHE statement is true, so the distractor is
+# reworded to the anode version. Each match must be found exactly once.
+ZN_SHE_OLD = "در سلول گالوانی $\\displaystyle Zn-SHE $ هیدروژن نقش کاتد را ایفا می‌کند."
+ZN_SHE_NEW = "در سلول گالوانی $\\displaystyle Zn-SHE $ هیدروژن نقش آند را ایفا می‌کند."
+ZN_SHE_QUESTIONS = {1, 6, 9}
+# Topic of each question (reviewed by hand, D16). The sheet's own «مبحث» labels are not
+# used: for question 3 the label names the fuel-cell topic, not the electrochemical cell.
+QUESTION_TOPICS = {
+    1: "24144",   # صابون؛ مزایا و معایب آن
+    2: "24183",   # انرژی شبکه بلور و عوامل موثر بر آن
+    3: "23012",   # مفاهیم کلی و مقایسه‌ی آن با سلول گالوانی
+    4: "24208",   # ترکیبی (تعادل)
+    5: "24183",   # انرژی شبکه بلور و عوامل موثر بر آن
+    6: "24176",   # گرافیت و الماس
+    7: "24193",   # کاتالیزگر و تاثیر آن بر نمودار انرژی - مسیر واکنش ها
+    8: "24176",   # گرافیت و الماس
+    9: "24158",   # روابط pH و [H₃O⁺] و مسائل مربوط
+    10: "24193",  # کاتالیزگر و تاثیر آن بر نمودار انرژی - مسیر واکنش ها
+}
+
 
 def parse_courses(path):
     courses = []
@@ -167,6 +192,88 @@ def parse_courses(path):
     return courses
 
 
+def _html_text(path):
+    raw = Path(path).read_text(encoding="utf-8")
+    raw = re.sub(r"<[^>]+>", " ", raw)
+    return collapse(html_unescape(raw))
+
+
+def _split_block(block):
+    """Return (choices, notes, answer_no) for one flattened question block."""
+    body = block[len(QUESTION_STEM):]
+    answer_at = body.rfind("پس گزینه‌ی")
+    if answer_at == -1:
+        raise ConversionError("question block has no answer line: %r" % body[:60])
+    answer_line = body[answer_at:]
+    body = body[:answer_at]
+    starts = []
+    cursor = 0
+    for k in range(1, 5):
+        marker = ("%d- " % k) if k == 1 else (" %d- " % k)
+        found = body.find(marker, cursor)
+        if found == -1:
+            raise ConversionError("choice %d not found" % k)
+        starts.append(found + len(marker))
+        cursor = found + len(marker)
+    choices = []
+    for k in range(1, 5):
+        end = starts[k] - len(" %d- " % (k + 1)) if k < 4 else body.index("گزینه‌ی 1 :")
+        choices.append(collapse(body[starts[k - 1]:end]))
+    notes = []
+    for k in range(1, 5):
+        head = "گزینه‌ی %d : " % k
+        rest = body[body.index(head) + len(head):]
+        end = rest.index("گزینه‌ی %d : " % (k + 1)) if k < 4 else len(rest)
+        text = collapse(rest[:end])
+        if text.startswith("نادرست"):
+            verdict = False
+        elif text.startswith("درست"):
+            verdict = True
+        else:
+            raise ConversionError("choice %d has no verdict" % k)
+        notes.append({"verdict": verdict})
+    answer = re.match(r"پس گزینه‌ی (\d) صحیح است", answer_line)
+    if not answer:
+        raise ConversionError("answer line not recognised: %r" % answer_line[:60])
+    return choices, notes, int(answer.group(1))
+
+
+def parse_questions(path, topics):
+    """Return the bundle's question list. Refuses on any ambiguity."""
+    blocks = _html_text(path).split(QUESTION_STEM)[1:]
+    if not blocks:
+        raise ConversionError("no questions found in %s" % Path(path).name)
+    known = {t["sourceCode"] for t in topics}
+    questions = []
+    for number, block in enumerate(blocks, start=1):
+        choices, notes, answer_no = _split_block(QUESTION_STEM + block)
+        if number in ZN_SHE_QUESTIONS:
+            hits = [i for i, c in enumerate(choices) if c == collapse(ZN_SHE_OLD)]
+            if len(hits) != 1:
+                raise ConversionError("question %d: Zn-SHE statement found %d times" % (number, len(hits)))
+            choices[hits[0]] = collapse(ZN_SHE_NEW)
+            notes[hits[0]] = {"verdict": False}
+        true_idx = [i for i, n in enumerate(notes) if n["verdict"]]
+        if len(true_idx) != 1 or true_idx[0] + 1 != answer_no:
+            raise ConversionError("question %d: verdicts do not give the answer line's choice" % number)
+        correct = true_idx[0]
+        topic = QUESTION_TOPICS.get(number)
+        if topic not in known:
+            raise ConversionError("question %d: topic %r is not in the tree" % (number, topic))
+        for c in choices:
+            if not c or re.search(r"\bnan\b|C40", c):
+                raise ConversionError("question %d: empty choice or stray token: %r" % (number, c))
+        questions.append({
+            "sourceCode": "%s:Q%02d" % (QUESTION_SOURCE, number),
+            "topicSourceCode": topic,
+            "text": QUESTION_STEM,
+            "choices": choices,
+            "correctChoice": correct + 1,
+            "answer": None,
+        })
+    return questions
+
+
 def match_courses(courses, topics):
     """Fill topicSourceCode on exact normalised-name match. Return report lines."""
     index = {}
@@ -185,11 +292,13 @@ def match_courses(courses, topics):
     return report
 
 
-def build(tree_path, csv_path):
+def build(tree_path, csv_path, questions_path=None):
     topics = parse_tree(tree_path)
     courses = parse_courses(csv_path)
     report = match_courses(courses, topics)
-    bundle = {"format": FORMAT, "source": SOURCE, "topics": topics, "courses": courses}
+    questions = parse_questions(questions_path, topics) if questions_path else []
+    bundle = {"format": FORMAT, "source": SOURCE, "topics": topics, "courses": courses,
+              "questions": questions}
     return bundle, report
 
 
@@ -201,10 +310,11 @@ def main(argv=None):
     ap = argparse.ArgumentParser(description=__doc__)
     ap.add_argument("--tree", type=Path, default=DEFAULT_TREE)
     ap.add_argument("--csv", type=Path, default=DEFAULT_CSV)
+    ap.add_argument("--questions", type=Path, default=DEFAULT_QUESTIONS)
     ap.add_argument("--out", type=Path, default=DEFAULT_OUT)
     args = ap.parse_args(argv)
     try:
-        bundle, report = build(args.tree, args.csv)
+        bundle, report = build(args.tree, args.csv, args.questions)
     except ConversionError as e:
         print("REFUSED: %s" % e)
         return 1
@@ -216,6 +326,7 @@ def main(argv=None):
     print("courses: %d" % len(bundle["courses"]))
     print("skipped out-of-scope (معارف) rows: %d" % SKIPPED_OUT_OF_SCOPE)
     print("courses with null topic match: %d" % unmatched)
+    print("questions: %d" % len(bundle["questions"]))
     for line in report:
         print(line)
     print("wrote %s" % args.out)

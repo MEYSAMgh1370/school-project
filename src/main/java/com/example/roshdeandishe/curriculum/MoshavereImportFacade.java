@@ -16,7 +16,8 @@ public interface MoshavereImportFacade {
      */
     ImportSummary importBundle(Bundle bundle, boolean dryRun);
 
-    record Bundle(Integer format, String source, List<TopicEntry> topics, List<CourseEntry> courses) {
+    record Bundle(Integer format, String source, List<TopicEntry> topics, List<CourseEntry> courses,
+                  List<QuestionEntry> questions) {
     }
 
     record TopicEntry(String sourceCode, String parentSourceCode, String name, Integer sortOrder) {
@@ -25,7 +26,11 @@ public interface MoshavereImportFacade {
     record CourseEntry(Integer gradeLevel, String name, String track, String topicSourceCode) {
     }
 
+    record QuestionEntry(String sourceCode, String topicSourceCode, String text, List<String> choices,
+                         Integer correctChoice, String answer) {
+    }
+
     record ImportSummary(int topicsCreated, int topicsUpdated, int coursesCreated, int coursesUpdated,
-                         int coursesUnlinked, boolean dryRun) {
+                         int coursesUnlinked, int questionsCreated, int questionsUpdated, boolean dryRun) {
     }
 }

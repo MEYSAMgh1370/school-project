@@ -34,6 +34,13 @@ public interface CurriculumFacade {
     TopicInfo upsertPlatformTopic(String sourceCode, String parentSourceCode, String name, int sortOrder);
 
     /**
+     * سؤال پلتفرمی را با کلید {@code sourceCode} upsert می‌کند و برمی‌گرداند آیا تازه ساخته شد. سرفصل باید پلتفرمی
+     * باشد (InvalidQuestion وگرنه)؛ {@code correctChoice} از ۱ تا ۴ است و هر چهار گزینه باید متن داشته باشند.
+     */
+    boolean upsertPlatformQuestion(String sourceCode, String topicSourceCode, String text, List<String> choices,
+                                   int correctChoice, String answer);
+
+    /**
      * فهرست تختِ همه‌ی سرفصل‌های یک مدرسه (مرتب بر اساس sortOrder سپس id).
      */
     List<TopicInfo> listTopics(Long schoolId);
