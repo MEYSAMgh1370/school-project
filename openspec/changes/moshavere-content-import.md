@@ -58,6 +58,9 @@ Recorded from the product owner's answers on 2026-10-10.
 | O11 | Topic-level weights only. The sub-topic weights from `b33fbf93` are not stored. | Decided |
 | O12 | Tracks are ریاضی, تجربی and انسانی. Courses without a track are common to all. | Decided |
 | O13 | No school has created topics or questions yet, so no existing school-owned rows need a migration. Re-check before the migration runs. | Decided; re-check |
+| O14 | Grades 10–12 are high school. Each of them has the three tracks ریاضی, تجربی and انسانی. Grade-level course names in the tree carry the grade (for example «ریاضی هشتم»), so the grade-to-course mapping needs the product owner's check before the import. | Decided; mapping to confirm |
+| O15 | The academic year starts on 1 Mehr. Some schools start earlier, which the per-school range (`school_year_ranges`) already allows. This supersedes P5's 1 Mordad start. | Decided |
+| O16 | The corrected tree (`69df89ac`, UTF-8) is committed under `data/moshavere/` (D1). | Decided |
 
 Still open outside the product decisions: the source-book check for `22254`
 (D12) and the teacher review of repeated codes (D13). Both are checks, not
@@ -82,8 +85,9 @@ These close gaps found in review. Each needs confirmation.
   plans (Phase 4). The bundle's `weekCourses` is not used by the platform run.
 - **P5 — Academic year for a week.** The enrollment and track used for a week
   course are those of the academic year that contains the week's start date.
-  Academic years start on 1 Mordad, so the week of 1 Tir 1406 uses 1405–1406,
-  and the week of 3 Mordad 1406 uses 1406–1407.
+  Superseded by O15: academic years start on 1 Mehr (some schools earlier), so
+  the summer gap from 1 Tir to the day before the next year's start belongs to
+  the year that just ended (as implemented in `academicYearFor`).
 - **P6 — Who may report, and where reports go.**
   - Teachers and school admins report from the bank (`CURRICULUM` module).
   - Students report from the exam view, where they see the question
@@ -444,8 +448,8 @@ slow or fragile.
 - Study plans, week courses, exams and student data stay per school. Existing plan
   and exam behaviour is unchanged except for the topic checks, which must accept
   platform topics (§5).
-- The academic year switches on 1 Mordad. The week of 1 Tir 1406 belongs to
-  1405–1406 and the week of 3 Mordad 1406 belongs to 1406–1407 (P5). The yearly
+- The academic year starts on 1 Mehr, with per-school earlier starts (O15). The
+  summer gap belongs to the year that just ended (P5 as implemented). The yearly
   plan's range (1 Mehr – 31 Khordad, [`yearly-plan.md`](yearly-plan.md)) is not
   used by study plans, so the summer weeks are not a conflict.
 - Undoing a mistaken platform import needs manual SQL. The mandatory dry run and a
@@ -457,5 +461,5 @@ slow or fragile.
 - **P2** A student without an enrollment row cannot be assigned a plan or exam.
 - **P3** A student with no track sees only common courses.
 - **P4 (confirmed 2026-10-11)** Weekly plans and week courses are created per school, not by the platform run.
-- **P5** A week's enrollment and track come from the academic year that contains the week's start date.
+- **P5** A week's enrollment and track come from the academic year that contains the week's start date. The year start is now 1 Mehr with per-school earlier starts (O15).
 - **P6** Students, teachers and admins may report; reports on platform questions go to the platform queue, and reports on a school's own questions go to that school.
