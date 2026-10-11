@@ -68,6 +68,8 @@ public final class AcademicException extends RuntimeException {
             case AcademicError.SchoolNotFound e -> "مدرسه‌ای با شناسه " + e.schoolId() + " یافت نشد.";
             case AcademicError.InvalidGradeLevel e -> "پایه‌ی " + e.gradeLevel() + " در بازه‌ی مقطع تحصیلی این مدرسه ("
                     + e.minGrade() + " تا " + e.maxGrade() + ") نیست.";
+            case AcademicError.InvalidCourse e -> e.reason();
+            case AcademicError.InvalidCourseGradeLevel e -> "پایه‌ی درس باید بین ۱ تا ۱۲ باشد، نه " + e.gradeLevel() + ".";
         };
     }
 }

@@ -28,6 +28,11 @@ public class CurriculumExceptionHandler {
                     "سرفصل یافت نشد",
                     "سرفصلی با شناسه " + e.topicId() + " در این مدرسه یافت نشد."
             );
+            case CurriculumError.ParentTopicNotFound e -> ProblemDetailFactory.problem(
+                    HttpStatus.BAD_REQUEST, "parent-topic-not-found",
+                    "سرفصل والد یافت نشد",
+                    "سرفصل پلتفرمی با کد منبع «" + e.parentSourceCode() + "» یافت نشد."
+            );
             case CurriculumError.InvalidTopic e -> ProblemDetailFactory.problem(
                     HttpStatus.BAD_REQUEST, "invalid-topic",
                     "سرفصل نامعتبر",

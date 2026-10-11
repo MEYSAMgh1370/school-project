@@ -217,6 +217,16 @@ public class AcademicExceptionHandler {
                     "پایه‌ی " + e.gradeLevel() + " در بازه‌ی مقطع تحصیلی این مدرسه ("
                             + e.minGrade() + " تا " + e.maxGrade() + ") نیست."
             );
+            case AcademicError.InvalidCourse e -> ProblemDetailFactory.problem(
+                    HttpStatus.BAD_REQUEST, "invalid-course",
+                    "درس نامعتبر",
+                    e.reason()
+            );
+            case AcademicError.InvalidCourseGradeLevel e -> ProblemDetailFactory.problem(
+                    HttpStatus.BAD_REQUEST, "invalid-course-grade-level",
+                    "پایه‌ی درس نامعتبر",
+                    "پایه‌ی درس باید بین ۱ تا ۱۲ باشد، نه " + e.gradeLevel() + "."
+            );
         };
     }
 }

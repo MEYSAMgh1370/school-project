@@ -40,6 +40,50 @@ class CurriculumFacadeImpl implements CurriculumFacade {
     }
 
     @Override
+    @Transactional
+    public TopicInfo upsertPlatformTopic(String sourceCode, String parentSourceCode, String name, int sortOrder) {
+        if (sourceCode == null || sourceCode.isBlank() || sourceCode.strip().length() > 32) {
+            throw new CurriculumException(new CurriculumError.InvalidTopic("کد منبع سرفصل باید بین ۱ تا ۳۲ نویسه باشد."));
+        }
+        if (name == null || name.isBlank()) {
+            throw new CurriculumException(new CurriculumError.InvalidTopic("نام سرفصل نمی‌تواند خالی باشد."));
+        }
+        String code = sourceCode.strip();
+        TopicEntity existing = topicRepository.findBySourceCodeAndSchoolIdIsNull(code).orElse(null);
+
+        Long parentId = null;
+        if (parentSourceCode != null && !parentSourceCode.isBlank()) {
+            String parentCode = parentSourceCode.strip();
+            TopicEntity parent = topicRepository.findBySourceCodeAndSchoolIdIsNull(parentCode)
+                    .orElseThrow(() -> new CurriculumException(new CurriculumError.ParentTopicNotFound(parentCode)));
+            if (existing != null) {
+                requireNotInSubtree(existing, parent);
+            }
+            parentId = parent.getId();
+        }
+
+        TopicEntity topic = existing != null ? existing : new TopicEntity(null, parentId, name.strip(), sortOrder);
+        topic.setSourceCode(code);
+        topic.setParentId(parentId);
+        topic.setName(name.strip());
+        topic.setSortOrder(sortOrder);
+        return toInfo(topicRepository.save(topic));
+    }
+
+    // والد نباید خودِ سرفصل یا یکی از نوادگانش باشد (حلقه): از والد به بالا می‌رویم
+    private void requireNotInSubtree(TopicEntity topic, TopicEntity newParent) {
+        TopicEntity cursor = newParent;
+        int guard = 0;
+        while (cursor != null && guard++ < 1000) {
+            if (cursor.getId().equals(topic.getId())) {
+                throw new CurriculumException(new CurriculumError.InvalidTopic(
+                        "سرفصل نمی‌تواند والدِ خودش یا یکی از نوادگانش باشد."));
+            }
+            cursor = cursor.getParentId() == null ? null : topicRepository.findById(cursor.getParentId()).orElse(null);
+        }
+    }
+
+    @Override
     public List<TopicInfo> listTopics(Long schoolId) {
         return topicRepository.findVisibleToSchool(schoolId).stream()
                 .map(CurriculumFacadeImpl::toInfo)

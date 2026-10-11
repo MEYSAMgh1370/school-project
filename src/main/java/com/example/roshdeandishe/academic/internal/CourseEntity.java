@@ -52,6 +52,22 @@ class CourseEntity {
     @Column(length = 16)
     private String track;
 
+    /** شناسه‌ی سرفصلِ curriculum (بدون کلید خارجی: academic به جدول‌های curriculum وابسته نیست). */
+    @Column(name = "topic_id")
+    private Long topicId;
+
+    CourseEntity(int gradeLevel, String name, String track, Long topicId) {
+        this.gradeLevel = gradeLevel;
+        this.name = name;
+        this.track = track;
+        this.topicId = topicId;
+    }
+
+    void setPlatformLink(String track, Long topicId) {
+        this.track = track;
+        this.topicId = topicId;
+    }
+
     /** آیا درس برای سالِ تحصیلیِ با این سالِ شروع ارائه می‌شود؟ */
     boolean isOfferedIn(int startYear) {
         return (validFromYear == null || validFromYear <= startYear)

@@ -131,6 +131,14 @@ public sealed interface AcademicError {
     record InvalidGradeLevel(int gradeLevel, int minGrade, int maxGrade) implements AcademicError {
     }
 
+    /** پایه‌ی درسِ پلتفرمی خارج از ۱ تا ۱۲ است (مستقل از مقطعِ هر مدرسه). */
+    record InvalidCourseGradeLevel(int gradeLevel) implements AcademicError {
+    }
+
+    /** نامِ درسِ پلتفرمی خالی یا بلندتر از ۱۲۸ نویسه است. */
+    record InvalidCourse(String reason) implements AcademicError {
+    }
+
     /** مدرسه سالِ جاری ندارد؛ انتسابِ داده‌ی موجود و ارتقا بدون آن معنا ندارد (هیچ سالی حدس زده نمی‌شود). */
     record YearNotChosen(Long schoolId) implements AcademicError {
     }

@@ -13,6 +13,10 @@ public sealed interface CurriculumError {
     record TopicNotFound(Long topicId) implements CurriculumError {
     }
 
+    /** والدِ پلتفرمیِ داده‌شده با این کدِ منبع (source_code) وجود ندارد. */
+    record ParentTopicNotFound(String parentSourceCode) implements CurriculumError {
+    }
+
     record InvalidTopic(String reason) implements CurriculumError {
     }
 
