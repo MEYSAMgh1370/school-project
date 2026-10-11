@@ -44,6 +44,10 @@ public final class AcademicException extends RuntimeException {
                     "رشته‌ی «" + e.track() + "» نامعتبر است؛ فقط ریاضی، تجربی یا انسانی.";
             case AcademicError.TrackNeedsCurrentYear e ->
                     "مدرسه سال تحصیلی جاری ندارد و رشته را نمی‌توان ذخیره کرد.";
+            case AcademicError.StudentNotEnrolledInYear e ->
+                    "دانش‌آموز " + e.studentId() + " در سال تحصیلی «" + e.academicYear() + "» ثبت‌نام نشده است.";
+            case AcademicError.NoAcademicYearForDate e ->
+                    "هیچ سال تحصیلی‌ای شامل تاریخ " + e.date() + " نیست.";
             case AcademicError.PromotionRunNotFound e -> "اجرای ارتقای " + e.runId() + " یافت نشد.";
             case AcademicError.PromotionRunNotUndoable e -> e.reason();
             case AcademicError.PeriodNotFound e -> "زنگی با شناسه " + e.periodId() + " یافت نشد.";

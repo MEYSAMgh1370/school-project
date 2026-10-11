@@ -73,6 +73,18 @@ public interface AcademicFacade {
     List<StudentInfo> listStudentsEnrolledIn(Long schoolId, String academicYear);
 
     /**
+     * شرطِ نسبت دادنِ برنامه‌ی مطالعه یا آزمون به یک دانش‌آموز: او باید در سالِ تحصیلیِ حاوی {@code date} ردیفِ ثبت‌نام
+     * داشته باشد (ENROLLED یا PENDING؛ هر ردیفی کافی است). سالِ حاوی تاریخ همان سالی از
+     * {@code SchoolFacade.listAcademicYears()} است که {@code startDate <= date <= endDate}؛ هیچ سال یا پایه‌ای حدس
+     * زده نمی‌شود.
+     * <p>
+     * فقط برای مدرسه‌ای که سالِ جاری دارد اعمال می‌شود؛ مدرسه‌ی بدونِ سالِ جاری مثل پیش از این بدون بررسی و بدون خطا
+     * می‌گذرد. اگر مدرسه سالِ جاری دارد ولی هیچ سالی تاریخ را در بر نمی‌گیرد AcademicError.NoAcademicYearForDate؛
+     * اگر دانش‌آموز در آن سال ردیفی ندارد AcademicError.StudentNotEnrolledInYear. هیچ اثری نمی‌گذارد.
+     */
+    void requireEnrolledOn(Long schoolId, Long studentId, java.time.LocalDate date);
+
+    /**
      * gradeLevel باید در بازه‌ی مقطع تحصیلی همین مدرسه باشد (school.SchoolFacade.SchoolLevel،
      * مثلاً یک دبستان فقط پایه‌های ۱ تا ۶ را می‌پذیرد) - وگرنه
      * AcademicError.InvalidGradeLevel. مدرسه‌ای که schoolId اش اصلاً وجود

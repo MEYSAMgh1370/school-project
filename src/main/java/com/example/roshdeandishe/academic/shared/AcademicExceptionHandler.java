@@ -125,6 +125,17 @@ public class AcademicExceptionHandler {
                     "مدرسه سال تحصیلی جاری ندارد",
                     "رشته روی ثبت‌نامِ سالِ جاری ذخیره می‌شود؛ اول در صفحه‌ی «سال تحصیلی» سالِ جاری مدرسه را انتخاب کنید."
             );
+            case AcademicError.StudentNotEnrolledInYear e -> ProblemDetailFactory.problem(
+                    HttpStatus.CONFLICT, "student-not-enrolled-in-year",
+                    "دانش‌آموز در این سال تحصیلی ثبت‌نام نشده است",
+                    "دانش‌آموز " + e.studentId() + " در سال تحصیلی «" + e.academicYear()
+                            + "» ثبت‌نام ندارد؛ اول او را در همین سال ثبت‌نام کنید."
+            );
+            case AcademicError.NoAcademicYearForDate e -> ProblemDetailFactory.problem(
+                    HttpStatus.BAD_REQUEST, "no-academic-year-for-date",
+                    "برای این تاریخ سال تحصیلی تعریف نشده است",
+                    "هیچ سال تحصیلی‌ای شامل تاریخ " + e.date() + " نیست."
+            );
             case AcademicError.PromotionRunNotFound e -> ProblemDetailFactory.problem(
                     HttpStatus.NOT_FOUND, "promotion-run-not-found",
                     "اجرای ارتقا یافت نشد",

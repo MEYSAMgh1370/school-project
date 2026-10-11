@@ -180,6 +180,8 @@ class StudyPlanFacadeImpl implements StudyPlanFacade {
     public void assignPlanToStudent(Long schoolId, Long planId, Long studentId) {
         PlanEntity plan = requirePlanInSchool(schoolId, planId);
         requireStudentInSchool(schoolId, studentId);
+        // برنامه فقط به دانش‌آموزی می‌رسد که در سالِ تحصیلیِ «امروز»ِ مدرسه ثبت‌نام دارد
+        academicFacade.requireEnrolledOn(schoolId, studentId, schoolToday(schoolId));
 
         Optional<StudentPlanAssignmentEntity> existing = assignmentRepository.findByStudentId(studentId);
         if (existing.isPresent()) {
@@ -524,6 +526,13 @@ class StudyPlanFacadeImpl implements StudyPlanFacade {
         return schoolFacade.findSchool(new SchoolFacade.SchoolId(schoolId))
                 .map(SchoolFacade.SchoolInfo::weekStart)
                 .orElseThrow(() -> new IllegalStateException("school not found: " + schoolId));
+    }
+
+    /** «امروز» به وقتِ منطقه‌ی زمانیِ خودِ مدرسه (SchoolInfo.zoneId؛ مدرسه‌ی ناشناخته: منطقه‌ی پیش‌فرض). */
+    private LocalDate schoolToday(Long schoolId) {
+        return LocalDate.now(schoolFacade.findSchool(new SchoolFacade.SchoolId(schoolId))
+                .map(SchoolFacade.SchoolInfo::zoneId)
+                .orElse(SchoolFacade.SchoolInfo.DEFAULT_ZONE));
     }
 
     private WeekStart requireWeekStart(Long schoolId, LocalDate weekStart) {

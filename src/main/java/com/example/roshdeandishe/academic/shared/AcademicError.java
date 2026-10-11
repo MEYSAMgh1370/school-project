@@ -155,6 +155,14 @@ public sealed interface AcademicError {
     record TrackNeedsCurrentYear() implements AcademicError {
     }
 
+    /** دانش‌آموز در سالِ تحصیلیِ حاوی تاریخ ردیفِ ثبت‌نام ندارد؛ برنامه یا آزمون به او نسبت داده نمی‌شود (هیچ سالی حدس زده نمی‌شود). */
+    record StudentNotEnrolledInYear(Long studentId, String academicYear) implements AcademicError {
+    }
+
+    /** مدرسه سالِ جاری دارد ولی هیچ سالِ تحصیلی‌ای تاریخِ داده‌شده را در بر نمی‌گیرد. */
+    record NoAcademicYearForDate(java.time.LocalDate date) implements AcademicError {
+    }
+
     record PromotionRunNotFound(Long runId) implements AcademicError {
     }
 

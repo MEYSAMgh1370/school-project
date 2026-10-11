@@ -114,9 +114,12 @@ class ExamFacadeImpl implements ExamFacade {
     @Override
     @Transactional
     public void assignStudents(Long schoolId, Long examId, List<Long> studentIds) {
-        requireExamInSchool(schoolId, examId);
+        ExamEntity exam = requireExamInSchool(schoolId, examId);
+        // سالِ تحصیلی از تاریخِ خودِ آزمون می‌آید (startAt ستونِ not null است)
+        LocalDate examDate = exam.getStartAt().toLocalDate();
         for (Long studentId : studentIds == null ? List.<Long>of() : studentIds) {
             requireStudentInSchool(schoolId, studentId);
+            academicFacade.requireEnrolledOn(schoolId, studentId, examDate);
             if (!examAssignmentRepository.existsByExamIdAndStudentId(examId, studentId)) {
                 examAssignmentRepository.save(new ExamAssignmentEntity(examId, studentId));
             }

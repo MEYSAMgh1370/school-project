@@ -20,6 +20,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.time.Instant;
+import java.time.LocalDate;
 import java.util.HashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -227,6 +228,21 @@ class AcademicFacadeImpl implements AcademicFacade {
         return studentRepository.findAllById(studentIds).stream()
                 .map(AcademicFacadeImpl::toStudentInfo)
                 .toList();
+    }
+
+    @Override
+    public void requireEnrolledOn(Long schoolId, Long studentId, LocalDate date) {
+        // فقط مدرسه‌ای که سالِ جاری دارد بررسی می‌شود؛ مدرسه‌ی بدونِ سالِ جاری رفتار پیشین را دارد
+        if (enrollmentLedger.currentYear(schoolId).isEmpty()) {
+            return;
+        }
+        AcademicYearInfo year = schoolFacade.listAcademicYears().stream()
+                .filter(y -> !date.isBefore(y.startDate()) && !date.isAfter(y.endDate()))
+                .findFirst()
+                .orElseThrow(() -> new AcademicException(new AcademicError.NoAcademicYearForDate(date)));
+        if (enrollmentRepository.findByStudentIdAndAcademicYear(studentId, year.code()).isEmpty()) {
+            throw new AcademicException(new AcademicError.StudentNotEnrolledInYear(studentId, year.code()));
+        }
     }
 
     @Override
