@@ -76,10 +76,10 @@ These close gaps found in review. Each needs confirmation.
 - **P3 — Null track.** A course with no track is shown to everyone in its grade.
   A course with a track is shown only to students with that track. A student with
   no track sees only common courses. Null never means "all tracks".
-- **P4 — Week courses are per school.** The platform import creates topics,
-  courses and platform questions only. Week courses and weights belong to a
-  school's plans, so each school imports or enters its own weekly plans (Phase 4).
-  The bundle's `weekCourses` is not used by the platform run.
+- **P4 — Week courses are per school (confirmed 2026-10-11).** The platform import
+  creates topics, courses and platform questions only. Week courses and weights
+  belong to a school's plans, so each school imports or enters its own weekly
+  plans (Phase 4). The bundle's `weekCourses` is not used by the platform run.
 - **P5 — Academic year for a week.** The enrollment and track used for a week
   course are those of the academic year that contains the week's start date.
   Academic years start on 1 Mordad, so the week of 1 Tir 1406 uses 1405–1406,
@@ -456,6 +456,6 @@ slow or fragile.
 - **P1** The school admin sets each student's track on the enrollment for the year.
 - **P2** A student without an enrollment row cannot be assigned a plan or exam.
 - **P3** A student with no track sees only common courses.
-- **P4** Weekly plans and week courses are created per school, not by the platform run.
+- **P4 (confirmed 2026-10-11)** Weekly plans and week courses are created per school, not by the platform run.
 - **P5** A week's enrollment and track come from the academic year that contains the week's start date.
 - **P6** Students, teachers and admins may report; reports on platform questions go to the platform queue, and reports on a school's own questions go to that school.
