@@ -73,6 +73,17 @@
                                     </select>
                                 </div>
                             </div>
+                            <div class="control">
+                                <label class="label" for="studentTrack">رشته</label>
+                                <div class="select">
+                                    <select id="studentTrack" x-model="form.track">
+                                        <option value="">بدون رشته</option>
+                                        <option value="ریاضی">ریاضی</option>
+                                        <option value="تجربی">تجربی</option>
+                                        <option value="انسانی">انسانی</option>
+                                    </select>
+                                </div>
+                            </div>
                             <div class="control app-control-align-end">
                                 <button class="button is-link" type="submit" :class="{ 'is-loading': submitting }">
                                     ثبت‌نام

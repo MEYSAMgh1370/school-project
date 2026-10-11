@@ -19,6 +19,8 @@ document.addEventListener('alpine:init', () => {
         // نتیجه‌ی هر دانش‌آموز در پیش‌نمایش (شناسه ← PROMOTE/REPEAT/GRADUATE/LEAVE) و کلاسِ انتخابیِ هر جا‌نشده
         decisions: {},
         placements: {},
+        // رشته‌ی انتخابیِ هر جا‌نشده (شناسه ← '' یا نام رشته)
+        tracks: {},
         fromYear: '',
         filterText: '',
         classes: [],
@@ -129,10 +131,13 @@ document.addEventListener('alpine:init', () => {
                 this.allClasses = data.allClasses;
                 this.pupils = data.memberships.filter(m => m.roleCode === 'STUDENT');
                 const placements = {};
+                const tracks = {};
                 data.pending.forEach(item => {
                     placements[item.studentId] = '';
+                    tracks[item.studentId] = '';
                 });
                 this.placements = placements;
+                this.tracks = tracks;
                 this.loaded = true;
                 // سالِ مبدأ: همان سالِ قبل از جاری، مگر کاربر قبلاً سالِ دیگری را انتخاب کرده باشد
                 if (!this.earlierYears.includes(this.fromYear)) {
@@ -339,7 +344,8 @@ document.addEventListener('alpine:init', () => {
         async place() {
             const placements = this.pending
                 .filter(item => this.placements[item.studentId])
-                .map(item => ({ studentId: item.studentId, classId: parseInt(this.placements[item.studentId], 10) }));
+                .map(item => ({ studentId: item.studentId, classId: parseInt(this.placements[item.studentId], 10),
+                    track: this.tracks[item.studentId] || null }));
             if (this.placing) {
                 return;
             }

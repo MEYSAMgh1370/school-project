@@ -74,6 +74,15 @@ public class TopicController {
                 .toList();
     }
 
+    /** سرفصل + همه‌ی نوادگانش (همان شکل گره‌ی endpoint درخت). */
+    @GetMapping("/{topicId}/subtree")
+    @RequiresPermission("CURRICULUM_VIEW")
+    public TopicTreeResponse getTopicSubtree(@PathVariable Long schoolId, @PathVariable Long topicId) {
+        TenantContext.requireMatches(schoolId);
+
+        return toTreeResponse(curriculumFacade.getTopicSubtree(schoolId, topicId));
+    }
+
     private static TopicResponse toResponse(TopicInfo info) {
         return new TopicResponse(info.id().value(), info.schoolId(), info.parentId(), info.name(), info.sortOrder());
     }

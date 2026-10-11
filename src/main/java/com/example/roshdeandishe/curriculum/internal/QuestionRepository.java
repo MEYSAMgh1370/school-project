@@ -1,13 +1,20 @@
 package com.example.roshdeandishe.curriculum.internal;
 
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 
 import java.util.Collection;
 import java.util.List;
 
 interface QuestionRepository extends JpaRepository<QuestionEntity, Long> {
 
-    List<QuestionEntity> findBySchoolIdOrderByIdAsc(Long schoolId);
+    /** سؤال‌های قابل‌مشاهده برای مدرسه: پلتفرمی (school_id null) + خودِ مدرسه. */
+    @Query("select q from QuestionEntity q where q.schoolId is null or q.schoolId = :schoolId order by q.id asc")
+    List<QuestionEntity> findVisibleToSchool(@Param("schoolId") Long schoolId);
 
-    List<QuestionEntity> findBySchoolIdAndTopicIdInOrderByIdAsc(Long schoolId, Collection<Long> topicIds);
+    @Query("select q from QuestionEntity q where (q.schoolId is null or q.schoolId = :schoolId) "
+            + "and q.topicId in :topicIds order by q.id asc")
+    List<QuestionEntity> findVisibleToSchoolByTopicIds(@Param("schoolId") Long schoolId,
+                                                       @Param("topicIds") Collection<Long> topicIds);
 }

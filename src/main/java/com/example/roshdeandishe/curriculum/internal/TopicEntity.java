@@ -25,8 +25,12 @@ class TopicEntity {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(name = "school_id", nullable = false)
+    /** null = سرفصل پلتفرمی (برای همه‌ی مدرسه‌ها قابل‌مشاهده). */
+    @Column(name = "school_id")
     private Long schoolId;
+
+    @Column(name = "source_code", length = 32)
+    private String sourceCode;
 
     @Column(name = "parent_id")
     private Long parentId;

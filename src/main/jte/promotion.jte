@@ -51,6 +51,7 @@
                                                 <th scope="col">نام دانش‌آموز</th>
                                                 <th scope="col">پایه‌ی سال جدید</th>
                                                 <th scope="col">کلاس</th>
+                                                <th scope="col">رشته</th>
                                                 <th scope="col">نتیجه</th>
                                             </tr>
                                             </thead>
@@ -71,6 +72,17 @@
                                                                     <option :value="String(classItem.id)" x-text="classItem.name"
                                                                             :selected="placements[item.studentId] === String(classItem.id)"></option>
                                                                 </template>
+                                                            </select>
+                                                        </div>
+                                                    </td>
+                                                    <td>
+                                                        <div class="select">
+                                                            <select :aria-label="'رشته ' + studentName(item.userId)"
+                                                                    @change="tracks[item.studentId] = $event.target.value">
+                                                                <option value="" :selected="!tracks[item.studentId]">بدون رشته</option>
+                                                                <option value="ریاضی" :selected="tracks[item.studentId] === 'ریاضی'">ریاضی</option>
+                                                                <option value="تجربی" :selected="tracks[item.studentId] === 'تجربی'">تجربی</option>
+                                                                <option value="انسانی" :selected="tracks[item.studentId] === 'انسانی'">انسانی</option>
                                                             </select>
                                                         </div>
                                                     </td>

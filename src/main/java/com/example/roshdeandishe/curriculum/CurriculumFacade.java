@@ -38,6 +38,13 @@ public interface CurriculumFacade {
     List<TopicTreeNode> getTopicTree(Long schoolId);
 
     /**
+     * سرفصل + همه‌ی نوادگانش به‌صورت یک گره‌ی درختی. سرفصل باید برای مدرسه
+     * قابل‌مشاهده باشد (پلتفرمی یا متعلق به همین مدرسه) - وگرنه TopicNotFound.
+     * نوادگان هم فقط از میان سرفصل‌های قابل‌مشاهده برای مدرسه‌اند.
+     */
+    TopicTreeNode getTopicSubtree(Long schoolId, Long topicId);
+
+    /**
      * ثبت یک سؤال چهارگزینه‌ای روی یک سرفصل. اعتبارسنجی: متن و هر چهار
      * گزینه غیرخالی، correctChoice در بازه‌ی ۱ تا ۴ - وگرنه
      * CurriculumError.InvalidQuestion. سرفصل باید متعلق به همین مدرسه
