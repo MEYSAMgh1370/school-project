@@ -123,6 +123,24 @@ class AcademicFacadeImpl implements AcademicFacade {
     }
 
     @Override
+    @Transactional
+    public CourseInfo upsertPlatformCourse(int gradeLevel, String name, String track, Long topicId) {
+        if (gradeLevel < 1 || gradeLevel > 12) {
+            throw new AcademicException(new AcademicError.InvalidCourseGradeLevel(gradeLevel));
+        }
+        if (name == null || name.isBlank() || name.strip().length() > 128) {
+            throw new AcademicException(new AcademicError.InvalidCourse("نام درس باید بین ۱ تا ۱۲۸ نویسه باشد."));
+        }
+        EnrollmentLedger.requireValidTrack(track);
+        String stripped = name.strip();
+        CourseEntity course = courseRepository.findByGradeLevelAndName(gradeLevel, stripped)
+                .orElseGet(() -> new CourseEntity(gradeLevel, stripped, track, topicId));
+        course.setPlatformLink(track, topicId);
+        CourseEntity saved = courseRepository.save(course);
+        return new CourseInfo(new CourseId(saved.getId()), saved.getGradeLevel(), saved.getName());
+    }
+
+    @Override
     public StudentInfo getStudentInfo(Long studentId) {
         return findStudentInfo(studentId)
                 .orElseThrow(() -> new AcademicException(new AcademicError.StudentNotFound(studentId)));

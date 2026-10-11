@@ -6,6 +6,9 @@ import java.util.List;
 
 interface CourseRepository extends JpaRepository<CourseEntity, Long> {
 
+    /** کلیدِ upsertِ درسِ پلتفرمی. */
+    java.util.Optional<CourseEntity> findByGradeLevelAndName(int gradeLevel, String name);
+
     /** همه‌ی درس‌های پایه، شاملِ غیرنمره‌پذیر - انتخابگرِ درسِ برنامهٔ کلاسی. */
     List<CourseEntity> findByGradeLevelOrderByNameAsc(int gradeLevel);
 

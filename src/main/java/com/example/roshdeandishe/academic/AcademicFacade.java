@@ -178,6 +178,14 @@ public interface AcademicFacade {
     /** مثل {@link #listCoursesForStudent(Long, Long, String)} برای سالِ جاریِ مدرسه. */
     List<CourseInfo> listCoursesForStudent(Long schoolId, Long studentId);
 
+    /**
+     * ثبت/به‌روزرسانیِ یک درسِ سراسریِ پلتفرمی با کلیدِ (gradeLevel، name). درسِ موجود: فقط رشته و topicId عوض
+     * می‌شود؛ درسِ تازه graded=true و بدون بازه‌ی اعتبار. {@code track} تهی یا یکی از «ریاضی»، «تجربی»، «انسانی»
+     * (InvalidTrack وگرنه)؛ پایه خارج از ۱ تا ۱۲ InvalidCourseGradeLevel؛ نامِ خالی InvalidCourse. {@code topicId}
+     * شناسه‌ی ساده‌ی سرفصلِ curriculum است و اینجا بررسی نمی‌شود (academic به curriculum وابسته نیست).
+     */
+    CourseInfo upsertPlatformCourse(int gradeLevel, String name, String track, Long topicId);
+
     GradeInfo getGrade(Long gradeId);
 
     /**

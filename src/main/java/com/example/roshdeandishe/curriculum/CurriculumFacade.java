@@ -26,6 +26,14 @@ public interface CurriculumFacade {
     TopicId createTopic(Long schoolId, Long parentId, String name, Integer sortOrder);
 
     /**
+     * ثبت/به‌روزرسانیِ یک سرفصلِ پلتفرمی (school_id تهی) با کلیدِ {@code sourceCode}: موجود → نام، والد و ترتیب
+     * عوض می‌شود؛ وگرنه ساخته می‌شود. {@code parentSourceCode} تهی = ریشه؛ والد باید سرفصلِ پلتفرمی با همان کدِ منبع
+     * باشد (ParentTopicNotFound وگرنه) و نباید خودِ سرفصل یا یکی از نوادگانش باشد (InvalidTopic). کد یا نامِ خالی
+     * InvalidTopic.
+     */
+    TopicInfo upsertPlatformTopic(String sourceCode, String parentSourceCode, String name, int sortOrder);
+
+    /**
      * فهرست تختِ همه‌ی سرفصل‌های یک مدرسه (مرتب بر اساس sortOrder سپس id).
      */
     List<TopicInfo> listTopics(Long schoolId);
