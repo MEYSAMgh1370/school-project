@@ -72,11 +72,29 @@ class MoshavereImportFacadeImpl implements MoshavereImportFacade {
             }
         }
 
+        int questionsCreated = 0;
+        int questionsUpdated = 0;
+        for (QuestionEntry q : questionsOf(bundle)) {
+            boolean created = curriculumFacade.upsertPlatformQuestion(q.sourceCode().strip(),
+                    q.topicSourceCode().strip(), q.text(), q.choices(), q.correctChoice(), q.answer());
+            if (created) {
+                questionsCreated++;
+            } else {
+                questionsUpdated++;
+            }
+        }
+
         if (dryRun) {
             // تراکنشِ بیرونی rollback می‌شود ولی پاسخ عادی ساخته می‌شود (استثنا نمی‌اندازیم)
             TransactionAspectSupport.currentTransactionStatus().setRollbackOnly();
         }
-        return new ImportSummary(topicsCreated, topicsUpdated, coursesCreated, coursesUpdated, coursesUnlinked, dryRun);
+        return new ImportSummary(topicsCreated, topicsUpdated, coursesCreated, coursesUpdated, coursesUnlinked,
+                questionsCreated, questionsUpdated, dryRun);
+    }
+
+    // بسته‌ی قدیمی بی‌فهرست سؤال هم معتبر است (format 1 بدون کلید questions)
+    private static List<QuestionEntry> questionsOf(Bundle bundle) {
+        return bundle.questions() == null ? List.of() : bundle.questions();
     }
 
     private static void validate(Bundle bundle) {
@@ -135,6 +153,33 @@ class MoshavereImportFacadeImpl implements MoshavereImportFacade {
             if (c.topicSourceCode() != null && !seen.contains(c.topicSourceCode().strip())) {
                 throw invalid(at + "کد سرفصل «" + c.topicSourceCode().strip() + "» برای درس «" + c.name().strip()
                         + "» در بسته نیست.");
+            }
+        }
+
+        // در این نقطه seen فقط کدهای سرفصل‌های بسته است
+        Set<String> questionCodes = new HashSet<>();
+        List<QuestionEntry> questions = questionsOf(bundle);
+        for (int i = 0; i < questions.size(); i++) {
+            QuestionEntry q = questions.get(i);
+            String at = "سؤال شماره‌ی " + (i + 1) + ": ";
+            if (q == null || q.sourceCode() == null || q.sourceCode().isBlank() || q.sourceCode().strip().length() > 64) {
+                throw invalid(at + "کد منبع باید بین ۱ تا ۶۴ نویسه باشد.");
+            }
+            String code = q.sourceCode().strip();
+            if (!questionCodes.add(code)) {
+                throw invalid(at + "کد منبع «" + code + "» تکراری است.");
+            }
+            if (q.topicSourceCode() == null || !seen.contains(q.topicSourceCode().strip())) {
+                throw invalid(at + "کد سرفصل برای سؤال «" + code + "» در بسته نیست.");
+            }
+            if (q.text() == null || q.text().isBlank()) {
+                throw invalid(at + "متن سؤال «" + code + "» خالی است.");
+            }
+            if (q.choices() == null || q.choices().size() != 4 || q.choices().stream().anyMatch(x -> x == null || x.isBlank())) {
+                throw invalid(at + "سؤال «" + code + "» باید چهار گزینه‌ی غیرخالی داشته باشد.");
+            }
+            if (q.correctChoice() == null || q.correctChoice() < 1 || q.correctChoice() > 4) {
+                throw invalid(at + "گزینه‌ی درست سؤال «" + code + "» باید ۱ تا ۴ باشد.");
             }
         }
     }

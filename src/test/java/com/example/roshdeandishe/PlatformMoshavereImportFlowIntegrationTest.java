@@ -334,4 +334,54 @@ class PlatformMoshavereImportFlowIntegrationTest {
         assertThat(topicCount()).isZero();
         assertThat(courseCount()).isZero();
     }
+    private Map<String, Object> question(String code, String topicCode) {
+        Map<String, Object> m = new LinkedHashMap<>();
+        m.put("sourceCode", code);
+        m.put("topicSourceCode", topicCode);
+        m.put("text", "کدام یک از گزینه‌های زیر صحیح است.");
+        m.put("choices", List.of("الف", "ب", "ج", "د"));
+        m.put("correctChoice", 2);
+        m.put("answer", null);
+        return m;
+    }
+
+    private int questionCount() {
+        return count("select count(*) from curriculum.questions where source_code like ?", prefix + "%");
+    }
+
+    @Test
+    void questionsAreUpsertedBySourceCodeAndDryRunPersistsNothing() throws Exception {
+        MockHttpSession platform = platformAdminSession();
+        Map<String, Object> bundle = validBundle();
+        bundle.put("questions", List.of(question(prefix + "-Q1", child())));
+
+        importBundle(platform, bundle, true)
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.questionsCreated").value(1))
+                .andExpect(jsonPath("$.questionsUpdated").value(0));
+        assertThat(questionCount()).isZero();
+
+        importBundle(platform, bundle, false)
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.questionsCreated").value(1));
+        importBundle(platform, bundle, false)
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.questionsCreated").value(0))
+                .andExpect(jsonPath("$.questionsUpdated").value(1));
+        assertThat(questionCount()).isEqualTo(1);
+    }
+
+    @Test
+    void questionWithoutFourChoicesIsRefusedBeforeAnyWrite() throws Exception {
+        MockHttpSession platform = platformAdminSession();
+        Map<String, Object> bad = question(prefix + "-Q2", child());
+        bad.put("choices", List.of("الف", "ب"));
+        Map<String, Object> bundle = validBundle();
+        bundle.put("questions", List.of(bad));
+
+        importBundle(platform, bundle, false)
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.type").value(endsWith("moshavere-bundle-invalid")));
+        assertThat(topicCount()).isZero();
+    }
 }

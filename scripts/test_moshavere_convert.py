@@ -11,6 +11,7 @@ _spec.loader.exec_module(conv)
 
 REAL_TREE = conv.DEFAULT_TREE
 REAL_CSV = conv.DEFAULT_CSV
+REAL_QUESTIONS = conv.DEFAULT_QUESTIONS
 
 TREE = """<html><body><ul id="myUL">
 <li><span class="caret">فیزیک(1)</span><ul class="nested">
@@ -129,6 +130,51 @@ class RealFilesTest(unittest.TestCase):
         bundle2, _ = conv.build(REAL_TREE, REAL_CSV)
         self.assertEqual(first, conv.dump(bundle2).encode("utf-8"))
         self.assertEqual(json.loads(first)["format"], 1)
+
+
+class QuestionSheetTest(unittest.TestCase):
+    """The corrected chemistry sheet: ten questions, one key each, D14 and D16 applied."""
+
+    @classmethod
+    def setUpClass(cls):
+        cls.topics = conv.parse_tree(REAL_TREE)
+        cls.questions = conv.parse_questions(REAL_QUESTIONS, cls.topics)
+
+    def test_ten_questions_with_four_choices_and_one_key(self):
+        self.assertEqual(len(self.questions), 10)
+        for q in self.questions:
+            self.assertEqual(len(q["choices"]), 4)
+            self.assertIn(q["correctChoice"], (1, 2, 3, 4))
+
+    def test_zn_she_questions_have_the_anode_distractor_and_unchanged_keys(self):
+        by_code = {q["sourceCode"]: q for q in self.questions}
+        for n in (1, 6, 9):
+            q = by_code["f12e8f54:Q%02d" % n]
+            self.assertEqual(q["correctChoice"], 1)
+            zn = [c for c in q["choices"] if "Zn-SHE" in c]
+            self.assertEqual(len(zn), 1)
+            self.assertIn("نقش آند", zn[0])
+
+    def test_every_topic_is_in_the_tree(self):
+        codes = {t["sourceCode"] for t in self.topics}
+        for q in self.questions:
+            self.assertIn(q["topicSourceCode"], codes)
+
+    def test_no_html_no_nan_no_stray_tokens(self):
+        for q in self.questions:
+            for c in q["choices"]:
+                self.assertNotIn("<", c)
+                self.assertNotIn("C40", c)
+                self.assertNotRegex(c, r"\bnan\b")
+
+    def test_refuses_when_the_answer_line_disagrees_with_the_verdicts(self):
+        text = Path(REAL_QUESTIONS).read_text(encoding="utf-8")
+        broken = text.replace("پس گزینه‌ی 1 صحیح است", "پس گزینه‌ی 2 صحیح است", 1)
+        with tempfile.TemporaryDirectory() as d:
+            path = Path(d) / "broken.html"
+            path.write_text(broken, encoding="utf-8")
+            with self.assertRaises(conv.ConversionError):
+                conv.parse_questions(path, self.topics)
 
 
 if __name__ == "__main__":

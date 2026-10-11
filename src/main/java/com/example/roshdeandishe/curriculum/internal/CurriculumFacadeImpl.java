@@ -70,6 +70,43 @@ class CurriculumFacadeImpl implements CurriculumFacade {
         return toInfo(topicRepository.save(topic));
     }
 
+    @Override
+    public boolean upsertPlatformQuestion(String sourceCode, String topicSourceCode, String text,
+                                          List<String> choices, int correctChoice, String answer) {
+        if (sourceCode == null || sourceCode.isBlank() || sourceCode.strip().length() > 64) {
+            throw new CurriculumException(new CurriculumError.InvalidQuestion("کد منبع سؤال باید بین ۱ تا ۶۴ نویسه باشد."));
+        }
+        if (text == null || text.isBlank()) {
+            throw new CurriculumException(new CurriculumError.InvalidQuestion("متن سؤال نمی‌تواند خالی باشد."));
+        }
+        if (choices == null || choices.size() != 4 || choices.stream().anyMatch(c -> c == null || c.isBlank())) {
+            throw new CurriculumException(new CurriculumError.InvalidQuestion("هر سؤال باید چهار گزینه‌ی غیرخالی داشته باشد."));
+        }
+        if (correctChoice < 1 || correctChoice > 4) {
+            throw new CurriculumException(new CurriculumError.InvalidQuestion("گزینه‌ی درست باید ۱ تا ۴ باشد."));
+        }
+        String topicCode = topicSourceCode == null ? "" : topicSourceCode.strip();
+        TopicEntity topic = topicRepository.findBySourceCodeAndSchoolIdIsNull(topicCode)
+                .orElseThrow(() -> new CurriculumException(new CurriculumError.InvalidQuestion(
+                        "سرفصل «" + topicCode + "» پلتفرمی نیست.")));
+
+        String code = sourceCode.strip();
+        QuestionEntity existing = questionRepository.findBySourceCodeAndSchoolIdIsNull(code).orElse(null);
+        QuestionEntity question = existing != null ? existing : new QuestionEntity();
+        question.setSourceCode(code);
+        question.setSchoolId(null);
+        question.setTopicId(topic.getId());
+        question.setText(text.strip());
+        question.setChoice1(choices.get(0).strip());
+        question.setChoice2(choices.get(1).strip());
+        question.setChoice3(choices.get(2).strip());
+        question.setChoice4(choices.get(3).strip());
+        question.setCorrectChoice(correctChoice);
+        question.setAnswer(answer == null || answer.isBlank() ? null : answer.strip());
+        questionRepository.save(question);
+        return existing == null;
+    }
+
     // والد نباید خودِ سرفصل یا یکی از نوادگانش باشد (حلقه): از والد به بالا می‌رویم
     private void requireNotInSubtree(TopicEntity topic, TopicEntity newParent) {
         TopicEntity cursor = newParent;

@@ -42,8 +42,15 @@ public class PlatformMoshavereImportController {
                 .map(c -> c == null ? null
                         : new MoshavereImportFacade.CourseEntry(c.gradeLevel(), c.name(), c.track(), c.topicSourceCode()))
                 .toList();
-        ImportSummary s = importFacade.importBundle(new Bundle(request.format(), request.source(), topics, courses), dryRun);
+        List<MoshavereImportFacade.QuestionEntry> questions = request.questions() == null ? null
+                : request.questions().stream()
+                .map(q -> q == null ? null
+                        : new MoshavereImportFacade.QuestionEntry(q.sourceCode(), q.topicSourceCode(), q.text(),
+                        q.choices(), q.correctChoice(), q.answer()))
+                .toList();
+        ImportSummary s = importFacade.importBundle(
+                new Bundle(request.format(), request.source(), topics, courses, questions), dryRun);
         return new MoshavereImportResponse(s.topicsCreated(), s.topicsUpdated(), s.coursesCreated(),
-                s.coursesUpdated(), s.coursesUnlinked(), s.dryRun());
+                s.coursesUpdated(), s.coursesUnlinked(), s.questionsCreated(), s.questionsUpdated(), s.dryRun());
     }
 }

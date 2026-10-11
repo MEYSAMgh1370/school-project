@@ -6,8 +6,12 @@ import org.springframework.data.repository.query.Param;
 
 import java.util.Collection;
 import java.util.List;
+import java.util.Optional;
 
 interface QuestionRepository extends JpaRepository<QuestionEntity, Long> {
+
+    /** سؤال پلتفرمی با این کدِ منبع (کلید upsert ایمپورت). */
+    Optional<QuestionEntity> findBySourceCodeAndSchoolIdIsNull(String sourceCode);
 
     /** سؤال‌های قابل‌مشاهده برای مدرسه: پلتفرمی (school_id null) + خودِ مدرسه. */
     @Query("select q from QuestionEntity q where q.schoolId is null or q.schoolId = :schoolId order by q.id asc")
