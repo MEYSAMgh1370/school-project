@@ -358,7 +358,7 @@ class PromotionFacadeImpl implements PromotionFacade {
             ClassEntity classEntity = classRepository.findById(placement.classId())
                     .filter(c -> c.getSchoolId().equals(schoolId))
                     .orElseThrow(() -> new AcademicException(new AcademicError.ClassNotFound(placement.classId())));
-            enrollmentLedger.place(student, classEntity, current.code());
+            enrollmentLedger.place(student, classEntity, current.code(), placement.track());
             placed++;
         }
         return placed;

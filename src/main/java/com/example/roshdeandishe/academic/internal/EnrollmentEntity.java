@@ -49,6 +49,10 @@ class EnrollmentEntity {
     @Column(name = "promotion_run_id")
     private Long promotionRunId;
 
+    /** رشته‌ی دانش‌آموز در همین سال (ریاضی/تجربی/انسانی)؛ تهی = تعیین نشده. ارتقا آن را کپی نمی‌کند. */
+    @Column(name = "track", length = 16)
+    private String track;
+
     @Column(name = "created_at", nullable = false)
     private Instant createdAt;
 

@@ -160,6 +160,16 @@ class MyStudyPlanFlowIntegrationTest {
         return intervals.get(0).get("id").asLong();
     }
 
+    @Autowired
+    private org.springframework.jdbc.core.JdbcTemplate jdbc;
+
+    @org.junit.jupiter.api.BeforeEach
+    void schoolOneHasNoCurrentYear() {
+        // سال جاری مدرسه‌ی ۱ را تهی می‌کند: این تست‌ها تخصیص را می‌سنجند، نه ثبت‌نام (P2)، و کلاس‌های دیگرِ همین
+        // بافتِ تست آن را روی سالِ قدیمی می‌گذارند؛ بدونِ سالِ جاری، رفتارِ پیشین برقرار است
+        jdbc.update("update school.schools set current_academic_year_id = null where id = 1");
+    }
+
     @Test
     void studentSeesOwnWeekWithTopicNamesAndCanLogItsOwnInterval() throws Exception {
         MockHttpSession adminSession = loginAsAdmin();

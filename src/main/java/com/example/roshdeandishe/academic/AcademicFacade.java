@@ -22,6 +22,13 @@ public interface AcademicFacade {
      */
     StudentId enrollStudent(String email, String fullName, Long schoolId, Long classId);
 
+    /**
+     * همان ثبت‌نام با رشته‌ی دانش‌آموز ({@code ریاضی}، {@code تجربی} یا {@code انسانی}) روی ردیفِ ثبت‌نامِ سالِ جاری.
+     * {@code track} تهی = رشته دست نمی‌خورد (برای ردیفِ تازه تهی می‌ماند). رشته‌ی نامعتبر InvalidTrack؛ رشته برای مدرسه‌ای
+     * که سالِ جاری ندارد (ردیفی نیست که ذخیره شود) TrackNeedsCurrentYear و هیچ اثری نمی‌گذارد.
+     */
+    StudentId enrollStudent(String email, String fullName, Long schoolId, Long classId, String track);
+
     StudentInfo getStudentInfo(Long studentId);
 
     StudentInfo getStudentInfo(Long schoolId, Long studentId);
@@ -62,6 +69,18 @@ public interface AcademicFacade {
      * سالِ ناشناخته: InvalidAcademicYear.
      */
     List<StudentInfo> listStudentsEnrolledIn(Long schoolId, String academicYear);
+
+    /**
+     * شرطِ نسبت دادنِ برنامه‌ی مطالعه یا آزمون به یک دانش‌آموز: او باید در سالِ تحصیلیِ حاوی {@code date} ردیفِ ثبت‌نام
+     * داشته باشد (ENROLLED یا PENDING؛ هر ردیفی کافی است). سالِ حاوی تاریخ همان سالی از
+     * {@code SchoolFacade.listAcademicYears()} است که {@code startDate <= date <= endDate}؛ هیچ سال یا پایه‌ای حدس
+     * زده نمی‌شود.
+     * <p>
+     * فقط برای مدرسه‌ای که سالِ جاری دارد اعمال می‌شود؛ مدرسه‌ی بدونِ سالِ جاری مثل پیش از این بدون بررسی و بدون خطا
+     * می‌گذرد. اگر مدرسه سالِ جاری دارد ولی هیچ سالی تاریخ را در بر نمی‌گیرد AcademicError.NoAcademicYearForDate؛
+     * اگر دانش‌آموز در آن سال ردیفی ندارد AcademicError.StudentNotEnrolledInYear. هیچ اثری نمی‌گذارد.
+     */
+    void requireEnrolledOn(Long schoolId, Long studentId, java.time.LocalDate date);
 
     /**
      * gradeLevel باید در بازه‌ی مقطع تحصیلی همین مدرسه باشد (school.SchoolFacade.SchoolLevel،

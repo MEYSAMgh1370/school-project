@@ -90,6 +90,7 @@ public interface PromotionFacade {
     record PendingStudent(Long studentId, Long userId, int gradeLevel, Integer previousGradeLevel) {
     }
 
-    record Placement(Long studentId, Long classId) {
+    /** {@code track}: رشته‌ی دانش‌آموز در سالِ جاری؛ تهی = بدون تغییر (ارتقا خودش رشته را کپی نمی‌کند). */
+    record Placement(Long studentId, Long classId, String track) {
     }
 }

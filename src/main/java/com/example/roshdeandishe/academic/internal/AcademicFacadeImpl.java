@@ -20,6 +20,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.time.Instant;
+import java.time.LocalDate;
 import java.util.HashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -67,9 +68,18 @@ class AcademicFacadeImpl implements AcademicFacade {
         this.eventPublisher = eventPublisher;
     }
 
+    // نسخه‌ی بدون رشته خودِ پیاده‌سازی را دارد، نه default متدِ اینترفیس: default از داخلِ شیء صدا می‌زند و
+    // @Transactional روی ثبت‌نامِ پنج‌آرگومانی دور زده می‌شود، پس رویدادِ ثبت‌نام پس از commit منتشر نمی‌شود
     @Override
     @Transactional
     public StudentId enrollStudent(String email, String fullName, Long schoolId, Long classId) {
+        return enrollStudent(email, fullName, schoolId, classId, null);
+    }
+
+    @Override
+    @Transactional
+    public StudentId enrollStudent(String email, String fullName, Long schoolId, Long classId, String track) {
+        EnrollmentLedger.requireValidTrack(track);
         ClassEntity classEntity = requireClassInSchool(schoolId, classId);
 
         // «ردیاب‌شده» بودنِ مدرسه پیش از افزودنِ این دانش‌آموز سنجیده می‌شود (academic-year.md فاز ۳)
@@ -79,6 +89,10 @@ class AcademicFacadeImpl implements AcademicFacade {
                 && !classEntity.getAcademicYear().equals(currentYear.get().code())) {
             throw new AcademicException(new AcademicError.ClassNotInYear(
                     classId, classEntity.getAcademicYear(), currentYear.get().code()));
+        }
+        // رشته فقط روی ردیفِ ثبت‌نام می‌نشیند و مدرسه‌ی غیرردیاب‌شده ردیف ندارد؛ پیش از هر اثری رد می‌شود
+        if (track != null && !tracked) {
+            throw new AcademicException(new AcademicError.TrackNeedsCurrentYear());
         }
 
         // همان الگوی SchoolController: پیدا/ساخت کاربر در iam، سپس Membership
@@ -97,7 +111,7 @@ class AcademicFacadeImpl implements AcademicFacade {
         StudentEntity saved = studentRepository.save(student);
 
         if (tracked) {
-            enrollmentLedger.place(saved, classEntity, currentYear.get().code());
+            enrollmentLedger.place(saved, classEntity, currentYear.get().code(), track);
         }
 
         if (existingStudent.isEmpty() || returning) {
@@ -222,6 +236,21 @@ class AcademicFacadeImpl implements AcademicFacade {
         return studentRepository.findAllById(studentIds).stream()
                 .map(AcademicFacadeImpl::toStudentInfo)
                 .toList();
+    }
+
+    @Override
+    public void requireEnrolledOn(Long schoolId, Long studentId, LocalDate date) {
+        // فقط مدرسه‌ای که سالِ جاری دارد بررسی می‌شود؛ مدرسه‌ی بدونِ سالِ جاری رفتار پیشین را دارد
+        if (enrollmentLedger.currentYear(schoolId).isEmpty()) {
+            return;
+        }
+        AcademicYearInfo year = schoolFacade.listAcademicYears().stream()
+                .filter(y -> !date.isBefore(y.startDate()) && !date.isAfter(y.endDate()))
+                .findFirst()
+                .orElseThrow(() -> new AcademicException(new AcademicError.NoAcademicYearForDate(date)));
+        if (enrollmentRepository.findByStudentIdAndAcademicYear(studentId, year.code()).isEmpty()) {
+            throw new AcademicException(new AcademicError.StudentNotEnrolledInYear(studentId, year.code()));
+        }
     }
 
     @Override

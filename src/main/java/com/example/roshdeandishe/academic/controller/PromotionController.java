@@ -111,7 +111,7 @@ public class PromotionController {
             throw new AcademicException(new AcademicError.InvalidRollover("فهرست جا‌دادن الزامی است."));
         }
         List<PromotionFacade.Placement> placements = request.placements().stream()
-                .map(p -> new PromotionFacade.Placement(p.studentId(), p.classId()))
+                .map(p -> new PromotionFacade.Placement(p.studentId(), p.classId(), p.track()))
                 .toList();
         return new PlacementResponse(promotionFacade.place(schoolId, placements));
     }

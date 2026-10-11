@@ -41,7 +41,8 @@ public class StudentController {
     public StudentResponse enrollStudent(@PathVariable Long schoolId, @RequestBody EnrollStudentRequest request) {
         TenantContext.requireMatches(schoolId);
 
-        StudentId studentId = academicFacade.enrollStudent(request.email(), request.fullName(), schoolId, request.classId());
+        StudentId studentId = academicFacade.enrollStudent(request.email(), request.fullName(), schoolId, request.classId(),
+                request.track());
         StudentInfo info = academicFacade.getStudentInfo(schoolId, studentId.value());
         return toResponse(info);
     }
