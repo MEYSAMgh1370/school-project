@@ -21,6 +21,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.math.BigDecimal;
 import java.time.Instant;
 import java.time.LocalDate;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -244,13 +245,31 @@ class AcademicFacadeImpl implements AcademicFacade {
         if (enrollmentLedger.currentYear(schoolId).isEmpty()) {
             return;
         }
-        AcademicYearInfo year = schoolFacade.listAcademicYears().stream()
-                .filter(y -> !date.isBefore(y.startDate()) && !date.isAfter(y.endDate()))
-                .findFirst()
+        AcademicYearInfo year = academicYearFor(date)
                 .orElseThrow(() -> new AcademicException(new AcademicError.NoAcademicYearForDate(date)));
         if (enrollmentRepository.findByStudentIdAndAcademicYear(studentId, year.code()).isEmpty()) {
             throw new AcademicException(new AcademicError.StudentNotEnrolledInYear(studentId, year.code()));
         }
+    }
+
+    /**
+     * سالِ تحصیلیِ شاملِ تاریخ. فاصله‌ی تابستانیِ میان پایانِ یک سال و شروعِ سالِ بعد به سالِ پیش از آن تعلق دارد
+     * (مثلاً تیر تا شهریورِ ۱۴۰۶ جزوِ ۱۴۰۵-۱۴۰۶ است). تاریخی پیش از اولین سال، یا پس از پایانِ آخرین سال، سال ندارد.
+     */
+    private Optional<AcademicYearInfo> academicYearFor(LocalDate date) {
+        List<AcademicYearInfo> years = schoolFacade.listAcademicYears().stream()
+                .sorted(Comparator.comparing(AcademicYearInfo::startDate))
+                .toList();
+        for (int i = 0; i < years.size(); i++) {
+            AcademicYearInfo year = years.get(i);
+            boolean inside = !date.isBefore(year.startDate()) && !date.isAfter(year.endDate());
+            boolean inSummerGap = i + 1 < years.size() && date.isAfter(year.endDate())
+                    && date.isBefore(years.get(i + 1).startDate());
+            if (inside || inSummerGap) {
+                return Optional.of(year);
+            }
+        }
+        return Optional.empty();
     }
 
     @Override

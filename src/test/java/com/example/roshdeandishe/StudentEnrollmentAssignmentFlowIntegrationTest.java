@@ -291,6 +291,23 @@ class StudentEnrollmentAssignmentFlowIntegrationTest {
         assertThat(examAssignments(examId)).isZero();
     }
 
+    @Test
+    void anExamInTheSummerGapBelongsToTheYearThatJustEnded() throws Exception {
+        School s = newSchoolWithCurrentYear();
+        long classId = createClass(s);
+        long studentId = enroll(s, classId); // ثبت‌نام در سالِ جاری، که تابستانِ پس از پایانش به آن تعلق دارد
+        List<Year> years = years(s);
+        int index = years.indexOf(currentYear(s));
+        Assumptions.assumeTrue(index + 1 < years.size(), "سالِ جاری آخرین سالِ فهرست است");
+        LocalDate summerDay = years.get(index).end().plusDays(1);
+        Assumptions.assumeTrue(summerDay.isBefore(years.get(index + 1).start()), "میان دو سال فاصله‌ای نیست");
+        long examId = createExam(s, summerDay);
+
+        assignExam(s, examId, studentId).andExpect(status().isOk());
+
+        assertThat(examAssignments(examId)).isEqualTo(1);
+    }
+
     // ---- مدرسه‌ی بدونِ سالِ جاری ----
 
     @Test
