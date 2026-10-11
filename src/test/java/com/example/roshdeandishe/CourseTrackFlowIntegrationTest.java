@@ -269,6 +269,18 @@ class CourseTrackFlowIntegrationTest {
         assertThat(names).contains(c.common(), c.math(), c.science()).doesNotContain(c.otherGrade());
     }
 
+    @Test
+    void aSchoolWithoutACurrentYearAndNoRequestedYearIsRejectedWithItsOwnError() throws Exception {
+        School s = newSchool();
+        setCurrentYear(s, CURRENT);
+        Pupil p = enroll(s, createClass(s, GRADE), MATH);
+        jdbc.update("update school.schools set current_academic_year_id = null where id = ?", s.id());
+
+        adminGet(s, "/students/" + p.studentId() + "/courses")
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.type").value(org.hamcrest.Matchers.endsWith("no-current-academic-year")));
+    }
+
     // ---- دیتابیس ----
 
     @Test

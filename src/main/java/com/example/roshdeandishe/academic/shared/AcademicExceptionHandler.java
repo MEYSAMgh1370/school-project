@@ -136,6 +136,11 @@ public class AcademicExceptionHandler {
                     "برای این تاریخ سال تحصیلی تعریف نشده است",
                     "هیچ سال تحصیلی‌ای شامل تاریخ " + e.date() + " نیست."
             );
+            case AcademicError.NoCurrentAcademicYear e -> ProblemDetailFactory.problem(
+                    HttpStatus.BAD_REQUEST, "no-current-academic-year",
+                    "مدرسه سال تحصیلی جاری ندارد",
+                    "سال تحصیلی را مشخص کنید یا ابتدا سال تحصیلی جاری مدرسه را تعیین کنید."
+            );
             case AcademicError.PromotionRunNotFound e -> ProblemDetailFactory.problem(
                     HttpStatus.NOT_FOUND, "promotion-run-not-found",
                     "اجرای ارتقا یافت نشد",

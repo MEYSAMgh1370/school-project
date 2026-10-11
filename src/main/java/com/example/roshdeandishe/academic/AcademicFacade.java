@@ -169,8 +169,8 @@ public interface AcademicFacade {
      * {@link #listCoursesForClass}). فقط این فهرستِ دانش‌آموز بر اساس رشته فیلتر می‌شود؛
      * {@link #listCoursesForClass} و فهرست‌های معلم/بانک رشته را نمی‌شناسند و بدون فیلتر می‌مانند.
      * <p>
-     * اگر دانش‌آموز در آن سال ردیفِ ثبت‌نام ندارد (یا مدرسه سالِ جاری ندارد و سالی داده نشده)
-     * AcademicError.StudentNotEnrolledInYear؛ سالِ ناشناخته InvalidAcademicYear؛
+     * اگر دانش‌آموز در آن سال ردیفِ ثبت‌نام ندارد AcademicError.StudentNotEnrolledInYear؛ اگر مدرسه سالِ جاری ندارد و
+     * سالی داده نشده AcademicError.NoCurrentAcademicYear؛ سالِ ناشناخته InvalidAcademicYear؛
      * دانش‌آموزی که از این مدرسه نباشد StudentNotFound.
      */
     List<CourseInfo> listCoursesForStudent(Long schoolId, Long studentId, String academicYear);

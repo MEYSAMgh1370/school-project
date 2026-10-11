@@ -451,7 +451,7 @@ class AcademicFacadeImpl implements AcademicFacade {
             startYear = requireListedYear(year);
         } else {
             AcademicYearInfo current = enrollmentLedger.currentYear(schoolId).orElseThrow(
-                    () -> new AcademicException(new AcademicError.StudentNotEnrolledInYear(studentId, null)));
+                    () -> new AcademicException(new AcademicError.NoCurrentAcademicYear()));
             yearCode = current.code();
             startYear = current.startYear();
         }
