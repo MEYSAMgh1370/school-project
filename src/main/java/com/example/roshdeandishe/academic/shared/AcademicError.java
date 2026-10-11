@@ -163,6 +163,10 @@ public sealed interface AcademicError {
     record NoAcademicYearForDate(java.time.LocalDate date) implements AcademicError {
     }
 
+    /** مدرسه سالِ جاری ندارد و درخواست هم سالی مشخص نکرده: سالی برای خواندنِ ثبت‌نام نیست. */
+    record NoCurrentAcademicYear() implements AcademicError {
+    }
+
     record PromotionRunNotFound(Long runId) implements AcademicError {
     }
 

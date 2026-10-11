@@ -5,6 +5,7 @@ import com.example.roshdeandishe.academic.AcademicFacade.GuardianLinkId;
 import com.example.roshdeandishe.academic.AcademicFacade.StudentId;
 import com.example.roshdeandishe.academic.AcademicFacade.StudentInfo;
 import com.example.roshdeandishe.academic.dto.request.EnrollStudentRequest;
+import com.example.roshdeandishe.academic.dto.response.CourseResponse;
 import com.example.roshdeandishe.academic.dto.response.GuardianLinkResponse;
 import com.example.roshdeandishe.academic.dto.request.LinkGuardianRequest;
 import com.example.roshdeandishe.academic.dto.response.StudentResponse;
@@ -81,6 +82,25 @@ public class StudentController {
                 .toList();
     }
 
+
+    /**
+     * درس‌های یک دانش‌آموز: درس‌های پایه‌ی ثبت‌نامِ او که مشترک‌اند یا مخصوص رشته‌ی خودِ او (رشته‌ی تهی = فقط
+     * مشترک‌ها). همان شکل و همان گیتِ GradeController.listCourses (GRADES_EDIT)؛ فقط این مسیر بر اساس رشته فیلتر
+     * می‌کند. سالِ اختیاری؛ بدون آن سالِ جاریِ مدرسه.
+     */
+    @GetMapping("/{studentId}/courses")
+    @RequiresPermission("GRADES_EDIT")
+    public List<CourseResponse> listCourses(@PathVariable Long schoolId, @PathVariable Long studentId,
+                                            @RequestParam(required = false) String academicYear) {
+        TenantContext.requireMatches(schoolId);
+        if (academicYear != null) {
+            yearVisibility.requireVisible(schoolId, academicYear);
+        }
+
+        return academicFacade.listCoursesForStudent(schoolId, studentId, academicYear).stream()
+                .map(course -> new CourseResponse(course.id().value(), course.gradeLevel(), course.name()))
+                .toList();
+    }
 
     /**
      * لینک کردن یک کاربر (که باید از قبل Membership فعالِ نقش PARENT در

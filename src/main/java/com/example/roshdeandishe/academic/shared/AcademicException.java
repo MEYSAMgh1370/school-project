@@ -48,6 +48,8 @@ public final class AcademicException extends RuntimeException {
                     "دانش‌آموز " + e.studentId() + " در سال تحصیلی «" + e.academicYear() + "» ثبت‌نام نشده است.";
             case AcademicError.NoAcademicYearForDate e ->
                     "هیچ سال تحصیلی‌ای شامل تاریخ " + e.date() + " نیست.";
+            case AcademicError.NoCurrentAcademicYear e ->
+                    "مدرسه سال تحصیلی جاری ندارد؛ سال تحصیلی را مشخص کنید.";
             case AcademicError.PromotionRunNotFound e -> "اجرای ارتقای " + e.runId() + " یافت نشد.";
             case AcademicError.PromotionRunNotUndoable e -> e.reason();
             case AcademicError.PeriodNotFound e -> "زنگی با شناسه " + e.periodId() + " یافت نشد.";

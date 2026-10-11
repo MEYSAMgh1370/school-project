@@ -434,6 +434,38 @@ class AcademicFacadeImpl implements AcademicFacade {
                 .toList();
     }
 
+    // نسخه‌ی بدون سال خودِ پیاده‌سازی را دارد، نه default متدِ اینترفیس (همان درسِ enrollStudent در بالا)
+    @Override
+    public List<CourseInfo> listCoursesForStudent(Long schoolId, Long studentId) {
+        return listCoursesForStudent(schoolId, studentId, null);
+    }
+
+    @Override
+    public List<CourseInfo> listCoursesForStudent(Long schoolId, Long studentId, String academicYear) {
+        requireStudentInSchool(schoolId, studentId);
+        String year = AcademicYearCodes.canonical(academicYear);
+        String yearCode;
+        int startYear;
+        if (year != null && !year.isEmpty()) {
+            yearCode = year;
+            startYear = requireListedYear(year);
+        } else {
+            AcademicYearInfo current = enrollmentLedger.currentYear(schoolId).orElseThrow(
+                    () -> new AcademicException(new AcademicError.NoCurrentAcademicYear()));
+            yearCode = current.code();
+            startYear = current.startYear();
+        }
+        EnrollmentEntity enrollment = enrollmentRepository.findByStudentIdAndAcademicYear(studentId, yearCode)
+                .orElseThrow(() -> new AcademicException(new AcademicError.StudentNotEnrolledInYear(studentId, yearCode)));
+        // رشته‌ی تهی فقط درس‌های مشترک را می‌دهد، نه همه را (CourseEntity.isOpenToTrack)
+        String track = enrollment.getTrack();
+        return courseRepository.findByGradeLevelAndGradedTrueOrderByNameAsc(enrollment.getGradeLevel()).stream()
+                .filter(c -> c.isOfferedIn(startYear))
+                .filter(c -> c.isOpenToTrack(track))
+                .map(c -> new CourseInfo(new CourseId(c.getId()), c.getGradeLevel(), c.getName()))
+                .toList();
+    }
+
     @Override
     public List<GradeInfo> listGradesForStudents(Long schoolId, List<Long> studentIds) {
         if (studentIds.isEmpty()) {
