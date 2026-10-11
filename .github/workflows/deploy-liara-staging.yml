@@ -1,0 +1,45 @@
+# DRAFT - not committed. Review before enabling.
+#
+# Deploys master to the Liara staging app "myeduhelper" on every push to master.
+# Needs one repository secret: LIARA_API_TOKEN (Liara console -> API token).
+#
+# Notes:
+# - Liara builds the Docker image on its own servers (build.location in liara.json).
+#   The build step can take up to ~20 minutes; the job timeout below allows for that.
+# - The app runs Flyway migrations on startup, so every merge to master migrates staging.
+# - Production is NOT deployed by this workflow.
+
+name: Deploy staging to Liara
+
+on:
+  push:
+    branches: [master]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: liara-staging-deploy
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - name: Check out master
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js (for the Liara CLI)
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: Install Liara CLI
+        run: npm install -g @liara/cli@9.4.7
+
+      - name: Deploy to myeduhelper
+        env:
+          LIARA_API_TOKEN: ${{ secrets.LIARA_API_TOKEN }}
+        run: liara deploy --app myeduhelper --platform docker --api-token "$LIARA_API_TOKEN"
