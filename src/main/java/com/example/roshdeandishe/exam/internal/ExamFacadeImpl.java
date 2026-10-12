@@ -222,6 +222,23 @@ class ExamFacadeImpl implements ExamFacade {
 
     @Override
     public List<ExamInfo> listExamsForStudent(Long schoolId, Long studentId) {
+        return examsForStudent(schoolId, studentId).stream().map(this::toExamInfo).toList();
+    }
+
+    @Override
+    public void requireQuestionInStudentExams(Long schoolId, Long studentId, Long questionId) {
+        LocalDateTime now = LocalDateTime.now();
+        boolean visible = examsForStudent(schoolId, studentId).stream()
+                .filter(exam -> !now.isBefore(exam.getStartAt()))
+                .flatMap(exam -> sectionRepository.findByExamIdOrderByIdAsc(exam.getId()).stream())
+                .anyMatch(section -> sectionQuestionRepository.existsBySectionIdAndQuestionId(
+                        section.getId(), questionId));
+        if (!visible) {
+            throw new ExamException(new ExamError.QuestionNotFound(questionId));
+        }
+    }
+
+    private List<ExamEntity> examsForStudent(Long schoolId, Long studentId) {
         List<ExamEntity> weekly = examRepository
                 .findByStudentIdAndExamTypeOrderByWeekStartDesc(studentId, ExamType.WEEKLY).stream()
                 .filter(e -> e.getSchoolId().equals(schoolId))
@@ -236,7 +253,7 @@ class ExamFacadeImpl implements ExamFacade {
                         .toList();
         List<ExamEntity> all = new ArrayList<>(weekly);
         all.addAll(collective);
-        return all.stream().map(this::toExamInfo).toList();
+        return all;
     }
 
     @Override

@@ -43,6 +43,26 @@ public class CurriculumExceptionHandler {
                     "سؤال نامعتبر",
                     e.reason()
             );
+            case CurriculumError.QuestionNotFound e -> ProblemDetailFactory.problem(
+                    HttpStatus.NOT_FOUND, "question-not-found",
+                    "سؤال یافت نشد",
+                    "سؤالی با شناسه " + e.questionId() + " برای این مدرسه یافت نشد."
+            );
+            case CurriculumError.ReportNotFound e -> ProblemDetailFactory.problem(
+                    HttpStatus.NOT_FOUND, "question-report-not-found",
+                    "گزارش یافت نشد",
+                    "گزارشی با شناسه " + e.reportId() + " یافت نشد."
+            );
+            case CurriculumError.InvalidReport e -> ProblemDetailFactory.problem(
+                    HttpStatus.BAD_REQUEST, "invalid-question-report",
+                    "گزارش نامعتبر",
+                    e.reason()
+            );
+            case CurriculumError.InvalidReportTransition e -> ProblemDetailFactory.problem(
+                    HttpStatus.CONFLICT, "invalid-report-transition",
+                    "تغییر وضعیت گزارش مجاز نیست",
+                    "گزارش از وضعیت " + e.from() + " به " + e.to() + " نمی‌رود."
+            );
             case CurriculumError.InvalidMoshavereBundle e -> ProblemDetailFactory.problem(
                     HttpStatus.BAD_REQUEST, "moshavere-bundle-invalid",
                     "بسته‌ی مشاوره نامعتبر",

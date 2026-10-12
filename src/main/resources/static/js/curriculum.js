@@ -17,6 +17,17 @@ document.addEventListener('alpine:init', () => {
         error: '',
         notice: '',
         blocked: false,
+        // modal «گزارش مشکل» (تنها modal صفحه): null = بسته
+        // { question, opener, errors: { reportType, comment }, error }
+        report: null,
+        reportForm: { reportType: '', comment: '' },
+        submittingReport: false,
+        reportTypes: [
+            { value: 'WRONG_ANSWER', label: 'پاسخ نادرست' },
+            { value: 'TYPO', label: 'غلط املایی' },
+            { value: 'UNCLEAR_TEXT', label: 'متن نامفهوم' },
+            { value: 'OTHER', label: 'سایر' }
+        ],
         topicForm: { name: '', parentId: '' },
         questionForm: { topicId: '', text: '', choice1: '', choice2: '', choice3: '', choice4: '', correctChoice: '1', difficulty: '', answer: '' },
         difficultyLevels: [
@@ -217,6 +228,86 @@ document.addEventListener('alpine:init', () => {
                 this.error = 'ارتباط با سرور برقرار نشد.';
             } finally {
                 this.submittingTopic = false;
+            }
+        },
+
+        openReport(question, event) {
+            this.notice = '';
+            this.error = '';
+            this.reportForm = { reportType: '', comment: '' };
+            this.report = {
+                question,
+                opener: event ? event.currentTarget : null,
+                errors: { reportType: '', comment: '' },
+                error: ''
+            };
+            this.$nextTick(() => {
+                if (window.ModalFocus) {
+                    window.ModalFocus.focusFirst(this.$refs.reportModal, document.getElementById('reportType'));
+                }
+            });
+        },
+
+        closeReport() {
+            const opener = this.report ? this.report.opener : null;
+            this.report = null;
+            if (window.ModalFocus) {
+                window.ModalFocus.restore(opener);
+            }
+        },
+
+        // اعتبارسنجی سمت کلاینت: خطا کنار فیلد و خلاصه‌اش بالای modal (ناحیه‌ی پیام modal)
+        validateReport() {
+            const errors = { reportType: '', comment: '' };
+            if (!this.reportTypes.some(t => t.value === this.reportForm.reportType)) {
+                errors.reportType = 'نوع مشکل را انتخاب کنید.';
+            }
+            if (this.reportForm.comment.length > 1000) {
+                errors.comment = 'توضیح نباید بیشتر از ۱۰۰۰ نویسه باشد.';
+            }
+            this.report.errors = errors;
+            this.report.error = (errors.reportType || errors.comment) ? 'گزارش ثبت نشد؛ فیلدهای مشخص‌شده را اصلاح کنید.' : '';
+            return !this.report.error;
+        },
+
+        async submitReport() {
+            if (!this.report || this.submittingReport || !this.validateReport()) {
+                return;
+            }
+            this.submittingReport = true;
+            try {
+                const comment = this.reportForm.comment.trim();
+                const response = await fetch(`${this.questionsBase()}/${this.report.question.id}/reports`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-School-ID': this.schoolId,
+                        'X-XSRF-TOKEN': this.csrfToken()
+                    },
+                    body: JSON.stringify({
+                        reportType: this.reportForm.reportType,
+                        comment: comment || null
+                    })
+                });
+                if (!response.ok) {
+                    const classified = await this.classifyError(response);
+                    if (classified.blocking) {
+                        // 403 (ماژول/دسترسی): پیام مشترک بالای صفحه؛ فهرست سؤال‌ها همچنان قابل مرور می‌ماند
+                        this.closeReport();
+                        this.error = classified.message;
+                    } else {
+                        this.report.error = classified.message;
+                    }
+                    return;
+                }
+                this.closeReport();
+                this.notice = 'گزارش ثبت شد.';
+            } catch (e) {
+                if (this.report) {
+                    this.report.error = 'ارتباط با سرور برقرار نشد.';
+                }
+            } finally {
+                this.submittingReport = false;
             }
         },
 

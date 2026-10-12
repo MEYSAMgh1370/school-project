@@ -15,6 +15,20 @@ document.addEventListener('alpine:init', () => {
         remainingLabel: '',
         expired: false,
         timerHandle: null,
+        // «گزارش مشکل» کاملاً مستقل از وضعیت آزمون است و به selectedChoice/savingByQuestion/
+        // expired دست نمی‌زند. null = modal بسته؛ وگرنه { question, opener, errors, error }
+        report: null,
+        reportForm: { reportType: '', comment: '' },
+        submittingReport: false,
+        reportNotice: '',
+        reportPageError: '',
+        reportNoticeTimer: null,
+        reportTypes: [
+            { value: 'WRONG_ANSWER', label: 'پاسخ نادرست' },
+            { value: 'TYPO', label: 'غلط املایی' },
+            { value: 'UNCLEAR_TEXT', label: 'متن نامفهوم' },
+            { value: 'OTHER', label: 'سایر' }
+        ],
 
         init() {
             const params = new URLSearchParams(window.location.search);
@@ -34,6 +48,108 @@ document.addEventListener('alpine:init', () => {
         destroy() {
             clearInterval(this.timerHandle);
             clearTimeout(this.saveStatusTimer);
+            clearTimeout(this.reportNoticeTimer);
+        },
+
+        csrfToken() {
+            const match = document.cookie.match(/(?:^|;\s*)XSRF-TOKEN=([^;]*)/);
+            return match ? decodeURIComponent(match[1]) : '';
+        },
+
+        // صفحه‌ی آزمون فقط توکن دارد و navbar ندارد؛ مدرسه همان است که دانش‌آموز
+        // از «آزمون‌های من» (my-exams.js) با آن آزمون را شروع کرده است.
+        reportSchoolId() {
+            const saved = parseInt(localStorage.getItem('selectedSchoolId') || '', 10);
+            return Number.isInteger(saved) ? saved : null;
+        },
+
+        openReport(question, event) {
+            this.reportNotice = '';
+            this.reportPageError = '';
+            this.reportForm = { reportType: '', comment: '' };
+            this.report = {
+                question,
+                opener: event ? event.currentTarget : null,
+                errors: { reportType: '', comment: '' },
+                error: ''
+            };
+            this.$nextTick(() => {
+                if (window.ModalFocus) {
+                    window.ModalFocus.focusFirst(this.$refs.reportModal, document.getElementById('reportType'));
+                }
+            });
+        },
+
+        closeReport() {
+            const opener = this.report ? this.report.opener : null;
+            this.report = null;
+            if (window.ModalFocus) {
+                window.ModalFocus.restore(opener);
+            }
+        },
+
+        validateReport() {
+            const errors = { reportType: '', comment: '' };
+            if (!this.reportTypes.some(t => t.value === this.reportForm.reportType)) {
+                errors.reportType = 'نوع مشکل را انتخاب کنید.';
+            }
+            if (this.reportForm.comment.length > 1000) {
+                errors.comment = 'توضیح نباید بیشتر از ۱۰۰۰ نویسه باشد.';
+            }
+            this.report.errors = errors;
+            this.report.error = (errors.reportType || errors.comment) ? 'گزارش ثبت نشد؛ فیلدهای مشخص‌شده را اصلاح کنید.' : '';
+            return !this.report.error;
+        },
+
+        async submitReport() {
+            if (!this.report || this.submittingReport || !this.validateReport()) {
+                return;
+            }
+            const schoolId = this.reportSchoolId();
+            if (!schoolId) {
+                this.report.error = 'مدرسه‌ی انتخاب‌شده مشخص نیست. از «آزمون‌های من» دوباره وارد آزمون شوید.';
+                return;
+            }
+            this.submittingReport = true;
+            try {
+                const comment = this.reportForm.comment.trim();
+                const response = await fetch(
+                    `/api/student/schools/${schoolId}/questions/${this.report.question.questionId}/reports`, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-School-ID': schoolId,
+                            'X-XSRF-TOKEN': this.csrfToken()
+                        },
+                        body: JSON.stringify({
+                            reportType: this.reportForm.reportType,
+                            comment: comment || null
+                        })
+                    });
+                if (!response.ok) {
+                    const message = await this.parseError(response);
+                    if (response.status === 403) {
+                        // دسترسی/ماژول: پیام در صفحه؛ پاسخ‌ها و آزمون دست‌نخورده می‌مانند
+                        this.closeReport();
+                        this.reportPageError = message;
+                    } else {
+                        this.report.error = message;
+                    }
+                    return;
+                }
+                this.closeReport();
+                this.reportNotice = 'گزارش ثبت شد.';
+                clearTimeout(this.reportNoticeTimer);
+                this.reportNoticeTimer = setTimeout(() => {
+                    this.reportNotice = '';
+                }, 5000);
+            } catch (e) {
+                if (this.report) {
+                    this.report.error = 'ارتباط با سرور برقرار نشد.';
+                }
+            } finally {
+                this.submittingReport = false;
+            }
         },
 
         startCountdown(expireAt) {

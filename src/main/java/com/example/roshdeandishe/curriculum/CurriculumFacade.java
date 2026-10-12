@@ -1,5 +1,6 @@
 package com.example.roshdeandishe.curriculum;
 
+import java.time.Instant;
 import java.util.List;
 import java.util.Set;
 
@@ -75,6 +76,63 @@ public interface CurriculumFacade {
      * difficulty با فیلترِ فعال حذف می‌شود، همان رفتار IN در منبع).
      */
     List<QuestionInfo> listQuestions(Long schoolId, QuestionFilter filter);
+
+    /**
+     * ثبت گزارش مشکل یک سؤال. سؤال باید برای مدرسه قابل‌مشاهده باشد (پلتفرمی یا متعلق به همین مدرسه) - وگرنه
+     * QuestionNotFound. نوع گزارش الزامی است و توضیح حداکثر ۱۰۰۰ نویسه (InvalidReport وگرنه). خودِ سؤال
+     * هرگز تغییر نمی‌کند (D10)؛ گزارش تکراری مجاز است.
+     */
+    ReportId createReport(Long schoolId, Long reporterUserId, Long questionId, ReportType reportType, String comment);
+
+    /** صف مدرسه: همه‌ی گزارش‌هایی که کاربران این مدرسه ثبت کرده‌اند؛ {@code status} تهی = همه. جدیدترین اول. */
+    List<QuestionReportInfo> listReportsForSchool(Long schoolId, ReportStatus status);
+
+    /** گزارش‌هایی که خودِ این کاربر در این مدرسه ثبت کرده است (دید دانش‌آموز). جدیدترین اول. */
+    List<QuestionReportInfo> listReportsByReporter(Long schoolId, Long userId);
+
+    /**
+     * تغییر وضعیت یک گزارشِ سؤالِ اختصاصیِ همین مدرسه (question.school_id == schoolId). گزارشِ سؤال پلتفرمی
+     * یا مدرسه‌ی دیگر ReportNotFound است. فقط OPEN→REVIEWED، REVIEWED→FIXED و REVIEWED→CLOSED مجاز است
+     * (InvalidReportTransition وگرنه). {@code note} اختیاری و حداکثر ۱۰۰۰ نویسه است.
+     */
+    QuestionReportInfo updateSchoolReport(Long schoolId, Long reportId, ReportStatus newStatus, String note);
+
+    /** صف پلتفرم: گزارش‌های سؤال‌های پلتفرمی از هر مدرسه (schoolId = مدرسه‌ی گزارش‌دهنده). */
+    List<QuestionReportInfo> listPlatformReports(ReportStatus status);
+
+    /** مثل {@link #updateSchoolReport} ولی فقط برای گزارش‌های سؤال پلتفرمی؛ وگرنه ReportNotFound. */
+    QuestionReportInfo updatePlatformReport(Long reportId, ReportStatus newStatus, String note);
+
+    enum ReportType {
+        WRONG_ANSWER, TYPO, UNCLEAR_TEXT, OTHER
+    }
+
+    /** گردش: OPEN → REVIEWED → (FIXED | CLOSED). */
+    enum ReportStatus {
+        OPEN, REVIEWED, FIXED, CLOSED
+    }
+
+    record ReportId(Long value) {
+    }
+
+    /**
+     * {@code platformQuestion} = سؤال پلتفرمی است (صف پلتفرم)؛ {@code schoolId} مدرسه‌ی گزارش‌دهنده است.
+     */
+    record QuestionReportInfo(
+            ReportId id,
+            Long questionId,
+            String questionText,
+            boolean platformQuestion,
+            Long reporterUserId,
+            Long schoolId,
+            ReportType reportType,
+            String comment,
+            ReportStatus status,
+            String resolutionNote,
+            Instant createdAt,
+            Instant updatedAt
+    ) {
+    }
 
     record TopicId(Long value) {
     }

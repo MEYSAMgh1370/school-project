@@ -85,6 +85,7 @@
             @if(navbar.platformAdmin())
                 <%-- فقط برای مدیر پلتفرم (iam.platform_admins)؛ فقط نمایش - مجوز را API پلتفرم می‌سنجد --%>
                 <li><a href="/platform/holidays" data-platform-link>تعطیلی‌های سراسری</a></li>
+                <li><a href="/platform/question-reports" data-platform-link>گزارش‌های سؤال پلتفرم</a></li>
             @endif
         </ul>
         @if(!navbar.schools().isEmpty())

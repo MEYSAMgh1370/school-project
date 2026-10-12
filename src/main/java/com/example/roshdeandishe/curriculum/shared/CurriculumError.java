@@ -23,6 +23,21 @@ public sealed interface CurriculumError {
     record InvalidQuestion(String reason) implements CurriculumError {
     }
 
+    /** سؤالی با این شناسه برای این مدرسه قابل‌مشاهده نیست (وجود ندارد یا اختصاصیِ مدرسه‌ی دیگر است). */
+    record QuestionNotFound(Long questionId) implements CurriculumError {
+    }
+
+    /** گزارشی با این شناسه در این صف (مدرسه/پلتفرم) وجود ندارد. */
+    record ReportNotFound(Long reportId) implements CurriculumError {
+    }
+
+    record InvalidReport(String reason) implements CurriculumError {
+    }
+
+    /** گردش وضعیت فقط OPEN→REVIEWED، REVIEWED→FIXED و REVIEWED→CLOSED است. */
+    record InvalidReportTransition(String from, String to) implements CurriculumError {
+    }
+
     /** بسته‌ی ایمپورت مشاوره نامعتبر است؛ {@code reason} اولین مشکل را نام می‌برد. هیچ چیزی نوشته نشده است. */
     record InvalidMoshavereBundle(String reason) implements CurriculumError {
     }

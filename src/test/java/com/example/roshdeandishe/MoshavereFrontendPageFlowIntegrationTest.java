@@ -132,6 +132,7 @@ class MoshavereFrontendPageFlowIntegrationTest {
     void examTakePageRendersWithoutAuthentication() throws Exception {
         mockMvc.perform(get("/exam-take").param("token", "invalid-token"))
                 .andExpect(status().isOk())
-                .andExpect(content().string(org.hamcrest.Matchers.containsString("examTakePage")));
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("examTakePage")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("گزارش مشکل")));
     }
 }

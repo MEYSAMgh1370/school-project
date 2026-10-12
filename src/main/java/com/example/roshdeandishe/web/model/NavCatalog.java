@@ -64,6 +64,8 @@ public final class NavCatalog {
                             List.of(ADMIN), List.of(ADMIN)).withPermissions("ATTENDANCE_VIEW_ALL").withIcon("check"),
                     new Link("/curriculum", "سرفصل‌ها و بانک سؤال", "سرفصل‌های درسی و بانک سؤال",
                             List.of(ADMIN, TEACHER), List.of()).withPermissions("CURRICULUM_VIEW").withIcon("class"),
+                    new Link("/question-reports", "گزارش‌های سؤال", "مشکل‌هایی که درباره‌ی سؤال‌ها گزارش شده است",
+                            List.of(ADMIN, TEACHER), List.of()).withPermissions("CURRICULUM_VIEW").withIcon("class"),
                     new Link("/study-plans", "برنامه‌های مطالعه", "برنامه‌های مطالعه‌ی کلاس‌ها",
                             List.of(ADMIN, TEACHER), List.of()).withPermissions("STUDYPLAN_VIEW").withIcon("calendar"),
                     new Link("/exams", "آزمون‌ها", "ساخت و پیگیری آزمون‌ها",
