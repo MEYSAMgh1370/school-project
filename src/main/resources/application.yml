@@ -154,6 +154,10 @@ roshdeandishe:
     # (به /activate?token=... ختم می‌شود). در production اجباری است -
     # رجوع به application-prod.yml.
     activation-base-url: ${APP_BASE_URL:http://localhost:8080}
+    # آیا اپراتور اعلام کرده ایمیل واقعاً ارسال می‌شود؟ فقط صفحه‌ی ورود را کنترل می‌کند: لینکِ
+    # «رمز عبور را فراموش کرده‌اید؟» فقط وقتی که true است دیده می‌شود (password-reset-by-email.md).
+    # در dev روشن است (Mailpit محلی)؛ در production پیش‌فرض خاموش است - رجوع به application-prod.yml.
+    delivery-available: true
   bale:
     # Bot API بله - عمداً کلون Telegram Bot API (همان شکل .../bot<token>/METHOD)
     api-base-url: https://tapi.bale.ai

@@ -42,6 +42,7 @@ public class LoginPageController {
         model.addAttribute("postAuthenticationDestination", destination);
         model.addAttribute("otpAvailable", iamFacade.isOtpDeliveryAvailable());
         model.addAttribute("justRegistered", "1".equals(registered));
+        model.addAttribute("resetAvailable", iamFacade.isPasswordResetAvailable());
         return "login";
     }
 }

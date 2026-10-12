@@ -109,6 +109,7 @@ This is intentional. An application that boots with a public signing key or a
 | `MAIL_USERNAME` | — | SMTP user |
 | `MAIL_PASSWORD` | — | SMTP password |
 | `MAIL_FROM` | `no-reply@roshdeandishe.ir` | From-address on system email |
+| `MAIL_DELIVERY_AVAILABLE` | `false` | Set to `true` only after SMTP is configured **and** a real send was verified. It does not enable email; it only makes `/login` show «رمز عبور را فراموش کرده‌اید؟» (password reset needs email). While `false`, `/forgot-password` explains that recovery is unavailable |
 | `MAIL_SMTP_AUTH` | `true` | SMTP auth on/off |
 | `MAIL_SMTP_STARTTLS` | `true` | STARTTLS on/off |
 | `BALE_BOT_TOKEN` | *(empty)* | Bale bot token. Empty = the bot logs what it would send and makes no HTTP call |

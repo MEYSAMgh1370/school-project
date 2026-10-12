@@ -1,7 +1,10 @@
 # Password Reset By Email
 
-Status: proposed 2026-10-12; not implemented; blocked from real use until SMTP
-is configured (not configured as of 2026-10-12). Approach decided with the product
+Status: proposed and implemented 2026-10-12 (the request/confirm endpoints, the two
+pages, `V26`, session closing, and the `MAIL_DELIVERY_AVAILABLE` gate for the
+`/login` link; current behavior is in
+[`specs/current-system.md`](../specs/current-system.md)). Not usable by real
+users until SMTP is configured (not configured as of 2026-10-12). Approach decided with the product
 owner on 2026-10-12 (a separate hashed reset-token flow, not a reuse of invite
 tokens). Delivery channel for this proposal is email only. Nothing here is
 current behavior until it moves into
@@ -142,9 +145,10 @@ receives the link. Consequences for this proposal:
 5. Reset by the Bale bot for users with a linked phone, later.
 6. Should the requester be notified at the *old* email when a reset completes
    (it is the same mailbox here, so likely not needed)?
-7. Should `/login` show the «forgot password» link only when mail delivery is
-   known to work (the same idea as the SMS tab, `IamFacade.isOtpDeliveryAvailable`),
-   so staging without SMTP does not promise a link that never arrives?
+7. ~~Should `/login` show the link only when mail delivery is known to work?~~
+   Decided 2026-10-12: yes. `roshdeandishe.mail.delivery-available`
+   (`MAIL_DELIVERY_AVAILABLE`, default `false` in production) gates the link; while
+   it is off `/forgot-password` explains that recovery is unavailable.
 
 ## Acceptance Criteria
 
@@ -181,3 +185,19 @@ receives the link. Consequences for this proposal:
 - Session invalidation after confirm.
 - Page tests for both pages and the link on `/login`; a browser check at desktop
   and mobile widths.
+
+## Implemented Shape
+
+- Migration `V26__password_reset_tokens.sql`; logic in
+  `iam.internal.PasswordResetService`, reached through three `IamFacade` methods
+  (`requestPasswordReset`, `confirmPasswordReset`, `isPasswordResetAvailable`).
+- The email is sent on a separate thread (`CompletableFuture.runAsync`) so the
+  response time does not reveal whether the account exists.
+- Only active users that already have a password get a token; invited-but-not-
+  activated and suspended users get none and the same reply (Open Question 1
+  stays at its default: do nothing).
+- A reset deletes the user's rows through
+  `FindByIndexNameSessionRepository.findByPrincipalName`; other users' sessions
+  are untouched. Mobile JWTs are not revoked (Open Question 4).
+- `/forgot-password` and `/reset-password` are public in `SecurityConfig` and
+  exempt in `TenantResolverFilter`.

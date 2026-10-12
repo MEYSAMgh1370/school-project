@@ -54,6 +54,7 @@ class IamFacadeImpl implements IamFacade {
     private final InviteEmailSender inviteEmailSender;
     private final SmsDriver smsDriver;
     private final InviteDescriber inviteDescriber;
+    private final PasswordResetService passwordResetService;
 
     IamFacadeImpl(
             UserRepository userRepository,
@@ -70,7 +71,8 @@ class IamFacadeImpl implements IamFacade {
             PasswordEncoder passwordEncoder,
             InviteEmailSender inviteEmailSender,
             SmsDriver smsDriver,
-            InviteDescriber inviteDescriber
+            InviteDescriber inviteDescriber,
+            PasswordResetService passwordResetService
     ) {
         this.userRepository = userRepository;
         this.roleRepository = roleRepository;
@@ -87,6 +89,7 @@ class IamFacadeImpl implements IamFacade {
         this.inviteEmailSender = inviteEmailSender;
         this.smsDriver = smsDriver;
         this.inviteDescriber = inviteDescriber;
+        this.passwordResetService = passwordResetService;
     }
 
     @Override
@@ -178,6 +181,21 @@ class IamFacadeImpl implements IamFacade {
     @Override
     public boolean isOtpDeliveryAvailable() {
         return smsDriver.deliveryAvailable();
+    }
+
+    @Override
+    public void requestPasswordReset(String email) {
+        passwordResetService.request(email);
+    }
+
+    @Override
+    public void confirmPasswordReset(String token, String newPassword) {
+        passwordResetService.confirm(token, newPassword);
+    }
+
+    @Override
+    public boolean isPasswordResetAvailable() {
+        return passwordResetService.deliveryAvailable();
     }
 
     @Override
