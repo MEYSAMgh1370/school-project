@@ -15,7 +15,9 @@
             noSchoolMessage = "برای مدیریت کلاس‌ها، یک مدرسه از سوییچر بالا انتخاب کنید.",
             content = @`
 
-                <div class="box">
+                <%-- فرمِ ساخت کلاس فقط برای نقشی با CLASS_MANAGE دیده می‌شود؛ به معلم نشان‌دادنِ فرمی که ثبتش همیشه ۴۰۳
+                     می‌دهد گمراه‌کننده بود. این فقط نمایش است؛ مرزِ امنیتی خودِ API است. --%>
+                <div class="box" x-cloak x-show="$store.nav.permissions.includes('CLASS_MANAGE')">
                     <h2 class="title is-6">افزودن کلاس جدید</h2>
                     <p class="help" x-show="school" x-text="gradeRangeHelp()"></p>
                     <form @submit.prevent="createClass">
