@@ -11,6 +11,11 @@ interface TopicRepository extends JpaRepository<TopicEntity, Long> {
     /** سرفصلِ پلتفرمی با کدِ منبع - کلیدِ upsertِ ایمپورت. */
     java.util.Optional<TopicEntity> findBySourceCodeAndSchoolIdIsNull(String sourceCode);
 
+    /** سرفصل‌هایی با این کدهای منبع که برای مدرسه قابل‌مشاهده‌اند (پلتفرمی یا متعلق به همین مدرسه). */
+    @Query("select t from TopicEntity t where t.sourceCode in :codes and (t.schoolId is null or t.schoolId = :schoolId)")
+    List<TopicEntity> findVisibleBySourceCodes(@Param("schoolId") Long schoolId,
+                                               @Param("codes") java.util.Collection<String> codes);
+
     /** سرفصل‌های قابل‌مشاهده برای مدرسه: پلتفرمی (school_id null) + خودِ مدرسه. */
     @Query("select t from TopicEntity t where t.schoolId is null or t.schoolId = :schoolId "
             + "order by t.sortOrder asc, t.id asc")

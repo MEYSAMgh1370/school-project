@@ -163,6 +163,19 @@ class CurriculumFacadeImpl implements CurriculumFacade {
     }
 
     @Override
+    public Map<String, Long> resolveTopicIdsBySourceCode(Long schoolId, java.util.Collection<String> sourceCodes) {
+        if (sourceCodes == null || sourceCodes.isEmpty()) {
+            return Map.of();
+        }
+        List<String> codes = sourceCodes.stream().filter(c -> c != null && !c.isBlank()).map(String::strip).distinct().toList();
+        if (codes.isEmpty()) {
+            return Map.of();
+        }
+        return topicRepository.findVisibleBySourceCodes(schoolId, codes).stream()
+                .collect(Collectors.toMap(TopicEntity::getSourceCode, TopicEntity::getId, (a, b) -> a));
+    }
+
+    @Override
     public List<TopicTreeNode> getTopicTree(Long schoolId) {
         List<TopicEntity> topics = topicRepository.findVisibleToSchool(schoolId);
         Map<Long, List<TopicEntity>> byParent = topics.stream()

@@ -47,6 +47,12 @@ public interface CurriculumFacade {
     List<TopicInfo> listTopics(Long schoolId);
 
     /**
+     * کدهای منبع (source_code) → شناسه‌ی سرفصل، فقط برای سرفصل‌های قابل‌مشاهده برای مدرسه (پلتفرمی یا خودِ
+     * مدرسه). کدِ ناشناخته یا نامرئی در نتیجه نمی‌آید؛ کدها strip می‌شوند.
+     */
+    java.util.Map<String, Long> resolveTopicIdsBySourceCode(Long schoolId, java.util.Collection<String> sourceCodes);
+
+    /**
      * درخت کامل سرفصل‌های یک مدرسه - جایگزین مسیرخوانی درخت pickle شده‌ی
      * moshavere. برخلاف moshavere (که یک ریشه‌ی سراسری داشت)، هر مدرسه
      * می‌تواند چند سرفصل ریشه داشته باشد، پس خروجی فهرست ریشه‌هاست.

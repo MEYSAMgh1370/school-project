@@ -48,6 +48,18 @@ public interface StudyPlanFacade {
     List<WeekCourseInfo> listWeekCourses(Long schoolId, Long planId);
 
     /**
+     * ایمپورت گروهی سرفصل‌های هفتگی با کدِ منبعِ سرفصل (source_code). هر مورد مستقل است و از همان مسیر
+     * {@link #createWeekCourse} می‌گذرد (هر کدام تراکنش جدا)؛ زیرسرفصل‌ها باید نوادگان سرفصل درس باشند.
+     * مورد هم‌ارزِ موجود (همان برنامه/هفته/درس) EXISTING است نه خطا. {@code dryRun} همه‌چیز را همان‌طور
+     * اعتبارسنجی می‌کند ولی هیچ‌چیز نمی‌نویسد (تراکنش هر مورد rollback می‌شود). بیش از {@value #MAX_IMPORT_ITEMS}
+     * مورد یا فهرست خالی InvalidWeekCourse؛ برنامه‌ی ناموجود PlanNotFound.
+     */
+    WeekCourseImportResult importWeekCourses(Long schoolId, Long planId, boolean dryRun,
+                                             List<WeekCourseImportItem> items);
+
+    int MAX_IMPORT_ITEMS = 500;
+
+    /**
      * تخصیص برنامه به دانش‌آموز - upsert: هر دانش‌آموز در هر لحظه دقیقاً
      * یک برنامه دارد (همان FK تکی Student.plan در moshavere)؛ تخصیص جدید
      * جایگزین قبلی می‌شود، نه رکورد تکراری.
@@ -205,6 +217,21 @@ public interface StudyPlanFacade {
 
     record WeekCourseInfo(WeekCourseId id, PlanId planId, LocalDate weekStart,
                           Long courseTopicId, List<Long> subTopicIds) {
+    }
+
+    record WeekCourseImportItem(LocalDate weekStart, String courseTopicCode, List<String> subTopicCodes) {
+    }
+
+    enum ImportStatus {
+        CREATED, EXISTING, FAILED
+    }
+
+    record WeekCourseImportOutcome(int index, LocalDate weekStart, String courseTopicCode,
+                                   ImportStatus status, String reason) {
+    }
+
+    record WeekCourseImportResult(boolean dryRun, int total, int created, int existing, int failed,
+                                  List<WeekCourseImportOutcome> items) {
     }
 
     record AssignmentInfo(Long studentId, PlanId planId, Instant assignedAt) {

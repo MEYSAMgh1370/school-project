@@ -7,6 +7,8 @@ import com.example.roshdeandishe.studyplan.StudyPlanFacade;
 import com.example.roshdeandishe.studyplan.StudyPlanFacade.WeekCourseId;
 import com.example.roshdeandishe.studyplan.StudyPlanFacade.WeekCourseInfo;
 import com.example.roshdeandishe.studyplan.dto.request.CreateWeekCourseRequest;
+import com.example.roshdeandishe.studyplan.dto.request.ImportWeekCoursesRequest;
+import com.example.roshdeandishe.studyplan.dto.response.ImportWeekCoursesResponse;
 import com.example.roshdeandishe.studyplan.dto.response.WeekCourseResponse;
 import org.springframework.web.bind.annotation.*;
 
@@ -38,6 +40,27 @@ public class WeekCourseController {
                 schoolId, planId, request.weekStart(), request.courseTopicId(), subTopicIds);
         return new WeekCourseResponse(weekCourseId.value(), planId, request.weekStart(),
                 request.courseTopicId(), subTopicIds);
+    }
+
+    @PostMapping("/import")
+    @RequiresPermission("STUDYPLAN_MANAGE")
+    public ImportWeekCoursesResponse importWeekCourses(@PathVariable Long schoolId, @PathVariable Long planId,
+                                                       @RequestBody ImportWeekCoursesRequest request) {
+        TenantContext.requireMatches(schoolId);
+
+        List<StudyPlanFacade.WeekCourseImportItem> items = request.items() == null ? null
+                : request.items().stream()
+                .map(i -> new StudyPlanFacade.WeekCourseImportItem(i.weekStart(), i.courseTopicCode(), i.subTopicCodes()))
+                .toList();
+        // dryRun غایب = پیش‌نمایش؛ نوشتن فقط با dryRun=false صریح
+        boolean dryRun = request.dryRun() == null || request.dryRun();
+        StudyPlanFacade.WeekCourseImportResult result = studyPlanFacade.importWeekCourses(schoolId, planId, dryRun, items);
+        return new ImportWeekCoursesResponse(result.dryRun(), result.total(), result.created(), result.existing(),
+                result.failed(),
+                result.items().stream()
+                        .map(o -> new ImportWeekCoursesResponse.Item(o.index(), o.weekStart(), o.courseTopicCode(),
+                                o.status().name(), o.reason()))
+                        .toList());
     }
 
     @GetMapping
