@@ -6,20 +6,27 @@ import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 
+import java.security.Principal;
+
 /**
  * فقط رندر صفحه‌ی ثبت‌نام عمومی - ثبت‌نام واقعی در
  * {@link AuthController#register} (POST /api/auth/register) انجام می‌شود؛
  * جاوااسکریپت صفحه همان endpoint را صدا می‌زند و در صورت موفقیت، با همان
  * اعتبارنامه‌ها لاگین کرده و به مقصد مجازِ پس از ورود می‌رود. همان الگوی
  * {@link LoginPageController}: در iam.shared، چون ثبت‌نام دقیقاً دغدغه‌ی
- * AuthController/SecurityConfig است.
+ * AuthController/SecurityConfig است. کاربرِ از قبل واردشده فرم را نمی‌بیند و مستقیم به
+ * همان مقصدِ مجاز می‌رود.
  */
 @Controller
 public class RegisterPageController {
 
     @GetMapping("/register")
-    public String registerPage(@RequestParam(required = false) String next, Model model) {
-        model.addAttribute("postAuthenticationDestination", PostAuthenticationDestination.from(next));
+    public String registerPage(@RequestParam(required = false) String next, Principal principal, Model model) {
+        String destination = PostAuthenticationDestination.from(next);
+        if (principal != null) {
+            return "redirect:" + destination;
+        }
+        model.addAttribute("postAuthenticationDestination", destination);
         return "register";
     }
 }
