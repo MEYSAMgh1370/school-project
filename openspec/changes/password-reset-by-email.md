@@ -1,6 +1,7 @@
 # Password Reset By Email
 
-Status: proposed 2026-10-12; not implemented. Approach decided with the product
+Status: proposed 2026-10-12; not implemented; blocked from real use until SMTP
+is configured (not configured as of 2026-10-12). Approach decided with the product
 owner on 2026-10-12 (a separate hashed reset-token flow, not a reuse of invite
 tokens). Delivery channel for this proposal is email only. Nothing here is
 current behavior until it moves into
@@ -107,10 +108,20 @@ all of those, and keeps invite semantics unchanged.
 
 ## Prerequisite
 
-Real SMTP in production. Until `MAIL_HOST`/credentials are configured and
-delivery is verified there, the feature works in tests and development but a
-production user will never receive the link. Whether production SMTP is
-configured is **not confirmed** (asked 2026-10-12, unanswered).
+Real SMTP. Confirmed by the product owner on 2026-10-12: **SMTP is not
+configured**, and there is no production deployment yet, only a staging one.
+Until `MAIL_HOST`/credentials are set and delivery is verified on staging, the
+feature works in tests and development, but a staging or production user never
+receives the link. Consequences for this proposal:
+
+- Implementation can go ahead and be tested without SMTP (mail is captured in
+  tests; development can use a local catcher such as Mailpit, see `README.md`).
+- Enabling it for real users is gated on choosing and configuring an SMTP
+  provider for staging first. That provider choice is not part of this
+  proposal and is not decided.
+- Until then, staging users who forget a password have no recovery path, and
+  the link on `/login` should either be hidden or say so (to be decided with
+  Open Question 7).
 
 ## Open Questions (unresolved; do not invent answers in code)
 
@@ -127,6 +138,9 @@ configured is **not confirmed** (asked 2026-10-12, unanswered).
 5. Reset by the Bale bot for users with a linked phone, later.
 6. Should the requester be notified at the *old* email when a reset completes
    (it is the same mailbox here, so likely not needed)?
+7. Should `/login` show the «forgot password» link only when mail delivery is
+   known to work (the same idea as the SMS tab, `IamFacade.isOtpDeliveryAvailable`),
+   so staging without SMTP does not promise a link that never arrives?
 
 ## Acceptance Criteria
 
