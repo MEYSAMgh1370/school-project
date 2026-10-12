@@ -1,9 +1,12 @@
 # Moshavere Content Import (ورود محتوای «مشاور با من»)
 
 Status: proposed 2026-10-09; revised 2026-10-11 after a code review. Product-owner
-decisions D1–D13 and answers O1–O13 are recorded (see **Decisions** and **Answers**).
-Six new design defaults from the review (P1–P6) are marked **Proposed** and need
-confirmation before implementation. Not implemented.
+decisions D1–D17 and answers O1–O17 are recorded (see **Decisions** and **Answers**).
+Implemented as of 2026-10-12: phases 0–3 and the school-side import mechanism of
+phase 4 (see **Implementation Status**). Still open: the converter that turns the
+original weekly-plan sheets into week-course items, and any upload page. The
+design defaults P1–P6 were built as written; P4 was confirmed 2026-10-11 and the
+rest have not been explicitly confirmed by the product owner.
 
 The `curriculum` and `studyplan` modules were ported from Moshavere in July
 2026 ([`../../MOSHAVERE_PORT_SPEC.md`](../../MOSHAVERE_PORT_SPEC.md) §4, §6),
@@ -388,6 +391,73 @@ slow or fragile.
 4. **Per-school weekly plans.** Each school's plans, using its own week start (O5),
    O3, O4, O6–O9 and its own weights (O10, O11). Needs phase 1 and the school's
    own weights.
+
+## Implementation Status
+
+Checked against code and tests on 2026-10-12.
+
+| Phase | State | Evidence |
+|---|---|---|
+| 0 Platform foundation | Done | Migrations V21–V24 (enrollment track, course track, platform owner, course topic link); platform-aware `CurriculumFacadeImpl`; `requireEnrolledOn` (P2); track filter (P3); subtree endpoint and course picker |
+| 1 Tree and course catalog | Done | Platform importer with dry run; `data/moshavere/bundle_phase1.json` |
+| 2 Questions | Done | Chemistry questions imported; KaTeX rendering (O2); D12, D14, D15, D17 applied |
+| 3 Reports | Done | V25; see **Phase 3 notes** |
+| 4 Per-school weekly plans | Partly done | School-side import endpoint built; sheet converter and upload page not built; see **Phase 4 notes** |
+
+### Phase 3 notes (what was built, and choices the proposal left open)
+
+- Table `curriculum.question_reports` (V25) as in §1. Reports stay inside the
+  `curriculum` module; no new top-level module.
+- Report types: wrong answer, typo, unclear text, other. Status moves only
+  `OPEN → REVIEWED → FIXED | CLOSED`; any other move is a 409
+  (`invalid-report-transition`). Status updates lock the report row, so two
+  concurrent updates are serialized.
+- `QUESTION_REPORT` is granted to students, teachers and school admins (P6).
+  Creating a report on a platform question or on the school's own question
+  needs only this permission. A report on a question the school cannot see is
+  a 404.
+- School side (module `CURRICULUM`): `POST …/questions/{id}/reports`,
+  `GET …/question-reports[?status=]` (`CURRICULUM_VIEW`) and
+  `PATCH …/question-reports/{id}/status` (`CURRICULUM_MANAGE`, only for
+  reports on the school's own questions). A school sees every report its users
+  filed, including those on platform questions (D9).
+- Platform side: `GET /api/platform/question-reports[?status=]` and
+  `PATCH /api/platform/question-reports/{id}/status`, gated by a new platform
+  permission `PLATFORM_QUESTION_REPORT_MANAGE`. Platform permissions are
+  granted to platform admins as one set, so today this gives the same people
+  access as the holiday permission; it exists so the two can be split later.
+  Other platform controllers still use `PLATFORM_HOLIDAY_MANAGE`.
+- Students report through the `EXAM` module at
+  `/api/student/schools/{schoolId}/…` (not `/api/me`, because the tenant filter
+  skips `/api/me` and the module and permission checks would then run without a
+  school). These calls need `X-School-ID`. A student can report only a question
+  that is in an exam of theirs that has already started; anything else is a 404.
+  The exam-take page takes the school from the exam response (`schoolId`).
+  Students can also list their own reports, but there is no page for that yet.
+- Pages: «گزارش مشکل» button and modal in the question bank and in the exam
+  view; `/question-reports` (school queue); `/platform/question-reports`
+  (platform queue, linked from the platform-admin navbar).
+- Duplicate reports are allowed and there is no rate limit or paging on the
+  report lists. Teachers and admins have no report button in the exam
+  authoring or results views.
+
+### Phase 4 notes
+
+- Built: `POST /api/admin/schools/{schoolId}/study-plans/{planId}/week-courses/import`
+  (module `STUDY_PLANNER`, `STUDYPLAN_MANAGE`; teachers hold this permission, so
+  they can use it). Body: `dryRun` (default true) and up to 500 items, each a
+  week start (ISO date), a course topic code and up to 10 sub-topic codes.
+- Codes are resolved through `topics.source_code`. Each item then goes through
+  the existing `createWeekCourse` rules, in its own transaction. A dry run rolls
+  each item back. Re-running the same items reports `EXISTING`, not duplicates.
+  Sub-topics must be strict descendants of the course topic; this check is in
+  the import path only, not in `createWeekCourse`.
+- Not built: the converter from the original sheets (week labels such as «اول تیر»
+  to dates under O3–O6, the corrections O6/O7 and D13) and any upload page. The
+  six weekly-plan sheets are not in the repository, so these cannot be built or
+  tested yet. `bundle_phase1.json` has no `weekCourses`.
+- Each item reloads the school's full topic list through `createWeekCourse`, so
+  a 500-item import on the full tree may be slow; it has not been measured.
 
 ## Acceptance Criteria
 
