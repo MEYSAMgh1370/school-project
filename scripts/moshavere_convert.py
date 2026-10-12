@@ -18,6 +18,8 @@ from html.parser import HTMLParser
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+import moshavere_math_questions as math_questions  # noqa: E402  (sibling module; works under python3 -I)
 DEFAULT_TREE = ROOT / "data" / "moshavere" / "tree_v2_utf8.html"
 DEFAULT_CSV = ROOT / "data" / "moshavere" / "official_grade10_12.csv"
 DEFAULT_QUESTIONS = ROOT / "data" / "moshavere" / "questions_f12e8f54_chemistry3.html"
@@ -310,12 +312,34 @@ def qualify_track_names(courses):
         seen.add(key)
 
 
-def build(tree_path, csv_path, questions_path=None):
+def parse_math_questions(topics):
+    """Maths questions from the gosaste-4 sheet, reviewed by hand (see moshavere_math_questions.py)."""
+    known = {t["sourceCode"] for t in topics}
+    out = []
+    for number, text, choices, correct, topic, _note in math_questions.QUESTIONS:
+        if len(choices) != 4 or not 1 <= correct <= 4:
+            raise ConversionError("math question %d: needs four choices and a key 1-4" % number)
+        if topic not in known:
+            raise ConversionError("math question %d: topic %s is not in the tree" % (number, topic))
+        out.append({
+            "sourceCode": "gosaste-4:Q%02d" % number,
+            "topicSourceCode": topic,
+            "text": text,
+            "choices": list(choices),
+            "correctChoice": correct,
+            "answer": None,
+        })
+    return out
+
+
+def build(tree_path, csv_path, questions_path=None, math=False):
     topics = parse_tree(tree_path)
     courses = parse_courses(csv_path)
     report = match_courses(courses, topics)
     qualify_track_names(courses)
     questions = parse_questions(questions_path, topics) if questions_path else []
+    if math:
+        questions += parse_math_questions(topics)
     bundle = {"format": FORMAT, "source": SOURCE, "topics": topics, "courses": courses,
               "questions": questions}
     return bundle, report
@@ -334,7 +358,7 @@ def main(argv=None):
     ap.add_argument("--out", type=Path, default=DEFAULT_OUT)
     args = ap.parse_args(argv)
     try:
-        bundle, report = build(args.tree, args.csv, args.questions)
+        bundle, report = build(args.tree, args.csv, args.questions, math=True)
     except ConversionError as e:
         print("REFUSED: %s" % e)
         return 1

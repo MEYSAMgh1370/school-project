@@ -642,6 +642,357 @@
       "sourceCode": "f12e8f54:Q10",
       "text": "کدام یک از گزینه‌های زیر صحیح است.",
       "topicSourceCode": "24193"
+    },
+    {
+      "answer": null,
+      "choices": [
+        "۱۴۲",
+        "۱۵۶",
+        "۱۸۰",
+        "۱۹۲"
+      ],
+      "correctChoice": 4,
+      "sourceCode": "gosaste-4:Q01",
+      "text": "با حروف کلمه‌ی KAMYAB چند رمز عبور ۴ حرفی می‌توان ساخت؟",
+      "topicSourceCode": "14257"
+    },
+    {
+      "answer": null,
+      "choices": [
+        "۱۲۰",
+        "۱۸۰",
+        "۲۴۰",
+        "۳۰۰"
+      ],
+      "correctChoice": 3,
+      "sourceCode": "gosaste-4:Q02",
+      "text": "با حروف کلمه‌ی FARHAD چند رمز عبور ۶ حرفی می‌توان ساخت، به طوری که دو حرف A در کنار هم نباشند؟",
+      "topicSourceCode": "14260"
+    },
+    {
+      "answer": null,
+      "choices": [
+        "۲۴",
+        "۷۲",
+        "۶۰",
+        "۱۲۰"
+      ],
+      "correctChoice": 2,
+      "sourceCode": "gosaste-4:Q03",
+      "text": "در یک ساختمان ۶ طبقه، افراد $a$، $b$، $c$، $d$، $e$، $f$ هر کدام در یک طبقه زندگی می‌کنند. اگر بدانیم واحد $a$ بالاتر از $b$ است، در چند حالت فرد $b$ ساکن طبقه‌ی سوم است؟",
+      "topicSourceCode": "14257"
+    },
+    {
+      "answer": null,
+      "choices": [
+        "۲۴۳",
+        "۴³",
+        "۴!×۳!",
+        "۲۰۰"
+      ],
+      "correctChoice": 4,
+      "sourceCode": "gosaste-4:Q04",
+      "text": "در یک نظرسنجی که از ۵ سؤال تشکیل شده است، ۲۰۰ نفر شرکت کرده‌اند. اگر پاسخ سؤالات به‌صورت «بله، خیر و نمی‌دانم» باشد و همه‌ی افراد به همه‌ی سؤالات پاسخ بدهند، حداکثر چند پاسخ‌نامه‌ی متفاوت به‌وجود می‌آید؟",
+      "topicSourceCode": "14257"
+    },
+    {
+      "answer": null,
+      "choices": [
+        "۱",
+        "۲",
+        "۳",
+        "۵"
+      ],
+      "correctChoice": 1,
+      "sourceCode": "gosaste-4:Q05",
+      "text": "اگر $n$ عددی طبیعی باشد، از روابط $a \\mid 4n^2+6$ و $a \\mid 6n^2+1$ چند مقدار طبیعی برای $a$ موجود است؟",
+      "topicSourceCode": "23459"
+    },
+    {
+      "answer": null,
+      "choices": [
+        "۶",
+        "۳۶",
+        "۱۲",
+        "۲۴"
+      ],
+      "correctChoice": 3,
+      "sourceCode": "gosaste-4:Q06",
+      "text": "حروف کلمه‌ی severe را به چند طریق بدون توجه به مفهوم آن می‌توان کنار هم قرار داد، به طوری که e ها یک در میان باشند؟",
+      "topicSourceCode": "14257"
+    },
+    {
+      "answer": null,
+      "choices": [
+        "۱",
+        "۲",
+        "۳",
+        "۴"
+      ],
+      "correctChoice": 2,
+      "sourceCode": "gosaste-4:Q07",
+      "text": "چند نقطه با مختصات صحیح روی نمودار تابع $y=\\dfrac{4x+1}{x-2}$ در ربع دوم دستگاه مختصات قرار دارد؟",
+      "topicSourceCode": "18400"
+    },
+    {
+      "answer": null,
+      "choices": [
+        "۱۱۹",
+        "۱۲۰",
+        "۱۱۸",
+        "۱۱۵"
+      ],
+      "correctChoice": 1,
+      "sourceCode": "gosaste-4:Q08",
+      "text": "در چند جایگشت از حروف AABBCCDD عبارت ABCD ظاهر می‌شود؟",
+      "topicSourceCode": "14257"
+    },
+    {
+      "answer": null,
+      "choices": [
+        "۱۸۰",
+        "۲۱۶",
+        "۲۴۰",
+        "۳۶۰"
+      ],
+      "correctChoice": 4,
+      "sourceCode": "gosaste-4:Q09",
+      "text": "حروف کلمه‌ی EARNEST را به چند طریق می‌توان کنار هم قرار داد، به طوری که حرف N همواره در وسط قرار گیرد؟ (بدون توجه به مفهوم)",
+      "topicSourceCode": "14257"
+    },
+    {
+      "answer": null,
+      "choices": [
+        "$(a+b)^2\\ge0$",
+        "$(a-b)^2\\ge0$",
+        "$(a-2b)^2\\ge0$",
+        "$(2a-b)^2\\ge0$"
+      ],
+      "correctChoice": 2,
+      "sourceCode": "gosaste-4:Q10",
+      "text": "در اثبات درستی رابطه‌ی $a^2b+b^2a\\ge a+b$ به کمک اثبات بازگشتی به کدام رابطه‌ی بدیهی می‌رسیم؟ ($a$ و $b$ دو عدد حقیقی مثبت هستند.)",
+      "topicSourceCode": "14257"
+    },
+    {
+      "answer": null,
+      "choices": [
+        "۶۴",
+        "۷۲",
+        "۸۱",
+        "۹۳"
+      ],
+      "correctChoice": 3,
+      "sourceCode": "gosaste-4:Q13",
+      "text": "تعداد جواب‌های طبیعی معادله‌ی $x_1+2x_2+x_3=20$ کدام است؟",
+      "topicSourceCode": "14257"
+    },
+    {
+      "answer": null,
+      "choices": [
+        "۸۰",
+        "۱۰۸",
+        "۱۲۰",
+        "۱۴۴"
+      ],
+      "correctChoice": 2,
+      "sourceCode": "gosaste-4:Q14",
+      "text": "چند جایگشت چهار حرفی با حروف کلمه‌ی IRANIAN می‌توان نوشت که دقیقاً دو حرف آن تکراری باشد؟",
+      "topicSourceCode": "14257"
+    },
+    {
+      "answer": null,
+      "choices": [
+        "۱۳۲۰",
+        "۶۶۰",
+        "۳۳۰",
+        "۲۲۰"
+      ],
+      "correctChoice": 1,
+      "sourceCode": "gosaste-4:Q15",
+      "text": "از ۱۲ نفر دانش‌آموز نمونه، به چند راه می‌توان سه نفر را جهت مشارکت در سه مورد متمایز در امور مدرسه انتخاب کرد؟",
+      "topicSourceCode": "14260"
+    },
+    {
+      "answer": null,
+      "choices": [
+        "صفر",
+        "۱۱",
+        "۱۰",
+        "۱۲"
+      ],
+      "correctChoice": 4,
+      "sourceCode": "gosaste-4:Q16",
+      "text": "باقی‌مانده‌ی تقسیم عدد $13^{50}-11^{50}$ بر عدد $22$ چقدر است؟",
+      "topicSourceCode": "23459"
+    },
+    {
+      "answer": null,
+      "choices": [
+        "۶۰",
+        "۷۲",
+        "۸۰",
+        "۱۲۰"
+      ],
+      "correctChoice": 1,
+      "sourceCode": "gosaste-4:Q17",
+      "text": "شش رقم ۱، ۳، ۳، ۵، ۵، ۵ را از مقوا بریده در کنار یکدیگر جابه‌جا می‌کنیم. تعداد اعداد شش رقمی متمایز کدام است؟",
+      "topicSourceCode": "14257"
+    },
+    {
+      "answer": null,
+      "choices": [
+        "۲۸",
+        "۳۰",
+        "۳۲",
+        "۳۴"
+      ],
+      "correctChoice": 4,
+      "sourceCode": "gosaste-4:Q18",
+      "text": "از یک قطعه مقوا، ارقام ۵، ۳، ۲، ۲، ۲ و ۱ بریده شده است. با جایگشت هر سه رقم دلخواه از آن‌ها، چند عدد سه‌رقمی می‌توان ساخت؟",
+      "topicSourceCode": "14257"
+    },
+    {
+      "answer": null,
+      "choices": [
+        "۱۱۵",
+        "۱۲۵",
+        "۱۳۰",
+        "۱۳۵"
+      ],
+      "correctChoice": 4,
+      "sourceCode": "gosaste-4:Q19",
+      "text": "تعداد جایگشت‌های سه‌حرفی انتخاب‌شده از حروف کلمه‌ی DELAVAR کدام است؟",
+      "topicSourceCode": "14260"
+    },
+    {
+      "answer": null,
+      "choices": [
+        "۱۰",
+        "۲۵",
+        "۱۵",
+        "۳۰"
+      ],
+      "correctChoice": 2,
+      "sourceCode": "gosaste-4:Q20",
+      "text": "اگر $5 \\mid 2n+1$ باشد، عبارت $14n^2+19n+6$ همواره بر کدام عدد زیر بخش‌پذیر است؟ ($n\\in\\mathbb{Z}$)",
+      "topicSourceCode": "23459"
+    },
+    {
+      "answer": null,
+      "choices": [
+        "۲۰",
+        "۶۰",
+        "۱۲۰۰",
+        "۱۴۴۰"
+      ],
+      "correctChoice": 3,
+      "sourceCode": "gosaste-4:Q21",
+      "text": "۵ حرف از ۸ حرف کلمه‌ی «KHARAZMI» را با جایگشت‌های متمایز کنار هم قرار می‌دهیم. تعداد کلماتی ۵ حرفی که هر دو حرف A در آن‌ها موجود باشد، کدام است؟",
+      "topicSourceCode": "14257"
+    },
+    {
+      "answer": null,
+      "choices": [
+        "۵۶۴",
+        "۸۴۶",
+        "۵۴۶",
+        "۵۰۴"
+      ],
+      "correctChoice": 1,
+      "sourceCode": "gosaste-4:Q22",
+      "text": "چند عدد ۳ رقمی با ارقام غیرتکراری کوچک‌تر از ۸۷۴ وجود دارد؟",
+      "topicSourceCode": "14257"
+    },
+    {
+      "answer": null,
+      "choices": [
+        "۸۰",
+        "۴۰",
+        "۹۶",
+        "۱۶"
+      ],
+      "correctChoice": 4,
+      "sourceCode": "gosaste-4:Q24",
+      "text": "اگر $a$ و $b$ دو عدد صحیح فرد باشند، بزرگ‌ترین عددی که $a^4-b^4$ همواره بر آن بخش‌پذیر است کدام است؟",
+      "topicSourceCode": "23459"
+    },
+    {
+      "answer": null,
+      "choices": [
+        "۵",
+        "۶",
+        "۷",
+        "۸"
+      ],
+      "correctChoice": 1,
+      "sourceCode": "gosaste-4:Q25",
+      "text": "اگر $11 \\mid a+3b+k$ و $11 \\mid 5a+4b+3$ باشد، کم‌ترین مقدار طبیعی $k$ کدام است؟ ($a,b\\in\\mathbb{Z}$)",
+      "topicSourceCode": "23459"
+    },
+    {
+      "answer": null,
+      "choices": [
+        "۲۴",
+        "۳۶",
+        "۵۶",
+        "۷۲"
+      ],
+      "correctChoice": 4,
+      "sourceCode": "gosaste-4:Q26",
+      "text": "تعداد جایگشت‌های ۴ حرفی از حروف کلمه‌ی SALAMAT که دو حرف آن A باشد، کدام است؟",
+      "topicSourceCode": "14257"
+    },
+    {
+      "answer": null,
+      "choices": [
+        "۱۲",
+        "۱۴",
+        "۱۶",
+        "۱۸"
+      ],
+      "correctChoice": 4,
+      "sourceCode": "gosaste-4:Q27",
+      "text": "اگر $x^3-3x^2-4x$ مضرب ۱۱ باشد، آنگاه مجموع ارقام بزرگ‌ترین عدد طبیعی دو رقمی $x$ کدام است؟",
+      "topicSourceCode": "23459"
+    },
+    {
+      "answer": null,
+      "choices": [
+        "۴۸۰",
+        "۱۸۰",
+        "۸۴۰",
+        "۱۰۲۰"
+      ],
+      "correctChoice": 4,
+      "sourceCode": "gosaste-4:Q28",
+      "text": "با حروف کلمه‌ی ZEMESTAN چند رمز عبور چهار حرفی می‌توان ساخت؟",
+      "topicSourceCode": "14257"
+    },
+    {
+      "answer": null,
+      "choices": [
+        "۳۶۰",
+        "۲۴۰",
+        "۷۲۰",
+        "۴۸۰"
+      ],
+      "correctChoice": 4,
+      "sourceCode": "gosaste-4:Q29",
+      "text": "با حروف کلمه‌ی «گل پیرا» بدون تکرار حروف، چند کلمه‌ی ۶ حرفی می‌توان نوشت که در آن دو حرف «پ» و «ر» کنار هم نیامده باشند؟",
+      "topicSourceCode": "14257"
+    },
+    {
+      "answer": null,
+      "choices": [
+        "$26!$",
+        "$26\\times25\\times24\\times23$",
+        "$26\\times25$",
+        "$26^2$"
+      ],
+      "correctChoice": 4,
+      "sourceCode": "gosaste-4:Q30",
+      "text": "چند کلمه‌ی ۴ حرفی انگلیسی، صرف‌نظر از معنادار بودن، می‌توان ساخت، به‌طوری‌که از اول به آخر یا از آخر به اول بخوانیم، یک کلمه بخوانیم (مانند noon)؟",
+      "topicSourceCode": "14257"
     }
   ],
   "source": "moshaver-tree-v2",

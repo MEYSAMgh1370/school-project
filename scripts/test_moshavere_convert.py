@@ -184,5 +184,30 @@ class QuestionSheetTest(unittest.TestCase):
                 conv.parse_questions(path, self.topics)
 
 
+class MathQuestionsTest(unittest.TestCase):
+    """The gosaste-4 maths questions: 27 kept, each with four choices and a key."""
+
+    @classmethod
+    def setUpClass(cls):
+        cls.bundle, _ = conv.build(REAL_TREE, REAL_CSV, REAL_QUESTIONS, math=True)
+        cls.math = [q for q in cls.bundle["questions"] if q["sourceCode"].startswith("gosaste-4:")]
+
+    def test_twenty_seven_kept_and_three_excluded(self):
+        self.assertEqual(len(self.math), 27)
+        numbers = {int(q["sourceCode"].split("Q")[1]) for q in self.math}
+        for excluded in conv.math_questions.EXCLUDED:
+            self.assertNotIn(excluded, numbers)
+
+    def test_each_has_four_choices_and_a_key_in_range(self):
+        for q in self.math:
+            self.assertEqual(len(q["choices"]), 4)
+            self.assertTrue(all(c.strip() for c in q["choices"]))
+            self.assertIn(q["correctChoice"], (1, 2, 3, 4))
+
+    def test_default_build_leaves_maths_out(self):
+        bundle, _ = conv.build(REAL_TREE, REAL_CSV, REAL_QUESTIONS)
+        self.assertFalse([q for q in bundle["questions"] if q["sourceCode"].startswith("gosaste-4:")])
+
+
 if __name__ == "__main__":
     unittest.main()
