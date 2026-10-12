@@ -1,12 +1,14 @@
 package com.example.roshdeandishe;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.context.annotation.Import;
 import org.springframework.http.MediaType;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.mock.web.MockHttpSession;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
@@ -39,7 +41,17 @@ class GradeManagementFlowIntegrationTest {
     @Autowired
     private com.example.roshdeandishe.iam.IamFacade iamFacade;
 
+    @Autowired
+    private JdbcTemplate jdbc;
+
     private final ObjectMapper objectMapper = new ObjectMapper();
+
+    @BeforeEach
+    void schoolOneHasNoCurrentYear() {
+        // این تست‌ها برای سال ثابتِ «1404-1405» نمره ثبت می‌کنند؛ اگر تستی دیگر سالِ جاریِ مدرسه‌ی ۱ را روی سالی دیگر گذاشته
+        // باشد، غیرِ ادمین به سالِ غیرجاری دسترسی ندارد (academic-year-not-allowed). بدونِ سالِ جاری، رفتارِ پیشین برقرار است
+        jdbc.update("update school.schools set current_academic_year_id = null where id = 1");
+    }
 
     private MockHttpSession loginAsAdmin() throws Exception {
         return login("admin@roshdeandishe.test", "password");

@@ -1,6 +1,7 @@
 package com.example.roshdeandishe;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -39,6 +40,13 @@ class GradeByCourseFlowIntegrationTest {
     private JdbcTemplate jdbc;
 
     private final ObjectMapper objectMapper = new ObjectMapper();
+
+    @BeforeEach
+    void schoolOneHasNoCurrentYear() {
+        // این تست‌ها برای سال ثابتِ «1404-1405» نمره ثبت می‌کنند؛ اگر تستی دیگر سالِ جاریِ مدرسه‌ی ۱ را روی سالی دیگر گذاشته
+        // باشد، غیرِ ادمین به سالِ غیرجاری دسترسی ندارد (academic-year-not-allowed). بدونِ سالِ جاری، رفتارِ پیشین برقرار است
+        jdbc.update("update school.schools set current_academic_year_id = null where id = 1");
+    }
 
     private long insertCourse(int gradeLevel, String name) {
         // نام یکتا: جدول سراسری است و تست‌ها در یک دیتابیس مشترک اجرا می‌شوند
