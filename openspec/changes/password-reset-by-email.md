@@ -118,7 +118,11 @@ receives the link. Consequences for this proposal:
   tests; development can use a local catcher such as Mailpit, see `README.md`).
 - Enabling it for real users is gated on choosing and configuring an SMTP
   provider for staging first. That provider choice is not part of this
-  proposal and is not decided.
+  proposal and is not decided. The product owner states (2026-10-12) that Liara,
+  where staging runs, sells SMTP as a separate service; this was not verified
+  against Liara's documentation. If it is used, it still needs a sending domain
+  with the DNS records the service asks for, and its host, port, credentials and
+  sending limits recorded in `DEPLOYMENT.md` once known.
 - Until then, staging users who forget a password have no recovery path, and
   the link on `/login` should either be hidden or say so (to be decided with
   Open Question 7).
