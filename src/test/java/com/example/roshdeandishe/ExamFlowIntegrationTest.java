@@ -226,6 +226,8 @@ class ExamFlowIntegrationTest {
         mockMvc.perform(get("/api/exam-take/exam").param("token", token))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.id").value(examId))
+                // صفحه‌ی آزمون مدرسه‌ی گزارش مشکل را از همین فیلد می‌گیرد، نه از localStorage
+                .andExpect(jsonPath("$.schoolId").value(1))
                 .andExpect(jsonPath("$.sections[0].id").value(sectionId));
 
         mockMvc.perform(get("/api/exam-take/sections/" + sectionId + "/questions").param("token", token))

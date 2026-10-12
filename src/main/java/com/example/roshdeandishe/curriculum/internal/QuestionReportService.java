@@ -90,7 +90,7 @@ class QuestionReportService {
     }
 
     private QuestionReportEntity requireReport(Long reportId) {
-        return reportRepository.findById(reportId)
+        return reportRepository.findByIdForUpdate(reportId)
                 .orElseThrow(() -> new CurriculumException(new CurriculumError.ReportNotFound(reportId)));
     }
 

@@ -296,7 +296,7 @@ class ExamFacadeImpl implements ExamFacade {
     public ExamTakeInfo getExamForToken(String token) {
         ExamTokenService.TokenData data = requireToken(token);
         ExamEntity exam = requireExamForToken(data);
-        return new ExamTakeInfo(new ExamId(exam.getId()), exam.getTitle(), exam.getStartAt(), exam.getEndAt(),
+        return new ExamTakeInfo(new ExamId(exam.getId()), exam.getSchoolId(), exam.getTitle(), exam.getStartAt(), exam.getEndAt(),
                 exam.getDurationMinutes(), toSectionInfos(exam.getId()));
     }
 

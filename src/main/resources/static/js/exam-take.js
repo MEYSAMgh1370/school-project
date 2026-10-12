@@ -56,11 +56,10 @@ document.addEventListener('alpine:init', () => {
             return match ? decodeURIComponent(match[1]) : '';
         },
 
-        // صفحه‌ی آزمون فقط توکن دارد و navbar ندارد؛ مدرسه همان است که دانش‌آموز
-        // از «آزمون‌های من» (my-exams.js) با آن آزمون را شروع کرده است.
+        // صفحه‌ی آزمون فقط توکن دارد و navbar ندارد؛ مدرسه همان مدرسه‌ی خودِ آزمون است
+        // (از پاسخ /api/exam-take/exam)، نه مدرسه‌ی انتخاب‌شده‌ی localStorage که ممکن است کهنه باشد.
         reportSchoolId() {
-            const saved = parseInt(localStorage.getItem('selectedSchoolId') || '', 10);
-            return Number.isInteger(saved) ? saved : null;
+            return this.exam && Number.isInteger(this.exam.schoolId) ? this.exam.schoolId : null;
         },
 
         openReport(question, event) {
@@ -107,7 +106,7 @@ document.addEventListener('alpine:init', () => {
             }
             const schoolId = this.reportSchoolId();
             if (!schoolId) {
-                this.report.error = 'مدرسه‌ی انتخاب‌شده مشخص نیست. از «آزمون‌های من» دوباره وارد آزمون شوید.';
+                this.report.error = 'مدرسه‌ی این آزمون مشخص نیست. صفحه را دوباره بارگذاری کنید.';
                 return;
             }
             this.submittingReport = true;

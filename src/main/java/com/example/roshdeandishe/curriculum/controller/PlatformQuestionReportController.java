@@ -12,7 +12,7 @@ import org.springframework.web.bind.annotation.*;
 import java.util.List;
 
 /**
- * صف گزارش‌های سؤال‌های پلتفرمی (D9): فقط مدیر پلتفرم، با همان گیتِ PlatformTopicController (مسیر پلتفرم: بدون
+ * صف گزارش‌های سؤال‌های پلتفرمی (D9): فقط مدیر پلتفرم، با مجوز اختصاصیِ PLATFORM_QUESTION_REPORT_MANAGE (مسیر پلتفرم: بدون
  * TenantContext و بدون {@code @RequiresModule}، مجوز در PlatformContext سنجیده می‌شود).
  */
 @RestController
@@ -25,7 +25,7 @@ public class PlatformQuestionReportController {
     }
 
     @GetMapping("/api/platform/question-reports")
-    @RequiresPermission("PLATFORM_HOLIDAY_MANAGE")
+    @RequiresPermission("PLATFORM_QUESTION_REPORT_MANAGE")
     public List<QuestionReportResponse> list(@RequestParam(required = false) ReportStatus status) {
         return curriculumFacade.listPlatformReports(status).stream()
                 .map(QuestionReportResponse::from)
@@ -33,7 +33,7 @@ public class PlatformQuestionReportController {
     }
 
     @PatchMapping("/api/platform/question-reports/{reportId}/status")
-    @RequiresPermission("PLATFORM_HOLIDAY_MANAGE")
+    @RequiresPermission("PLATFORM_QUESTION_REPORT_MANAGE")
     public QuestionReportResponse updateStatus(@PathVariable Long reportId,
                                                @RequestBody UpdateQuestionReportStatusRequest request) {
         if (request == null) {

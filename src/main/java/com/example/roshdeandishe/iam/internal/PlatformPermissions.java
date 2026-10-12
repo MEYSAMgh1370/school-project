@@ -11,7 +11,9 @@ final class PlatformPermissions {
 
     static final String HOLIDAY_MANAGE = "PLATFORM_HOLIDAY_MANAGE";
 
-    static final Set<String> CODES = Set.of(HOLIDAY_MANAGE);
+    static final String QUESTION_REPORT_MANAGE = "PLATFORM_QUESTION_REPORT_MANAGE";
+
+    static final Set<String> CODES = Set.of(HOLIDAY_MANAGE, QUESTION_REPORT_MANAGE);
 
     private PlatformPermissions() {
     }

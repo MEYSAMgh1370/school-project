@@ -204,8 +204,8 @@ public interface ExamFacade {
     record AttemptResult(String token, Instant expireAt) {
     }
 
-    record ExamTakeInfo(ExamId id, String title, LocalDateTime start, LocalDateTime end, int durationMinutes,
-                        List<SectionInfo> sections) {
+    record ExamTakeInfo(ExamId id, Long schoolId, String title, LocalDateTime start, LocalDateTime end,
+                        int durationMinutes, List<SectionInfo> sections) {
     }
 
     /**

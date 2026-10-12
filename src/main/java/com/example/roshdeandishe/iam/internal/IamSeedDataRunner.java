@@ -217,6 +217,7 @@ class IamSeedDataRunner implements ApplicationRunner {
         // Permission سطح پلتفرم: فقط ردیف کاتالوگ - عمداً به هیچ نقشی grant نمی‌شود؛ تنها مسیر اعطا،
         // شاخه‌ی PlatformContext در PermissionDecisionService برای کاربرِ platform_admins است
         permission(permissions, PlatformPermissions.HOLIDAY_MANAGE, "مدیریت تعطیلی‌های سراسری");
+        permission(permissions, PlatformPermissions.QUESTION_REPORT_MANAGE, "مدیریت صف گزارش‌های سؤال پلتفرم");
         return permissions;
     }
 
