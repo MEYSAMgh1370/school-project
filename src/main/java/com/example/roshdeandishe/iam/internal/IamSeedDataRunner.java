@@ -201,6 +201,7 @@ class IamSeedDataRunner implements ApplicationRunner {
         permission(permissions, "ROLE_MANAGE", "ساخت نقش سفارشی و مدیریت دسترسی‌ها");
         permission(permissions, "CURRICULUM_VIEW", "مشاهده‌ی سرفصل‌ها و بانک سؤال");
         permission(permissions, "CURRICULUM_MANAGE", "ساخت سرفصل و سؤال در بانک سؤال");
+        permission(permissions, "QUESTION_REPORT", "گزارش مشکل یک سؤال");
         permission(permissions, "STUDYPLAN_VIEW", "مشاهده‌ی برنامه‌ی درسی و جدول مطالعه");
         permission(permissions, "STUDYPLAN_MANAGE", "ایجاد/مدیریت برنامه‌ی درسی و جدول مطالعه");
         permission(permissions, "EXAM_VIEW", "مشاهده‌ی آزمون‌ها و نتایج");
@@ -216,6 +217,7 @@ class IamSeedDataRunner implements ApplicationRunner {
         // Permission سطح پلتفرم: فقط ردیف کاتالوگ - عمداً به هیچ نقشی grant نمی‌شود؛ تنها مسیر اعطا،
         // شاخه‌ی PlatformContext در PermissionDecisionService برای کاربرِ platform_admins است
         permission(permissions, PlatformPermissions.HOLIDAY_MANAGE, "مدیریت تعطیلی‌های سراسری");
+        permission(permissions, PlatformPermissions.QUESTION_REPORT_MANAGE, "مدیریت صف گزارش‌های سؤال پلتفرم");
         return permissions;
     }
 
@@ -226,6 +228,10 @@ class IamSeedDataRunner implements ApplicationRunner {
 
     private void seedRolePermissions(Map<String, RoleEntity> roles, Map<String, PermissionEntity> permissions) {
         grant(roles.get("STUDENT"), permissions.get("GRADES_VIEW"));
+        // گزارش مشکل سؤال (moshavere-content-import.md P6): دانش‌آموز، معلم و مدیر مدرسه؛ ولی (PARENT) نه
+        grant(roles.get("STUDENT"), permissions.get("QUESTION_REPORT"));
+        grant(roles.get("TEACHER"), permissions.get("QUESTION_REPORT"));
+        grant(roles.get("SCHOOL_ADMIN"), permissions.get("QUESTION_REPORT"));
 
         grant(roles.get("TEACHER"), permissions.get("GRADES_VIEW"));
         grant(roles.get("TEACHER"), permissions.get("GRADES_EDIT"));

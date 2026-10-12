@@ -49,6 +49,8 @@ public class TenantResolverFilter extends OncePerRequestFilter {
             "/classes",
             // همان استدلال /people برای صفحه‌ی سرفصل‌ها و بانک سؤال
             "/curriculum",
+            // همان استدلال /people برای صفحه‌ی صف گزارش‌های سؤال مدرسه
+            "/question-reports",
             // همان استدلال /people برای صفحه‌ی برنامه‌های مطالعه
             "/study-plans",
             // همان استدلال /people برای صفحه‌ی مدیریت آزمون‌ها

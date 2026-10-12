@@ -56,7 +56,7 @@ public class ExamTakeController {
     }
 
     private static ExamTakeResponse toResponse(ExamTakeInfo info) {
-        return new ExamTakeResponse(info.id().value(), info.title(), info.start(), info.end(),
+        return new ExamTakeResponse(info.id().value(), info.schoolId(), info.title(), info.start(), info.end(),
                 info.durationMinutes(), info.sections().stream().map(ExamTakeController::toResponse).toList());
     }
 

@@ -13,7 +13,9 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionTemplate;
 
 import java.time.Instant;
 import java.time.LocalDate;
@@ -43,6 +45,7 @@ class StudyPlanFacadeImpl implements StudyPlanFacade {
     private final AcademicFacade academicFacade;
     private final IamFacade iamFacade;
     private final SchoolFacade schoolFacade;
+    private final PlatformTransactionManager transactionManager;
     // عمداً مستقل ساخته می‌شود، نه تزریق Spring - همان دلیل مستندشده در
     // notification.internal.BaleWebhookService: spring-modulith-events-jackson یک
     // Jackson 3 (tools.jackson) دیگر هم روی classpath می‌آورد و auto-configuration
@@ -60,7 +63,9 @@ class StudyPlanFacadeImpl implements StudyPlanFacade {
                         CurriculumFacade curriculumFacade,
                         AcademicFacade academicFacade,
                         IamFacade iamFacade,
-                        SchoolFacade schoolFacade) {
+                        SchoolFacade schoolFacade,
+                        PlatformTransactionManager transactionManager) {
+        this.transactionManager = transactionManager;
         this.planRepository = planRepository;
         this.planCourseWeightRepository = planCourseWeightRepository;
         this.weekCourseRepository = weekCourseRepository;
@@ -159,6 +164,114 @@ class StudyPlanFacadeImpl implements StudyPlanFacade {
             weekCourseTopicRepository.save(new WeekCourseTopicEntity(weekCourse.getId(), subTopicId));
         }
         return new WeekCourseId(weekCourse.getId());
+    }
+
+    @Override
+    public WeekCourseImportResult importWeekCourses(Long schoolId, Long planId, boolean dryRun,
+                                                    List<WeekCourseImportItem> items) {
+        requirePlanInSchool(schoolId, planId);
+        if (items == null || items.isEmpty()) {
+            throw new StudyPlanException(new StudyPlanError.InvalidWeekCourse("فهرست موارد ایمپورت نمی‌تواند خالی باشد."));
+        }
+        if (items.size() > MAX_IMPORT_ITEMS) {
+            throw new StudyPlanException(new StudyPlanError.InvalidWeekCourse(
+                    "در هر درخواست حداکثر " + MAX_IMPORT_ITEMS + " مورد مجاز است."));
+        }
+
+        Set<String> allCodes = new LinkedHashSet<>();
+        for (WeekCourseImportItem item : items) {
+            if (item != null && item.courseTopicCode() != null) {
+                allCodes.add(item.courseTopicCode());
+            }
+            if (item != null && item.subTopicCodes() != null) {
+                allCodes.addAll(item.subTopicCodes());
+            }
+        }
+        Map<String, Long> idByCode = curriculumFacade.resolveTopicIdsBySourceCode(schoolId, allCodes);
+
+        // هر مورد تراکنش جدا؛ در dryRun همان تراکنش rollback می‌شود تا دقیقاً همان مسیر createWeekCourse اجرا شود
+        TransactionTemplate tx = new TransactionTemplate(transactionManager);
+        Map<Long, Set<Long>> descendantsByCourse = new java.util.HashMap<>();
+        Set<String> seenThisRun = new LinkedHashSet<>();
+        List<WeekCourseImportOutcome> outcomes = new ArrayList<>();
+        int created = 0;
+        int existing = 0;
+        int failed = 0;
+        for (int i = 0; i < items.size(); i++) {
+            WeekCourseImportItem item = items.get(i);
+            ImportStatus status;
+            String reason = null;
+            try {
+                if (item == null) {
+                    throw new StudyPlanException(new StudyPlanError.InvalidWeekCourse("مورد خالی است."));
+                }
+                String courseCode = item.courseTopicCode() == null ? null : item.courseTopicCode().strip();
+                Long courseId = courseCode == null ? null : idByCode.get(courseCode);
+                if (courseId == null) {
+                    throw new StudyPlanException(new StudyPlanError.InvalidWeekCourse(
+                            "سرفصل درس با کد «" + courseCode + "» یافت نشد."));
+                }
+                List<Long> subIds = new ArrayList<>();
+                Set<Long> descendants = descendantsByCourse.computeIfAbsent(courseId,
+                        id -> descendantIds(schoolId, id));
+                for (String subCode : item.subTopicCodes() == null ? List.<String>of() : item.subTopicCodes()) {
+                    String code = subCode == null ? null : subCode.strip();
+                    Long subId = code == null ? null : idByCode.get(code);
+                    if (subId == null) {
+                        throw new StudyPlanException(new StudyPlanError.InvalidWeekCourse(
+                                "زیرسرفصل با کد «" + code + "» یافت نشد."));
+                    }
+                    if (!descendants.contains(subId)) {
+                        throw new StudyPlanException(new StudyPlanError.InvalidWeekCourse(
+                                "زیرسرفصل «" + code + "» زیرمجموعه‌ی سرفصل درس «" + courseCode + "» نیست."));
+                    }
+                    subIds.add(subId);
+                }
+                String key = item.weekStart() + "|" + courseId;
+                if (seenThisRun.contains(key)) {
+                    // تکرار در همین درخواست: در اجرای واقعی مورد دوم EXISTING می‌شد؛ در dryRun هم همان گزارش شود
+                    status = ImportStatus.EXISTING;
+                } else {
+                    tx.executeWithoutResult(s -> {
+                        createWeekCourse(schoolId, planId, item.weekStart(), courseId, subIds);
+                        if (dryRun) {
+                            s.setRollbackOnly();
+                        }
+                    });
+                    seenThisRun.add(key);
+                    status = ImportStatus.CREATED;
+                }
+            } catch (StudyPlanException e) {
+                if (e.error() instanceof StudyPlanError.DuplicateWeekCourse) {
+                    status = ImportStatus.EXISTING;
+                } else {
+                    status = ImportStatus.FAILED;
+                    reason = e.getMessage();
+                }
+            }
+            switch (status) {
+                case CREATED -> created++;
+                case EXISTING -> existing++;
+                case FAILED -> failed++;
+            }
+            outcomes.add(new WeekCourseImportOutcome(i, item == null ? null : item.weekStart(),
+                    item == null ? null : item.courseTopicCode(), status, reason));
+        }
+        return new WeekCourseImportResult(dryRun, items.size(), created, existing, failed, List.copyOf(outcomes));
+    }
+
+    /** نوادگان (بدون خودِ سرفصل) از میان سرفصل‌های قابل‌مشاهده برای مدرسه. */
+    private Set<Long> descendantIds(Long schoolId, Long topicId) {
+        Set<Long> ids = new java.util.HashSet<>();
+        collectDescendants(curriculumFacade.getTopicSubtree(schoolId, topicId), ids, true);
+        return ids;
+    }
+
+    private static void collectDescendants(CurriculumFacade.TopicTreeNode node, Set<Long> ids, boolean root) {
+        if (!root) {
+            ids.add(node.id().value());
+        }
+        node.children().forEach(c -> collectDescendants(c, ids, false));
     }
 
     @Override

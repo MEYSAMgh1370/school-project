@@ -131,6 +131,14 @@ public interface ExamFacade {
      */
     AttemptResult startAttempt(Long schoolId, Long examId, Long studentId);
 
+    /**
+     * مجوز گزارش مشکل یک سؤال توسط دانش‌آموز (P6 moshavere-content-import): سؤال باید در یکی از بخش‌های
+     * یک آزمونِ در دسترسِ همین دانش‌آموز (WEEKLY خودش یا COLLECTIVE تخصیص‌یافته) در همین مدرسه باشد و آن آزمون
+     * شروع شده باشد (متن سؤال آزمونِ نشروع‌شده نباید لو برود) - وگرنه QuestionNotFound، یعنی همان پاسخِ
+     * سؤالِ ناموجود/مدرسه‌ی دیگر. خودِ ثبت گزارش را caller از طریق CurriculumFacade انجام می‌دهد.
+     */
+    void requireQuestionInStudentExams(Long schoolId, Long studentId, Long questionId);
+
     // -------------------------------------------------------- exam-take
 
     /**
@@ -196,8 +204,8 @@ public interface ExamFacade {
     record AttemptResult(String token, Instant expireAt) {
     }
 
-    record ExamTakeInfo(ExamId id, String title, LocalDateTime start, LocalDateTime end, int durationMinutes,
-                        List<SectionInfo> sections) {
+    record ExamTakeInfo(ExamId id, Long schoolId, String title, LocalDateTime start, LocalDateTime end,
+                        int durationMinutes, List<SectionInfo> sections) {
     }
 
     /**

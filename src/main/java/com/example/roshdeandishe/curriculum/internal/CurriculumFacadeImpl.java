@@ -18,9 +18,44 @@ class CurriculumFacadeImpl implements CurriculumFacade {
     private final TopicRepository topicRepository;
     private final QuestionRepository questionRepository;
 
-    CurriculumFacadeImpl(TopicRepository topicRepository, QuestionRepository questionRepository) {
+    private final QuestionReportService reportService;
+
+    CurriculumFacadeImpl(TopicRepository topicRepository, QuestionRepository questionRepository,
+                         QuestionReportService reportService) {
         this.topicRepository = topicRepository;
         this.questionRepository = questionRepository;
+        this.reportService = reportService;
+    }
+
+    @Override
+    public ReportId createReport(Long schoolId, Long reporterUserId, Long questionId, ReportType reportType,
+                                 String comment) {
+        return reportService.create(schoolId, reporterUserId, questionId, reportType, comment);
+    }
+
+    @Override
+    public List<QuestionReportInfo> listReportsForSchool(Long schoolId, ReportStatus status) {
+        return reportService.listForSchool(schoolId, status);
+    }
+
+    @Override
+    public List<QuestionReportInfo> listReportsByReporter(Long schoolId, Long userId) {
+        return reportService.listByReporter(schoolId, userId);
+    }
+
+    @Override
+    public QuestionReportInfo updateSchoolReport(Long schoolId, Long reportId, ReportStatus newStatus, String note) {
+        return reportService.updateForSchool(schoolId, reportId, newStatus, note);
+    }
+
+    @Override
+    public List<QuestionReportInfo> listPlatformReports(ReportStatus status) {
+        return reportService.listPlatform(status);
+    }
+
+    @Override
+    public QuestionReportInfo updatePlatformReport(Long reportId, ReportStatus newStatus, String note) {
+        return reportService.updatePlatform(reportId, newStatus, note);
     }
 
     @Override
@@ -125,6 +160,19 @@ class CurriculumFacadeImpl implements CurriculumFacade {
         return topicRepository.findVisibleToSchool(schoolId).stream()
                 .map(CurriculumFacadeImpl::toInfo)
                 .toList();
+    }
+
+    @Override
+    public Map<String, Long> resolveTopicIdsBySourceCode(Long schoolId, java.util.Collection<String> sourceCodes) {
+        if (sourceCodes == null || sourceCodes.isEmpty()) {
+            return Map.of();
+        }
+        List<String> codes = sourceCodes.stream().filter(c -> c != null && !c.isBlank()).map(String::strip).distinct().toList();
+        if (codes.isEmpty()) {
+            return Map.of();
+        }
+        return topicRepository.findVisibleBySourceCodes(schoolId, codes).stream()
+                .collect(Collectors.toMap(TopicEntity::getSourceCode, TopicEntity::getId, (a, b) -> a));
     }
 
     @Override
