@@ -1,9 +1,10 @@
 # School-Admin Onboarding (registration, school form, setup checklist)
 
 Status: proposed 2026-10-12. Package 1 (registration and school-form copy) is
-implemented 2026-10-12 and its current behavior is in
-[`specs/current-system.md`](../specs/current-system.md); package 2 (dashboard
-setup checklist) is not implemented.
+implemented 2026-10-12 and package 2 (dashboard setup checklist) is
+implemented 2026-10-12 with the changes recorded under "Implemented Shape";
+their current behavior is in
+[`specs/current-system.md`](../specs/current-system.md).
 
 ## Verified Baseline
 
@@ -56,6 +57,21 @@ Walked in a browser on 2026-10-12 (desktop and mobile) and read in code.
   move below it. When every step is done the card disappears; an optional
   «پنهان کردن» is remembered only in that browser's `localStorage`.
 - A school without a slug shows an explanatory state instead of a dead end.
+
+## Implemented Shape (package 2)
+
+- Steps, in order: invite a teacher (any `TEACHER` membership in the school),
+  create a class (`AcademicFacade.listClasses` non-empty), add a student
+  (`AcademicFacade.listStudents` non-empty). The order follows the data: a class
+  has an optional teacher, a student needs a class.
+- «Share the entry address» is not a step: it cannot be detected from data, so
+  it could never mark itself done. The existing school-entry box stays on the
+  dashboard unchanged.
+- The empty «وضعیت شهریه» and «حضور و غیاب امروز» cards of a school are hidden
+  while that school's checklist is incomplete; a card that has data is never
+  hidden.
+- `SetupChecklistAssembler` builds the steps in one place; the template renders
+  whatever it returns.
 
 ## Out of Scope
 
