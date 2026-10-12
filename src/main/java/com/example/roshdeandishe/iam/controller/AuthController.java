@@ -109,8 +109,8 @@ public class AuthController {
 
     @PostMapping("/api/auth/activate")
     public ActivateAccountResponse activate(@RequestBody ActivateAccountRequest request) {
-        iamFacade.redeemInviteToken(request.token(), request.newPassword());
-        return new ActivateAccountResponse("حساب کاربری با موفقیت فعال شد. اکنون می‌توانید وارد شوید.");
+        String email = iamFacade.redeemInviteToken(request.token(), request.newPassword());
+        return new ActivateAccountResponse("حساب کاربری با موفقیت فعال شد. اکنون می‌توانید وارد شوید.", email);
     }
 
     /**

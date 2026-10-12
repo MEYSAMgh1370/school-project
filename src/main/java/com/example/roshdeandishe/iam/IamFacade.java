@@ -167,7 +167,8 @@ public interface IamFacade {
 
     /**
      * تکمیل فرآیند فعال‌سازی حساب: توکن را معتبر می‌سنجد و در صورت موفقیت
-     * passwordHash کاربر را با رمز عبور تازه تنظیم می‌کند.
+     * passwordHash کاربر را با رمز عبور تازه تنظیم می‌کند. ایمیلِ حسابِ فعال‌شده را برمی‌گرداند
+     * (صفحه‌ی فعال‌سازی با آن و همان رمز کاربر را وارد می‌کند؛ توکنِ دعوت اثباتِ مالکیتِ ایمیل است).
      *
      * @throws com.example.roshdeandishe.iam.shared.exception.IamException با
      * IamError.InviteTokenNotFound اگر توکن وجود نداشته باشد،
@@ -175,7 +176,32 @@ public interface IamFacade {
      * IamError.InviteTokenExpired اگر منقضی شده باشد، یا
      * IamError.InvalidPassword اگر رمز عبور تازه معتبر نباشد
      */
-    void redeemInviteToken(String token, String newPassword);
+    String redeemInviteToken(String token, String newPassword);
+
+    /**
+     * وضعیتِ یک توکنِ دعوت و، فقط برای توکنِ معتبر، این‌که به چه حسابی و در کدام مدرسه با چه نقشی دعوت شده‌ایم
+     * (صفحه‌ی فعال‌سازی). هیچ‌وقت exception نمی‌دهد؛ توکنِ ناشناخته/مصرف‌شده/منقضی فقط وضعیتش را برمی‌گرداند و
+     * هیچ داده‌ی حسابی را نه.
+     */
+    InviteLookup describeInvite(String token);
+
+    enum InviteState { VALID, USED, EXPIRED, UNKNOWN }
+
+    /** @param schoolName تهی اگر نامِ مدرسه در دسترس نیست */
+    record InviteMembershipInfo(String schoolName, String roleLabel) {
+    }
+
+    record InviteLookup(InviteState state, String email, String fullName, List<InviteMembershipInfo> memberships) {
+
+        public static InviteLookup of(InviteState state) {
+            return new InviteLookup(state, null, null, List.of());
+        }
+
+        public boolean valid() {
+            return state == InviteState.VALID;
+        }
+    }
+
 
     /**
      * فعال یا غیرفعال کردن اشتراک یک مدرسه برای یک ماژول SCHOOL-scoped
