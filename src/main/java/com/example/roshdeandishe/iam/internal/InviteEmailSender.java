@@ -83,4 +83,29 @@ class InviteEmailSender {
         }
         return "شما به‌عنوان " + invitationSummary + " دعوت شده‌اید.\n\n";
     }
+
+    /**
+     * اطلاعِ «شما به یک مدرسه اضافه شدید» برای کاربری که از قبل حساب فعال دارد (دعوت‌نامه‌ی فعال‌سازی برایش
+     * بی‌معناست). همان قراردادِ best-effortِ {@link #sendActivationEmail}.
+     */
+    boolean sendAddedToSchoolEmail(String recipientEmail, String fullName, String invitationSummary) {
+        SimpleMailMessage message = new SimpleMailMessage();
+        message.setFrom(from);
+        message.setTo(recipientEmail);
+        message.setSubject("شما به یک مدرسه در رشد اندیشه اضافه شدید");
+        message.setText("""
+                %s عزیز، سلام
+
+                شما به‌عنوان %s اضافه شدید. برای دیدن مدرسه با همان حساب قبلی‌تان وارد شوید:
+
+                %s/login
+                """.formatted(fullName, invitationSummary, activationBaseUrl));
+        try {
+            mailSender.send(message);
+            return true;
+        } catch (MailException e) {
+            log.warn("ارسال ایمیل «اضافه شدید» به {} شکست خورد.", recipientEmail, e);
+            return false;
+        }
+    }
 }

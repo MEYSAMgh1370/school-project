@@ -44,3 +44,28 @@ Walked in a browser on 2026-10-12 with an invited teacher, and read in code.
 activation response); `InviteTokenFlowIntegrationTest` and
 `RegistrationFlowIntegrationTest` unchanged and green; browser walk of
 add → invite → activate → auto-login.
+
+## Addendum: the user with no school (2026-10-12)
+
+Observed: a user who registers on their own and is later added by a school admin
+with the same email gets no invitation (`issueInviteToken` is a no-op for an
+account that already has a password) and nothing tells them they were added;
+the dashboard kept saying "wait for the school's invitation". Decisions: the
+roleless dashboard shows two clear paths and the account email to give the
+school; plain `/register` tells invitees not to register; an already-active user
+who is added to a school gets an email, and the admin is told when it could not
+be sent.
+
+- `/dashboard` without memberships: «مدیر یا صاحب مدرسه‌ام» (to `/schools/new`)
+  and «از طرف مدرسه دعوت شده‌ام» (the account email with a copy button, a link to
+  `/activate`, and the note that the school appears here once added).
+- Plain `/register` (not `next=/schools/new`) carries the hint «اگر مدرسه‌تان شما را
+  دعوت کرده، ثبت‌نام لازم نیست…».
+- `POST /api/admin/schools/{id}/memberships` returns the usual fields plus
+  `notified`; `IamFacade.notifyAddedToSchool` sends a best-effort «شما به‌عنوان
+  <role> در <school> اضافه شدید» email only to a user who already has a password.
+  A new user (no password) keeps getting the activation invite instead.
+- `/people` shows «اضافه شد و ایمیل اطلاع‌رسانی برایش فرستاده شد» or, when the email
+  could not be sent, «…خودتان به او خبر بدهید».
+- Not changed: there is still no way for a visitor to ask a school to add them;
+  the school's entry page `/s/{slug}` is unchanged.

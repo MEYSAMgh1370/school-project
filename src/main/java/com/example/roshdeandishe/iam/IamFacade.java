@@ -185,6 +185,15 @@ public interface IamFacade {
      */
     InviteLookup describeInvite(String token);
 
+    /**
+     * به کاربری که از قبل حساب فعال (دارای رمز) دارد خبر می‌دهد که به مدرسه‌ای اضافه شده؛ ایمیلِ best-effort.
+     * برای کاربرِ بدونِ رمز (او دعوت‌نامه‌ی فعال‌سازی می‌گیرد) یا عضویتِ ناموجود {@code false} و بدونِ ارسال.
+     *
+     * @return true فقط اگر ایمیل تحویل SMTP شد
+     */
+    boolean notifyAddedToSchool(Long schoolId, Long membershipId);
+
+
     enum InviteState { VALID, USED, EXPIRED, UNKNOWN }
 
     /** @param schoolName تهی اگر نامِ مدرسه در دسترس نیست */
