@@ -1,5 +1,7 @@
 document.addEventListener('alpine:init', () => {
     Alpine.data('examsPage', () => ({
+        ...CoursePicker.state(),
+        ...CoursePicker.methods,
         schoolId: null,
         loading: false,
         error: '',
@@ -46,6 +48,10 @@ document.addEventListener('alpine:init', () => {
                 this.notice = '';
                 this.blocked = false;
                 this.expandedExamId = null;
+                this.pickerGrade = '';
+                this.pickerCourses = [];
+                this.pickerCourseId = '';
+                this.flatTopics = [];
                 this.load();
             });
             if (this.schoolId) {
@@ -134,9 +140,9 @@ document.addEventListener('alpine:init', () => {
             this.error = '';
             this.blocked = false;
             try {
-                const [examsResponse, treeResponse, studentsResponse, membershipsResponse] = await Promise.all([
+                // سرفصل‌ها از انتخابگر پایه و درس می‌آیند (course-picker.js)؛ کلِ درخت دیگر خوانده نمی‌شود.
+                const [examsResponse, studentsResponse, membershipsResponse] = await Promise.all([
                     fetch(this.examsBase(), { headers: { 'X-School-ID': this.schoolId } }),
-                    fetch(`${this.topicsBase()}/tree`, { headers: { 'X-School-ID': this.schoolId } }),
                     fetch(this.studentsBase(), { headers: { 'X-School-ID': this.schoolId } }),
                     fetch(this.membershipsBase(), { headers: { 'X-School-ID': this.schoolId } })
                 ]);
@@ -147,7 +153,6 @@ document.addEventListener('alpine:init', () => {
                     return;
                 }
                 this.exams = await examsResponse.json();
-                this.flatTopics = treeResponse.ok ? this.flattenTree(await treeResponse.json(), 0) : [];
                 this.students = studentsResponse.ok ? await studentsResponse.json() : [];
                 if (membershipsResponse.ok) {
                     const memberships = await membershipsResponse.json();

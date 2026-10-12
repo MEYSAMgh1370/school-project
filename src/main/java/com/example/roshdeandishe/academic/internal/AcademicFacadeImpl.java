@@ -490,6 +490,20 @@ class AcademicFacadeImpl implements AcademicFacade {
     }
 
     @Override
+    public List<CourseCatalogInfo> listCourseCatalog(Long schoolId, int gradeLevel, String academicYear) {
+        if (gradeLevel < 1 || gradeLevel > 12) {
+            throw new AcademicException(new AcademicError.InvalidCourseGradeLevel(gradeLevel));
+        }
+        String year = AcademicYearCodes.canonical(academicYear);
+        Integer startYear = year == null || year.isEmpty() ? null : requireListedYear(year);
+        return courseRepository.findByGradeLevelAndGradedTrueOrderByNameAsc(gradeLevel).stream()
+                .filter(c -> startYear == null || c.isOfferedIn(startYear))
+                .map(c -> new CourseCatalogInfo(new CourseId(c.getId()), c.getGradeLevel(), c.getName(),
+                        c.getTrack(), c.getTopicId()))
+                .toList();
+    }
+
+    @Override
     public List<GradeInfo> listGradesForStudents(Long schoolId, List<Long> studentIds) {
         if (studentIds.isEmpty()) {
             return List.of();

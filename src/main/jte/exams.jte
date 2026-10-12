@@ -2,7 +2,7 @@
 
 @param NavbarModel navbar
 
-@template.layout.main(title = "آزمون‌ها", scripts = java.util.List.of("/js/navbar.js", "/js/jalali.js", "/js/calendar.js", "/js/member-names.js", "/js/exams.js"), content = @`
+@template.layout.main(title = "آزمون‌ها", scripts = java.util.List.of("/js/navbar.js", "/js/jalali.js", "/js/calendar.js", "/js/member-names.js", "/js/course-picker.js", "/js/exams.js"), content = @`
 @template.layout.navbar(navbar = navbar)
 
 <section class="section" id="main-content" role="main" tabindex="-1" x-data="examsPage()">
@@ -13,6 +13,8 @@
         @template.layout.school-scope(
             noSchoolMessage = "برای مدیریت آزمون‌ها، یک مدرسه از سوییچر بالا انتخاب کنید.",
             content = @`
+
+                @template.layout.course-picker()
 
                 <template x-if="!blocked">
                     <div>
