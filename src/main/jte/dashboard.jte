@@ -5,7 +5,7 @@
 @param DashboardModel model
 @param NavbarModel navbar
 
-@template.layout.main(title = "پیشخوان", scripts = java.util.List.of("/js/navbar.js", "/js/jalali.js", "/js/calendar.js", "/js/timetable-grid.js", "/js/date-input.js", "/js/school-api.js", "/js/upcoming-events-logic.js", "/js/dashboard.js", "/js/dashboard-timetable.js", "/js/dashboard-upcoming.js"),
+@template.layout.main(title = "پیشخوان", scripts = java.util.List.of("/js/navbar.js", "/js/jalali.js", "/js/calendar.js", "/js/timetable-grid.js", "/js/date-input.js", "/js/school-api.js", "/js/upcoming-events-logic.js", "/js/dashboard.js", "/js/dashboard-timetable.js", "/js/dashboard-upcoming.js", "/js/copy-field.js"),
         styles = java.util.List.of("/css/dashboard.css", "/css/timetable.css"), content = @`
 @template.layout.navbar(navbar = navbar)
 
@@ -270,11 +270,43 @@
              به دانش‌آموز/والدِ دعوت‌شده پیشنهاد «مدرسه بسازید» نمی‌دهیم
              (تصمیم ۲۰۲۶-۰۷-۰۶؛ فرم به /schools/new منتقل شد). --%>
         @if(model.memberships().isEmpty())
-            <div class="notification">
-                هنوز در هیچ مدرسه‌ای عضویتی ندارید. می‌توانید همین حالا
-                <a href="/schools/new">مدرسه‌ی خودتان را ثبت کنید</a>،
-                یا منتظر دعوت‌نامه‌ی مدرسه‌تان بمانید.
-            </div>
+            <%-- کاربرِ بدونِ مدرسه: دو مسیرِ کاملاً جدا (مدیرِ آینده / دعوت‌شده) به‌جای یک جمله‌ی مبهم.
+                 دعوت‌شده باید بداند چه ایمیلی را به مدیر مدرسه بدهد (user-onboarding: roleless-user). --%>
+            <section class="mb-5" aria-labelledby="roleless-title">
+                <h2 class="title is-5" id="roleless-title">هنوز عضو هیچ مدرسه‌ای نیستید</h2>
+                <div class="columns">
+                    <div class="column">
+                        <div class="box">
+                            <h3 class="title is-6">مدیر یا صاحب مدرسه‌ام</h3>
+                            <p class="mb-3">مدرسه‌ی خود را ثبت کنید؛ بلافاصله مدیر آن می‌شوید.</p>
+                            <a class="button is-link" href="/schools/new">ثبت مدرسه</a>
+                        </div>
+                    </div>
+                    <div class="column">
+                        <div class="box" x-data="copyField">
+                            <h3 class="title is-6">از طرف مدرسه دعوت شده‌ام</h3>
+                            <p class="mb-3">
+                                از مدیر مدرسه بخواهید شما را <strong>با همین ایمیل</strong> اضافه کند.
+                                بعد از افزودن، مدرسه همین‌جا ظاهر می‌شود.
+                            </p>
+                            <div class="field has-addons">
+                                <div class="control is-expanded">
+                                    <input class="input" type="text" dir="ltr" readonly x-ref="field"
+                                           value="${model.email()}" aria-label="ایمیل حساب شما">
+                                </div>
+                                <div class="control">
+                                    <button class="button" type="button" @click="copy"
+                                            x-text="copied ? 'کپی شد' : 'کپی'">کپی</button>
+                                </div>
+                            </div>
+                            <p class="is-size-7">
+                                ایمیل دعوت یا کد فعال‌سازی دارید؟
+                                <a href="/activate">فعال‌سازی حساب</a>
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            </section>
         @else
             <div class="table-container">
             <table class="table is-fullwidth is-striped">

@@ -411,6 +411,20 @@ class IamFacadeImpl implements IamFacade {
     }
 
     @Override
+    public boolean notifyAddedToSchool(Long schoolId, Long membershipId) {
+        Optional<SchoolMembershipEntity> membership = schoolMembershipRepository.findByIdAndSchoolId(membershipId, schoolId);
+        if (membership.isEmpty()) {
+            return false;
+        }
+        Optional<UserEntity> user = userRepository.findById(membership.get().getUserId());
+        if (user.isEmpty() || user.get().getPasswordHash() == null) {
+            return false;
+        }
+        return inviteEmailSender.sendAddedToSchoolEmail(
+                user.get().getEmail(), user.get().getFullName(), inviteDescriber.summaryFor(membership.get()));
+    }
+
+    @Override
     public InviteLookup describeInvite(String token) {
         return inviteDescriber.describe(token);
     }

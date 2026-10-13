@@ -167,6 +167,14 @@ document.addEventListener('alpine:init', () => {
                 // نقشِ انتخاب‌شده می‌ماند، تا افزودنِ چند معلمِ پشت‌سرهم هر بار نقش را دوباره انتخاب نخواهد.
                 this.form = { email: '', fullName: '', roleCode: this.form.roleCode };
                 await this.load();
+                if (created.hasPassword) {
+                    // کاربرِ از قبل فعال دعوت‌نامه ندارد؛ فقط ایمیلِ «اضافه شدید» می‌گیرد. اگر آن هم نرفت،
+                    // مدیر باید خودش خبر بدهد، وگرنه کاربر منتظرِ چیزی می‌ماند که نمی‌آید.
+                    this.notice = created.notified
+                        ? created.fullName + ' اضافه شد و ایمیل اطلاع‌رسانی برایش فرستاده شد.'
+                        : created.fullName + ' اضافه شد؛ حسابش از قبل فعال است ولی ایمیل اطلاع‌رسانی ارسال نشد. خودتان به او خبر بدهید.';
+                    return;
+                }
                 // دعوت همان لحظه فرستاده می‌شود؛ مدیر مجبور نیست یادش بماند «ارسال دعوت» را جدا بزند.
                 await this.sendInvite({ membershipId: created.membershipId, fullName: created.fullName }, true);
             } catch (e) {

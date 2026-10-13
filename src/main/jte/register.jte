@@ -57,6 +57,13 @@
                         <div class="notification is-danger mt-4" role="alert"
                              x-cloak x-show="errorMessage"><span class="app-notice">@template.layout.icon(name = "alert", size = 20)<span x-text="errorMessage"></span></span></div>
 
+                        @if(!postAuthenticationDestination.equals("/schools/new"))
+                            <p class="help has-text-centered mt-4">
+                                اگر مدرسه‌تان شما را دعوت کرده، ثبت‌نام لازم نیست؛ از لینک ایمیل دعوت یا از
+                                <a href="/activate">صفحه‌ی فعال‌سازی</a> استفاده کنید.
+                            </p>
+                        @endif
+
                         <p class="has-text-centered mt-4">
                             @if(postAuthenticationDestination.equals("/schools/new"))
                                 <a href="/login?next=/schools/new">حساب دارید؟ وارد شوید</a>
