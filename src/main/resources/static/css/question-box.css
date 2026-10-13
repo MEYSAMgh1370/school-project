@@ -1,6 +1,25 @@
 /* باکس سؤالات و برگه‌ی چاپی (openspec/changes/question-box.md). فقط ویژگی‌های منطقی (logical)؛ رنگ‌ها و فاصله‌ها از
    توکن‌های app.css. بخش چاپ برای Chrome تنظیم شده و سربرگ، ناوبار و کنترل‌ها را از کاغذ حذف می‌کند. */
 
+/* هدر صفحه: عنوان و اقدام‌ها کنار هم، و در عرض کم اقدام‌ها به خط بعد می‌روند (Bulma .level نمی‌شکند). */
+.qb-page-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-3) var(--space-4);
+  margin-block-end: var(--space-4);
+}
+
+.qb-page-head__title {
+  flex: 1 1 24rem;
+  min-inline-size: 0;
+}
+
+.qb-page-head__actions {
+  flex: 0 0 auto;
+}
+
 .qb-image-grid {
   display: flex;
   flex-wrap: wrap;

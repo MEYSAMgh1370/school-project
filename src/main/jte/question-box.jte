@@ -7,15 +7,19 @@
 
 <section class="section" id="main-content" role="main" tabindex="-1" x-data="questionBoxPage()">
     <div class="container">
-        <div class="level">
-            <div class="level-left">
-                @template.layout.page-header(
+        <div class="qb-page-head">
+            <div class="qb-page-head__title">
+                <div>
+                    @template.layout.page-header(
                     title = "باکس سؤالات",
                     subtitle = "سؤال‌های تستی و تشریحی معلم‌های مدرسه؛ برای ساختن برگه‌ی چاپی از «برگه‌های سؤال» استفاده کنید.")
+                </div>
             </div>
-            <div class="level-right">
+            <div class="qb-page-head__actions">
+                <div class="buttons">
                 <a class="button is-light" href="/question-sheets">برگه‌های سؤال</a>
                 <button type="button" class="button is-link" id="questionAdd" @click="openCreate($event)">افزودن سؤال</button>
+                </div>
             </div>
         </div>
 

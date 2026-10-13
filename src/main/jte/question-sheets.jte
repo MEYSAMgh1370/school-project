@@ -7,19 +7,23 @@
 
 <section class="section" id="main-content" role="main" tabindex="-1" x-data="questionSheetsPage()">
     <div class="container">
-        <div class="level">
-            <div class="level-left">
-                @template.layout.page-header(
+        <div class="qb-page-head">
+            <div class="qb-page-head__title">
+                <div>
+                    @template.layout.page-header(
                     title = "برگه‌های سؤال",
                     subtitle = "سؤال‌های باکس و بانک را در بخش‌های عنوان‌دار کنار هم بگذارید و با سربرگ مدرسه چاپ کنید.")
+                </div>
             </div>
-            <div class="level-right">
+            <div class="qb-page-head__actions">
+                <div class="buttons">
                 <a class="button is-light" href="/question-box" x-show="view === 'list'">باکس سؤالات</a>
                 <button type="button" class="button is-light" x-show="view === 'builder'" @click="backToList">بازگشت به فهرست</button>
                 <button type="button" class="button is-link" id="sheetNew" x-show="view === 'list' && tab === 'sheets'" @click="newSheet">برگه‌ی تازه</button>
                 <button type="button" class="button is-link" id="headerNew" x-show="view === 'list' && tab === 'headers'" @click="openHeaderCreate($event)">سربرگ تازه</button>
                 <button type="button" class="button is-link" id="sheetSave" x-show="view === 'builder'"
                         :class="{ 'is-loading': saving }" @click="saveSheet">ذخیره‌ی برگه</button>
+                </div>
             </div>
         </div>
 

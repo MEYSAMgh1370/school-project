@@ -12,11 +12,11 @@
     @endfor
 
     <div class="container qb-print-toolbar no-print">
-        <div class="level">
-            <div class="level-left">
+        <div class="qb-page-head">
+            <div class="qb-page-head__title">
                 <h1 class="title is-5">پیش‌نمایش چاپ</h1>
             </div>
-            <div class="level-right">
+            <div class="qb-page-head__actions">
                 <a class="button is-light" href="/question-sheets">بازگشت به برگه‌ها</a>
                 <button type="button" class="button is-link" id="sheetPrint" @click="printSheet">چاپ</button>
             </div>
