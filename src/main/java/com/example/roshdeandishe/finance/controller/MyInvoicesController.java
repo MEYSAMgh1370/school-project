@@ -10,6 +10,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 
 /**
  * «فاکتورهای من/فرزندانم در این مدرسه» - همان مدل اعتماد
@@ -65,8 +66,16 @@ public class MyInvoicesController {
             return List.of();
         }
 
-        return financeFacade.listInvoicesForStudents(schoolId, studentIds).stream()
-                .map(MyInvoiceResponse::from)
+        List<FinanceFacade.InvoiceInfo> invoices = financeFacade.listInvoicesForStudents(schoolId, studentIds);
+        // اقساطِ همه‌ی فاکتورها با یک query (بدون N+1)
+        Map<Long, List<FinanceFacade.InstallmentInfo>> plans = financeFacade.listInstallmentsForInvoices(
+                schoolId, invoices.stream().map(FinanceFacade.InvoiceInfo::id).toList());
+        // تخفیف‌های مشروطِ باز هم با یک query
+        Map<Long, FinanceFacade.PendingDiscountSummary> pending = financeFacade.pendingDiscountsForInvoices(
+                schoolId, invoices.stream().map(FinanceFacade.InvoiceInfo::id).toList());
+        return invoices.stream()
+                .map(invoice -> MyInvoiceResponse.from(
+                        invoice, plans.getOrDefault(invoice.id(), List.of()), pending.get(invoice.id())))
                 .toList();
     }
 }

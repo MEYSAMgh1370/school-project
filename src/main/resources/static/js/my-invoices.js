@@ -57,6 +57,48 @@ document.addEventListener('alpine:init', () => {
                 : this.invoices.filter((invoice) => invoice.studentId === this.studentFilter);
         },
 
+        // قابل‌پرداخت = مبلغ - تخفیف؛ مانده = قابل‌پرداخت - پرداخت‌شده (هرگز منفی نمی‌شود)
+        discount(invoice) {
+            return Number(invoice.discountTotal) || 0;
+        },
+
+        payable(invoice) {
+            return (Number(invoice.amount) || 0) - this.discount(invoice);
+        },
+
+        remaining(invoice) {
+            return Math.max(0, this.payable(invoice) - (Number(invoice.amountPaid) || 0));
+        },
+
+        // تخفیف مشروط: بخشی از discountTotal که فقط با تسویه‌ی کامل تا پایانِ
+        // روزِ مهلت می‌ماند؛ بدون مهلت چیزی برای نمایش نیست.
+        hasPendingDiscount(invoice) {
+            return (Number(invoice.pendingDiscount) || 0) > 0 && !!invoice.pendingDiscountDeadline;
+        },
+
+        installmentsOf(invoice) {
+            return Array.isArray(invoice.installments) ? invoice.installments : [];
+        },
+
+        // ردیف‌های اقساط به‌صورت پیش‌فرض بسته‌اند (روی موبایل جا نمی‌گیرند)
+        expanded: {},
+
+        toggleInstallments(invoice) {
+            this.expanded = { ...this.expanded, [invoice.id]: !this.expanded[invoice.id] };
+        },
+
+        isExpanded(invoice) {
+            return this.expanded[invoice.id] === true;
+        },
+
+        // «قسط بعدی»: اولین قسطِ پرداخت‌نشده‌ی کامل (به ترتیب شماره‌ی قسط)
+        nextInstallmentId(invoice) {
+            const open = this.installmentsOf(invoice)
+                .filter((item) => item.status !== 'PAID')
+                .sort((a, b) => a.seq - b.seq);
+            return open.length > 0 ? open[0].id : null;
+        },
+
         statusLabel(status) {
             return {
                 PAID: 'تسویه‌شده',

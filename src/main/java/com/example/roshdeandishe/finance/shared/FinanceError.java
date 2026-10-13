@@ -44,6 +44,30 @@ public sealed interface FinanceError {
     record PaymentExceedsBalance(Long invoiceId, java.math.BigDecimal remaining) implements FinanceError {
     }
 
+    /** مبلغ تخفیف null/نامثبت یا توضیحِ آن بلندتر از سقف است. */
+    record InvalidDiscount(String reason) implements FinanceError {
+    }
+
+    /** تخفیف مبلغ قابل پرداخت را از آنچه تاکنون پرداخت شده کمتر می‌کند؛ maxDiscount = حداکثر تخفیفِ مجاز. */
+    record DiscountExceedsBalance(Long invoiceId, java.math.BigDecimal maxDiscount) implements FinanceError {
+    }
+
+    /** مقدارِ تنظیمِ مالی (مثلاً روشن/خاموشِ اقساط) خالی یا نامعتبر است. */
+    record InvalidSetting(String reason) implements FinanceError {
+    }
+
+    /** ساخت/ویرایشِ طرحِ اقساط وقتی مدرسه اقساط را روشن نکرده است. */
+    record InstallmentsNotEnabled(Long schoolId) implements FinanceError {
+    }
+
+    /** ورودیِ اقساط نامعتبر است: تعداد/تاریخ/مبلغ، قسطِ پرداخت‌شده یا ناشناخته، یا فهرستِ ناقص/اضافه. */
+    record InvalidInstallments(String reason) implements FinanceError {
+    }
+
+    /** جمعِ مبلغِ اقساطِ پرداخت‌نشده با مانده‌ی قابل تقسیم برابر نیست؛ expected = جمعِ لازم. */
+    record InstallmentsSumMismatch(java.math.BigDecimal expected) implements FinanceError {
+    }
+
     /**
      * هزینه/دسته/طرف حساب متعلق به مدرسه‌ی دیگر هم NotFound است، نه
      * Forbidden - وجود رکورد مدرسه‌ی دیگر را لو نمی‌دهیم (همان قرارداد

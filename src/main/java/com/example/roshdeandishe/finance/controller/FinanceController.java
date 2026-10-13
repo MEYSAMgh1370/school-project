@@ -2,7 +2,15 @@ package com.example.roshdeandishe.finance.controller;
 
 import com.example.roshdeandishe.academic.AcademicFacade;
 import com.example.roshdeandishe.finance.FinanceFacade;
+import com.example.roshdeandishe.finance.FinanceFacade.DiscountInfo;
 import com.example.roshdeandishe.finance.FinanceFacade.InvoiceInfo;
+import com.example.roshdeandishe.finance.dto.request.ApplyDiscountRequest;
+import com.example.roshdeandishe.finance.dto.request.GenerateInstallmentsRequest;
+import com.example.roshdeandishe.finance.dto.request.SetInstallmentsRequest;
+import com.example.roshdeandishe.finance.dto.request.UpdateInstallmentsRequest;
+import com.example.roshdeandishe.finance.dto.response.InstallmentResponse;
+import com.example.roshdeandishe.finance.dto.response.DiscountResponse;
+import com.example.roshdeandishe.finance.dto.response.FinanceSettingsResponse;
 import com.example.roshdeandishe.finance.FinanceFacade.PaymentInfo;
 import com.example.roshdeandishe.finance.FinanceFacade.TuitionFeeInfo;
 import com.example.roshdeandishe.finance.dto.request.AttributeYearRequest;
@@ -153,6 +161,104 @@ public class FinanceController {
                 .toList();
     }
 
+    /** تخفیف روی فاکتور؛ مثل ثبت پرداخت پاسخ 200 می‌دهد و مستقل از تنظیمِ اقساط است. */
+    @PostMapping("/invoices/{invoiceId}/discounts")
+    @RequiresPermission("FINANCE_MANAGE")
+    public DiscountResponse applyDiscount(
+            @PathVariable Long schoolId,
+            @PathVariable Long invoiceId,
+            @RequestBody ApplyDiscountRequest request
+    ) {
+        TenantContext.requireMatches(schoolId);
+
+        return toResponse(financeFacade.applyDiscount(
+                schoolId, invoiceId, request.amount(), request.reason(), request.deadline()));
+    }
+
+    @GetMapping("/invoices/{invoiceId}/discounts")
+    @RequiresPermission("FINANCE_VIEW")
+    public List<DiscountResponse> listDiscounts(@PathVariable Long schoolId, @PathVariable Long invoiceId) {
+        TenantContext.requireMatches(schoolId);
+        requireInvoiceVisibleToCurrentUser(schoolId, invoiceId);
+
+        return financeFacade.listDiscounts(schoolId, invoiceId).stream()
+                .map(FinanceController::toResponse)
+                .toList();
+    }
+
+    @GetMapping("/invoices/{invoiceId}/installments")
+    @RequiresPermission("FINANCE_VIEW")
+    public List<InstallmentResponse> listInstallments(@PathVariable Long schoolId, @PathVariable Long invoiceId) {
+        TenantContext.requireMatches(schoolId);
+        requireInvoiceVisibleToCurrentUser(schoolId, invoiceId);
+
+        return financeFacade.listInstallments(schoolId, invoiceId).stream()
+                .map(InstallmentResponse::from)
+                .toList();
+    }
+
+    /** ساخت یا بازشمارشِ طرحِ اقساط؛ فقط تعداد را ادمین می‌دهد و تقسیم مساوی با سیستم است. */
+    @PostMapping("/invoices/{invoiceId}/installments/generate")
+    @RequiresPermission("FINANCE_MANAGE")
+    public List<InstallmentResponse> generateInstallments(
+            @PathVariable Long schoolId,
+            @PathVariable Long invoiceId,
+            @RequestBody GenerateInstallmentsRequest request
+    ) {
+        TenantContext.requireMatches(schoolId);
+        if (request.count() == null) {
+            throw new FinanceException(new FinanceError.InvalidInstallments("تعداد اقساط الزامی است."));
+        }
+
+        // فاصله‌ی خالی = ۱ ماه؛ تاریخِ خالی را خودِ facade فقط وقتی مانده‌ای هست رد می‌کند
+        int interval = request.intervalMonths() == null ? 1 : request.intervalMonths();
+        return financeFacade.generateInstallments(
+                        schoolId, invoiceId, request.count(), request.firstDueDate(), interval).stream()
+                .map(InstallmentResponse::from)
+                .toList();
+    }
+
+    /** ویرایشِ دستیِ مبلغ/سررسیدِ اقساطِ پرداخت‌نشده؛ body فهرستِ کاملِ آن‌هاست. */
+    @PutMapping("/invoices/{invoiceId}/installments")
+    @RequiresPermission("FINANCE_MANAGE")
+    public List<InstallmentResponse> updateInstallments(
+            @PathVariable Long schoolId,
+            @PathVariable Long invoiceId,
+            @RequestBody UpdateInstallmentsRequest request
+    ) {
+        TenantContext.requireMatches(schoolId);
+
+        List<FinanceFacade.InstallmentEdit> edits = request.items() == null ? null : request.items().stream()
+                .map(item -> item == null ? null
+                        : new FinanceFacade.InstallmentEdit(item.id(), item.amount(), item.dueDate()))
+                .toList();
+        return financeFacade.updateInstallments(schoolId, invoiceId, edits).stream()
+                .map(InstallmentResponse::from)
+                .toList();
+    }
+
+    @GetMapping("/finance/settings")
+    @RequiresPermission("FINANCE_VIEW")
+    public FinanceSettingsResponse settings(@PathVariable Long schoolId) {
+        TenantContext.requireMatches(schoolId);
+
+        return new FinanceSettingsResponse(schoolFacade.isInstallmentsEnabled(new SchoolFacade.SchoolId(schoolId)));
+    }
+
+    /** ادمین مالی ACADEMIC_YEAR_MANAGE ندارد، پس تنظیمِ اقساط اینجا و با FINANCE_MANAGE است. */
+    @PutMapping("/finance/settings/installments")
+    @RequiresPermission("FINANCE_MANAGE")
+    public FinanceSettingsResponse setInstallments(@PathVariable Long schoolId,
+                                                   @RequestBody(required = false) SetInstallmentsRequest request) {
+        TenantContext.requireMatches(schoolId);
+        if (request == null || request.enabled() == null) {
+            throw new FinanceException(new FinanceError.InvalidSetting("مقدار روشن/خاموش الزامی است."));
+        }
+        SchoolFacade.SchoolId id = new SchoolFacade.SchoolId(schoolId);
+        schoolFacade.setInstallmentsEnabled(id, request.enabled());
+        return new FinanceSettingsResponse(schoolFacade.isInstallmentsEnabled(id));
+    }
+
     @PostMapping("/invoices/backfill")
     @RequiresPermission("FINANCE_MANAGE")
     public BackfillResponse backfillInvoices(@PathVariable Long schoolId,
@@ -198,7 +304,13 @@ public class FinanceController {
 
     private static InvoiceResponse toResponse(InvoiceInfo info) {
         return new InvoiceResponse(info.id(), info.schoolId(), info.studentId(), info.amount(),
-                info.amountPaid(), info.issuedAt(), info.dueDate(), info.status(), info.academicYear());
+                info.amountPaid(), info.issuedAt(), info.dueDate(), info.status(), info.academicYear(),
+                info.discountTotal());
+    }
+
+    private static DiscountResponse toResponse(DiscountInfo info) {
+        return new DiscountResponse(info.id(), info.invoiceId(), info.amount(), info.reason(),
+                info.createdByUserId(), info.createdAt(), info.deadline(), info.status(), info.resolvedAt());
     }
 
     private static PaymentResponse toResponse(PaymentInfo info) {

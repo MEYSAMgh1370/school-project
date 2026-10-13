@@ -84,6 +84,75 @@ public interface FinanceFacade {
     List<PaymentInfo> listPayments(Long schoolId, Long invoiceId);
 
     /**
+     * تخفیف روی فاکتور (از ابتدا یا بخشودنِ بخشی از مانده)؛ مبلغ قابل پرداخت = amount - discountTotal.
+     * مستقل از تنظیمِ اقساط کار می‌کند و append-only است.
+     *
+     * @throws com.example.roshdeandishe.finance.shared.FinanceException با InvoiceNotFound،
+     * InvalidDiscount برای مبلغ null/نامثبت یا توضیحِ بلندتر از ۲۵۵ نویسه، DiscountExceedsBalance اگر
+     * قابل پرداخت از مبلغِ پرداخت‌شده کمتر شود
+     */
+    DiscountInfo applyDiscount(Long schoolId, Long invoiceId, BigDecimal amount, String reason);
+
+    /**
+     * همان، با مهلتِ اختیاری (تخفیفِ مشروط): تخفیف از همین لحظه قابل پرداخت را کم می‌کند، ولی فقط اگر فاکتور
+     * تا پایانِ روزِ {@code deadline} (به وقتِ مدرسه) کاملاً تسویه شود می‌ماند؛ وگرنه خودکار برداشته می‌شود
+     * (LAPSED). {@code deadline} خالی = تخفیفِ بی‌قیدوشرط. InvalidDiscount اگر مهلت پیش از امروزِ مدرسه باشد.
+     */
+    DiscountInfo applyDiscount(Long schoolId, Long invoiceId, BigDecimal amount, String reason,
+                               java.time.LocalDate deadline);
+
+    /** تخفیف‌های یک فاکتور، قدیمی‌ترین اول. */
+    List<DiscountInfo> listDiscounts(Long schoolId, Long invoiceId);
+
+    /**
+     * جمعِ تخفیف‌های مشروطِ بازِ (PENDING) چند فاکتور و زودترین مهلتشان با <b>یک</b> query (پاسخِ خودسرویس؛
+     * بدون N+1). فاکتورِ بدونِ تخفیفِ باز در نتیجه کلید ندارد.
+     */
+    java.util.Map<Long, PendingDiscountSummary> pendingDiscountsForInvoices(
+            Long schoolId, java.util.Collection<Long> invoiceIds);
+
+    /**
+     * جاروی تخفیف‌های مشروطِ مهلت‌گذشته (کارِ ساعتیِ ExpiredDiscountSweeper): هر فاکتور در تراکنشِ خودش و زیر
+     * قفل؛ شکستِ یک فاکتور بقیه را متوقف نمی‌کند. Idempotent.
+     *
+     * @return تعداد تخفیف‌های LAPSEDشده
+     */
+    int sweepExpiredDiscounts();
+
+    /** اقساطِ یک فاکتور به ترتیب (سررسید، seq)؛ خالی = فاکتور طرحِ اقساط ندارد. InvoiceNotFound اگر فاکتور نباشد. */
+    List<InstallmentInfo> listInstallments(Long schoolId, Long invoiceId);
+
+    /**
+     * اقساطِ چند فاکتورِ یک مدرسه با <b>یک</b> query (فهرست‌ها و endpoint خودسرویس؛ بدون N+1).
+     * فاکتورِ بی‌قسط در نتیجه کلید ندارد. شناسه‌هایی که متعلق به این مدرسه نیستند نادیده گرفته می‌شوند.
+     */
+    java.util.Map<Long, List<InstallmentInfo>> listInstallmentsForInvoices(
+            Long schoolId, java.util.Collection<Long> invoiceIds);
+
+    /**
+     * ساخت یا بازشمارشِ طرحِ اقساط (tuition-installments.md): اقساطِ کاملاً پرداخت‌شده می‌مانند و
+     * مانده‌ی قابل پرداخت (قابل پرداخت منهای آن‌ها) به {@code count} قسطِ پرداخت‌نشده‌ی مساوی (قسطِ آخر
+     * باقی‌مانده‌ی گرد کردن را می‌گیرد) با سررسیدهای ماهِ شمسیِ {@code intervalMonths}-تایی از
+     * {@code firstDueDate} تقسیم می‌شود. اگر چیزی نمانده باشد {@code count} باید صفر باشد.
+     *
+     * @throws com.example.roshdeandishe.finance.shared.FinanceException با InvoiceNotFound،
+     * InstallmentsNotEnabled اگر مدرسه اقساط را روشن نکرده، InvalidInstallments برای تعداد (۱ تا ۶۰)،
+     * فاصله (۱ تا ۱۲)، تاریخِ خالی یا سهمِ کمتر از ۰٫۰۱
+     */
+    List<InstallmentInfo> generateInstallments(Long schoolId, Long invoiceId, int count,
+                                               java.time.LocalDate firstDueDate, int intervalMonths);
+
+    /**
+     * ویرایشِ دستیِ مبلغ و سررسیدِ اقساطِ پرداخت‌نشده. {@code items} باید دقیقاً همه‌ی اقساطِ پرداخت‌نشده‌ی
+     * فاکتور باشد (افزودن/حذف ممکن نیست) و جمعِ مبلغ‌ها برابر مانده‌ی قابل تقسیم.
+     *
+     * @throws com.example.roshdeandishe.finance.shared.FinanceException با InvoiceNotFound،
+     * InstallmentsNotEnabled، InvalidInstallments (قسطِ پرداخت‌شده/ناشناخته/جاافتاده/مبلغ نامثبت)،
+     * InstallmentsSumMismatch
+     */
+    List<InstallmentInfo> updateInstallments(Long schoolId, Long invoiceId, List<InstallmentEdit> items);
+
+    /**
      * «صدورِ فاکتورهای سال»: برای هر دانش‌آموزِ فعلیِ مدرسه که برای این سال فاکتور ندارد، به مبلغ شهریه‌ی
      * <i>همان سال</i> فاکتور می‌دهد (سالِ خالی مثل {@link #setTuitionFee}). Idempotent. برخلاف
      * issueTuitionInvoice که بدون شهریه فقط warn می‌کند، اینجا TuitionFeeNotSet پرتاب می‌شود - اقدامِ
@@ -114,7 +183,24 @@ public interface FinanceFacade {
     }
 
     record InvoiceInfo(Long id, Long schoolId, Long studentId, BigDecimal amount, BigDecimal amountPaid,
-                       Instant issuedAt, Instant dueDate, InvoiceStatus status, String academicYear) {
+                       Instant issuedAt, Instant dueDate, InvoiceStatus status, String academicYear,
+                       BigDecimal discountTotal) {
+    }
+
+    record DiscountInfo(Long id, Long invoiceId, BigDecimal amount, String reason,
+                        Long createdByUserId, Instant createdAt,
+                        java.time.LocalDate deadline, DiscountStatus status, Instant resolvedAt) {
+    }
+
+    /** تخفیف‌های مشروطِ بازِ یک فاکتور: جمعِ مبلغ و زودترین مهلت. */
+    record PendingDiscountSummary(BigDecimal amount, java.time.LocalDate earliestDeadline) {
+    }
+
+    record InstallmentInfo(Long id, Long invoiceId, int seq, BigDecimal amount, BigDecimal amountPaid,
+                           java.time.LocalDate dueDate, InstallmentStatus status) {
+    }
+
+    record InstallmentEdit(Long id, BigDecimal amount, java.time.LocalDate dueDate) {
     }
 
     record PaymentInfo(Long id, Long invoiceId, BigDecimal amount, PaymentMethod method, String note,

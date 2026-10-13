@@ -30,6 +30,8 @@
                     <tr>
                         <th scope="col">دانش‌آموز</th>
                         <th scope="col">مبلغ</th>
+                        <th scope="col">تخفیف</th>
+                        <th scope="col">قابل پرداخت</th>
                         <th scope="col">پرداخت‌شده</th>
                         <th scope="col">مانده</th>
                         <th scope="col">وضعیت</th>
@@ -37,18 +39,27 @@
                         <th scope="col">سررسید</th>
                     </tr>
                     </thead>
-                    <tbody>
                     <template x-for="invoice in visibleInvoices()" :key="invoice.id">
+                        <tbody>
                         <tr>
                             <td>
                                 دانش‌آموز #<span x-text="Calendar.digits(invoice.studentId)"></span>
                                 <%-- سالِ فاکتور: فاکتورِ مانده‌دارِ سال‌های قبل هم در این فهرست می‌آید --%>
                                 <span class="tag is-light" dir="ltr" x-show="invoice.academicYear"
                                       x-text="invoice.academicYear ? Calendar.digits(invoice.academicYear) : ''"></span>
+                                <button type="button" class="button is-small is-light" x-cloak
+                                        x-show="installmentsOf(invoice).length > 0"
+                                        @click="toggleInstallments(invoice)"
+                                        :aria-expanded="isExpanded(invoice) ? 'true' : 'false'"
+                                        :aria-controls="'installments-' + invoice.id">
+                                    اقساط (<span x-text="Calendar.digits(installmentsOf(invoice).length)"></span>)
+                                </button>
                             </td>
                             <td x-text="Money.formatAmount(invoice.amount)"></td>
+                            <td x-text="discount(invoice) > 0 ? Money.formatAmount(discount(invoice)) : '—'"></td>
+                            <td x-text="Money.formatAmount(payable(invoice))"></td>
                             <td x-text="Money.formatAmount(invoice.amountPaid)"></td>
-                            <td x-text="Money.formatAmount(invoice.amount - invoice.amountPaid)"></td>
+                            <td x-text="Money.formatAmount(remaining(invoice))"></td>
                             <td>
                                 <span class="tag" :class="statusClass(invoice.status)"
                                       x-text="statusLabel(invoice.status)"></span>
@@ -56,8 +67,57 @@
                             <td dir="ltr" x-text="Calendar.formatDate(invoice.issuedAt)"></td>
                             <td dir="ltr" x-text="invoice.dueDate ? Calendar.formatDate(invoice.dueDate) : '—'"></td>
                         </tr>
+                        <tr x-cloak x-show="hasPendingDiscount(invoice)">
+                            <td colspan="9">
+                                <div class="notification is-warning is-light">
+                                    <span class="tag is-warning">تخفیف مشروط</span>
+                                    <span class="tag is-warning is-light" x-text="Money.formatAmount(Number(invoice.pendingDiscount)) + ' ریال'"></span>
+                                    — در صورت تسویه‌ی کامل تا
+                                    <strong x-text="invoice.pendingDiscountDeadline ? Calendar.formatDate(invoice.pendingDiscountDeadline) : ''"></strong>
+                                    این تخفیف باقی می‌ماند؛ در غیر این صورت مبلغ قابل پرداخت
+                                    <strong x-text="Money.formatAmount(Number(invoice.pendingDiscount)) + ' ریال'"></strong>
+                                    بیشتر می‌شود.
+                                </div>
+                            </td>
+                        </tr>
+                        <tr :id="'installments-' + invoice.id" x-cloak
+                            x-show="installmentsOf(invoice).length > 0 && isExpanded(invoice)">
+                            <td colspan="9">
+                                <div class="table-container">
+                                <table class="table is-narrow is-fullwidth">
+                                    <caption class="has-text-weight-semibold">اقساط</caption>
+                                    <thead>
+                                    <tr>
+                                        <th scope="col">قسط</th>
+                                        <th scope="col">مبلغ</th>
+                                        <th scope="col">سررسید</th>
+                                        <th scope="col">پرداخت‌شده</th>
+                                        <th scope="col">وضعیت</th>
+                                    </tr>
+                                    </thead>
+                                    <tbody>
+                                    <template x-for="item in installmentsOf(invoice)" :key="item.id">
+                                        <tr>
+                                            <td x-text="Calendar.digits(item.seq)"></td>
+                                            <td x-text="Money.formatAmount(item.amount)"></td>
+                                            <td dir="ltr">
+                                                <span x-text="Calendar.formatDate(item.dueDate)"></span>
+                                                <span class="tag is-link is-light" x-show="item.id === nextInstallmentId(invoice)">قسط بعدی</span>
+                                            </td>
+                                            <td x-text="Money.formatAmount(item.amountPaid)"></td>
+                                            <td>
+                                                <span class="tag" :class="statusClass(item.status)"
+                                                      x-text="statusLabel(item.status)"></span>
+                                            </td>
+                                        </tr>
+                                    </template>
+                                    </tbody>
+                                </table>
+                                </div>
+                            </td>
+                        </tr>
+                        </tbody>
                     </template>
-                    </tbody>
                 </table>
                 </div>
 

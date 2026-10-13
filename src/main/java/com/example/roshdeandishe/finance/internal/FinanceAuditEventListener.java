@@ -1,6 +1,10 @@
 package com.example.roshdeandishe.finance.internal;
 
+import com.example.roshdeandishe.finance.DiscountEarnedEvent;
+import com.example.roshdeandishe.finance.DiscountLapsedEvent;
 import com.example.roshdeandishe.finance.ExpenseStatusChangedEvent;
+import com.example.roshdeandishe.finance.InvoiceDiscountedEvent;
+import com.example.roshdeandishe.finance.InstallmentsChangedEvent;
 import com.example.roshdeandishe.finance.InvoiceIssuedEvent;
 import com.example.roshdeandishe.finance.PaymentRecordedEvent;
 import com.example.roshdeandishe.platform.TenantContext;
@@ -54,6 +58,79 @@ class FinanceAuditEventListener {
                     "PAYMENT_RECORDED",
                     event.studentId(),
                     event.amount(),
+                    event.occurredAt()
+            ));
+        } finally {
+            TenantContext.clear();
+        }
+    }
+
+    @ApplicationModuleListener
+    void onInvoiceDiscounted(InvoiceDiscountedEvent event) {
+        try {
+            TenantContext.set(event.schoolId());
+
+            financeAuditRepository.save(new FinanceAuditEntity(
+                    event.schoolId(),
+                    event.actorUserId(),
+                    "INVOICE_DISCOUNTED",
+                    event.studentId(),
+                    event.amount(),
+                    event.occurredAt()
+            ));
+        } finally {
+            TenantContext.clear();
+        }
+    }
+
+    @ApplicationModuleListener
+    void onDiscountEarned(DiscountEarnedEvent event) {
+        try {
+            TenantContext.set(event.schoolId());
+
+            financeAuditRepository.save(new FinanceAuditEntity(
+                    event.schoolId(),
+                    null,
+                    "DISCOUNT_EARNED",
+                    event.studentId(),
+                    event.amount(),
+                    event.occurredAt()
+            ));
+        } finally {
+            TenantContext.clear();
+        }
+    }
+
+    @ApplicationModuleListener
+    void onDiscountLapsed(DiscountLapsedEvent event) {
+        try {
+            TenantContext.set(event.schoolId());
+
+            financeAuditRepository.save(new FinanceAuditEntity(
+                    event.schoolId(),
+                    null,
+                    "DISCOUNT_LAPSED",
+                    event.studentId(),
+                    event.amount(),
+                    event.occurredAt()
+            ));
+        } finally {
+            TenantContext.clear();
+        }
+    }
+
+    @ApplicationModuleListener
+    void onInstallmentsChanged(InstallmentsChangedEvent event) {
+        try {
+            TenantContext.set(event.schoolId());
+
+            // مبلغی ندارد (تعداد اقساط مبلغ نیست)؛ ستون amount تهی می‌ماند
+            financeAuditRepository.save(new FinanceAuditEntity(
+                    event.schoolId(),
+                    event.actorUserId(),
+                    "INSTALLMENTS_CHANGED",
+                    event.studentId(),
+                    null,
                     event.occurredAt()
             ));
         } finally {

@@ -84,6 +84,27 @@ final class SolarCalendar {
         return LocalDate.of(year + 621, 3, cal.march()).plusDays(dayOfYear);
     }
 
+    /**
+     * افزودنِ ماهِ شمسی به یک تاریخِ میلادی: همان روزِ ماه در ماهِ مقصد، و اگر ماهِ مقصد آن روز را ندارد
+     * (مثلاً ۳۱ در ماه‌های ۳۰روزه) آخرین روزِ همان ماه. {@code months} می‌تواند منفی باشد.
+     */
+    static LocalDate addMonths(LocalDate date, int months) {
+        SolarDate solar = fromGregorian(date);
+        int index = solar.year() * 12 + (solar.month() - 1) + months;
+        int year = Math.floorDiv(index, 12);
+        int month = Math.floorMod(index, 12) + 1;
+        int length = month <= 6 ? 31 : month <= 11 ? 30 : 29;
+        if (month == 12) {
+            try {
+                toGregorian(year, 12, 30);
+                length = 30;
+            } catch (IllegalArgumentException e) {
+                length = 29;
+            }
+        }
+        return toGregorian(year, month, Math.min(solar.day(), length));
+    }
+
     private record JalCal(int leap, int march) {
     }
 

@@ -67,6 +67,17 @@ class MyInvoicesPageFlowIntegrationTest {
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("فاکتورهای من")))
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("src=\"/js/money.js\"")))
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("Money.formatAmount(invoice.amount)")))
+                // مانده بر پایه‌ی قابل‌پرداخت (مبلغ - تخفیف) و بخش اقساط
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("Money.formatAmount(remaining(invoice))")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("Money.formatAmount(payable(invoice))")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("تخفیف")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("اقساط")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("قسط بعدی")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString(":aria-expanded")))
+                // تخفیف مشروط
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("hasPendingDiscount(invoice)")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("تخفیف مشروط")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("invoice.pendingDiscountDeadline")))
                 // لینک‌های ناوبری روی همه‌ی صفحه‌های مدیریتی هستند
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("href=\"/dashboard\"")));
     }

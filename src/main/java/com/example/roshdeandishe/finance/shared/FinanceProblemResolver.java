@@ -58,7 +58,38 @@ public class FinanceProblemResolver {
                     "پرداخت از مانده‌ی فاکتور بیشتر است",
                     "مانده‌ی قابل پرداخت فاکتور " + e.invoiceId() + " برابر " + e.remaining() + " است."
             );
-            case FinanceError.ExpenseNotFound e -> ProblemDetailFactory.problem(
+            case FinanceError.InvalidDiscount e -> ProblemDetailFactory.problem(
+                    HttpStatus.BAD_REQUEST, "invalid-discount",
+                    "تخفیف نامعتبر است",
+                    e.reason()
+            );
+            case FinanceError.DiscountExceedsBalance e -> ProblemDetailFactory.problem(
+                    HttpStatus.CONFLICT, "discount-exceeds-balance",
+                    "تخفیف از مانده‌ی فاکتور بیشتر است",
+                    "حداکثر تخفیف قابل ثبت برای فاکتور " + e.invoiceId() + " برابر " + e.maxDiscount()
+                            + " است؛ مبلغ پرداخت‌شده را نمی‌شود تخفیف داد."
+            );
+            case FinanceError.InvalidSetting e -> ProblemDetailFactory.problem(
+                    HttpStatus.BAD_REQUEST, "invalid-setting",
+                    "مقدار تنظیم نامعتبر است",
+                    e.reason()
+            );
+            case FinanceError.InstallmentsNotEnabled e -> ProblemDetailFactory.problem(
+                    HttpStatus.CONFLICT, "installments-not-enabled",
+                    "اقساط برای مدرسه روشن نیست",
+                    "اول اقساط شهریه را در تنظیمات مالی روشن کنید."
+            );
+            case FinanceError.InvalidInstallments e -> ProblemDetailFactory.problem(
+                    HttpStatus.BAD_REQUEST, "invalid-installments",
+                    "اقساط نامعتبر است",
+                    e.reason()
+            );
+            case FinanceError.InstallmentsSumMismatch e -> ProblemDetailFactory.problem(
+                    HttpStatus.BAD_REQUEST, "installments-sum-mismatch",
+                    "جمعِ اقساط با مانده برابر نیست",
+                    "جمعِ مبلغِ اقساطِ پرداخت‌نشده باید دقیقاً برابر " + e.expected() + " باشد."
+            );
+            case FinanceError.ExpenseNotFound e ->ProblemDetailFactory.problem(
                     HttpStatus.NOT_FOUND, "expense-not-found",
                     "هزینه یافت نشد",
                     "هزینه‌ای با شناسه " + e.expenseId() + " در این مدرسه وجود ندارد."

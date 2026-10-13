@@ -27,6 +27,15 @@ public final class FinanceException extends RuntimeException {
             case FinanceError.InvalidPaymentAmount e -> e.reason();
             case FinanceError.PaymentExceedsBalance e ->
                     "مانده‌ی قابل پرداخت فاکتور " + e.invoiceId() + " برابر " + e.remaining() + " است.";
+            case FinanceError.InvalidDiscount e -> e.reason();
+            case FinanceError.DiscountExceedsBalance e ->
+                    "حداکثر تخفیف قابل ثبت برای فاکتور " + e.invoiceId() + " برابر " + e.maxDiscount() + " است.";
+            case FinanceError.InvalidSetting e -> e.reason();
+            case FinanceError.InstallmentsNotEnabled e ->
+                    "اقساط برای مدرسه‌ی " + e.schoolId() + " روشن نیست.";
+            case FinanceError.InvalidInstallments e -> e.reason();
+            case FinanceError.InstallmentsSumMismatch e ->
+                    "جمعِ اقساطِ پرداخت‌نشده باید برابر " + e.expected() + " باشد.";
             case FinanceError.ExpenseNotFound e ->
                     "هزینه‌ای با شناسه " + e.expenseId() + " در این مدرسه وجود ندارد.";
             case FinanceError.ExpenseCategoryNotFound e ->

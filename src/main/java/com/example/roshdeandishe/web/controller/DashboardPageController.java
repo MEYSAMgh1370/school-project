@@ -169,7 +169,8 @@ public class DashboardPageController {
                 continue;
             }
             List<InvoiceInfo> invoices = financeFacade.listInvoices(membership.schoolId(), null);
-            BigDecimal billed = invoices.stream().map(InvoiceInfo::amount).reduce(BigDecimal.ZERO, BigDecimal::add);
+            BigDecimal billed = invoices.stream().map(i -> i.amount().subtract(i.discountTotal()))
+                    .reduce(BigDecimal.ZERO, BigDecimal::add);
             BigDecimal paid = invoices.stream().map(InvoiceInfo::amountPaid).reduce(BigDecimal.ZERO, BigDecimal::add);
             rows.add(TuitionRow.of(membership.schoolId(),
                     schoolName(schools.getOrDefault(membership.schoolId(), Optional.empty()), membership.schoolId()),

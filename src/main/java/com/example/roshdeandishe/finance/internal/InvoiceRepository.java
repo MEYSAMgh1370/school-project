@@ -32,7 +32,7 @@ interface InvoiceRepository extends JpaRepository<InvoiceEntity, Long> {
      */
     @Query("select i from InvoiceEntity i where i.schoolId = :schoolId and i.studentId in :studentIds "
             + "and (i.academicYear = :academicYear or i.academicYear is null "
-            + "or (i.academicYear < :academicYear and i.amountPaid < i.amount)) order by i.issuedAt desc")
+            + "or (i.academicYear < :academicYear and i.amountPaid < i.amount - i.discountTotal)) order by i.issuedAt desc")
     List<InvoiceEntity> findForStudentsInYearOrUnattributed(@Param("schoolId") Long schoolId,
                                                             @Param("studentIds") Collection<Long> studentIds,
                                                             @Param("academicYear") String academicYear);
@@ -43,6 +43,11 @@ interface InvoiceRepository extends JpaRepository<InvoiceEntity, Long> {
     @Query("select i from InvoiceEntity i where i.id = :invoiceId and i.schoolId = :schoolId")
     Optional<InvoiceEntity> findByIdAndSchoolIdForUpdate(@Param("schoolId") Long schoolId,
                                                          @Param("invoiceId") Long invoiceId);
+
+    /** قفل‌گذاریِ فاکتور بدونِ دانستنِ مدرسه (sweepِ تخفیف‌های مهلت‌گذشته). */
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("select i from InvoiceEntity i where i.id = :invoiceId")
+    Optional<InvoiceEntity> findByIdForUpdate(@Param("invoiceId") Long invoiceId);
 
     /**
      * {@code on conflict do nothing} بدونِ هدف: یکتایی حالا دو ایندکسِ جزئی است (V10: با سال / بدون سال)
