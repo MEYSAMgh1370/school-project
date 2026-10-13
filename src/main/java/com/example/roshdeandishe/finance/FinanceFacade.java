@@ -57,6 +57,12 @@ public interface FinanceFacade {
     List<InvoiceInfo> listInvoices(Long schoolId, String academicYear);
 
     /**
+     * جمعِ صورت‌حساب (مبلغ منهای تخفیفِ در اثر) و پرداختِ همان فاکتورهای {@link #listInvoices(Long, String)}
+     * بدون بارگذاریِ اقساط - برای کادر «وضعیت شهریه»ی داشبورد.
+     */
+    TuitionSummary tuitionSummary(Long schoolId, String academicYear);
+
+    /**
      * فاکتورهای زیرمجموعه‌ای از دانش‌آموزانِ یک مدرسه، آن‌گونه که خانواده می‌بیند - پشتیبان endpoint
      * خودسرویس {@code GET /api/me/schools/{schoolId}/invoices}: سالِ جاری، فاکتورهای «بدون سال»، و
      * فاکتورِ سال‌های <b>قبل</b> که هنوز مانده دارد (بدهی پنهان نمی‌ماند)؛ فاکتورِ تسویه‌شده‌ی سال‌های قبل
@@ -180,6 +186,9 @@ public interface FinanceFacade {
     }
 
     record TuitionFeeInfo(Long schoolId, BigDecimal amount, String academicYear) {
+    }
+
+    record TuitionSummary(int invoiceCount, BigDecimal billed, BigDecimal paid) {
     }
 
     record InvoiceInfo(Long id, Long schoolId, Long studentId, BigDecimal amount, BigDecimal amountPaid,

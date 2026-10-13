@@ -177,12 +177,29 @@ class FinanceFacadeImpl implements FinanceFacade {
 
     @Override
     public List<InvoiceInfo> listInvoices(Long schoolId, String academicYear) {
-        String year = resolveYear(schoolId, academicYear);
-        if (year == null) {
-            // مدرسه‌ای که سالِ جاری ندارد: همه، مثل پیش از فاز ۲
-            return listInvoices(schoolId);
+        return toInvoiceInfos(schoolId, findInvoices(schoolId, academicYear));
+    }
+
+    @Override
+    public TuitionSummary tuitionSummary(Long schoolId, String academicYear) {
+        // بدون بارگذاریِ اقساط: داشبورد فقط جمعِ صورت‌حساب و پرداخت را می‌خواهد
+        List<InvoiceEntity> invoices = findInvoices(schoolId, academicYear);
+        Map<Long, BigDecimal> discounts = effectiveDiscounts(schoolId, invoices, today(schoolId));
+        BigDecimal billed = BigDecimal.ZERO;
+        BigDecimal paid = BigDecimal.ZERO;
+        for (InvoiceEntity invoice : invoices) {
+            billed = billed.add(invoice.getAmount().subtract(discounts.get(invoice.getId())));
+            paid = paid.add(invoice.getAmountPaid());
         }
-        return toInvoiceInfos(schoolId, invoiceRepository.findForYearOrUnattributed(schoolId, year));
+        return new TuitionSummary(invoices.size(), billed, paid);
+    }
+
+    /** فاکتورهای یک سال به‌علاوه‌ی «بدون سال»ها؛ مدرسه‌ای که سالِ جاری ندارد: همه، مثل پیش از فاز ۲. */
+    private List<InvoiceEntity> findInvoices(Long schoolId, String academicYear) {
+        String year = resolveYear(schoolId, academicYear);
+        return year == null
+                ? invoiceRepository.findBySchoolIdOrderByIssuedAtDesc(schoolId)
+                : invoiceRepository.findForYearOrUnattributed(schoolId, year);
     }
 
     @Override
@@ -602,12 +619,37 @@ class FinanceFacadeImpl implements FinanceFacade {
         Map<Long, List<InstallmentEntity>> plans =
                 loadPlans(schoolId, invoices.stream().map(InvoiceEntity::getId).toList());
         LocalDate today = today(schoolId);
+        Map<Long, BigDecimal> discounts = effectiveDiscounts(schoolId, invoices, today);
         return invoices.stream()
-                .map(invoice -> toInvoiceInfo(invoice, plans.getOrDefault(invoice.getId(), List.of()), today))
+                .map(invoice -> toInvoiceInfo(invoice, plans.getOrDefault(invoice.getId(), List.of()), today,
+                        discounts.get(invoice.getId())))
                 .toList();
     }
 
-    private InvoiceInfo toInvoiceInfo(InvoiceEntity invoice, List<InstallmentEntity> plan, LocalDate today) {
+    /**
+     * تخفیفِ «در اثر» هر فاکتور برای خواندن: تخفیف‌های PENDINGِ مهلت‌گذشته که جاروب/نوشتن هنوز LAPSEDشان نکرده
+     * از discountTotal کم می‌شوند، تا مبلغ قابل پرداخت و وضعیتی که می‌خوانیم با آنچه اولین نوشتن می‌سازد یکی باشد
+     * (پیامِ «تخفیف مشروط» هم با همین قاعده پنهان می‌شود). با یک query برای همه‌ی فاکتورهای فهرست؛ هیچ چیز نمی‌نویسد.
+     */
+    private Map<Long, BigDecimal> effectiveDiscounts(Long schoolId, List<InvoiceEntity> invoices, LocalDate today) {
+        Map<Long, BigDecimal> expired = invoices.isEmpty() ? Map.of()
+                : discountRepository.findBySchoolIdAndInvoiceIdInAndStatus(
+                                schoolId, invoices.stream().map(InvoiceEntity::getId).toList(), DiscountStatus.PENDING)
+                        .stream()
+                        .filter(d -> d.getDeadline() != null && today.isAfter(d.getDeadline()))
+                        .collect(Collectors.groupingBy(InvoiceDiscountEntity::getInvoiceId,
+                                Collectors.reducing(BigDecimal.ZERO, InvoiceDiscountEntity::getAmount, BigDecimal::add)));
+        Map<Long, BigDecimal> effective = new HashMap<>();
+        for (InvoiceEntity invoice : invoices) {
+            effective.put(invoice.getId(),
+                    invoice.getDiscountTotal().subtract(expired.getOrDefault(invoice.getId(), BigDecimal.ZERO))
+                            .max(BigDecimal.ZERO));
+        }
+        return effective;
+    }
+
+    private InvoiceInfo toInvoiceInfo(InvoiceEntity invoice, List<InstallmentEntity> plan, LocalDate today,
+                                      BigDecimal discount) {
         return new InvoiceInfo(
                 invoice.getId(),
                 invoice.getSchoolId(),
@@ -616,9 +658,9 @@ class FinanceFacadeImpl implements FinanceFacade {
                 invoice.getAmountPaid(),
                 invoice.getIssuedAt(),
                 invoice.getDueDate(),
-                deriveStatus(invoice, plan, today),
+                deriveStatus(invoice, plan, today, discount),
                 invoice.getAcademicYear(),
-                invoice.getDiscountTotal()
+                discount
         );
     }
 
@@ -881,8 +923,9 @@ class FinanceFacadeImpl implements FinanceFacade {
      * سررسیدی باشد - ردیف‌های قدیمی dev ندارند) یعنی OVERDUE، وگرنه
      * PARTIAL/UNPAID بر اساس وجود پرداخت جزئی.
      */
-    private InvoiceStatus deriveStatus(InvoiceEntity invoice, List<InstallmentEntity> plan, LocalDate today) {
-        if (invoice.getAmountPaid().compareTo(payable(invoice)) >= 0) {
+    private InvoiceStatus deriveStatus(InvoiceEntity invoice, List<InstallmentEntity> plan, LocalDate today,
+                                       BigDecimal discount) {
+        if (invoice.getAmountPaid().compareTo(invoice.getAmount().subtract(discount)) >= 0) {
             return InvoiceStatus.PAID;
         }
         if (!plan.isEmpty()) {

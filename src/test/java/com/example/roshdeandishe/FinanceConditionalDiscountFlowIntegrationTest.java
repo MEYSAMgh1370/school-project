@@ -252,6 +252,45 @@ class FinanceConditionalDiscountFlowIntegrationTest {
     }
 
     @Test
+    void readsAlreadyIgnoreAnExpiredDiscountBeforeAnySweepRuns() {
+        Long schoolId = newSchool(false);
+        InvoiceInfo invoice = newInvoice(schoolId, "1000000.00");
+        DiscountInfo discount = financeFacade.applyDiscount(
+                schoolId, invoice.id(), new BigDecimal("200000.00"), null, today().plusDays(1));
+        financeFacade.recordPayment(schoolId, invoice.id(), new BigDecimal("500000.00"), PaymentMethod.CASH, null);
+        assertThat(reload(schoolId, invoice.id()).discountTotal()).isEqualByComparingTo("200000.00");
+        assertThat(financeFacade.pendingDiscountsForInvoices(schoolId, List.of(invoice.id()))).containsKey(invoice.id());
+
+        expire(discount.id()); // مهلت گذشته، ولی نه جاروب شده نه نوشتنی روی فاکتور بوده
+
+        InvoiceInfo read = reload(schoolId, invoice.id());
+        assertThat(read.discountTotal()).isEqualByComparingTo("0");
+        assertThat(remaining(read)).isEqualByComparingTo("500000.00");
+        // پیامِ «تخفیف مشروط» همان‌جا پنهان است، پس مبلغ و پیام با هم ناسازگار نمی‌شوند
+        assertThat(financeFacade.pendingDiscountsForInvoices(schoolId, List.of(invoice.id()))).isEmpty();
+        // خواندن چیزی نمی‌نویسد: ردیف هنوز PENDING است تا اولین نوشتن یا جاروب آن را LAPSED کند
+        assertThat(discount(schoolId, invoice.id(), discount.id()).status()).isEqualTo(DiscountStatus.PENDING);
+        FinanceFacade.TuitionSummary summary = financeFacade.tuitionSummary(schoolId, null);
+        assertThat(summary.billed()).isEqualByComparingTo("1000000.00");
+        assertThat(summary.paid()).isEqualByComparingTo("500000.00");
+    }
+
+    @Test
+    void tuitionSummaryMatchesTheInvoiceListTotals() {
+        Long schoolId = newSchool(false);
+        InvoiceInfo invoice = newInvoice(schoolId, "1000000.00");
+        financeFacade.applyDiscount(schoolId, invoice.id(), new BigDecimal("100000.00"), null);
+        financeFacade.recordPayment(schoolId, invoice.id(), new BigDecimal("300000.00"), PaymentMethod.CASH, null);
+
+        FinanceFacade.TuitionSummary summary = financeFacade.tuitionSummary(schoolId, null);
+
+        assertThat(summary.invoiceCount()).isEqualTo(1);
+        assertThat(summary.billed()).isEqualByComparingTo("900000.00");
+        assertThat(summary.paid()).isEqualByComparingTo("300000.00");
+        assertThat(financeFacade.tuitionSummary(newSchool(false), null).invoiceCount()).isZero();
+    }
+
+    @Test
     void payingAfterTheDeadlineLapsesLazilyFirstAndDoesNotEarn() {
         Long schoolId = newSchool(false);
         InvoiceInfo invoice = newInvoice(schoolId, "1000000.00");
