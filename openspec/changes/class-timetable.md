@@ -235,7 +235,7 @@ natural follow-up), per-school configurable school days, and the Android client.
   optional teacher, «خالی کردن خانه»), «زنگ‌ها» (add/edit/delete) and «فعالیت‌ها»
   (platform defaults are listed without actions). `/my-timetable` is the read-only
   grid with the same picker as `/my-grades` when there is more than one view.
-  Dashboard: «برنامهٔ امروز» for the `STUDENT` role only (Thursday/Friday say there
+  Dashboard: «برنامهٔ امروز» for the `STUDENT` role (and, since 2026-10-13, the `TEACHER` role with their own slots) (Thursday/Friday say there
   is no class), with a link to the week.
 - Navigation: the sidebar link also shows for a custom role holding `TIMETABLE_MANAGE` (see [`self-service-gate-nav-permissions-bad-requests.md`](self-service-gate-nav-permissions-bad-requests.md)); the dashboard card stays role-based.
 - A malformed JSON body used to answer `500` on every endpoint; since 2026-10-03 it is `400` (see the same document). `weekday` is still taken as a string so an unknown day answers the domain error.

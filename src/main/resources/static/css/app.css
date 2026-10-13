@@ -959,6 +959,22 @@ button.navbar-burger,
   inline-size: 100%;
 }
 
+/* Mobile menu controls (DESIGN.md §7, touch targets ≥ 44px). Bulma's burger is a 40px box with 16px
+   bars, too small to hit and to read on a phone; the sizes are Bulma's own variables, so the bar
+   positions and the open (cross) animation keep working. The sidebar's close button was a 20px
+   `delete`. */
+button.navbar-burger {
+  --bulma-burger-item-width: 1.625rem;
+  --bulma-burger-item-height: 3px;
+  --bulma-burger-gap: 0.4375rem;
+  inline-size: 3rem;
+  block-size: 3rem;
+}
+
+.app-sidebar-close {
+  --bulma-delete-dimensions: 2.75rem;
+}
+
 .table th[scope="col"] {
   white-space: nowrap;
 }
@@ -970,6 +986,12 @@ button.navbar-burger,
 
 .app-narrow-container {
   max-inline-size: 560px;
+}
+
+.app-advanced-settings > summary {
+  cursor: pointer;
+  color: var(--bulma-link-text, inherit);
+  font-weight: 600;
 }
 
 .app-control-align-end {

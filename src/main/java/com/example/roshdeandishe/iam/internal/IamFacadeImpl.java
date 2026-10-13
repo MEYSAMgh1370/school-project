@@ -53,6 +53,8 @@ class IamFacadeImpl implements IamFacade {
     private final PasswordEncoder passwordEncoder;
     private final InviteEmailSender inviteEmailSender;
     private final SmsDriver smsDriver;
+    private final InviteDescriber inviteDescriber;
+    private final PasswordResetService passwordResetService;
 
     IamFacadeImpl(
             UserRepository userRepository,
@@ -68,7 +70,9 @@ class IamFacadeImpl implements IamFacade {
             PermissionDecisionService permissionDecisionService,
             PasswordEncoder passwordEncoder,
             InviteEmailSender inviteEmailSender,
-            SmsDriver smsDriver
+            SmsDriver smsDriver,
+            InviteDescriber inviteDescriber,
+            PasswordResetService passwordResetService
     ) {
         this.userRepository = userRepository;
         this.roleRepository = roleRepository;
@@ -84,6 +88,8 @@ class IamFacadeImpl implements IamFacade {
         this.passwordEncoder = passwordEncoder;
         this.inviteEmailSender = inviteEmailSender;
         this.smsDriver = smsDriver;
+        this.inviteDescriber = inviteDescriber;
+        this.passwordResetService = passwordResetService;
     }
 
     @Override
@@ -170,6 +176,26 @@ class IamFacadeImpl implements IamFacade {
         verificationCodeRepository.save(
                 new VerificationCodeEntity(user.getId(), code, now, now.plus(OTP_TTL_MINUTES, ChronoUnit.MINUTES))
         );
+    }
+
+    @Override
+    public boolean isOtpDeliveryAvailable() {
+        return smsDriver.deliveryAvailable();
+    }
+
+    @Override
+    public void requestPasswordReset(String email) {
+        passwordResetService.request(email);
+    }
+
+    @Override
+    public void confirmPasswordReset(String token, String newPassword) {
+        passwordResetService.confirm(token, newPassword);
+    }
+
+    @Override
+    public boolean isPasswordResetAvailable() {
+        return passwordResetService.deliveryAvailable();
     }
 
     @Override
@@ -372,14 +398,15 @@ class IamFacadeImpl implements IamFacade {
 
         // ارسال ایمیل در هر دو حالت (توکن تازه یا موجود) - صدور مجدد یعنی
         // «ایمیل دعوت را دوباره بفرست». شکست ارسال، صدور را باطل نمی‌کند.
-        boolean emailSent = inviteEmailSender.sendActivationEmail(user.getEmail(), user.getFullName(), token);
+        boolean emailSent = inviteEmailSender.sendActivationEmail(
+                user.getEmail(), user.getFullName(), token, inviteDescriber.summaryFor(membership));
 
         return Optional.of(new InviteIssued(token, emailSent));
     }
 
     @Override
     @Transactional
-    public void redeemInviteToken(String token, String newPassword) {
+    public String redeemInviteToken(String token, String newPassword) {
         InviteTokenEntity inviteToken = inviteTokenRepository.findByToken(token)
                 .orElseThrow(() -> new IamException(new IamError.InviteTokenNotFound(token)));
 
@@ -403,6 +430,26 @@ class IamFacadeImpl implements IamFacade {
 
         inviteToken.setRedeemedAt(Instant.now());
         inviteTokenRepository.save(inviteToken);
+        return user.getEmail();
+    }
+
+    @Override
+    public boolean notifyAddedToSchool(Long schoolId, Long membershipId) {
+        Optional<SchoolMembershipEntity> membership = schoolMembershipRepository.findByIdAndSchoolId(membershipId, schoolId);
+        if (membership.isEmpty()) {
+            return false;
+        }
+        Optional<UserEntity> user = userRepository.findById(membership.get().getUserId());
+        if (user.isEmpty() || user.get().getPasswordHash() == null) {
+            return false;
+        }
+        return inviteEmailSender.sendAddedToSchoolEmail(
+                user.get().getEmail(), user.get().getFullName(), inviteDescriber.summaryFor(membership.get()));
+    }
+
+    @Override
+    public InviteLookup describeInvite(String token) {
+        return inviteDescriber.describe(token);
     }
 
     private static String generateToken() {

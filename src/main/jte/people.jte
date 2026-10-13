@@ -82,7 +82,7 @@
                                         <span class="is-size-7 has-text-grey" x-text="labelFor(member.roleCode)"></span>
                                     </div>
                                     <div class="app-member-row__status">
-                                        <span class="tag is-success" x-show="member.active">فعال</span>
+                                        <span class="tag is-success" x-show="member.active && member.hasPassword">فعال</span>
                                         <span class="tag is-danger" x-show="!member.active">غیرفعال</span>
                                         <span class="tag is-light" x-show="member.hasPassword">فعال‌سازی شده</span>
                                         <span class="tag is-warning" x-show="!member.hasPassword">در انتظار فعال‌سازی</span>

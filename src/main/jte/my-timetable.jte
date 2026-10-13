@@ -58,7 +58,7 @@
 
                     <div class="notification app-empty" x-show="academicYear === null" id="myTtNoYear">
                         <span class="app-empty__text">
-                            مدیر مدرسه هنوز سال تحصیلیِ جاری را انتخاب نکرده است.
+                            برنامه‌ی هفتگی هنوز آماده نیست؛ مدرسه آن را اعلام می‌کند.
                         </span>
                     </div>
 

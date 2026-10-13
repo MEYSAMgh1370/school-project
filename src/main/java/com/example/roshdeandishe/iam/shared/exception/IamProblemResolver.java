@@ -133,6 +133,11 @@ public class IamProblemResolver {
                     "ارسال کد تأیید ممکن نیست",
                     "در حال حاضر سرویس ارسال پیامک در دسترس نیست. بعداً دوباره تلاش کنید."
             );
+            case IamError.PasswordResetTokenInvalid e -> ProblemDetailFactory.problem(
+                    HttpStatus.BAD_REQUEST, "password-reset-token-invalid",
+                    "لینک بازیابی نامعتبر است",
+                    "این لینک بازیابی رمز عبور نامعتبر است یا منقضی شده است. یک لینک تازه درخواست کنید."
+            );
         };
     }
 }

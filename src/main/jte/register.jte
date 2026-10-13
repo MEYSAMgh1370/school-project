@@ -8,14 +8,19 @@
                 <div class="column is-4-desktop is-6-tablet">
                     <div class="box" x-data="registerPage()"
                          data-post-authentication-destination="${postAuthenticationDestination}">
-                        <h1 class="title is-4">ثبت‌نام در رشدِاندیشه</h1>
+                        @if(postAuthenticationDestination.equals("/schools/new"))
+                            <h1 class="title is-4">ساخت حساب مدیر مدرسه</h1>
+                            <p class="subtitle is-6">قدم ۱ از ۲ - بعد از ساخت حساب، مدرسه‌ی خود را ثبت می‌کنید.</p>
+                        @else
+                            <h1 class="title is-4">ثبت‌نام در رشدِاندیشه</h1>
+                        @endif
 
                         <form @submit.prevent="submit">
                             <div class="field">
                                 <label class="label" for="fullName">نام و نام خانوادگی</label>
                                 <div class="control">
                                     <input class="input" id="fullName" type="text" x-model="fullName"
-                                           autocomplete="name" required>
+                                           autocomplete="name" required autofocus>
                                 </div>
                             </div>
 
@@ -29,20 +34,30 @@
 
                             <div class="field">
                                 <label class="label" for="password">رمز عبور</label>
-                                <div class="control">
-                                    <input class="input" id="password" type="password" x-model="password"
-                                           autocomplete="new-password" required minlength="8">
+                                <div class="field has-addons mb-0">
+                                    <div class="control is-expanded">
+                                        <input class="input" id="password" :type="showPassword ? 'text' : 'password'"
+                                               x-model="password" autocomplete="new-password" required minlength="8"
+                                               :dir="showPassword ? 'ltr' : null" aria-describedby="password-help">
+                                    </div>
+                                    <div class="control">
+                                        <button class="button" type="button" @click="showPassword = !showPassword"
+                                                :aria-pressed="showPassword"
+                                                x-text="showPassword ? 'پنهان' : 'نمایش'">نمایش</button>
+                                    </div>
                                 </div>
-                                <p class="help">حداقل ۸ کاراکتر</p>
+                                <p class="help" id="password-help">حداقل ۸ کاراکتر</p>
                             </div>
 
                             <div class="field">
                                 <label class="label" for="passwordConfirm">تکرار رمز عبور</label>
                                 <div class="control">
-                                    <input class="input" id="passwordConfirm" type="password" x-model="passwordConfirm"
-                                           autocomplete="new-password" required>
+                                    <input class="input" id="passwordConfirm" :type="showPassword ? 'text' : 'password'"
+                                           x-model="passwordConfirm" autocomplete="new-password" required
+                                           :dir="showPassword ? 'ltr' : null"
+                                           :aria-invalid="passwordsMismatch" aria-describedby="password-mismatch">
                                 </div>
-                                <p class="help is-danger" role="alert" x-cloak x-show="passwordsMismatch"><span class="app-notice">@template.layout.icon(name = "alert", size = 16)<span>رمز عبور و تکرار آن یکسان نیستند.</span></span></p>
+                                <p class="help is-danger" role="alert" id="password-mismatch" x-cloak x-show="passwordsMismatch"><span class="app-notice">@template.layout.icon(name = "alert", size = 16)<span>رمز عبور و تکرار آن یکسان نیستند.</span></span></p>
                             </div>
 
                             <div class="field">
@@ -56,6 +71,13 @@
 
                         <div class="notification is-danger mt-4" role="alert"
                              x-cloak x-show="errorMessage"><span class="app-notice">@template.layout.icon(name = "alert", size = 20)<span x-text="errorMessage"></span></span></div>
+
+                        @if(!postAuthenticationDestination.equals("/schools/new"))
+                            <p class="help has-text-centered mt-4">
+                                اگر مدرسه‌تان شما را دعوت کرده، ثبت‌نام لازم نیست؛ از لینک ایمیل دعوت یا از
+                                <a href="/activate">صفحه‌ی فعال‌سازی</a> استفاده کنید.
+                            </p>
+                        @endif
 
                         <p class="has-text-centered mt-4">
                             @if(postAuthenticationDestination.equals("/schools/new"))

@@ -129,7 +129,25 @@ class RegistrationFlowIntegrationTest {
 
         mockMvc.perform(get("/dashboard").session(session))
                 .andExpect(status().isOk())
-                .andExpect(content().string(org.hamcrest.Matchers.containsString("مدرسه‌ی بنیان‌گذار")));
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("مدرسه‌ی بنیان‌گذار")))
+                // چک‌لیستِ راه‌اندازی (school-admin-onboarding.md): مدرسه‌ی تازه هیچ گامی انجام‌شده ندارد
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("راه‌اندازی مدرسه‌ی بنیان‌گذار")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("0 از 3 گام انجام شده")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("href=\"/people\"")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("href=\"/classes\"")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("href=\"/students\"")));
+
+        // با ساخته‌شدنِ یک کلاس همان گام تیک می‌خورد و بقیه می‌مانند
+        mockMvc.perform(post("/api/admin/schools/" + schoolId + "/classes")
+                        .with(csrf())
+                        .session(session)
+                        .header("X-School-ID", schoolId)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"name\":\"اول الف\",\"gradeLevel\":1}"))
+                .andExpect(status().isOk());
+        mockMvc.perform(get("/dashboard").session(session))
+                .andExpect(status().isOk())
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("1 از 3 گام انجام شده")));
     }
 
     @Test

@@ -99,13 +99,13 @@ class TimetablePagesRenderTest {
     }
 
     @Test
-    void theDashboardShowsTodaysTimetableOnlyForTheStudentRoleWithALinkToTheWeek() {
+    void theDashboardShowsTodaysTimetableForTheStudentAndTeacherRolesWithALinkToTheWeek() {
         DashboardModel model = new DashboardModel("دانش‌آموز نمونه", "student@example.com", null,
                 List.of(), List.of(), false, List.of());
         String html = render("dashboard.jte", Map.of("model", model, "navbar", NAVBAR));
 
         assertThat(html).contains("id=\"dashboardTimetable\"").contains("x-data=\"dashboardTimetable()\"");
-        assertThat(html).contains("x-show=\"isStudent()\"");
+        assertThat(html).contains("x-show=\"applies()\"").contains("امروز کلاسی برای تدریس ندارید.");
         assertThat(html).contains("برنامه‌ی امروز").contains("href=\"/my-timetable\">برنامه‌ی کل هفته</a>");
         // کم‌اثر نبودنِ شکست: هر وضعیتِ خالی پیامِ خودش را دارد
         assertThat(html).contains("id=\"dashboardTimetableNoYear\"", "id=\"dashboardTimetableHoliday\"",

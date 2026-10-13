@@ -79,6 +79,8 @@ class LoginDashboardFlowIntegrationTest {
                 .andExpect(status().isOk())
                 .andExpect(content().string(org.hamcrest.Matchers.containsString(
                         "data-post-authentication-destination=\"/schools/new\"")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("ساخت حساب مدیر مدرسه")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("قدم ۱ از ۲")))
                 .andExpect(content().string(org.hamcrest.Matchers.containsString(
                         "href=\"/login?next=/schools/new\"")));
 
@@ -91,7 +93,7 @@ class LoginDashboardFlowIntegrationTest {
                 .andExpect(content().string(org.hamcrest.Matchers.containsString(
                         "? this.postAuthenticationDestination")))
                 .andExpect(content().string(org.hamcrest.Matchers.containsString(
-                        "? '/login?next=/schools/new'")))
+                        "? '/login?next=/schools/new&registered=1'")))
                 .andExpect(content().string(org.hamcrest.Matchers.containsString(
                         ": this.loginPagePath")));
 
@@ -104,7 +106,12 @@ class LoginDashboardFlowIntegrationTest {
         MockHttpSession session = (MockHttpSession) loginResult.getRequest().getSession(false);
 
         mockMvc.perform(get("/schools/new").session(session))
-                .andExpect(status().isOk());
+                .andExpect(status().isOk())
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("تنظیمات پیشرفته")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("schoolTimezone")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("schoolWeekStart")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString(
+                        "اگر خالی بگذارید، مدرسه نشانی اختصاصی نخواهد داشت")));
     }
 
     @Test
@@ -117,7 +124,10 @@ class LoginDashboardFlowIntegrationTest {
         mockMvc.perform(get("/register").param("next", "//example.test"))
                 .andExpect(status().isOk())
                 .andExpect(content().string(org.hamcrest.Matchers.containsString(
-                        "data-post-authentication-destination=\"/dashboard\"")));
+                        "data-post-authentication-destination=\"/dashboard\"")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("ثبت‌نام در رشدِاندیشه")))
+                .andExpect(content().string(org.hamcrest.Matchers.not(
+                        org.hamcrest.Matchers.containsString("ساخت حساب مدیر مدرسه"))));
     }
 
     @Test
@@ -212,7 +222,7 @@ class LoginDashboardFlowIntegrationTest {
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("SCHOOL_ADMIN")))
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("مدیر مدرسه")))
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("href=\"/people\"")))
-                .andExpect(content().string(org.hamcrest.Matchers.containsString("عضویت‌های من")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("سلام، ")))
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("مدرسه‌ی نمونه")));
     }
 
@@ -321,6 +331,54 @@ class LoginDashboardFlowIntegrationTest {
                 .andExpect(status().isOk())
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("رمز عبور")))
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("کد پیامکی")));
+    }
+
+    @Test
+    void authenticatedUserVisitingLoginOrRegisterIsSentOnWithoutSeeingTheForm() throws Exception {
+        MvcResult loginResult = mockMvc.perform(post("/api/auth/login")
+                        .with(csrf())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"email\":\"admin@roshdeandishe.test\",\"password\":\"password\"}"))
+                .andExpect(status().isOk())
+                .andReturn();
+        MockHttpSession session = (MockHttpSession) loginResult.getRequest().getSession(false);
+
+        mockMvc.perform(get("/login").session(session))
+                .andExpect(status().is3xxRedirection())
+                .andExpect(redirectedUrl("/dashboard"));
+        mockMvc.perform(get("/register").session(session))
+                .andExpect(status().is3xxRedirection())
+                .andExpect(redirectedUrl("/dashboard"));
+        // مقصدِ مجازِ «ثبت مدرسه» حفظ می‌شود؛ مقصدِ نامجاز به پیشخوان برمی‌گردد
+        mockMvc.perform(get("/login").param("next", "/schools/new").session(session))
+                .andExpect(redirectedUrl("/schools/new"));
+        mockMvc.perform(get("/register").param("next", "https://example.test").session(session))
+                .andExpect(redirectedUrl("/dashboard"));
+    }
+
+    @Test
+    void loginPageShowsAccountCreatedNoticeOnlyAfterRegistrationRedirect() throws Exception {
+        mockMvc.perform(get("/login").param("registered", "1"))
+                .andExpect(status().isOk())
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("حساب شما ساخته شد")));
+        mockMvc.perform(get("/login"))
+                .andExpect(status().isOk())
+                .andExpect(content().string(org.hamcrest.Matchers.not(
+                        org.hamcrest.Matchers.containsString("حساب شما ساخته شد"))));
+    }
+
+    @Test
+    void loginAndRegisterPagesOfferPasswordVisibilityToggleAndAccessibleTabs() throws Exception {
+        mockMvc.perform(get("/login"))
+                .andExpect(status().isOk())
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("showPassword")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("role=\"tablist\"")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("aria-selected")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("autofocus")));
+        mockMvc.perform(get("/register"))
+                .andExpect(status().isOk())
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("showPassword")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("autofocus")));
     }
 
     @Test

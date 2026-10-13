@@ -167,7 +167,8 @@ public interface IamFacade {
 
     /**
      * تکمیل فرآیند فعال‌سازی حساب: توکن را معتبر می‌سنجد و در صورت موفقیت
-     * passwordHash کاربر را با رمز عبور تازه تنظیم می‌کند.
+     * passwordHash کاربر را با رمز عبور تازه تنظیم می‌کند. ایمیلِ حسابِ فعال‌شده را برمی‌گرداند
+     * (صفحه‌ی فعال‌سازی با آن و همان رمز کاربر را وارد می‌کند؛ توکنِ دعوت اثباتِ مالکیتِ ایمیل است).
      *
      * @throws com.example.roshdeandishe.iam.shared.exception.IamException با
      * IamError.InviteTokenNotFound اگر توکن وجود نداشته باشد،
@@ -175,7 +176,41 @@ public interface IamFacade {
      * IamError.InviteTokenExpired اگر منقضی شده باشد، یا
      * IamError.InvalidPassword اگر رمز عبور تازه معتبر نباشد
      */
-    void redeemInviteToken(String token, String newPassword);
+    String redeemInviteToken(String token, String newPassword);
+
+    /**
+     * وضعیتِ یک توکنِ دعوت و، فقط برای توکنِ معتبر، این‌که به چه حسابی و در کدام مدرسه با چه نقشی دعوت شده‌ایم
+     * (صفحه‌ی فعال‌سازی). هیچ‌وقت exception نمی‌دهد؛ توکنِ ناشناخته/مصرف‌شده/منقضی فقط وضعیتش را برمی‌گرداند و
+     * هیچ داده‌ی حسابی را نه.
+     */
+    InviteLookup describeInvite(String token);
+
+    /**
+     * به کاربری که از قبل حساب فعال (دارای رمز) دارد خبر می‌دهد که به مدرسه‌ای اضافه شده؛ ایمیلِ best-effort.
+     * برای کاربرِ بدونِ رمز (او دعوت‌نامه‌ی فعال‌سازی می‌گیرد) یا عضویتِ ناموجود {@code false} و بدونِ ارسال.
+     *
+     * @return true فقط اگر ایمیل تحویل SMTP شد
+     */
+    boolean notifyAddedToSchool(Long schoolId, Long membershipId);
+
+
+    enum InviteState { VALID, USED, EXPIRED, UNKNOWN }
+
+    /** @param schoolName تهی اگر نامِ مدرسه در دسترس نیست */
+    record InviteMembershipInfo(String schoolName, String roleLabel) {
+    }
+
+    record InviteLookup(InviteState state, String email, String fullName, List<InviteMembershipInfo> memberships) {
+
+        public static InviteLookup of(InviteState state) {
+            return new InviteLookup(state, null, null, List.of());
+        }
+
+        public boolean valid() {
+            return state == InviteState.VALID;
+        }
+    }
+
 
     /**
      * فعال یا غیرفعال کردن اشتراک یک مدرسه برای یک ماژول SCHOOL-scoped
@@ -301,6 +336,35 @@ public interface IamFacade {
      * IamError.PhoneNotRegistered اگر هیچ کاربری با این شماره ثبت نشده باشد
      */
     void requestOtp(String phoneNumber);
+
+    /**
+     * آیا همین حالا ارسال کد پیامکی ممکن است؟ صفحه‌ی ورود فقط در این صورت تبِ «کد پیامکی» را نشان می‌دهد.
+     * {@link #requestOtp} در هر حال خودش fail-closed است؛ این فقط برای نمایش است، نه مرزِ امنیتی.
+     */
+    boolean isOtpDeliveryAvailable();
+
+    /**
+     * درخواست لینکِ بازیابی رمز با ایمیل (password-reset-by-email.md). <b>هرگز</b> نشان نمی‌دهد حسابی با این
+     * ایمیل هست یا ایمیلی فرستاده شد: برای کاربرِ ناشناخته، بدونِ رمز، معلق، یا داخلِ مهلتِ بینِ دو درخواست
+     * بی‌صدا برمی‌گردد و هرگز exception نمی‌دهد. فقط یک توکنِ قابل‌استفاده برای هر کاربر می‌ماند.
+     */
+    void requestPasswordReset(String email);
+
+    /**
+     * تعیین رمزِ تازه با توکنِ ایمیل‌شده. توکن یک‌بارمصرف است؛ پس از موفقیت همه‌ی توکن‌های بازیابیِ کاربر
+     * باطل و نشست‌های وبِ او بسته می‌شود (کاربر خودکار وارد نمی‌شود). رمزِ کوتاه توکن را مصرف نمی‌کند.
+     *
+     * @throws com.example.roshdeandishe.iam.shared.exception.IamException با
+     * IamError.PasswordResetTokenInvalid (ناشناخته/استفاده‌شده/منقضی/جایگزین‌شده، همه یک خطا) یا
+     * IamError.InvalidPassword
+     */
+    void confirmPasswordReset(String token, String newPassword);
+
+    /**
+     * آیا اپراتور اعلام کرده ایمیل واقعاً ارسال می‌شود ({@code roshdeandishe.mail.delivery-available})؟ صفحه‌ی
+     * ورود فقط در این صورت لینکِ بازیابی را نشان می‌دهد؛ فقط برای نمایش است، نه مرزِ امنیتی.
+     */
+    boolean isPasswordResetAvailable();
 
     /**
      * اعتبارسنجی کد تأیید پیامکی. فقط آخرین کدِ مصرف‌نشده‌ی کاربر بررسی

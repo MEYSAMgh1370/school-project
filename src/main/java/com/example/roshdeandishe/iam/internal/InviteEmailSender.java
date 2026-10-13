@@ -30,22 +30,68 @@ class InviteEmailSender {
     private final JavaMailSender mailSender;
     private final String from;
     private final String activationBaseUrl;
+    private final boolean deliveryAvailable;
 
     InviteEmailSender(
             JavaMailSender mailSender,
             @Value("${roshdeandishe.mail.from}") String from,
-            @Value("${roshdeandishe.mail.activation-base-url}") String activationBaseUrl
+            @Value("${roshdeandishe.mail.activation-base-url}") String activationBaseUrl,
+            @Value("${roshdeandishe.mail.delivery-available:false}") boolean deliveryAvailable
     ) {
         this.mailSender = mailSender;
         this.from = from;
         this.activationBaseUrl = activationBaseUrl;
+        this.deliveryAvailable = deliveryAvailable;
+    }
+
+    /**
+     * آیا اپراتور اعلام کرده که SMTP پیکربندی و ارسال تأیید شده است؟ این فقط یک پرچمِ پیکربندی است
+     * ({@code roshdeandishe.mail.delivery-available}؛ در production پیش‌فرض false)، نه تستِ اتصال. صفحه‌ی
+     * ورود فقط در این صورت لینکِ «رمز عبور را فراموش کرده‌اید؟» را نشان می‌دهد
+     * (password-reset-by-email.md، سؤال ۷).
+     */
+    boolean deliveryAvailable() {
+        return deliveryAvailable;
+    }
+
+    /**
+     * ایمیلِ لینکِ بازیابی رمز. همان قراردادِ best-effortِ {@link #sendActivationEmail}: شکست لاگ می‌شود و
+     * false برمی‌گردد، هرگز exception نمی‌دهد؛ تماس‌گیرنده نباید از نتیجه چیزی به کاربر بروز دهد.
+     */
+    boolean sendPasswordResetEmail(String recipientEmail, String fullName, String token, long validMinutes) {
+        String resetLink = activationBaseUrl + "/reset-password?token="
+                + URLEncoder.encode(token, StandardCharsets.UTF_8);
+
+        SimpleMailMessage message = new SimpleMailMessage();
+        message.setFrom(from);
+        message.setTo(recipientEmail);
+        message.setSubject("بازیابی رمز عبور رشد اندیشه");
+        message.setText("""
+                %s عزیز، سلام
+
+                برای حساب شما در رشد اندیشه درخواست بازیابی رمز عبور ثبت شد. برای \
+                تعیین رمز عبور تازه، روی لینک زیر بزنید:
+
+                %s
+
+                این لینک تا %d دقیقه معتبر است و فقط یک بار قابل استفاده است.
+                اگر شما این درخواست را نکرده‌اید، این ایمیل را نادیده بگیرید؛ رمز عبور شما تغییر نمی‌کند.
+                """.formatted(fullName, resetLink, validMinutes));
+
+        try {
+            mailSender.send(message);
+            return true;
+        } catch (MailException e) {
+            log.warn("ارسال ایمیل بازیابی رمز به {} شکست خورد.", recipientEmail, e);
+            return false;
+        }
     }
 
     /**
      * @return true اگر ایمیل تحویل SMTP شد؛ false اگر ارسال شکست خورد
      * (توکن همچنان معتبر است و ادمین باید لینک را دستی برساند)
      */
-    boolean sendActivationEmail(String recipientEmail, String fullName, String token) {
+    boolean sendActivationEmail(String recipientEmail, String fullName, String token, String invitationSummary) {
         String activationLink = activationBaseUrl + "/activate?token="
                 + URLEncoder.encode(token, StandardCharsets.UTF_8);
 
@@ -56,14 +102,15 @@ class InviteEmailSender {
         message.setText("""
                 %s عزیز، سلام
 
-                برای شما حسابی در سامانه‌ی رشد اندیشه ساخته شده است. برای \
+                %sبرای شما حسابی در سامانه‌ی رشد اندیشه ساخته شده است. برای \
                 تعیین رمز عبور و فعال‌سازی حساب، روی لینک زیر بزنید:
 
                 %s
 
-                این لینک تا ۷ روز معتبر است و فقط یک بار قابل استفاده است.
+                این لینک تا ۷ روز معتبر است و فقط یک بار قابل استفاده است. اگر منقضی شد، از مدیر مدرسه \
+                بخواهید دعوت‌نامه‌ی تازه‌ای بفرستد.
                 اگر این ایمیل را اشتباهی دریافت کرده‌اید، آن را نادیده بگیرید.
-                """.formatted(fullName, activationLink));
+                """.formatted(fullName, invitationLine(invitationSummary), activationLink));
 
         try {
             mailSender.send(message);
@@ -71,6 +118,39 @@ class InviteEmailSender {
         } catch (MailException e) {
             log.warn("ارسال ایمیل فعال‌سازی به {} شکست خورد؛ ادمین باید لینک را دستی تحویل دهد.",
                     recipientEmail, e);
+            return false;
+        }
+    }
+
+    /** «شما به‌عنوان معلم در دبستان … دعوت شده‌اید.» + یک سطر خالی؛ بدونِ خلاصه چیزی اضافه نمی‌شود. */
+    private static String invitationLine(String invitationSummary) {
+        if (invitationSummary == null || invitationSummary.isBlank()) {
+            return "";
+        }
+        return "شما به‌عنوان " + invitationSummary + " دعوت شده‌اید.\n\n";
+    }
+
+    /**
+     * اطلاعِ «شما به یک مدرسه اضافه شدید» برای کاربری که از قبل حساب فعال دارد (دعوت‌نامه‌ی فعال‌سازی برایش
+     * بی‌معناست). همان قراردادِ best-effortِ {@link #sendActivationEmail}.
+     */
+    boolean sendAddedToSchoolEmail(String recipientEmail, String fullName, String invitationSummary) {
+        SimpleMailMessage message = new SimpleMailMessage();
+        message.setFrom(from);
+        message.setTo(recipientEmail);
+        message.setSubject("شما به یک مدرسه در رشد اندیشه اضافه شدید");
+        message.setText("""
+                %s عزیز، سلام
+
+                شما به‌عنوان %s اضافه شدید. برای دیدن مدرسه با همان حساب قبلی‌تان وارد شوید:
+
+                %s/login
+                """.formatted(fullName, invitationSummary, activationBaseUrl));
+        try {
+            mailSender.send(message);
+            return true;
+        } catch (MailException e) {
+            log.warn("ارسال ایمیل «اضافه شدید» به {} شکست خورد.", recipientEmail, e);
             return false;
         }
     }

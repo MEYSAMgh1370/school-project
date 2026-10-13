@@ -7,6 +7,9 @@ import com.example.roshdeandishe.iam.dto.response.ActivateAccountResponse;
 import com.example.roshdeandishe.iam.dto.request.LoginRequest;
 import com.example.roshdeandishe.iam.dto.response.LoginResponse;
 import com.example.roshdeandishe.iam.dto.request.OtpRequestRequest;
+import com.example.roshdeandishe.iam.dto.request.PasswordResetConfirmRequest;
+import com.example.roshdeandishe.iam.dto.request.PasswordResetRequestRequest;
+import com.example.roshdeandishe.iam.dto.response.PasswordResetResponse;
 import com.example.roshdeandishe.iam.dto.response.OtpRequestResponse;
 import com.example.roshdeandishe.iam.dto.request.OtpVerifyRequest;
 import com.example.roshdeandishe.iam.dto.request.RegisterRequest;
@@ -107,10 +110,27 @@ public class AuthController {
         }
     }
 
+    /**
+     * درخواست لینکِ بازیابی رمز. همیشه همان ۲۰۰ و همان متن، چه حسابی با این ایمیل باشد چه نباشد، چه ایمیل
+     * برود چه نرود (password-reset-by-email.md).
+     */
+    @PostMapping("/api/auth/password-reset/request")
+    public PasswordResetResponse requestPasswordReset(@RequestBody PasswordResetRequestRequest request) {
+        iamFacade.requestPasswordReset(request.email());
+        return new PasswordResetResponse(
+                "اگر حسابی با این ایمیل وجود داشته باشد، لینک بازیابی رمز عبور برایش فرستاده شد.");
+    }
+
+    @PostMapping("/api/auth/password-reset/confirm")
+    public PasswordResetResponse confirmPasswordReset(@RequestBody PasswordResetConfirmRequest request) {
+        iamFacade.confirmPasswordReset(request.token(), request.newPassword());
+        return new PasswordResetResponse("رمز عبور تغییر کرد. اکنون با رمز تازه وارد شوید.");
+    }
+
     @PostMapping("/api/auth/activate")
     public ActivateAccountResponse activate(@RequestBody ActivateAccountRequest request) {
-        iamFacade.redeemInviteToken(request.token(), request.newPassword());
-        return new ActivateAccountResponse("حساب کاربری با موفقیت فعال شد. اکنون می‌توانید وارد شوید.");
+        String email = iamFacade.redeemInviteToken(request.token(), request.newPassword());
+        return new ActivateAccountResponse("حساب کاربری با موفقیت فعال شد. اکنون می‌توانید وارد شوید.", email);
     }
 
     /**

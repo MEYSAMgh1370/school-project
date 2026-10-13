@@ -5,6 +5,7 @@ import com.example.roshdeandishe.iam.IamFacade.MembershipInfo;
 import com.example.roshdeandishe.iam.dto.request.CreateMembershipRequest;
 import com.example.roshdeandishe.iam.dto.response.InviteTokenResponse;
 import com.example.roshdeandishe.iam.dto.response.MemberNameResponse;
+import com.example.roshdeandishe.iam.dto.response.AddedMembershipResponse;
 import com.example.roshdeandishe.iam.dto.response.MembershipResponse;
 import com.example.roshdeandishe.iam.dto.request.SetActiveRequest;
 import com.example.roshdeandishe.iam.shared.RequiresPermission;
@@ -40,7 +41,7 @@ public class MembershipController {
 
     @PostMapping
     @RequiresPermission("MEMBERSHIP_MANAGE")
-    public MembershipResponse createMembership(@PathVariable Long schoolId, @RequestBody CreateMembershipRequest request) {
+    public AddedMembershipResponse createMembership(@PathVariable Long schoolId, @RequestBody CreateMembershipRequest request) {
         TenantContext.requireMatches(schoolId);
 
         // یک فراخوانی اتمیک به‌جای ساخت کاربر و سپس تخصیص نقش - وگرنه
@@ -49,7 +50,9 @@ public class MembershipController {
         MembershipInfo info = iamFacade.addMember(
                 request.email(), request.fullName(), schoolId, request.roleCode()
         );
-        return MembershipResponse.from(info.membershipId(), info);
+        // کاربرِ از قبل فعال دعوت‌نامه نمی‌گیرد؛ پس باید خودش بفهمد که به مدرسه‌ای اضافه شده است.
+        boolean notified = info.hasPassword() && iamFacade.notifyAddedToSchool(schoolId, info.membershipId());
+        return AddedMembershipResponse.from(info, notified);
     }
 
     @GetMapping

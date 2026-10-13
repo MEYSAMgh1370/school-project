@@ -52,6 +52,29 @@
   }
 }
 
+/* Sticky action bar: the only primary button of /attendance stays reachable at the bottom of a long roll
+   (a 20-student class on a phone) with the live absent/late counts beside it. */
+.app-att-bar {
+  position: sticky;
+  inset-block-end: 0;
+  z-index: 5;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  margin-block-start: var(--space-3);
+  padding: var(--space-3) var(--space-4);
+  background: var(--bulma-scheme-main);
+  border: 1px solid var(--bulma-border);
+  border-radius: var(--bulma-radius-large, 12px);
+  box-shadow: var(--shadow-sm);
+}
+
+.app-att-bar-summary {
+  margin: 0;
+  font-weight: var(--bulma-weight-semibold);
+}
+
 /* Class cards of the daily absentees view (/attendance/report). */
 .app-att-class {
   block-size: 100%;

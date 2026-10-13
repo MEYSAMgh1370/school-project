@@ -36,6 +36,8 @@ public class TenantResolverFilter extends OncePerRequestFilter {
             // می‌شود و مرورگر برای آن X-School-ID نمی‌فرستد - همان استدلال /css و /js
             "/fonts",
             "/swagger-ui", "/v3/api-docs", "/activate", "/register", "/webjars",
+            // صفحه‌های عمومیِ بازیابی رمز (password-reset-by-email.md)، مثل /activate
+            "/forgot-password", "/reset-password",
             // «من» و پیشخوان درباره‌ی خودِ کاربرند، نه یک مدرسه‌ی خاص -
             // schoolId ای وجود ندارد که در هدر بیاید
             "/api/me", "/dashboard",

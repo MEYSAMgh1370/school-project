@@ -142,7 +142,7 @@ public class SecurityConfig {
                                 "/", "/api/auth/**", "/actuator/**", "/error",
                                 "/swagger-ui/**", "/swagger-ui.html", "/v3/api-docs/**",
                                 "/api/bale/webhook/**", "/api/exam-take/**", "/exam-take",
-                                "/activate", "/login", "/register", "/webjars/**",
+                                "/activate", "/login", "/register", "/forgot-password", "/reset-password", "/webjars/**",
                                 "/css/**", "/js/**",
                                 // فونت وب (Vazirmatn) - دارایی استاتیک عمومی، با
                                 // همان در معرض‌بودنِ /css/**؛ صفحه‌های ناشناس

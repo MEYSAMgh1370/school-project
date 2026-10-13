@@ -6,16 +6,18 @@ document.addEventListener('alpine:init', () => {
         email: '',
         password: '',
         passwordConfirm: '',
+        showPassword: false,
         submitting: false,
         errorMessage: '',
 
         // اگر لاگین خودکارِ پس از ثبت‌نام شکست بخورد، کاربر به صفحه‌ی ورود
         // می‌رود - اما با همان مقصدِ مجاز، تا قصدِ «ثبت مدرسه» در تلاش دوم
-        // از دست نرود.
+        // از دست نرود. registered=1 به صفحه‌ی ورود می‌گوید «حساب ساخته شد» را
+        // نشان بدهد، تا کاربر نپندارد ثبت‌نامش از بین رفته.
         get loginPagePath() {
             return this.postAuthenticationDestination === '/schools/new'
-                ? '/login?next=/schools/new'
-                : '/login';
+                ? '/login?next=/schools/new&registered=1'
+                : '/login?registered=1';
         },
 
         get passwordsMismatch() {

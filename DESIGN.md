@@ -550,7 +550,11 @@ UX_ROADMAP §2 remains binding. Additions:
 
 - One primary action per page. On desktop, at **inline-end** of the page
   header; **on mobile, in a bottom action bar** when the page is a long
-  list or form (thumb reach), otherwise in the header.
+  list or form (thumb reach), otherwise in the header. Exception: `/attendance`
+  keeps its only primary button in a sticky bottom bar at every width, because a
+  20-student roll is long on desktop too; the bar also shows the live absent and
+  late counts, and the button reads «همه حاضرند - ثبت» while no exception is
+  marked.
 - Search/filter controls at **inline-start** of the toolbar. All positional
   rules use logical directions.
 - Lists and tables over 25 items: client-side pagination or filter chips
@@ -587,7 +591,7 @@ Carried over unchanged unless noted:
 - `.has-text-grey` and `.has-text-grey-dark` remain remapped onto
   `--bulma-text-weak` / `--bulma-text` (Bulma hardcodes them); `-darker`,
   `-light`, `-lighter` need the same on first use.
-- Touch targets ≥ 44px, enforced in `app.css`.
+- Touch targets ≥ 44px, enforced in `app.css`. This includes the mobile menu burger (48px with 26×3px bars) and the drawer's close button (44px), whose Bulma defaults (40px and 20px) were too small to hit.
 - Real `<button>`, `<a href>`, `<input>` + `<label>`; tapping a row's label
   focuses its input.
 - RTL is the default direction; Latin data (emails, tokens, IDs, phones,

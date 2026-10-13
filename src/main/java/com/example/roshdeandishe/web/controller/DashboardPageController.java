@@ -14,7 +14,13 @@ import com.example.roshdeandishe.web.model.AttendanceTodayRow;
 import com.example.roshdeandishe.web.model.DashboardModel;
 import com.example.roshdeandishe.web.model.MembershipRow;
 import com.example.roshdeandishe.web.model.SchoolEntryRow;
+import com.example.roshdeandishe.web.model.SetupChecklistAssembler;
+import com.example.roshdeandishe.web.model.SetupChecklistRow;
+import com.example.roshdeandishe.web.model.StudentSummaryAssembler;
+import com.example.roshdeandishe.web.model.TeacherClassesAssembler;
+import com.example.roshdeandishe.web.model.TeacherClassesRow;
 import com.example.roshdeandishe.web.model.TuitionRow;
+import com.example.roshdeandishe.web.model.NavbarModel;
 import com.example.roshdeandishe.web.model.NavbarModelAssembler;
 import com.example.roshdeandishe.web.model.WardsAssembler;
 import org.springframework.stereotype.Controller;
@@ -58,6 +64,8 @@ public class DashboardPageController {
      * بدهیم» است.
      */
     private static final String SCHOOL_ADMIN_ROLE = "SCHOOL_ADMIN";
+    /** همان چکِ literalِ نقش (نقش‌های سفارشی عمداً اثری ندارند)؛ فقط تصمیمِ «چه بخشی نشان بدهیم». */
+    private static final String TEACHER_ROLE = "TEACHER";
 
     private final IamFacade iamFacade;
     private final SchoolFacade schoolFacade;
@@ -65,10 +73,19 @@ public class DashboardPageController {
     private final WardsAssembler wardsAssembler;
     private final FinanceFacade financeFacade;
     private final AttendanceTodayAssembler attendanceTodayAssembler;
+    private final TeacherClassesAssembler teacherClassesAssembler;
+    private final StudentSummaryAssembler studentSummaryAssembler;
+    private final SetupChecklistAssembler setupChecklistAssembler;
 
     public DashboardPageController(IamFacade iamFacade, SchoolFacade schoolFacade,
                                    NavbarModelAssembler navbarModelAssembler, WardsAssembler wardsAssembler,
-                                   FinanceFacade financeFacade, AttendanceTodayAssembler attendanceTodayAssembler) {
+                                   FinanceFacade financeFacade, AttendanceTodayAssembler attendanceTodayAssembler,
+                                   TeacherClassesAssembler teacherClassesAssembler,
+                                   StudentSummaryAssembler studentSummaryAssembler,
+                                   SetupChecklistAssembler setupChecklistAssembler) {
+        this.setupChecklistAssembler = setupChecklistAssembler;
+        this.studentSummaryAssembler = studentSummaryAssembler;
+        this.teacherClassesAssembler = teacherClassesAssembler;
         this.financeFacade = financeFacade;
         this.attendanceTodayAssembler = attendanceTodayAssembler;
         this.iamFacade = iamFacade;
@@ -95,11 +112,16 @@ public class DashboardPageController {
                         m.roleCode(), m.active()))
                 .toList();
 
+        NavbarModel navbar = navbarModelAssembler.assemble(profile, memberships);
         model.addAttribute("model", new DashboardModel(profile.fullName(), profile.email(), profile.phoneNumber(),
                 rows, schoolEntries(memberships, schools), WardsAssembler.isParent(memberships),
                 wardsAssembler.forParent(userId, memberships), tuitionRows(memberships, schools),
-                attendanceTodayRows(userId, memberships, schools)));
-        model.addAttribute("navbar", navbarModelAssembler.assemble(profile, memberships));
+                attendanceTodayRows(userId, memberships, schools),
+                teacherClasses(userId, memberships, schools), rolesSummary(memberships, navbar, schools),
+                studentSummaryAssembler.forOwn(userId, memberships,
+                        id -> schoolName(schools.getOrDefault(id, Optional.empty()), id)),
+                setupChecklists(memberships, schools)));
+        model.addAttribute("navbar", navbar);
         return "dashboard";
     }
 
@@ -176,6 +198,62 @@ public class DashboardPageController {
                     .ifPresent(rows::add);
         }
         return rows;
+    }
+
+    /**
+     * «کلاس‌های من» برای مدرسه‌هایی که کاربر در آن‌ها معلمِ فعال است (چکِ literal {@code TEACHER}؛ مدیر و
+     * نقش‌های سفارشی چیزی نمی‌گیرند). مدرسه‌ی معلمِ بدونِ کلاس هم ردیف می‌گیرد، تا «هنوز کلاسی به شما واگذار
+     * نشده» نشان داده شود، نه یک صفحه‌ی ساکت.
+     */
+    private List<TeacherClassesRow> teacherClasses(UserId userId, List<MembershipInfo> memberships,
+                                                   Map<Long, Optional<SchoolInfo>> schools) {
+        List<TeacherClassesRow> rows = new ArrayList<>();
+        Set<Long> seen = new LinkedHashSet<>();
+        for (MembershipInfo membership : memberships) {
+            if (!membership.active() || !TEACHER_ROLE.equals(membership.roleCode())
+                    || !seen.add(membership.schoolId())) {
+                continue;
+            }
+            rows.add(teacherClassesAssembler.forTeacherSchool(userId, membership.schoolId(),
+                    schoolName(schools.getOrDefault(membership.schoolId(), Optional.empty()), membership.schoolId())));
+        }
+        return rows;
+    }
+
+    /**
+     * چک‌لیستِ «راه‌اندازی مدرسه» برای مدرسه‌هایی که کاربر در آن‌ها مدیرِ فعال است (همان چکِ literal
+     * {@code SCHOOL_ADMIN} و همان دامنه‌ی {@link #tuitionRows}). مدرسه‌ای که همه‌ی گام‌هایش انجام شده ردیف
+     * نمی‌گیرد، پس کارتش دیگر نمایش داده نمی‌شود.
+     */
+    private List<SetupChecklistRow> setupChecklists(List<MembershipInfo> memberships,
+                                                    Map<Long, Optional<SchoolInfo>> schools) {
+        List<SetupChecklistRow> rows = new ArrayList<>();
+        Set<Long> seen = new LinkedHashSet<>();
+        for (MembershipInfo membership : memberships) {
+            if (!membership.active() || !SCHOOL_ADMIN_ROLE.equals(membership.roleCode())
+                    || !seen.add(membership.schoolId())) {
+                continue;
+            }
+            SetupChecklistRow row = setupChecklistAssembler.forAdminSchool(membership.schoolId(),
+                    schoolName(schools.getOrDefault(membership.schoolId(), Optional.empty()), membership.schoolId()));
+            if (!row.complete()) {
+                rows.add(row);
+            }
+        }
+        return rows;
+    }
+
+    /** «معلم در دبستان نمونه · والد در …» برای زیرعنوانِ پیشخوان؛ فقط عضویت‌های فعال، هر ترکیب یک‌بار. */
+    private String rolesSummary(List<MembershipInfo> memberships, NavbarModel navbar,
+                                Map<Long, Optional<SchoolInfo>> schools) {
+        Set<String> parts = new LinkedHashSet<>();
+        for (MembershipInfo membership : memberships) {
+            if (membership.active()) {
+                parts.add(navbar.roleLabel(membership.schoolId(), membership.roleCode()) + " در "
+                        + schoolName(schools.getOrDefault(membership.schoolId(), Optional.empty()), membership.schoolId()));
+            }
+        }
+        return String.join(" · ", parts);
     }
 
     /**

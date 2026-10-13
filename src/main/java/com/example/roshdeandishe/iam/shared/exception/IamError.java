@@ -66,6 +66,10 @@ public sealed interface IamError {
     record InvalidCredentials(String reason) implements IamError {
     }
 
+    /** لینک بازیابی رمز: ناشناخته، استفاده‌شده، منقضی یا جایگزین‌شده - عمداً یک خطا، تا چیزی افشا نشود. */
+    record PasswordResetTokenInvalid() implements IamError {
+    }
+
     record InvalidRoleDefinition(String reason) implements IamError {
     }
 

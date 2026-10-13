@@ -34,31 +34,7 @@
                             </select>
                         </div>
                     </div>
-                </div>
-
-                <div class="field">
-                    <label class="label" for="schoolWeekStart">شروع هفته‌ی درسی</label>
-                    <div class="control">
-                        <div class="select is-fullwidth">
-                            <select id="schoolWeekStart" x-model="weekStart" required>
-                                <template x-for="option in weekStartOptions" :key="option.value">
-                                    <option :value="option.value" x-text="option.label"></option>
-                                </template>
-                            </select>
-                        </div>
-                    </div>
                     <p class="help">بعد از ساخت مدرسه قابل تغییر نیست.</p>
-                </div>
-
-                <div class="field is-grouped">
-                    <div class="control is-expanded">
-                        <label class="label" for="schoolTimezone">منطقه‌ی زمانی</label>
-                        <input class="input" id="schoolTimezone" type="text" x-model="timezone" required dir="ltr">
-                    </div>
-                    <div class="control is-expanded">
-                        <label class="label" for="schoolLocale">زبان/منطقه</label>
-                        <input class="input" id="schoolLocale" type="text" x-model="locale" required dir="ltr">
-                    </div>
                 </div>
 
                 <div class="field">
@@ -72,8 +48,39 @@
                         حروف کوچک انگلیسی، رقم و خط تیره (۳ تا ۶۳ نویسه). درِ ورودی مدرسه‌تان می‌شود:
                         <span dir="ltr" x-text="slugPreview"></span>
                     </p>
+                    <p class="help"><strong>بعد از ساخت مدرسه قابل تغییر نیست.</strong>
+                        اگر خالی بگذارید، مدرسه نشانی اختصاصی نخواهد داشت.</p>
                     <p class="help is-danger" role="alert" x-show="slug.trim() && !slugValid"><span class="app-notice">@template.layout.icon(name = "alert", size = 16)<span>فقط حروف کوچک انگلیسی، رقم و خط تیره (نه در ابتدا/انتها)، بین ۳ تا ۶۳ نویسه.</span></span></p>
                 </div>
+
+                <details class="app-advanced-settings mb-4">
+                    <summary>تنظیمات پیشرفته</summary>
+
+                    <div class="field mt-3">
+                        <label class="label" for="schoolWeekStart">شروع هفته‌ی درسی</label>
+                        <div class="control">
+                            <div class="select is-fullwidth">
+                                <select id="schoolWeekStart" x-model="weekStart" required>
+                                    <template x-for="option in weekStartOptions" :key="option.value">
+                                        <option :value="option.value" x-text="option.label"></option>
+                                    </template>
+                                </select>
+                            </div>
+                        </div>
+                        <p class="help">بعد از ساخت مدرسه قابل تغییر نیست.</p>
+                    </div>
+
+                    <div class="field is-grouped">
+                        <div class="control is-expanded">
+                            <label class="label" for="schoolTimezone">منطقه‌ی زمانی</label>
+                            <input class="input" id="schoolTimezone" type="text" x-model="timezone" required dir="ltr">
+                        </div>
+                        <div class="control is-expanded">
+                            <label class="label" for="schoolLocale">زبان/منطقه</label>
+                            <input class="input" id="schoolLocale" type="text" x-model="locale" required dir="ltr">
+                        </div>
+                    </div>
+                </details>
 
                 <div class="field is-grouped">
                     <div class="control">
