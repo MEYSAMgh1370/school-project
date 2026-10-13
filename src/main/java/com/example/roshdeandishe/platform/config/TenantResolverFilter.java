@@ -53,6 +53,8 @@ public class TenantResolverFilter extends OncePerRequestFilter {
             "/curriculum",
             // همان استدلال /people برای صفحه‌ی صف گزارش‌های سؤال مدرسه
             "/question-reports",
+            // همان استدلال /people برای باکس سؤالات، برگه‌های سؤال و صفحه‌ی چاپ آن‌ها (fetch ها هدر را خودشان می‌فرستند)
+            "/question-box", "/question-sheets",
             // همان استدلال /people برای صفحه‌ی برنامه‌های مطالعه
             "/study-plans",
             // همان استدلال /people برای صفحه‌ی مدیریت آزمون‌ها

@@ -254,6 +254,16 @@ class CurriculumFacadeImpl implements CurriculumFacade {
                 .toList();
     }
 
+    @Override
+    public List<QuestionInfo> findQuestionsVisibleToSchool(Long schoolId, java.util.Collection<Long> questionIds) {
+        if (questionIds == null || questionIds.isEmpty()) {
+            return List.of();
+        }
+        return questionRepository.findVisibleToSchoolByIds(schoolId, questionIds).stream()
+                .map(CurriculumFacadeImpl::toInfo)
+                .toList();
+    }
+
     private TopicTreeNode toTreeNode(TopicEntity topic, Map<Long, List<TopicEntity>> byParent) {
         List<TopicTreeNode> children = byParent.getOrDefault(topic.getId(), List.of()).stream()
                 .sorted(Comparator.comparingInt(TopicEntity::getSortOrder).thenComparing(TopicEntity::getId))

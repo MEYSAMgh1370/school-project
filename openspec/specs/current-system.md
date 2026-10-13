@@ -127,6 +127,7 @@ Built page areas include:
 - پیشخوان (`/dashboard`, called «پیشخوان» in the UI since 2026-10-05; role-gated «دسترسی سریع» shortcut cards, «وضعیت شهریه» for school admins, «فرزندان من» for parents, memberships, school-entry box for admins, phone box) and shared navbar with a grouped sidebar;
 - people, roles, classes, students, and grades;
 - curriculum, study plans, and exams;
+- question box and printable question sheets (`/question-box`, `/question-sheets`, `/question-sheets/{id}/print`);
 - finance, expenses, invoices, and payments;
 - student/parent self-service pages for grades, invoices, exams, and study plan.
 
@@ -241,6 +242,16 @@ Evidence:
 
 - `academic` and `finance` package controllers and facades.
 - `Finance*FlowIntegrationTest`, `Expense*FlowIntegrationTest`, `Grade*FlowIntegrationTest`, and related tests.
+
+## Question box
+
+The `questionbox` module (`openspec/changes/question-box.md`, migration `V27`, schema `questionbox`) keeps teachers' own questions, reusable headers and saved printable sheets. The `QUESTION_BOX` module is a free school entitlement (granted at school creation and backfilled at startup) and every endpoint needs `QUESTION_BOX_MANAGE` (granted to `TEACHER` and `SCHOOL_ADMIN`).
+
+- **Questions** (`/api/admin/schools/{id}/question-box/questions`): `MULTIPLE_CHOICE` (four choices and `correctChoice` 1-4) or `ESSAY` (no choices), `TEXT` or `IMAGE_ONLY` content (an image-only multiple-choice question has `correctChoice` but no choice texts), an optional answer/solution and suggested score. Formulas use the same `$…$` TeX that KaTeX renders in the bank. All teachers of the school see every question; only the creator, a `SCHOOL_ADMIN`, or anyone when the creator has no active `TEACHER`/`SCHOOL_ADMIN` role may edit or delete it (`403 question-box-not-allowed`). Delete is soft; another school's question is `404`. The exam builder (`exam`) and `curriculum.questions` are unchanged and stay multiple-choice only.
+- **Images** are stored in `questionbox.question_images.data` (`bytea`): at most 5 MB, PNG/JPEG/WebP detected from the bytes, at most 6 per question, each with a role (`STEM`, `CHOICE_1`-`CHOICE_4`, `ANSWER`); an `IMAGE_ONLY` question is `complete` only with a `STEM` image. `GET .../images/{id}` needs `X-School-ID`, so pages load images with `fetch` and show blob URLs.
+- **Headers** (`.../headers`): `LAYOUT` (one of `CLASSIC`, `COMPACT`, `BOXED`, a set of fields among title, subject, class, teacher, date, duration, student name and a score box, and a school-name toggle) or `IMAGE` (an uploaded image printed full width, usable only once it has one). A header used by a saved sheet cannot be deleted.
+- **Sheets** (`.../sheets`, `.../sheets/{id}/resolved`): a title, an optional header with the values of its fields, two print options (answer space under essays, answer key on a separate page) and one or more titled sections of items; an item is either a box question or a curriculum-bank question (read through `CurriculumFacade.findQuestionsVisibleToSchool`; adding one needs the school's paid `CURRICULUM` entitlement, `400 invalid-sheet` otherwise). Saving replaces the sections and renumbers positions from the list order. A question already in a sheet is not re-validated on save, so a soft-deleted question keeps printing; a bank question that disappeared, or an image-only question whose `STEM` image was removed, resolves as unavailable. Lists and `resolved` never read image bytes.
+- **Pages:** `/question-box` (list, add/edit dialog, delete confirmation), `/question-sheets` (sheets and headers tabs, a builder with a question picker for the box and the bank) and `/question-sheets/{id}/print`, which has no navbar and is styled for Chrome printing (`@media print`, A4); PDF is the browser's «Save as PDF». The two management pages are in the sidebar's «آموزش» group for teachers and school admins.
 
 ## Current Limitations
 

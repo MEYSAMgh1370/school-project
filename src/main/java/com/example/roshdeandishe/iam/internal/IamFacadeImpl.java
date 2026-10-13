@@ -501,7 +501,7 @@ class IamFacadeImpl implements IamFacade {
      * بسته‌ی رایگان (CLAUDE.md §11 Q10): ACADEMIC و FINANCE، و ATTENDANCE (تصمیم ۶ حضور و غیاب).
      * CURRICULUM/STUDY_PLANNER/EXAM پولی می‌مانند و اینجا اعطا نمی‌شوند.
      */
-    private static final String[] FREE_TIER_MODULES = {"ACADEMIC", "FINANCE", "ATTENDANCE"};
+    private static final String[] FREE_TIER_MODULES = {"ACADEMIC", "FINANCE", "ATTENDANCE", "QUESTION_BOX"};
 
     @Override
     @Transactional

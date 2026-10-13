@@ -21,4 +21,9 @@ interface QuestionRepository extends JpaRepository<QuestionEntity, Long> {
             + "and q.topicId in :topicIds order by q.id asc")
     List<QuestionEntity> findVisibleToSchoolByTopicIds(@Param("schoolId") Long schoolId,
                                                        @Param("topicIds") Collection<Long> topicIds);
+
+    @Query("select q from QuestionEntity q where q.id in :ids and (q.schoolId is null or q.schoolId = :schoolId) "
+            + "order by q.id asc")
+    List<QuestionEntity> findVisibleToSchoolByIds(@Param("schoolId") Long schoolId,
+                                                  @Param("ids") Collection<Long> ids);
 }

@@ -1,0 +1,268 @@
+/* باکس سؤالات و برگه‌ی چاپی (openspec/changes/question-box.md). فقط ویژگی‌های منطقی (logical)؛ رنگ‌ها و فاصله‌ها از
+   توکن‌های app.css. بخش چاپ برای Chrome تنظیم شده و سربرگ، ناوبار و کنترل‌ها را از کاغذ حذف می‌کند. */
+
+/* هدر صفحه: عنوان و اقدام‌ها کنار هم، و در عرض کم اقدام‌ها به خط بعد می‌روند (Bulma .level نمی‌شکند). */
+.qb-page-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-3) var(--space-4);
+  margin-block-end: var(--space-4);
+}
+
+.qb-page-head__title {
+  flex: 1 1 24rem;
+  min-inline-size: 0;
+}
+
+.qb-page-head__actions {
+  flex: 0 0 auto;
+}
+
+/* خطِ جدیدِ متنِ سؤال و پاسخ (مثلاً بندهای الف/ب) در فهرست و چاپ بماند. */
+.qb-prewrap,
+.qb-question-text,
+.qb-choices li,
+.qb-key-row span {
+  white-space: pre-line;
+}
+
+.qb-image-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+}
+
+.qb-image-tile {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--space-2);
+  max-inline-size: 10rem;
+}
+
+.qb-image-tile img {
+  max-inline-size: 100%;
+  max-block-size: 8rem;
+  border: 1px solid var(--bulma-border-weak);
+  border-radius: var(--radius-md);
+}
+
+.qb-header-preview {
+  max-inline-size: 100%;
+  border: 1px solid var(--bulma-border-weak);
+  border-radius: var(--radius-md);
+}
+
+.qb-field-check {
+  display: inline-block;
+  margin-inline-end: var(--space-4);
+}
+
+/* --- برگه‌ی چاپی --------------------------------------------------------- */
+
+.qb-print-toolbar {
+  padding-block: var(--space-4);
+}
+
+.qb-sheet {
+  max-inline-size: 190mm;
+  margin-inline: auto;
+  padding: var(--space-5);
+  background: #fff;
+  color: #000;
+  font-size: 1rem;
+  line-height: 1.9;
+}
+
+.qb-sheet-header-image {
+  display: block;
+  inline-size: 100%;
+  margin-block-end: var(--space-4);
+}
+
+.qb-sheet-header {
+  margin-block-end: var(--space-4);
+}
+
+.qb-sheet-school {
+  margin-block-end: var(--space-2);
+  font-weight: 700;
+  text-align: center;
+}
+
+.qb-sheet-fields {
+  display: grid;
+  gap: var(--space-2) var(--space-5);
+}
+
+.qb-sheet-header--classic .qb-sheet-fields {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.qb-sheet-header--classic .qb-sheet-field {
+  border-block-end: 1px solid #000;
+}
+
+.qb-sheet-header--compact .qb-sheet-fields {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2) var(--space-4);
+}
+
+.qb-sheet-header--compact .qb-sheet-field {
+  flex: 1 1 auto;
+}
+
+.qb-sheet-header--boxed .qb-sheet-fields {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0;
+  border: 1px solid #000;
+}
+
+.qb-sheet-header--boxed .qb-sheet-field {
+  padding: var(--space-1) var(--space-2);
+  border: 1px solid #000;
+  margin: -1px;
+}
+
+.qb-sheet-field {
+  display: flex;
+  gap: var(--space-2);
+  min-block-size: 2rem;
+}
+
+.qb-sheet-field--score {
+  min-block-size: 3rem;
+}
+
+.qb-sheet-field-label {
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.qb-sheet-title {
+  margin-block: var(--space-3);
+  font-size: 1.25rem;
+  font-weight: 700;
+  text-align: center;
+}
+
+.qb-section {
+  margin-block-end: var(--space-5);
+}
+
+.qb-section-title {
+  font-size: 1.1rem;
+  font-weight: 700;
+  border-block-end: 2px solid #000;
+}
+
+.qb-section-instruction {
+  margin-block: var(--space-1) var(--space-3);
+  font-size: 0.9rem;
+}
+
+.qb-question {
+  margin-block-end: var(--space-4);
+  break-inside: avoid;
+}
+
+.qb-question-head {
+  display: flex;
+  gap: var(--space-2);
+  align-items: baseline;
+}
+
+.qb-question-number {
+  font-weight: 700;
+}
+
+.qb-question-text {
+  flex: 1 1 auto;
+}
+
+.qb-question-score {
+  white-space: nowrap;
+  font-size: 0.9rem;
+}
+
+/* شکلِ زیرِ سؤال کوچک چاپ می‌شود (یک عکسِ کوچک زیرِ متن)؛ سؤالِ «فقط تصویر» خودِ تصویر همان سؤال است و بزرگ می‌ماند. */
+.qb-question-image {
+  display: block;
+  max-inline-size: 55mm;
+  max-block-size: 40mm;
+  margin-block: var(--space-2);
+}
+
+.qb-question-image--full {
+  max-inline-size: 100%;
+  max-block-size: 90mm;
+}
+
+.qb-choices {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-1) var(--space-4);
+  margin-block-start: var(--space-2);
+  padding-inline-start: var(--space-4);
+  list-style: none;
+}
+
+.qb-choice-label {
+  font-weight: 700;
+  margin-inline-end: var(--space-1);
+}
+
+.qb-choice-image {
+  display: block;
+  max-inline-size: 30mm;
+  max-block-size: 22mm;
+}
+
+.qb-answer-space {
+  block-size: 60mm;
+  margin-block-start: var(--space-2);
+  background-image: repeating-linear-gradient(to bottom, transparent 0, transparent 9mm, #888 9mm, #888 9.3mm);
+}
+
+.qb-question-missing {
+  font-style: italic;
+}
+
+.qb-answer-key {
+  break-before: page;
+  margin-block-start: var(--space-6);
+}
+
+.qb-key-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  align-items: baseline;
+  margin-block-end: var(--space-2);
+}
+
+@media print {
+  @page {
+    size: A4;
+    margin: 12mm;
+  }
+
+  html,
+  body {
+    background: #fff;
+  }
+
+  .no-print,
+  .app-skip-link {
+    display: none !important;
+  }
+
+  .qb-sheet {
+    max-inline-size: none;
+    margin: 0;
+    padding: 0;
+  }
+}
