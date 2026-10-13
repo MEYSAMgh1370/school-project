@@ -11,6 +11,7 @@ document.addEventListener('alpine:init', () => {
         // تب رمز عبور (رفتار قبلی، بدون تغییر)
         email: '',
         password: '',
+        showPassword: false,
         submittingPassword: false,
         passwordErrorMessage: '',
 
@@ -70,13 +71,17 @@ document.addEventListener('alpine:init', () => {
                     body: JSON.stringify({ phoneNumber: phone })
                 });
                 if (!response.ok) {
-                    this.otpErrorMessage = response.status === 404
-                        ? 'شماره تلفن ثبت نشده است. ابتدا با ایمیل و رمز عبور وارد شوید و شماره خود را در پیشخوان ثبت کنید.'
-                        : 'خطایی رخ داد. دوباره تلاش کنید.';
+                    if (response.status === 404) {
+                        this.otpErrorMessage = 'شماره تلفن ثبت نشده است. ابتدا با ایمیل و رمز عبور وارد شوید و شماره خود را در پیشخوان ثبت کنید.';
+                    } else if (response.status === 503) {
+                        this.otpErrorMessage = 'ارسال پیامک الان ممکن نیست. با ایمیل و رمز عبور وارد شوید یا بعداً دوباره تلاش کنید.';
+                    } else {
+                        this.otpErrorMessage = 'خطایی رخ داد. دوباره تلاش کنید.';
+                    }
                     return;
                 }
                 this.otpStep = 'code';
-                this.otpInfoMessage = 'کد تأیید ارسال شد.';
+                this.otpInfoMessage = 'کد تأیید به ' + phone + ' ارسال شد.';
             } catch (e) {
                 this.otpErrorMessage = 'ارتباط با سرور برقرار نشد.';
             } finally {

@@ -34,6 +34,16 @@ class SmsDriver {
         this.devLogCodes = devLogCodes;
     }
 
+    /**
+     * آیا {@link #sendOtp} الان می‌تواند کدی را تحویل دهد؟ فقط وقتی که کلید پیکربندی نشده و {@code dev-log-codes}
+     * روشن است (کد در لاگ چاپ می‌شود)؛ با کلیدِ واقعی هم نه، چون اتصال به ارائه‌دهنده هنوز نوشته نشده. صفحه‌ی ورود
+     * از همین برای نشان‌دادنِ تبِ «کد پیامکی» استفاده می‌کند، تا تبی که در production همیشه شکست می‌خورد دیده نشود.
+     * با نوشته‌شدنِ اتصال واقعی، این شرط باید همراهش تغییر کند.
+     */
+    boolean deliveryAvailable() {
+        return (apiKey == null || apiKey.isBlank()) && devLogCodes;
+    }
+
     boolean sendOtp(String phoneNumber, String code) {
         if (apiKey == null || apiKey.isBlank()) {
             if (devLogCodes) {

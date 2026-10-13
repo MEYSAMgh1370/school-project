@@ -15,7 +15,7 @@
                                 <label class="label" for="fullName">نام و نام خانوادگی</label>
                                 <div class="control">
                                     <input class="input" id="fullName" type="text" x-model="fullName"
-                                           autocomplete="name" required>
+                                           autocomplete="name" required autofocus>
                                 </div>
                             </div>
 
@@ -29,20 +29,30 @@
 
                             <div class="field">
                                 <label class="label" for="password">رمز عبور</label>
-                                <div class="control">
-                                    <input class="input" id="password" type="password" x-model="password"
-                                           autocomplete="new-password" required minlength="8">
+                                <div class="field has-addons mb-0">
+                                    <div class="control is-expanded">
+                                        <input class="input" id="password" :type="showPassword ? 'text' : 'password'"
+                                               x-model="password" autocomplete="new-password" required minlength="8"
+                                               :dir="showPassword ? 'ltr' : null" aria-describedby="password-help">
+                                    </div>
+                                    <div class="control">
+                                        <button class="button" type="button" @click="showPassword = !showPassword"
+                                                :aria-pressed="showPassword"
+                                                x-text="showPassword ? 'پنهان' : 'نمایش'">نمایش</button>
+                                    </div>
                                 </div>
-                                <p class="help">حداقل ۸ کاراکتر</p>
+                                <p class="help" id="password-help">حداقل ۸ کاراکتر</p>
                             </div>
 
                             <div class="field">
                                 <label class="label" for="passwordConfirm">تکرار رمز عبور</label>
                                 <div class="control">
-                                    <input class="input" id="passwordConfirm" type="password" x-model="passwordConfirm"
-                                           autocomplete="new-password" required>
+                                    <input class="input" id="passwordConfirm" :type="showPassword ? 'text' : 'password'"
+                                           x-model="passwordConfirm" autocomplete="new-password" required
+                                           :dir="showPassword ? 'ltr' : null"
+                                           :aria-invalid="passwordsMismatch" aria-describedby="password-mismatch">
                                 </div>
-                                <p class="help is-danger" role="alert" x-cloak x-show="passwordsMismatch"><span class="app-notice">@template.layout.icon(name = "alert", size = 16)<span>رمز عبور و تکرار آن یکسان نیستند.</span></span></p>
+                                <p class="help is-danger" role="alert" id="password-mismatch" x-cloak x-show="passwordsMismatch"><span class="app-notice">@template.layout.icon(name = "alert", size = 16)<span>رمز عبور و تکرار آن یکسان نیستند.</span></span></p>
                             </div>
 
                             <div class="field">

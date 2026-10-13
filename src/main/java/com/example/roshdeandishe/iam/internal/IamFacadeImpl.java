@@ -176,6 +176,11 @@ class IamFacadeImpl implements IamFacade {
     }
 
     @Override
+    public boolean isOtpDeliveryAvailable() {
+        return smsDriver.deliveryAvailable();
+    }
+
+    @Override
     @Transactional
     public UserProfile verifyOtp(String phoneNumber, String code) {
         String canonicalPhoneNumber = PhoneNumberCanonicalizer.canonicalize(phoneNumber);

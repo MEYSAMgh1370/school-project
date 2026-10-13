@@ -91,7 +91,7 @@ class LoginDashboardFlowIntegrationTest {
                 .andExpect(content().string(org.hamcrest.Matchers.containsString(
                         "? this.postAuthenticationDestination")))
                 .andExpect(content().string(org.hamcrest.Matchers.containsString(
-                        "? '/login?next=/schools/new'")))
+                        "? '/login?next=/schools/new&registered=1'")))
                 .andExpect(content().string(org.hamcrest.Matchers.containsString(
                         ": this.loginPagePath")));
 
@@ -321,6 +321,54 @@ class LoginDashboardFlowIntegrationTest {
                 .andExpect(status().isOk())
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("رمز عبور")))
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("کد پیامکی")));
+    }
+
+    @Test
+    void authenticatedUserVisitingLoginOrRegisterIsSentOnWithoutSeeingTheForm() throws Exception {
+        MvcResult loginResult = mockMvc.perform(post("/api/auth/login")
+                        .with(csrf())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"email\":\"admin@roshdeandishe.test\",\"password\":\"password\"}"))
+                .andExpect(status().isOk())
+                .andReturn();
+        MockHttpSession session = (MockHttpSession) loginResult.getRequest().getSession(false);
+
+        mockMvc.perform(get("/login").session(session))
+                .andExpect(status().is3xxRedirection())
+                .andExpect(redirectedUrl("/dashboard"));
+        mockMvc.perform(get("/register").session(session))
+                .andExpect(status().is3xxRedirection())
+                .andExpect(redirectedUrl("/dashboard"));
+        // مقصدِ مجازِ «ثبت مدرسه» حفظ می‌شود؛ مقصدِ نامجاز به پیشخوان برمی‌گردد
+        mockMvc.perform(get("/login").param("next", "/schools/new").session(session))
+                .andExpect(redirectedUrl("/schools/new"));
+        mockMvc.perform(get("/register").param("next", "https://example.test").session(session))
+                .andExpect(redirectedUrl("/dashboard"));
+    }
+
+    @Test
+    void loginPageShowsAccountCreatedNoticeOnlyAfterRegistrationRedirect() throws Exception {
+        mockMvc.perform(get("/login").param("registered", "1"))
+                .andExpect(status().isOk())
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("حساب شما ساخته شد")));
+        mockMvc.perform(get("/login"))
+                .andExpect(status().isOk())
+                .andExpect(content().string(org.hamcrest.Matchers.not(
+                        org.hamcrest.Matchers.containsString("حساب شما ساخته شد"))));
+    }
+
+    @Test
+    void loginAndRegisterPagesOfferPasswordVisibilityToggleAndAccessibleTabs() throws Exception {
+        mockMvc.perform(get("/login"))
+                .andExpect(status().isOk())
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("showPassword")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("role=\"tablist\"")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("aria-selected")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("autofocus")));
+        mockMvc.perform(get("/register"))
+                .andExpect(status().isOk())
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("showPassword")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("autofocus")));
     }
 
     @Test
