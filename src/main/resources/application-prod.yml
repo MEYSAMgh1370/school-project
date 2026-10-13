@@ -133,6 +133,10 @@ roshdeandishe:
     # برمی‌دارد و دستی تحویل می‌دهد، و یک لینک localhost:8080 دقیقاً همان
     # «بی‌سروصدا خراب» است که این فایل جلویش را می‌گیرد.
     activation-base-url: ${APP_BASE_URL}
+    # پیش‌فرض false: تا وقتی SMTP واقعی پیکربندی و ارسالش تأیید نشده، لینکِ «رمز عبور را فراموش
+    # کرده‌اید؟» روی صفحه‌ی ورود نشان داده نمی‌شود (وعده‌ی لینکی که نمی‌رسد). بعد از تنظیم MAIL_* و تأیید
+    # ارسال، MAIL_DELIVERY_AVAILABLE=true را بگذارید. این کلید خودش ایمیل را فعال نمی‌کند.
+    delivery-available: ${MAIL_DELIVERY_AVAILABLE:false}
   platform-admin:
     # اختیاری (پیش‌فرض خالی = هیچ مدیر پلتفرمی)؛ معنا و هشدار ثبت‌نامِ باز در application.yml
     emails: ${PLATFORM_ADMIN_EMAILS:}

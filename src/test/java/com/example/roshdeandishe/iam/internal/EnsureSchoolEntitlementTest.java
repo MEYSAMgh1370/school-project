@@ -41,7 +41,8 @@ class EnsureSchoolEntitlementTest {
                 mock(InviteTokenRepository.class), mock(VerificationCodeRepository.class),
                 mock(AccessDecisionService.class), mock(PermissionDecisionService.class),
                 mock(PasswordEncoder.class), mock(InviteEmailSender.class), mock(SmsDriver.class),
-                mock(InviteDescriber.class));
+                mock(InviteDescriber.class),
+                mock(PasswordResetService.class));
 
         ModuleEntity module = new ModuleEntity("ATTENDANCE", "حضور و غیاب", ModuleScope.SCHOOL);
         module.setId(3L);

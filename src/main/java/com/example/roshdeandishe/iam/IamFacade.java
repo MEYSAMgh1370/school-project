@@ -344,6 +344,29 @@ public interface IamFacade {
     boolean isOtpDeliveryAvailable();
 
     /**
+     * درخواست لینکِ بازیابی رمز با ایمیل (password-reset-by-email.md). <b>هرگز</b> نشان نمی‌دهد حسابی با این
+     * ایمیل هست یا ایمیلی فرستاده شد: برای کاربرِ ناشناخته، بدونِ رمز، معلق، یا داخلِ مهلتِ بینِ دو درخواست
+     * بی‌صدا برمی‌گردد و هرگز exception نمی‌دهد. فقط یک توکنِ قابل‌استفاده برای هر کاربر می‌ماند.
+     */
+    void requestPasswordReset(String email);
+
+    /**
+     * تعیین رمزِ تازه با توکنِ ایمیل‌شده. توکن یک‌بارمصرف است؛ پس از موفقیت همه‌ی توکن‌های بازیابیِ کاربر
+     * باطل و نشست‌های وبِ او بسته می‌شود (کاربر خودکار وارد نمی‌شود). رمزِ کوتاه توکن را مصرف نمی‌کند.
+     *
+     * @throws com.example.roshdeandishe.iam.shared.exception.IamException با
+     * IamError.PasswordResetTokenInvalid (ناشناخته/استفاده‌شده/منقضی/جایگزین‌شده، همه یک خطا) یا
+     * IamError.InvalidPassword
+     */
+    void confirmPasswordReset(String token, String newPassword);
+
+    /**
+     * آیا اپراتور اعلام کرده ایمیل واقعاً ارسال می‌شود ({@code roshdeandishe.mail.delivery-available})؟ صفحه‌ی
+     * ورود فقط در این صورت لینکِ بازیابی را نشان می‌دهد؛ فقط برای نمایش است، نه مرزِ امنیتی.
+     */
+    boolean isPasswordResetAvailable();
+
+    /**
      * اعتبارسنجی کد تأیید پیامکی. فقط آخرین کدِ مصرف‌نشده‌ی کاربر بررسی
      * می‌شود (رجوع به VerificationCodeRepository) - درخواست یک کد تازه،
      * کدهای قبلی را عملاً بی‌اثر می‌کند. این متد فقط دامنه را اعتبارسنجی و

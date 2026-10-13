@@ -1,6 +1,7 @@
 @param String postAuthenticationDestination
 @param boolean otpAvailable
 @param boolean justRegistered
+@param boolean resetAvailable
 
 @template.layout.main(title = "ورود", scripts = java.util.List.of("/js/login.js"), content = @`
 <section class="hero is-fullheight" id="main-content" role="main" tabindex="-1">
@@ -76,6 +77,12 @@
                                     </div>
                                 </div>
                             </form>
+
+                            @if(resetAvailable)
+                                <p class="has-text-centered mt-3">
+                                    <a href="/forgot-password">رمز عبور را فراموش کرده‌اید؟</a>
+                                </p>
+                            @endif
 
                             <div class="notification is-danger mt-4" role="alert" id="password-error"
                                  x-cloak x-show="passwordErrorMessage"><span class="app-notice">@template.layout.icon(name = "alert", size = 20)<span x-text="passwordErrorMessage"></span></span></div>
