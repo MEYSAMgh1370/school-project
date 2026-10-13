@@ -15,9 +15,25 @@ package com.example.roshdeandishe.web.model;
  * @param invoiceCount همه‌ی فاکتورهای این دانش‌آموز
  * @param overdueCount فاکتورهای دیرکرد (OVERDUE)
  * @param openCount    فاکتورهای باز و سررسید‌نگذشته (UNPAID و PARTIAL)
+ * @param attendance   وضعیتِ حضور و غیابِ امروزِ همین فرزند (تهی = {@link WardAttendance#UNAVAILABLE})
  */
 public record WardRow(Long studentId, Long schoolId, String name, String schoolName, String className, String section,
-                      int invoiceCount, int overdueCount, int openCount) {
+                      int invoiceCount, int overdueCount, int openCount, WardAttendance attendance) {
+
+    public WardRow {
+        attendance = attendance == null ? WardAttendance.UNAVAILABLE : attendance;
+    }
+
+    /** بدونِ وضعیتِ حضور و غیاب (مدرسه‌ی بدونِ آن ماژول و تست‌های قدیمی). */
+    public WardRow(Long studentId, Long schoolId, String name, String schoolName, String className, String section,
+                   int invoiceCount, int overdueCount, int openCount) {
+        this(studentId, schoolId, name, schoolName, className, section, invoiceCount, overdueCount, openCount,
+                WardAttendance.UNAVAILABLE);
+    }
+
+    public boolean hasAttendance() {
+        return attendance != WardAttendance.UNAVAILABLE;
+    }
 
     public boolean hasClass() {
         return className != null && !className.isBlank();

@@ -66,6 +66,85 @@
             @endif
         @endfor
 
+        <%-- «فرزندان من»: فقط برای کاربری که در حداقل یک مدرسه والدِ فعال است و فقط
+             وقتی نقشِ انتخاب‌شده «والد» است (همان مدل کارت‌های دسترسی سریع،
+             $store.nav). داده فقط فرزندانِ واقعاً لینک‌شده به همین کاربر است
+             (WardsAssembler). وضعیت مالی فقط شمارش فاکتورها بر اساس وضعیتشان است،
+             نه مبلغ (واحد پولی هنوز تصمیم‌نگرفته). عددها اینجا ASCII رندر می‌شوند و
+             با Calendar.digits به رقم فارسی درمی‌آیند (DESIGN.md §8).
+             x-data خالی لازم است: Alpine بدون ریشه‌ی x-data x-show را اجرا نمی‌کند. --%>
+        @if(model.parent())
+            <section class="mb-5" aria-labelledby="dashboard-wards-title" x-data
+                     x-cloak x-show="['PARENT'].includes($store.nav.selectedRole)">
+                <h2 class="title is-5" id="dashboard-wards-title">فرزندان من</h2>
+                @if(model.wards().isEmpty())
+                    <div class="notification is-light">
+                        هنوز فرزندی به حساب شما متصل نشده است. از مدیر مدرسه بخواهید فرزندتان را به این حساب
+                        متصل کند؛ بعد از آن اینجا می‌بینید.
+                    </div>
+                @else
+                    <div class="columns is-multiline is-variable is-3">
+                        @for(var ward : model.wards())
+                            <div class="column is-6-desktop is-12-tablet is-12-mobile">
+                                <article class="box app-ward">
+                                    <h3 class="title is-6 mb-2">${ward.name()}</h3>
+                                    <p class="is-size-7 has-text-grey mb-2">${ward.schoolName()}</p>
+                                    <div class="tags mb-2">
+                                        @if(ward.hasClass())
+                                            <span class="tag is-light">کلاس ${ward.className()}</span>
+                                        @endif
+                                        @if(ward.hasSection())
+                                            <span class="tag is-light">بخش ${ward.section()}</span>
+                                        @endif
+                                    </div>
+                                    @if(ward.hasAttendance())
+                                        <p class="mb-2">
+                                            <span class="is-size-7 has-text-grey">امروز:</span>
+                                            @if(ward.attendance().name().equals("PRESENT"))
+                                                <span class="tag is-success is-light">حاضر</span>
+                                            @elseif(ward.attendance().name().equals("LATE"))
+                                                <span class="tag is-warning is-light">دیر آمده</span>
+                                            @elseif(ward.attendance().name().equals("ABSENT"))
+                                                <span class="tag is-danger">غایب</span>
+                                            @elseif(ward.attendance().name().equals("ABSENT_EXCUSED"))
+                                                <span class="tag is-warning">غایب (موجه)</span>
+                                            @elseif(ward.attendance().name().equals("PENDING"))
+                                                <span class="tag is-light">هنوز ثبت نشده</span>
+                                            @else
+                                                <span class="tag is-light">امروز روز درسی نیست</span>
+                                            @endif
+                                        </p>
+                                    @endif
+                                    <p class="mb-0">
+                                        <span class="is-size-7 has-text-grey">وضعیت مالی:</span>
+                                        @if(ward.hasNoInvoices())
+                                            <span class="tag is-light">فاکتوری صادر نشده</span>
+                                        @elseif(ward.isOverdue())
+                                            <span class="tag is-danger"><span x-text="Calendar.digits('${ward.overdueCount()}')">${ward.overdueCount()}</span>&nbsp;فاکتور دیرکرد</span>
+                                        @elseif(ward.isOpen())
+                                            <span class="tag is-warning"><span x-text="Calendar.digits('${ward.openCount()}')">${ward.openCount()}</span>&nbsp;فاکتور در انتظار پرداخت</span>
+                                        @else
+                                            <span class="tag is-success">همه‌ی فاکتورها تسویه‌شده</span>
+                                        @endif
+                                    </p>
+                                    <%-- لینک‌های هر فرزند: فقط شناسه‌ی او و شناسه‌ی مدرسه در URL می‌رود
+                                         (نه نام - اطلاعات کودک نباید در تاریخچه/لاگ نشت کند). navbar
+                                         مقصد، ?school را به‌عنوان مدرسه‌ی انتخاب‌شده می‌پذیرد، پس لینک
+                                         بدون وابستگی به کلیک (تب جدید، کلیک میانی) درست کار می‌کند.
+                                         کنترل‌ها اندازه‌ی عادی دارند (۴۴px). --%>
+                                    <div class="buttons mt-3 mb-0">
+                                        <a class="button is-light" href="/my-grades?student=${ward.studentId()}&school=${ward.schoolId()}">نمره‌ها</a>
+                                        <a class="button is-light" href="/my-invoices?student=${ward.studentId()}&school=${ward.schoolId()}">فاکتورها</a>
+                                        <a class="button is-light" href="/my-attendance?school=${ward.schoolId()}">غیبت‌ها</a>
+                                    </div>
+                                </article>
+                            </div>
+                        @endfor
+                    </div>
+                @endif
+            </section>
+        @endif
+
         <%-- «دسترسی سریع»: همان لینک‌های سایدبار، از منبع واحد NavCatalog (فقط
              نمایش - کنترل دسترسی سمت سرور می‌ماند). نقشِ انتخاب‌شده از
              $store.nav (آینه‌ی سوییچر navbar.js) می‌آید؛ کاربر بدون عضویت نقشی
@@ -210,8 +289,7 @@
             <div class="box">
                 <h2 class="title is-5 mb-1" id="dashboard-timetable-title">برنامه‌ی امروز</h2>
                 <p class="is-size-7 has-text-grey mb-3" x-show="isSchoolDay()">
-                    <span id="dashboardTimetableDay" x-text="dayTitle()"></span>
-                    <span x-show="className" x-text="'، کلاس ' + className"></span>
+                    <span id="dashboardTimetableDay" x-text="dayTitle()"></span><span x-show="className" x-text="'، کلاس ' + className"></span>
                 </p>
 
                 <p x-show="loading">در حال بارگذاری...</p>
@@ -222,7 +300,7 @@
                         هنوز در هیچ کلاسی ثبت‌نام نشده‌اید؛ بعد از ثبت‌نام، برنامه‌ی کلاس شما اینجا می‌آید.
                     </p>
                     <p id="dashboardTimetableNoYear" x-show="enrolled && academicYear === null">
-                        مدیر مدرسه هنوز سال تحصیلیِ جاری را انتخاب نکرده است.
+                        برنامه‌ی امروز هنوز آماده نیست؛ مدرسه آن را اعلام می‌کند.
                     </p>
                     <p id="dashboardTimetableHoliday" x-show="enrolled && academicYear !== null && !isSchoolDay()">
                         امروز روز کلاسی نیست (روزهای کلاسی <span x-text="schoolDaysLabel()"></span> است).
@@ -248,66 +326,6 @@
             </div>
         </section>
 
-        <%-- «فرزندان من»: فقط برای کاربری که در حداقل یک مدرسه والدِ فعال است و فقط
-             وقتی نقشِ انتخاب‌شده «والد» است (همان مدل کارت‌های دسترسی سریع،
-             $store.nav). داده فقط فرزندانِ واقعاً لینک‌شده به همین کاربر است
-             (WardsAssembler). وضعیت مالی فقط شمارش فاکتورها بر اساس وضعیتشان است،
-             نه مبلغ (واحد پولی هنوز تصمیم‌نگرفته). عددها اینجا ASCII رندر می‌شوند و
-             با Calendar.digits به رقم فارسی درمی‌آیند (DESIGN.md §8).
-             x-data خالی لازم است: Alpine بدون ریشه‌ی x-data x-show را اجرا نمی‌کند. --%>
-        @if(model.parent())
-            <section class="mb-5" aria-labelledby="dashboard-wards-title" x-data
-                     x-cloak x-show="['PARENT'].includes($store.nav.selectedRole)">
-                <h2 class="title is-5" id="dashboard-wards-title">فرزندان من</h2>
-                @if(model.wards().isEmpty())
-                    <div class="notification is-light">
-                        هنوز دانش‌آموزی به حساب شما لینک نشده است. مدیر مدرسه می‌تواند از صفحه‌ی
-                        «دانش‌آموزان» فرزندتان را به حساب شما متصل کند.
-                    </div>
-                @else
-                    <div class="columns is-multiline is-variable is-3">
-                        @for(var ward : model.wards())
-                            <div class="column is-6-desktop is-12-tablet is-12-mobile">
-                                <article class="box app-ward">
-                                    <h3 class="title is-6 mb-2">${ward.name()}</h3>
-                                    <p class="is-size-7 has-text-grey mb-2">${ward.schoolName()}</p>
-                                    <div class="tags mb-2">
-                                        @if(ward.hasClass())
-                                            <span class="tag is-light">کلاس ${ward.className()}</span>
-                                        @endif
-                                        @if(ward.hasSection())
-                                            <span class="tag is-light">بخش ${ward.section()}</span>
-                                        @endif
-                                    </div>
-                                    <p class="mb-0">
-                                        <span class="is-size-7 has-text-grey">وضعیت مالی:</span>
-                                        @if(ward.hasNoInvoices())
-                                            <span class="tag is-light">فاکتوری صادر نشده</span>
-                                        @elseif(ward.isOverdue())
-                                            <span class="tag is-danger"><span x-text="Calendar.digits('${ward.overdueCount()}')">${ward.overdueCount()}</span>&nbsp;فاکتور دیرکرد</span>
-                                        @elseif(ward.isOpen())
-                                            <span class="tag is-warning"><span x-text="Calendar.digits('${ward.openCount()}')">${ward.openCount()}</span>&nbsp;فاکتور در انتظار پرداخت</span>
-                                        @else
-                                            <span class="tag is-success">همه‌ی فاکتورها تسویه‌شده</span>
-                                        @endif
-                                    </p>
-                                    <%-- لینک‌های هر فرزند: فقط شناسه‌ی او و شناسه‌ی مدرسه در URL می‌رود
-                                         (نه نام - اطلاعات کودک نباید در تاریخچه/لاگ نشت کند). navbar
-                                         مقصد، ?school را به‌عنوان مدرسه‌ی انتخاب‌شده می‌پذیرد، پس لینک
-                                         بدون وابستگی به کلیک (تب جدید، کلیک میانی) درست کار می‌کند.
-                                         کنترل‌ها اندازه‌ی عادی دارند (۴۴px). --%>
-                                    <div class="buttons mt-3 mb-0">
-                                        <a class="button is-light" href="/my-grades?student=${ward.studentId()}&school=${ward.schoolId()}">نمره‌ها</a>
-                                        <a class="button is-light" href="/my-invoices?student=${ward.studentId()}&school=${ward.schoolId()}">فاکتورها</a>
-                                        <a class="button is-light" href="/my-attendance?school=${ward.schoolId()}">غیبت‌ها</a>
-                                    </div>
-                                </article>
-                            </div>
-                        @endfor
-                    </div>
-                @endif
-            </section>
-        @endif
 
         <%-- CTA ثبت مدرسه فقط در حالت بدون عضویت (جریان بنیان‌گذار):
              به دانش‌آموز/والدِ دعوت‌شده پیشنهاد «مدرسه بسازید» نمی‌دهیم

@@ -42,7 +42,7 @@ class WardsAssemblerTest {
     private final SchoolFacade school = mock(SchoolFacade.class);
     private final AcademicFacade academic = mock(AcademicFacade.class);
     private final FinanceFacade finance = mock(FinanceFacade.class);
-    private final WardsAssembler assembler = new WardsAssembler(iam, school, academic, finance);
+    private final WardsAssembler assembler = new WardsAssembler(iam, school, academic, finance, mock(WardAttendanceResolver.class));
 
     private static MembershipInfo membership(Long schoolId, String role, boolean active) {
         return new MembershipInfo(1L, PARENT, "p@example.com", "والد", schoolId, role, active, true);

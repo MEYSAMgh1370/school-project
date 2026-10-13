@@ -40,9 +40,12 @@ public class WardsAssembler {
     private final SchoolFacade schoolFacade;
     private final AcademicFacade academicFacade;
     private final FinanceFacade financeFacade;
+    private final WardAttendanceResolver attendanceResolver;
 
     WardsAssembler(IamFacade iamFacade, SchoolFacade schoolFacade,
-                   AcademicFacade academicFacade, FinanceFacade financeFacade) {
+                   AcademicFacade academicFacade, FinanceFacade financeFacade,
+                   WardAttendanceResolver attendanceResolver) {
+        this.attendanceResolver = attendanceResolver;
         this.iamFacade = iamFacade;
         this.schoolFacade = schoolFacade;
         this.academicFacade = academicFacade;
@@ -140,7 +143,9 @@ public class WardsAssembler {
                 rows.add(new WardRow(ward.id().value(), schoolId, name, schoolName,
                         enrollment.map(EnrollmentInfo::className).orElse(null),
                         enrollment.map(EnrollmentInfo::section).orElse(null),
-                        mine.size(), overdue, open));
+                        mine.size(), overdue, open,
+                        attendanceResolver.todayFor(userId, schoolId,
+                                ward.classId() == null ? null : ward.classId().value(), ward.id().value())));
             }
         }
         return List.copyOf(rows);

@@ -77,11 +77,11 @@ class DashboardWardsRenderTest {
     }
 
     @Test
-    void aParentWithoutLinkedWardsSeesTheInvitationText() {
+    void aParentWithoutLinkedWardsIsToldToAskTheSchool() {
         String html = render(true, List.of());
 
-        assertThat(html).contains("هنوز دانش‌آموزی به حساب شما لینک نشده است.");
-        assertThat(html).contains("مدیر مدرسه می‌تواند از صفحه‌ی");
+        assertThat(html).contains("هنوز فرزندی به حساب شما متصل نشده است.");
+        assertThat(html).contains("از مدیر مدرسه بخواهید فرزندتان را به این حساب");
         assertThat(html).doesNotContain("app-ward");
     }
 
@@ -101,7 +101,7 @@ class DashboardWardsRenderTest {
     }
 
     @Test
-    void sectionsAreOrderedShortcutsWardsMemberships() {
+    void sectionsAreOrderedWardsShortcutsMemberships() {
         String html = render(true, List.of(ward("الف", 0, 0, 0)));
 
         int shortcuts = html.indexOf("dashboard-shortcuts-title");
@@ -109,9 +109,10 @@ class DashboardWardsRenderTest {
         int memberships = html.indexOf("<table");
         int phone = html.indexOf("phoneNumberField()");
 
-        assertThat(shortcuts).isPositive();
-        assertThat(shortcuts).isLessThan(wards);
-        assertThat(wards).isLessThan(memberships);
+        // «فرزندان من» اولین چیزی است که یک والد می‌خواهد؛ لینک‌های کلی بعد از آن می‌آیند
+        assertThat(wards).isPositive();
+        assertThat(wards).isLessThan(shortcuts);
+        assertThat(shortcuts).isLessThan(memberships);
         assertThat(memberships).isLessThan(phone);
     }
 
@@ -119,4 +120,26 @@ class DashboardWardsRenderTest {
     void jalaliHelperIsLoadedForTheDigitConversion() {
         assertThat(render(true, List.of())).contains("/js/jalali.js");
     }
+
+    private static WardRow wardToday(com.example.roshdeandishe.web.model.WardAttendance attendance) {
+        return new WardRow(100L, 5L, "آرین رضایی", "مدرسه‌ی نمونه", "پنجم", "الف", 0, 0, 0, attendance);
+    }
+
+    @Test
+    void eachWardShowsTodaysAttendanceOnlyWhenItIsKnown() {
+        record Case(com.example.roshdeandishe.web.model.WardAttendance state, String text) {
+        }
+        for (Case c : List.of(
+                new Case(com.example.roshdeandishe.web.model.WardAttendance.PRESENT, "حاضر"),
+                new Case(com.example.roshdeandishe.web.model.WardAttendance.LATE, "دیر آمده"),
+                new Case(com.example.roshdeandishe.web.model.WardAttendance.ABSENT, "غایب"),
+                new Case(com.example.roshdeandishe.web.model.WardAttendance.ABSENT_EXCUSED, "غایب (موجه)"),
+                new Case(com.example.roshdeandishe.web.model.WardAttendance.PENDING, "هنوز ثبت نشده"),
+                new Case(com.example.roshdeandishe.web.model.WardAttendance.NOT_SCHOOL_DAY, "امروز روز درسی نیست"))) {
+            assertThat(render(true, List.of(wardToday(c.state())))).contains("امروز:", c.text());
+        }
+        // مدرسه‌ی بدونِ ماژولِ حضور و غیاب: هیچ ردیفی برای امروز نمی‌آید
+        assertThat(render(true, List.of(ward("آرین رضایی", 0, 0, 0)))).doesNotContain("امروز:");
+    }
+
 }
