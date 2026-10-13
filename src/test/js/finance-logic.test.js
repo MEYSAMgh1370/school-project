@@ -66,6 +66,31 @@ test('sum matches only when every row is valid and the total is exact', () => {
     assert.equal(FinanceLogic.sumMatches([], 0), false);
 });
 
+test('undated installments: label, edit text and null-tolerant sums', () => {
+    const fmt = (iso) => 'F(' + iso + ')';
+    const undated = { id: 1, amount: 500, status: 'UNPAID', dueDate: null };
+    const dated = { id: 2, amount: 500, status: 'UNPAID', dueDate: '2026-11-01' };
+    assert.equal(FinanceLogic.isUndated(undated), true);
+    assert.equal(FinanceLogic.isUndated({ id: 3 }), true);
+    assert.equal(FinanceLogic.isUndated(dated), false);
+    assert.equal(FinanceLogic.dueDateLabel(undated, () => { throw new Error('format must not run'); }), 'بدون سررسید');
+    assert.equal(FinanceLogic.dueDateLabel(dated, fmt), 'F(2026-11-01)');
+    assert.equal(FinanceLogic.editDueText(undated, () => { throw new Error('format must not run'); }), '');
+    assert.equal(FinanceLogic.editDueText(dated, fmt), 'F(2026-11-01)');
+    assert.equal(FinanceLogic.expectedSum({ amount: 1000, discountTotal: 0 }, [undated, dated]), 1000);
+});
+
+test('resolveDueDate: empty is valid only for a row that started undated', () => {
+    const parse = (text) => (text === '1405/08/20' ? '2026-11-11' : null);
+    assert.deepEqual(FinanceLogic.resolveDueDate({ undated: true, dueDate: '' }, parse), { ok: true, value: null });
+    assert.deepEqual(FinanceLogic.resolveDueDate({ undated: true, dueDate: '   ' }, parse), { ok: true, value: null });
+    assert.deepEqual(FinanceLogic.resolveDueDate({ undated: true, dueDate: '1405/08/20' }, parse), { ok: true, value: '2026-11-11' });
+    assert.equal(FinanceLogic.resolveDueDate({ undated: true, dueDate: 'abc' }, parse).ok, false);
+    assert.equal(FinanceLogic.resolveDueDate({ undated: false, dueDate: '' }, parse).ok, false);
+    assert.equal(FinanceLogic.resolveDueDate({ dueDate: '' }, parse).ok, false);
+    assert.deepEqual(FinanceLogic.resolveDueDate({ undated: false, dueDate: '1405/08/20' }, parse), { ok: true, value: '2026-11-11' });
+});
+
 test('decimal rials do not break the exact comparison', () => {
     assert.equal(FinanceLogic.sumMatches([{ amount: '0.1' }, { amount: '0.2' }], 0.3), true);
 });

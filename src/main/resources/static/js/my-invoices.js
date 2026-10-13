@@ -91,12 +91,19 @@ document.addEventListener('alpine:init', () => {
             return this.expanded[invoice.id] === true;
         },
 
-        // «قسط بعدی»: اولین قسطِ پرداخت‌نشده‌ی کامل (به ترتیب شماره‌ی قسط)
+        // قسطِ بدون سررسید: dueDate آن null است و هرگز دیرکرد نمی‌شود
+        isUndated(item) {
+            return item.dueDate == null || item.dueDate === '';
+        },
+
+        // «قسط بعدی»: اولین قسطِ پرداخت‌نشده‌ی کامل (به ترتیب شماره‌ی قسط)؛ قسطِ تاریخ‌دار بر بدون‌سررسید مقدم
+        // است و فقط وقتی تاریخ‌داری نمانده، اولین قسطِ بدون سررسیدِ پرداخت‌نشده برگزیده می‌شود
         nextInstallmentId(invoice) {
             const open = this.installmentsOf(invoice)
                 .filter((item) => item.status !== 'PAID')
                 .sort((a, b) => a.seq - b.seq);
-            return open.length > 0 ? open[0].id : null;
+            const next = open.find((item) => !this.isUndated(item)) || open[0];
+            return next ? next.id : null;
         },
 
         statusLabel(status) {

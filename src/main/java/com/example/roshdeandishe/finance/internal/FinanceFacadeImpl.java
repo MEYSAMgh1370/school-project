@@ -6,8 +6,11 @@ import com.example.roshdeandishe.finance.DiscountEarnedEvent;
 import com.example.roshdeandishe.finance.DiscountLapsedEvent;
 import com.example.roshdeandishe.finance.DiscountStatus;
 import com.example.roshdeandishe.finance.FinanceFacade;
+import com.example.roshdeandishe.finance.InstallmentSnapshot;
 import com.example.roshdeandishe.finance.InstallmentStatus;
+import com.example.roshdeandishe.finance.InstallmentsChangeCause;
 import com.example.roshdeandishe.finance.InstallmentsChangedEvent;
+import com.example.roshdeandishe.finance.InstallmentsSettingChangedEvent;
 import com.example.roshdeandishe.finance.InvoiceDiscountedEvent;
 import com.example.roshdeandishe.finance.InvoiceIssuedEvent;
 import com.example.roshdeandishe.finance.InvoiceStatus;
@@ -54,6 +57,12 @@ class FinanceFacadeImpl implements FinanceFacade {
 
     private static final int MAX_INSTALLMENTS = 60;
     private static final BigDecimal MIN_AMOUNT = new BigDecimal("0.01");
+
+    /** ترتیبِ طرح: (سررسید، seq، شناسه) و قسطِ بدون سررسید همیشه آخر. */
+    private static final Comparator<InstallmentEntity> PLAN_ORDER = Comparator
+            .comparing(InstallmentEntity::getDueDate, Comparator.nullsLast(Comparator.<LocalDate>naturalOrder()))
+            .thenComparingInt(InstallmentEntity::getSeq)
+            .thenComparing(InstallmentEntity::getId, Comparator.nullsLast(Comparator.<Long>naturalOrder()));
 
     private final InvoiceRepository invoiceRepository;
     private final TuitionFeeRepository tuitionFeeRepository;
@@ -232,7 +241,7 @@ class FinanceFacadeImpl implements FinanceFacade {
 
         InvoiceEntity invoice = requireInvoiceForPayment(schoolId, invoiceId);
         // تخفیفِ مشروطِ مهلت‌گذشته اول برداشته می‌شود تا پرداخت «قابل پرداخت»ِ کهنه نبیند
-        lapseExpiredDiscounts(invoice);
+        lapseExpiredDiscounts(invoice, "payment");
 
         BigDecimal remaining = payable(invoice).subtract(invoice.getAmountPaid());
         if (amount.compareTo(remaining) > 0) {
@@ -247,10 +256,11 @@ class FinanceFacadeImpl implements FinanceFacade {
         allocatePayment(installmentRepository.findByInvoiceIdOrderByDueDateAscSeqAscIdAsc(invoiceId), amount);
         PaymentEntity payment = paymentRepository.save(
                 new PaymentEntity(invoiceId, schoolId, amount, method, note, actor, now));
-        earnPendingDiscounts(invoice, now);
+        earnPendingDiscounts(invoice, now, "payment");
 
         eventPublisher.publishEvent(new PaymentRecordedEvent(
-                schoolId, invoiceId, invoice.getStudentId(), amount, actor, now
+                schoolId, invoiceId, invoice.getStudentId(), amount, actor, now,
+                method, note, payment.getId()
         ));
 
         return toPaymentInfo(payment);
@@ -294,7 +304,7 @@ class FinanceFacadeImpl implements FinanceFacade {
         }
 
         InvoiceEntity invoice = requireInvoiceForPayment(schoolId, invoiceId);
-        lapseExpiredDiscounts(invoice);
+        lapseExpiredDiscounts(invoice, "discount");
         if (deadline != null && deadline.isBefore(today(schoolId))) {
             throw new FinanceException(new FinanceError.InvalidDiscount(
                     "مهلتِ تخفیف نباید پیش از امروز باشد."
@@ -313,13 +323,14 @@ class FinanceFacadeImpl implements FinanceFacade {
         invoiceRepository.save(invoice);
         InvoiceDiscountEntity saved = discountRepository.save(
                 new InvoiceDiscountEntity(schoolId, invoiceId, discount, trimmedReason, actor, now, deadline));
-        resplitInstallmentsAfterDiscount(invoice);
+        resplitInstallmentsAfterDiscount(invoice, InstallmentsChangeCause.DISCOUNT_RESPLIT);
 
         eventPublisher.publishEvent(new InvoiceDiscountedEvent(
-                schoolId, invoiceId, invoice.getStudentId(), discount, actor, now
+                schoolId, invoiceId, invoice.getStudentId(), discount, actor, now,
+                saved.getId(), trimmedReason, deadline, saved.getStatus()
         ));
         // اگر همین تخفیف فاکتور را کاملاً تسویه کرد، شرطِ «تسویه‌ی کامل تا مهلت» همین الان برقرار است
-        earnPendingDiscounts(invoice, now);
+        earnPendingDiscounts(invoice, now, "discount");
 
         return toDiscountInfo(saved);
     }
@@ -352,7 +363,7 @@ class FinanceFacadeImpl implements FinanceFacade {
             try {
                 Integer count = transactionTemplate.execute(status -> {
                     InvoiceEntity invoice = invoiceRepository.findByIdForUpdate(invoiceId).orElse(null);
-                    return invoice == null ? 0 : lapseExpiredDiscounts(invoice);
+                    return invoice == null ? 0 : lapseExpiredDiscounts(invoice, "sweep");
                 });
                 lapsed += count == null ? 0 : count;
             } catch (RuntimeException e) {
@@ -396,13 +407,14 @@ class FinanceFacadeImpl implements FinanceFacade {
     public List<InstallmentInfo> generateInstallments(Long schoolId, Long invoiceId, int count,
                                                       LocalDate firstDueDate, int intervalMonths) {
         InvoiceEntity invoice = requireInvoiceForPayment(schoolId, invoiceId);
-        lapseExpiredDiscounts(invoice);
+        lapseExpiredDiscounts(invoice, "installments");
         requireInstallmentsEnabled(schoolId);
         if (intervalMonths < 1 || intervalMonths > 12) {
             throw invalidInstallments("فاصله‌ی اقساط باید بین ۱ تا ۱۲ ماه باشد.");
         }
 
         List<InstallmentEntity> plan = installmentRepository.findByInvoiceIdOrderByDueDateAscSeqAscIdAsc(invoiceId);
+        List<InstallmentSnapshot> before = snapshots(plan);
         List<InstallmentEntity> kept = plan.stream().filter(InstallmentEntity::isPaid).toList();
         List<InstallmentEntity> oldUnpaid = plan.stream().filter(i -> !i.isPaid()).toList();
         BigDecimal remaining = payable(invoice).subtract(sumAmounts(kept));
@@ -431,14 +443,14 @@ class FinanceFacadeImpl implements FinanceFacade {
 
         installmentRepository.deleteAll(oldUnpaid);
         List<InstallmentEntity> all = finalizePlan(invoice, kept, fresh);
-        return publishInstallmentsChanged(invoice, all);
+        return publishInstallmentsChanged(invoice, InstallmentsChangeCause.GENERATED, before, all);
     }
 
     @Override
     @Transactional
     public List<InstallmentInfo> updateInstallments(Long schoolId, Long invoiceId, List<InstallmentEdit> items) {
         InvoiceEntity invoice = requireInvoiceForPayment(schoolId, invoiceId);
-        lapseExpiredDiscounts(invoice);
+        lapseExpiredDiscounts(invoice, "installments");
         requireInstallmentsEnabled(schoolId);
 
         List<InstallmentEntity> plan = installmentRepository.findByInvoiceIdOrderByDueDateAscSeqAscIdAsc(invoiceId);
@@ -448,6 +460,7 @@ class FinanceFacadeImpl implements FinanceFacade {
         if (items == null) {
             throw invalidInstallments("فهرست اقساط الزامی است.");
         }
+        List<InstallmentSnapshot> before = snapshots(plan);
         List<InstallmentEntity> kept = plan.stream().filter(InstallmentEntity::isPaid).toList();
         List<InstallmentEntity> unpaid = plan.stream().filter(i -> !i.isPaid()).toList();
         Map<Long, InstallmentEntity> unpaidById = unpaid.stream()
@@ -457,8 +470,8 @@ class FinanceFacadeImpl implements FinanceFacade {
         Map<Long, BigDecimal> newAmounts = new HashMap<>();
         BigDecimal sum = BigDecimal.ZERO;
         for (InstallmentEdit item : items) {
-            if (item == null || item.id() == null || item.amount() == null || item.dueDate() == null) {
-                throw invalidInstallments("شناسه، مبلغ و سررسیدِ هر قسط الزامی است.");
+            if (item == null || item.id() == null || item.amount() == null) {
+                throw invalidInstallments("شناسه و مبلغِ هر قسط الزامی است.");
             }
             if (!seen.add(item.id())) {
                 throw invalidInstallments("قسط " + item.id() + " بیش از یک بار آمده است.");
@@ -466,6 +479,10 @@ class FinanceFacadeImpl implements FinanceFacade {
             if (!unpaidById.containsKey(item.id())) {
                 throw invalidInstallments("قسط " + item.id()
                         + " یا وجود ندارد یا پرداخت شده است و قابل ویرایش نیست.");
+            }
+            // سررسیدِ خالی فقط برای قسطی که همین حالا هم بدون سررسید است؛ تاریخِ موجود را نمی‌شود پاک کرد
+            if (item.dueDate() == null && unpaidById.get(item.id()).getDueDate() != null) {
+                throw invalidInstallments("سررسیدِ قسط " + item.id() + " را نمی‌توان خالی کرد.");
             }
             BigDecimal amount;
             try {
@@ -494,7 +511,7 @@ class FinanceFacadeImpl implements FinanceFacade {
             installment.setDueDate(item.dueDate());
         }
         List<InstallmentEntity> all = finalizePlan(invoice, kept, unpaid);
-        return publishInstallmentsChanged(invoice, all);
+        return publishInstallmentsChanged(invoice, InstallmentsChangeCause.EDITED, before, all);
     }
 
     @Override
@@ -664,13 +681,10 @@ class FinanceFacadeImpl implements FinanceFacade {
         );
     }
 
-    /** اقساطِ فاکتورها گروه‌بندی‌شده بر اساس فاکتور و مرتب‌شده به (سررسید، seq، شناسه). */
+    /** اقساطِ فاکتورها گروه‌بندی‌شده بر اساس فاکتور و مرتب‌شده به (سررسید، seq، شناسه)؛ بدون سررسید آخر. */
     private Map<Long, List<InstallmentEntity>> loadPlans(Long schoolId, Collection<Long> invoiceIds) {
-        Comparator<InstallmentEntity> order = Comparator.comparing(InstallmentEntity::getDueDate)
-                .thenComparingInt(InstallmentEntity::getSeq)
-                .thenComparing(InstallmentEntity::getId);
         return installmentRepository.findBySchoolIdAndInvoiceIdIn(schoolId, invoiceIds).stream()
-                .sorted(order)
+                .sorted(PLAN_ORDER)
                 .collect(Collectors.groupingBy(InstallmentEntity::getInvoiceId));
     }
 
@@ -700,7 +714,8 @@ class FinanceFacadeImpl implements FinanceFacade {
         if (installment.isPaid()) {
             return InstallmentStatus.PAID;
         }
-        if (installment.getDueDate().isBefore(today)) {
+        // قسطِ بدون سررسید هرگز دیرکرد نمی‌شود
+        if (installment.getDueDate() != null && installment.getDueDate().isBefore(today)) {
             return InstallmentStatus.OVERDUE;
         }
         return installment.getAmountPaid().signum() > 0 ? InstallmentStatus.PARTIAL : InstallmentStatus.UNPAID;
@@ -736,7 +751,8 @@ class FinanceFacadeImpl implements FinanceFacade {
     /** پرداخت را به ترتیبِ (سررسید، seq) روی اقساطِ دارای ظرفیت پر می‌کند؛ بدون قسط هیچ کاری نمی‌کند. */
     private void allocatePayment(List<InstallmentEntity> plan, BigDecimal amount) {
         BigDecimal rest = amount.setScale(2, RoundingMode.HALF_UP);
-        for (InstallmentEntity installment : plan) {
+        // اول اقساطِ دارای تاریخ، سپس بدون سررسید
+        for (InstallmentEntity installment : plan.stream().sorted(PLAN_ORDER).toList()) {
             if (rest.signum() <= 0) {
                 break;
             }
@@ -755,7 +771,7 @@ class FinanceFacadeImpl implements FinanceFacade {
      * پایانِ هر تغییرِ ساختاری: اقساطِ تازه ذخیره می‌شود (برای شناسه)، seq به ترتیبِ (سررسید، شناسه) از ۱ شماره
      * می‌خورد، پرداختیِ فاکتور که به اقساطِ پرداخت‌شده‌ی ثابت نرسیده (pool) دوباره به ترتیبِ (سررسید، seq) روی
      * اقساطِ پرداخت‌نشده پخش می‌شود (جمعِ پرداختیِ اقساط = amountPaid)، و سررسیدِ فاکتور به روزِ پس از آخرین
-     * قسط (به وقتِ مدرسه) می‌رود تا منطقِ قدیمیِ «now > dueDate» درست بماند.
+     * قسطِ دارای تاریخ (به وقتِ مدرسه) می‌رود تا منطقِ قدیمیِ «now > dueDate» درست بماند.
      *
      * @return همه‌ی اقساطِ طرح مرتب
      */
@@ -764,7 +780,8 @@ class FinanceFacadeImpl implements FinanceFacade {
         installmentRepository.saveAll(unpaid);
         List<InstallmentEntity> all = new ArrayList<>(kept);
         all.addAll(unpaid);
-        all.sort(Comparator.comparing(InstallmentEntity::getDueDate).thenComparing(InstallmentEntity::getId));
+        all.sort(Comparator.comparing(InstallmentEntity::getDueDate, Comparator.nullsLast(Comparator.<LocalDate>naturalOrder()))
+                .thenComparing(InstallmentEntity::getId));
 
         BigDecimal pool = invoice.getAmountPaid().subtract(sumAmounts(kept)).max(BigDecimal.ZERO);
         int seq = 1;
@@ -778,11 +795,12 @@ class FinanceFacadeImpl implements FinanceFacade {
         }
         installmentRepository.saveAll(all);
 
-        if (!all.isEmpty()) {
-            LocalDate last = all.get(all.size() - 1).getDueDate();
-            invoice.setDueDate(last.plusDays(1).atStartOfDay(zoneOf(invoice.getSchoolId())).toInstant());
-            invoiceRepository.save(invoice);
-        }
+        // سررسیدِ فاکتور از آخرین قسطِ «دارای تاریخ» می‌آید؛ اگر هیچ قسطی تاریخ ندارد دست‌نخورده می‌ماند
+        all.stream().map(InstallmentEntity::getDueDate).filter(java.util.Objects::nonNull)
+                .reduce((first, second) -> second).ifPresent(last -> {
+                    invoice.setDueDate(last.plusDays(1).atStartOfDay(zoneOf(invoice.getSchoolId())).toInstant());
+                    invoiceRepository.save(invoice);
+                });
         return all;
     }
 
@@ -791,21 +809,23 @@ class FinanceFacadeImpl implements FinanceFacade {
      * می‌ماند (اگر مانده کمتر از count*۰٫۰۱ باشد کم می‌شود؛ اگر مانده‌ای نماند حذف می‌شوند). به تنظیمِ اقساط
      * وابسته نیست - خاموش‌کردنِ تنظیم طرحِ موجود را متوقف نمی‌کند.
      */
-    private void resplitInstallmentsAfterDiscount(InvoiceEntity invoice) {
+    private void resplitInstallmentsAfterDiscount(InvoiceEntity invoice, InstallmentsChangeCause cause) {
         List<InstallmentEntity> plan =
                 installmentRepository.findByInvoiceIdOrderByDueDateAscSeqAscIdAsc(invoice.getId());
         if (plan.isEmpty()) {
             return;
         }
+        List<InstallmentSnapshot> before = snapshots(plan);
         List<InstallmentEntity> kept = plan.stream().filter(InstallmentEntity::isPaid).toList();
         List<InstallmentEntity> unpaid = plan.stream().filter(i -> !i.isPaid()).toList();
         BigDecimal remaining = payable(invoice).subtract(sumAmounts(kept));
 
         List<InstallmentEntity> survivors = new ArrayList<>();
         if (remaining.signum() > 0 && unpaid.isEmpty()) {
-            // مانده بالا رفته (برداشته شدنِ تخفیف) ولی قسطِ پرداخت‌نشده‌ای نمانده: یک قسط برای فردا
+            // مانده بالا رفته (برداشته شدنِ تخفیف) ولی قسطِ پرداخت‌نشده‌ای نمانده: یک قسطِ «بدون سررسید»؛
+            // سیستم تاریخ نمی‌سازد و ادمین بعداً تاریخ می‌زند
             survivors.add(new InstallmentEntity(invoice.getSchoolId(), invoice.getId(),
-                    remaining.setScale(2, RoundingMode.HALF_UP), today(invoice.getSchoolId()).plusDays(1)));
+                    remaining.setScale(2, RoundingMode.HALF_UP), null));
         } else if (remaining.signum() > 0) {
             long fits = remaining.movePointRight(2).longValue();
             int count = (int) Math.min(unpaid.size(), fits);
@@ -818,7 +838,8 @@ class FinanceFacadeImpl implements FinanceFacade {
             }
         }
         installmentRepository.deleteAll(unpaid.stream().filter(i -> !survivors.contains(i)).toList());
-        finalizePlan(invoice, kept, survivors);
+        List<InstallmentEntity> all = finalizePlan(invoice, kept, survivors);
+        publishInstallmentsChanged(invoice, cause, before, all);
     }
 
     /**
@@ -828,7 +849,7 @@ class FinanceFacadeImpl implements FinanceFacade {
      *
      * @return تعداد تخفیف‌های LAPSEDشده
      */
-    private int lapseExpiredDiscounts(InvoiceEntity invoice) {
+    private int lapseExpiredDiscounts(InvoiceEntity invoice, String trigger) {
         List<InvoiceDiscountEntity> pending = discountRepository.findByInvoiceIdAndStatusOrderByCreatedAtAscIdAsc(
                 invoice.getId(), DiscountStatus.PENDING);
         if (pending.isEmpty()) {
@@ -851,19 +872,19 @@ class FinanceFacadeImpl implements FinanceFacade {
         discountRepository.saveAll(expired);
         invoice.setDiscountTotal(invoice.getDiscountTotal().subtract(lapsedTotal));
         invoiceRepository.save(invoice);
-        resplitInstallmentsAfterDiscount(invoice);
+        resplitInstallmentsAfterDiscount(invoice, InstallmentsChangeCause.DISCOUNT_LAPSE_RESPLIT);
 
         for (InvoiceDiscountEntity discount : expired) {
             eventPublisher.publishEvent(new DiscountLapsedEvent(
                     invoice.getSchoolId(), invoice.getId(), invoice.getStudentId(),
-                    discount.getId(), discount.getAmount(), now
+                    discount.getId(), discount.getAmount(), now, discount.getDeadline(), trigger
             ));
         }
         return expired.size();
     }
 
     /** فاکتور کاملاً تسویه شد: تخفیف‌های PENDINGِ مهلت‌نگذشته EARNED (دائمی) می‌شوند. */
-    private void earnPendingDiscounts(InvoiceEntity invoice, Instant now) {
+    private void earnPendingDiscounts(InvoiceEntity invoice, Instant now, String trigger) {
         if (invoice.getAmountPaid().compareTo(payable(invoice)) < 0) {
             return;
         }
@@ -884,18 +905,50 @@ class FinanceFacadeImpl implements FinanceFacade {
         for (InvoiceDiscountEntity discount : earned) {
             eventPublisher.publishEvent(new DiscountEarnedEvent(
                     invoice.getSchoolId(), invoice.getId(), invoice.getStudentId(),
-                    discount.getId(), discount.getAmount(), now
+                    discount.getId(), discount.getAmount(), now, discount.getDeadline(), trigger
             ));
         }
     }
 
-    private List<InstallmentInfo> publishInstallmentsChanged(InvoiceEntity invoice, List<InstallmentEntity> all) {
-        eventPublisher.publishEvent(new InstallmentsChangedEvent(
-                invoice.getSchoolId(), invoice.getId(), invoice.getStudentId(), all.size(),
-                currentActorOrNull(), Instant.now()
-        ));
+    /**
+     * تصویرِ طرح پیش از هر تغییرِ موجودیت‌ها (فراخوان باید قبل از دست‌زدن بگیرد). مبلغ‌ها در مقیاس ۲ تا
+     * مقایسه‌ی «بدون تغییر» به مقیاسِ ذخیره وابسته نباشد.
+     */
+    private static List<InstallmentSnapshot> snapshots(List<InstallmentEntity> plan) {
+        return plan.stream().sorted(PLAN_ORDER)
+                .map(i -> new InstallmentSnapshot(
+                        i.getAmount().setScale(2, RoundingMode.HALF_UP),
+                        i.getAmountPaid().setScale(2, RoundingMode.HALF_UP),
+                        i.getDueDate()))
+                .toList();
+    }
+
+    /** رویدادِ audit فقط وقتی منتشر می‌شود که طرح واقعاً عوض شده باشد (before != after). */
+    private List<InstallmentInfo> publishInstallmentsChanged(InvoiceEntity invoice, InstallmentsChangeCause cause,
+                                                             List<InstallmentSnapshot> before,
+                                                             List<InstallmentEntity> all) {
+        List<InstallmentSnapshot> after = snapshots(all);
+        if (!before.equals(after)) {
+            eventPublisher.publishEvent(new InstallmentsChangedEvent(
+                    invoice.getSchoolId(), invoice.getId(), invoice.getStudentId(), cause, before, after,
+                    currentActorOrNull(), Instant.now()
+            ));
+        }
         LocalDate today = today(invoice.getSchoolId());
         return all.stream().map(installment -> toInstallmentInfo(installment, today)).toList();
+    }
+
+    @Override
+    @Transactional
+    public void setInstallmentsEnabled(Long schoolId, boolean enabled) {
+        SchoolId id = new SchoolId(schoolId);
+        boolean previous = schoolFacade.isInstallmentsEnabled(id);
+        schoolFacade.setInstallmentsEnabled(id, enabled);
+        if (previous != enabled) {
+            eventPublisher.publishEvent(new InstallmentsSettingChangedEvent(
+                    schoolId, previous, enabled, currentActorOrNull(), Instant.now()
+            ));
+        }
     }
 
     /** مبلغ قابل پرداخت = مبلغ فاکتور منهای تخفیف‌ها. */

@@ -88,6 +88,35 @@ window.FinanceLogic = (function () {
         }
     }
 
+    // قسطِ بدون سررسید: dueDate آن null است (باقی‌مانده‌ی تخفیفِ ساقط‌شده)؛ هرگز دیرکرد نمی‌شود
+    function isUndated(installment) {
+        return installment.dueDate == null || installment.dueDate === '';
+    }
+
+    const UNDATED_LABEL = 'بدون سررسید';
+
+    // متنِ نمایشِ سررسید؛ format تابعِ نمایش (مثل Calendar.formatDate) است و برای تاریخِ خالی هرگز صدا زده نمی‌شود
+    function dueDateLabel(installment, format) {
+        return isUndated(installment) ? UNDATED_LABEL : format(installment.dueDate);
+    }
+
+    // مقدار اولیه‌ی ورودیِ تاریخ در حالت ویرایش؛ قسطِ بدون سررسید ورودیِ خالی دارد
+    function editDueText(installment, format) {
+        return isUndated(installment) ? '' : format(installment.dueDate);
+    }
+
+    // تاریخِ تایپ‌شده‌ی یک ردیفِ ویرایش: { ok, value }. خالی فقط برای ردیفی که از اول بدون سررسید بود مجاز است
+    // (value=null)؛ قسطِ تاریخ‌دار را نمی‌شود بی‌تاریخ کرد. parse تابعِ تبدیل به ISO (مثل DateInput.parse) است.
+    function resolveDueDate(row, parse) {
+        const text = String(row.dueDate == null ? '' : row.dueDate).trim();
+        if (text === '') {
+            return { ok: row.undated === true, value: null };
+        }
+        const value = parse(text);
+        return { ok: value !== null && value !== undefined, value: value === undefined ? null : value };
+    }
+
     return { cents, payable, remaining, isEditable, expectedSum, editedSum, sumMatches,
-        pendingDiscounts, discountStatusLabel, discountStatusClass };
+        pendingDiscounts, discountStatusLabel, discountStatusClass,
+        isUndated, dueDateLabel, editDueText, resolveDueDate };
 })();

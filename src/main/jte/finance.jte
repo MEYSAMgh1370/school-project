@@ -390,15 +390,19 @@
                                                                        x-text="'سررسید قسط ' + fa(item.seq)"></label>
                                                                 <input class="input" dir="ltr" :id="'installmentDue-' + item.id"
                                                                        type="text" inputmode="numeric" autocomplete="off"
-                                                                       :placeholder="exampleDate()"
+                                                                       :placeholder="editRow(item).undated ? 'اختیاری' : exampleDate()"
+                                                                       :aria-describedby="editRow(item).undated ? 'installmentDueHelp-' + item.id : null"
                                                                        :class="{ 'is-danger': editRow(item).dateError }"
                                                                        x-model="editRow(item).dueDate">
+                                                                <p class="help" :id="'installmentDueHelp-' + item.id"
+                                                                   x-show="editRow(item).undated">اختیاری — تاریخ را بعداً هم می‌شود تعیین کرد</p>
                                                                 <p class="help is-danger" x-show="editRow(item).dateError"
                                                                    x-text="editRow(item).dateError"></p>
                                                             </div>
                                                         </template>
-                                                        <span dir="ltr" x-show="!(editing && FinanceLogic.isEditable(item))"
-                                                              x-text="Calendar.formatDate(item.dueDate)"></span>
+                                                        <span class="tag is-light" x-show="!(editing && FinanceLogic.isEditable(item)) && FinanceLogic.isUndated(item)">بدون سررسید</span>
+                                                        <span dir="ltr" x-show="!(editing && FinanceLogic.isEditable(item)) && !FinanceLogic.isUndated(item)"
+                                                              x-text="FinanceLogic.isUndated(item) ? '' : Calendar.formatDate(item.dueDate)"></span>
                                                     </td>
                                                     <td x-text="Money.formatAmount(item.amountPaid)"></td>
                                                     <td>

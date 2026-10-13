@@ -93,5 +93,9 @@ class FinancePageRenderTest {
                 .contains("اقساط تعریف‌شده فقط‌خواندنی است");
         // هر ورودیِ ویرایشِ قسط برچسب دارد
         assertThat(html).contains("'installmentAmount-' + item.id").contains("'installmentDue-' + item.id");
+        // قسطِ بدون سررسید: برچسبِ نمایش و راهنمای ورودیِ اختیاری، بدون صدا زدنِ formatDate روی null
+        assertThat(html).contains("بدون سررسید").contains("FinanceLogic.isUndated(item)")
+                .contains("اختیاری — تاریخ را بعداً هم می‌شود تعیین کرد")
+                .contains("'installmentDueHelp-' + item.id");
     }
 }

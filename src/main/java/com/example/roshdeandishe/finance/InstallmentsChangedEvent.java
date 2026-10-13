@@ -1,18 +1,21 @@
 package com.example.roshdeandishe.finance;
 
 import java.time.Instant;
+import java.util.List;
 
 /**
- * منتشر می‌شود هر بار که طرحِ اقساطِ یک فاکتور ساخته/بازشمارش یا ویرایش می‌شود
- * ({@code FinanceFacade.generateInstallments/updateInstallments}) - همان الگوی InvoiceDiscountedEvent؛
- * مصرف‌کننده‌ی فعلی listener ثبت audit همین ماژول است. {@code count} تعداد اقساطِ طرح پس از تغییر،
- * {@code actorUserId} nullable است.
+ * منتشر می‌شود هر بار که طرحِ اقساطِ یک فاکتور واقعاً تغییر می‌کند: ساخت/بازشمارش، ویرایشِ دستی، و تقسیمِ
+ * دوباره‌ی خودکار پس از تخفیف یا برداشته شدنِ تخفیفِ مشروط. اگر {@code before} با {@code after} برابر باشد
+ * منتشر نمی‌شود. مصرف‌کننده‌ی فعلی listener ثبت audit همین ماژول است؛ {@code actorUserId} nullable است
+ * (null = سیستم).
  */
 public record InstallmentsChangedEvent(
         Long schoolId,
         Long invoiceId,
         Long studentId,
-        int count,
+        InstallmentsChangeCause cause,
+        List<InstallmentSnapshot> before,
+        List<InstallmentSnapshot> after,
         Long actorUserId,
         Instant occurredAt
 ) {

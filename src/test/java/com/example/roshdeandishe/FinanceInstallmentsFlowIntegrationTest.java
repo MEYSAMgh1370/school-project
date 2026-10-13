@@ -19,6 +19,7 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.context.annotation.Import;
 import org.springframework.http.MediaType;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.mock.web.MockHttpSession;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
@@ -55,6 +56,9 @@ class FinanceInstallmentsFlowIntegrationTest {
 
     @Autowired
     private FinanceFacade financeFacade;
+
+    @Autowired
+    private JdbcTemplate jdbcTemplate;
 
     @Autowired
     private SchoolFacade schoolFacade;
@@ -595,5 +599,171 @@ class FinanceInstallmentsFlowIntegrationTest {
         assertThat(wardNode.get("installments")).hasSize(3);
         assertThat(wardNode.get("installments").get(0).get("amountPaid").decimalValue()).isEqualByComparingTo("1.00");
         assertThat(wardNode.get("installments").get(0).get("status").asText()).isEqualTo("PARTIAL");
+    }
+
+    // ------------------------------------------------------------------
+    // قسطِ بدون سررسید (V31): برداشته شدنِ تخفیف با مانده ولی بدونِ قسطِ پرداخت‌نشده
+    // ------------------------------------------------------------------
+
+    /**
+     * وضعیتی که فقط با دادهٔ قدیمی/ناسازگار پیش می‌آید (تخفیفِ مشروطِ مهلت‌گذشته روی فاکتورِ تسویه‌شده): فاکتور ۹ میلیون،
+     * تخفیفِ ۳ میلیون، دو قسطِ ۳ میلیونیِ کاملاً پرداخت‌شده؛ تخفیف را با SQL «مشروطِ مهلت‌گذشته» می‌کنیم و جارو
+     * آن را برمی‌دارد: مانده ۳ میلیون و هیچ قسطِ پرداخت‌نشده‌ای نیست.
+     */
+    private InvoiceInfo lapsedWithOnlyPaidInstallments(Long schoolId) {
+        InvoiceInfo invoice = newInvoice(schoolId, "9000000.00");
+        FinanceFacade.DiscountInfo discount = financeFacade.applyDiscount(
+                schoolId, invoice.id(), new BigDecimal("3000000.00"), "x");
+        financeFacade.generateInstallments(schoolId, invoice.id(), 2, soon(), 1);
+        financeFacade.recordPayment(schoolId, invoice.id(), new BigDecimal("6000000.00"), PaymentMethod.CASH, null);
+        jdbcTemplate.update("update finance.invoice_discounts set status = 'PENDING', deadline = ? where id = ?",
+                LocalDate.now(TEHRAN).minusDays(1), discount.id());
+        financeFacade.sweepExpiredDiscounts();
+        return invoice;
+    }
+
+    @Test
+    void lapseWithAllInstallmentsPaidCreatesOneUndatedInstallmentForTheRemainder() {
+        Long schoolId = newSchool(true);
+        InvoiceInfo invoice = lapsedWithOnlyPaidInstallments(schoolId);
+
+        List<InstallmentInfo> plan = financeFacade.listInstallments(schoolId, invoice.id());
+        assertThat(plan).hasSize(3);
+        InstallmentInfo undated = plan.get(2);
+        assertThat(undated.dueDate()).isNull();
+        assertThat(undated.amount()).isEqualByComparingTo("3000000.00");
+        assertThat(undated.amountPaid()).isEqualByComparingTo("0");
+        assertThat(undated.status()).isEqualTo(InstallmentStatus.UNPAID);
+        assertThat(plan.get(0).status()).isEqualTo(InstallmentStatus.PAID);
+        assertThat(plan.get(1).status()).isEqualTo(InstallmentStatus.PAID);
+
+        // بدون سررسید هرگز دیرکرد نیست: فاکتور OVERDUE نمی‌شود
+        InvoiceInfo after = reload(schoolId, invoice.id());
+        assertThat(after.status()).isEqualTo(InvoiceStatus.PARTIAL);
+        assertThat(financeFacade.listInstallmentsForInvoices(schoolId, List.of(invoice.id())).get(invoice.id()).get(2)
+                .dueDate()).isNull();
+
+        // مانده‌ی قابل پرداخت کاملاً روی همین قسط تخصیص می‌یابد
+        financeFacade.recordPayment(schoolId, invoice.id(), new BigDecimal("3000000.00"), PaymentMethod.CASH, null);
+        List<InstallmentInfo> settled = financeFacade.listInstallments(schoolId, invoice.id());
+        assertThat(settled.get(2).status()).isEqualTo(InstallmentStatus.PAID);
+        assertThat(settled.get(2).amountPaid()).isEqualByComparingTo("3000000.00");
+        assertThat(reload(schoolId, invoice.id()).status()).isEqualTo(InvoiceStatus.PAID);
+    }
+
+    @Test
+    void undatedInstallmentCanBeDatedByTheAdmin() {
+        Long schoolId = newSchool(true);
+        InvoiceInfo invoice = lapsedWithOnlyPaidInstallments(schoolId);
+        InstallmentInfo undated = financeFacade.listInstallments(schoolId, invoice.id()).get(2);
+
+        // خالی ماندنِ تاریخِ قسطِ بدون سررسید مجاز است (مبلغ را می‌شود ویرایش کرد)
+        List<InstallmentInfo> same = financeFacade.updateInstallments(schoolId, invoice.id(), List.of(
+                new InstallmentEdit(undated.id(), new BigDecimal("3000000.00"), null)));
+        assertThat(same.get(2).dueDate()).isNull();
+
+        LocalDate date = soon().plusDays(30);
+        List<InstallmentInfo> dated = financeFacade.updateInstallments(schoolId, invoice.id(), List.of(
+                new InstallmentEdit(undated.id(), new BigDecimal("3000000.00"), date)));
+        assertThat(dated.get(2).dueDate()).isEqualTo(date);
+        assertThat(dated.get(2).status()).isEqualTo(InstallmentStatus.UNPAID);
+        // سررسیدِ فاکتور از آخرین قسطِ دارای تاریخ می‌آید
+        assertThat(reload(schoolId, invoice.id()).dueDate())
+                .isEqualTo(date.plusDays(1).atStartOfDay(TEHRAN).toInstant());
+
+        // پاک کردنِ تاریخِ موجود مجاز نیست
+        assertThat(errorOf(() -> financeFacade.updateInstallments(schoolId, invoice.id(), List.of(
+                new InstallmentEdit(undated.id(), new BigDecimal("3000000.00"), null)))))
+                .isInstanceOf(FinanceError.InvalidInstallments.class);
+    }
+
+    @Test
+    void undatedSortsLastIsPaidLastAndOtherInstallmentsCanBeEditedWithoutDatingIt() {
+        Long schoolId = newSchool(true);
+        InvoiceInfo invoice = newInvoice(schoolId, "900.00");
+        List<InstallmentInfo> generated = financeFacade.generateInstallments(schoolId, invoice.id(), 3, soon(), 1);
+        // یکی از اقساط را بدون سررسید می‌کنیم (همان وضعیتِ پس از برداشته شدنِ تخفیف، کنارِ اقساطِ دارای تاریخ)
+        jdbcTemplate.update("update finance.installments set due_date = null where id = ?", generated.get(0).id());
+
+        List<InstallmentInfo> plan = financeFacade.listInstallments(schoolId, invoice.id());
+        assertThat(plan).hasSize(3);
+        assertThat(plan.get(2).id()).isEqualTo(generated.get(0).id());
+        assertThat(plan.get(2).dueDate()).isNull();
+        assertThat(plan.get(0).dueDate()).isNotNull();
+        assertThat(plan.get(1).dueDate()).isNotNull();
+        InvoiceInfo listed = financeFacade.listInvoices(schoolId).get(0);
+        assertThat(listed.status()).isNotEqualTo(InvoiceStatus.OVERDUE);
+
+        // ویرایشِ مبلغِ بقیه بدون تاریخ دادن به قسطِ بدون سررسید
+        List<InstallmentInfo> edited = financeFacade.updateInstallments(schoolId, invoice.id(), List.of(
+                new InstallmentEdit(plan.get(0).id(), new BigDecimal("400.00"), plan.get(0).dueDate()),
+                new InstallmentEdit(plan.get(1).id(), new BigDecimal("300.00"), plan.get(1).dueDate()),
+                new InstallmentEdit(plan.get(2).id(), new BigDecimal("200.00"), null)));
+        assertThat(edited).extracting(InstallmentInfo::dueDate).containsExactly(
+                plan.get(0).dueDate(), plan.get(1).dueDate(), null);
+
+        // تخصیص: اول اقساطِ دارای تاریخ، سپس بدون سررسید
+        financeFacade.recordPayment(schoolId, invoice.id(), new BigDecimal("700.00"), PaymentMethod.CASH, null);
+        List<InstallmentInfo> paid = financeFacade.listInstallments(schoolId, invoice.id());
+        assertThat(paid.get(0).status()).isEqualTo(InstallmentStatus.PAID);
+        assertThat(paid.get(1).status()).isEqualTo(InstallmentStatus.PAID);
+        assertThat(paid.get(2).amountPaid()).isEqualByComparingTo("0");
+        assertThat(paid.get(2).status()).isEqualTo(InstallmentStatus.UNPAID);
+        financeFacade.recordPayment(schoolId, invoice.id(), new BigDecimal("200.00"), PaymentMethod.CASH, null);
+        assertThat(financeFacade.listInstallments(schoolId, invoice.id()).get(2).status())
+                .isEqualTo(InstallmentStatus.PAID);
+    }
+
+    @Test
+    void generateStillRequiresFirstDueDateAndUndatedInstallmentIsNeverOverdue() {
+        Long schoolId = newSchool(true);
+        InvoiceInfo invoice = newInvoice(schoolId, "900.00");
+        assertThat(errorOf(() -> financeFacade.generateInstallments(schoolId, invoice.id(), 2, null, 1)))
+                .isInstanceOf(FinanceError.InvalidInstallments.class);
+
+        List<InstallmentInfo> generated = financeFacade.generateInstallments(schoolId, invoice.id(), 1, soon(), 1);
+        jdbcTemplate.update("update finance.installments set due_date = null where id = ?", generated.get(0).id());
+        // حتی با سررسیدِ فاکتور در گذشته: قسطِ بدون سررسید دیرکرد نمی‌شود
+        jdbcTemplate.update("update finance.invoices set due_date = now() - interval '30 days' where id = ?",
+                invoice.id());
+        assertThat(financeFacade.listInstallments(schoolId, invoice.id()).get(0).status())
+                .isEqualTo(InstallmentStatus.UNPAID);
+        assertThat(reload(schoolId, invoice.id()).status()).isEqualTo(InvoiceStatus.UNPAID);
+    }
+
+    @Test
+    void httpShowsNullDueDateAndRejectsClearingAnExistingDate() throws Exception {
+        MockHttpSession adminSession = login("admin@roshdeandishe.test", "password");
+        schoolFacade.setInstallmentsEnabled(new SchoolFacade.SchoolId(1L), true);
+        financeFacade.setTuitionFee(1L, new BigDecimal("900.00"));
+        Long studentId = 7_420_000L + System.nanoTime() % 1_000_000L;
+        financeFacade.issueTuitionInvoice(1L, studentId);
+        Long invoiceId = financeFacade.listInvoicesForStudents(1L, List.of(studentId)).get(0).id();
+        List<InstallmentInfo> generated = financeFacade.generateInstallments(1L, invoiceId, 2, soon(), 1);
+        jdbcTemplate.update("update finance.installments set due_date = null where id = ?", generated.get(0).id());
+
+        String url = "/api/admin/schools/1/invoices/" + invoiceId + "/installments";
+        mockMvc.perform(get(url).header("X-School-ID", "1").session(adminSession))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[1].dueDate").value(Matchers.nullValue()))
+                .andExpect(jsonPath("$[1].id").value(generated.get(0).id()))
+                .andExpect(jsonPath("$[0].dueDate").value(Matchers.notNullValue()));
+
+        List<InstallmentInfo> plan = financeFacade.listInstallments(1L, invoiceId);
+        // تاریخِ موجود پاک نمی‌شود → 400
+        mockMvc.perform(put(url).with(csrf()).header("X-School-ID", "1").session(adminSession)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"items\":[{\"id\":" + plan.get(0).id() + ",\"amount\":450.00,\"dueDate\":null},"
+                                + "{\"id\":" + plan.get(1).id() + ",\"amount\":450.00,\"dueDate\":null}]}"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.type").value(Matchers.endsWith("invalid-installments")));
+        // بدون تاریخ دادن به قسطِ بدون سررسید → 200
+        mockMvc.perform(put(url).with(csrf()).header("X-School-ID", "1").session(adminSession)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"items\":[{\"id\":" + plan.get(0).id() + ",\"amount\":500.00,\"dueDate\":\""
+                                + plan.get(0).dueDate() + "\"},{\"id\":" + plan.get(1).id()
+                                + ",\"amount\":400.00,\"dueDate\":null}]}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[1].dueDate").value(Matchers.nullValue()));
     }
 }

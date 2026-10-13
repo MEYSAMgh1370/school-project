@@ -143,20 +143,28 @@ public interface FinanceFacade {
      *
      * @throws com.example.roshdeandishe.finance.shared.FinanceException با InvoiceNotFound،
      * InstallmentsNotEnabled اگر مدرسه اقساط را روشن نکرده، InvalidInstallments برای تعداد (۱ تا ۶۰)،
-     * فاصله (۱ تا ۱۲)، تاریخِ خالی یا سهمِ کمتر از ۰٫۰۱
+     * فاصله (۱ تا ۱۲)، تاریخِ خالی (وقتی مانده هست) یا سهمِ کمتر از ۰٫۰۱
      */
     List<InstallmentInfo> generateInstallments(Long schoolId, Long invoiceId, int count,
                                                java.time.LocalDate firstDueDate, int intervalMonths);
 
     /**
      * ویرایشِ دستیِ مبلغ و سررسیدِ اقساطِ پرداخت‌نشده. {@code items} باید دقیقاً همه‌ی اقساطِ پرداخت‌نشده‌ی
-     * فاکتور باشد (افزودن/حذف ممکن نیست) و جمعِ مبلغ‌ها برابر مانده‌ی قابل تقسیم.
+     * فاکتور باشد (افزودن/حذف ممکن نیست) و جمعِ مبلغ‌ها برابر مانده‌ی قابل تقسیم. {@code dueDate} فقط برای
+     * قسطی که همین حالا «بدون سررسید» است می‌تواند خالی بماند؛ زدنِ تاریخ روی آن مجاز است ولی پاک کردنِ
+     * تاریخِ موجود InvalidInstallments است.
      *
      * @throws com.example.roshdeandishe.finance.shared.FinanceException با InvoiceNotFound،
      * InstallmentsNotEnabled، InvalidInstallments (قسطِ پرداخت‌شده/ناشناخته/جاافتاده/مبلغ نامثبت)،
      * InstallmentsSumMismatch
      */
     List<InstallmentInfo> updateInstallments(Long schoolId, Long invoiceId, List<InstallmentEdit> items);
+
+    /**
+     * روشن/خاموش کردنِ اقساطِ مدرسه (از طریق SchoolFacade). فقط وقتی مقدار واقعاً عوض شود رویداد و ردیفِ
+     * audit ({@code INSTALLMENTS_SETTING_CHANGED}) می‌نویسد.
+     */
+    void setInstallmentsEnabled(Long schoolId, boolean enabled);
 
     /**
      * «صدورِ فاکتورهای سال»: برای هر دانش‌آموزِ فعلیِ مدرسه که برای این سال فاکتور ندارد، به مبلغ شهریه‌ی
@@ -205,6 +213,7 @@ public interface FinanceFacade {
     record PendingDiscountSummary(BigDecimal amount, java.time.LocalDate earliestDeadline) {
     }
 
+    /** {@code dueDate} خالی = «بدون سررسید» (هرگز دیرکرد نمی‌شود، آخرِ فهرست می‌آید). */
     record InstallmentInfo(Long id, Long invoiceId, int seq, BigDecimal amount, BigDecimal amountPaid,
                            java.time.LocalDate dueDate, InstallmentStatus status) {
     }

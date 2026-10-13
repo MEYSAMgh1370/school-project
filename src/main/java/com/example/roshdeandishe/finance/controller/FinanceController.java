@@ -254,9 +254,8 @@ public class FinanceController {
         if (request == null || request.enabled() == null) {
             throw new FinanceException(new FinanceError.InvalidSetting("مقدار روشن/خاموش الزامی است."));
         }
-        SchoolFacade.SchoolId id = new SchoolFacade.SchoolId(schoolId);
-        schoolFacade.setInstallmentsEnabled(id, request.enabled());
-        return new FinanceSettingsResponse(schoolFacade.isInstallmentsEnabled(id));
+        financeFacade.setInstallmentsEnabled(schoolId, request.enabled());
+        return new FinanceSettingsResponse(schoolFacade.isInstallmentsEnabled(new SchoolFacade.SchoolId(schoolId)));
     }
 
     @PostMapping("/invoices/backfill")

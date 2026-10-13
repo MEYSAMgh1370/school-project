@@ -101,7 +101,8 @@
                                             <td x-text="Calendar.digits(item.seq)"></td>
                                             <td x-text="Money.formatAmount(item.amount)"></td>
                                             <td dir="ltr">
-                                                <span x-text="Calendar.formatDate(item.dueDate)"></span>
+                                                <span class="tag is-light" dir="rtl" x-show="isUndated(item)">بدون سررسید</span>
+                                                <span x-show="!isUndated(item)" x-text="isUndated(item) ? '' : Calendar.formatDate(item.dueDate)"></span>
                                                 <span class="tag is-link is-light" x-show="item.id === nextInstallmentId(invoice)">قسط بعدی</span>
                                             </td>
                                             <td x-text="Money.formatAmount(item.amountPaid)"></td>

@@ -3,7 +3,6 @@ package com.example.roshdeandishe.finance.internal;
 import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
-import lombok.Setter;
 
 import java.math.BigDecimal;
 import java.time.Instant;
@@ -11,12 +10,11 @@ import java.time.Instant;
 /**
  * یک ردیف audit یعنی: "چه کسی، چه اقدام مالی‌ای را، چه زمانی انجام داد".
  * فقط append است - هیچ متد update/delete روی این Entity در نظر گرفته نشده،
- * چون اصل audit trail این است که تغییرناپذیر (immutable) بماند.
+ * چون اصل audit trail این است که تغییرناپذیر (immutable) بماند - Setter هم ندارد.
  */
 @Entity
 @Table(name = "finance_audit", schema = "finance")
 @Getter
-@Setter
 @NoArgsConstructor
 class FinanceAuditEntity {
 
@@ -44,6 +42,14 @@ class FinanceAuditEntity {
     @Column(name = "expense_id")
     private Long expenseId;
 
+    /** فاکتورِ مربوط (nullable؛ بدون کلید خارجی بین ماژول‌ها). */
+    @Column(name = "invoice_id")
+    private Long invoiceId;
+
+    /** JSON فشرده‌ی «چه چیزی عوض شد» (قبل/بعد)؛ متنِ آزاد تا ۵۱۲ نویسه بریده می‌شود. */
+    @Column(columnDefinition = "text")
+    private String details;
+
     @Column(precision = 12, scale = 2)
     private BigDecimal amount;
 
@@ -57,6 +63,15 @@ class FinanceAuditEntity {
         this.studentId = studentId;
         this.amount = amount;
         this.occurredAt = occurredAt;
+    }
+
+    /** اقدامِ مربوط به یک فاکتور؛ {@code studentId}/{@code invoiceId}/{@code details} می‌توانند تهی باشند. */
+    static FinanceAuditEntity forInvoice(Long schoolId, Long actorUserId, String action, Long studentId,
+                                         Long invoiceId, BigDecimal amount, String details, Instant occurredAt) {
+        FinanceAuditEntity entity = new FinanceAuditEntity(schoolId, actorUserId, action, studentId, amount, occurredAt);
+        entity.invoiceId = invoiceId;
+        entity.details = details;
+        return entity;
     }
 
     static FinanceAuditEntity forExpense(Long schoolId, Long actorUserId, String action,

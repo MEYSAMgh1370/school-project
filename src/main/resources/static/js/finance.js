@@ -537,7 +537,9 @@ document.addEventListener('alpine:init', () => {
                 id: i.id,
                 seq: i.seq,
                 amount: String(i.amount),
-                dueDate: DateInput.format(i.dueDate),
+                // قسطِ بدون سررسید ورودیِ خالی دارد و خالی ماندنش مجاز است
+                undated: FinanceLogic.isUndated(i),
+                dueDate: FinanceLogic.editDueText(i, DateInput.format),
                 dateError: ''
             }));
             this.editing = true;
@@ -559,7 +561,7 @@ document.addEventListener('alpine:init', () => {
 
         canSaveEdit(invoice) {
             return FinanceLogic.sumMatches(this.editRows, this.expectedSum(invoice))
-                && this.editRows.every(row => DateInput.parse(row.dueDate) !== null);
+                && this.editRows.every(row => FinanceLogic.resolveDueDate(row, DateInput.parse).ok);
         },
 
         async saveEditing(invoice) {
@@ -570,10 +572,10 @@ document.addEventListener('alpine:init', () => {
             this.panelNotice = '';
             let invalid = false;
             const items = this.editRows.map(row => {
-                const dueDate = DateInput.parse(row.dueDate);
-                row.dateError = dueDate === null ? 'تاریخ را به شکل سال/ماه/روز بنویسید.' : '';
-                invalid = invalid || dueDate === null;
-                return { id: row.id, amount: Money.normalizeAmount(row.amount), dueDate };
+                const resolved = FinanceLogic.resolveDueDate(row, DateInput.parse);
+                row.dateError = resolved.ok ? '' : 'تاریخ را به شکل سال/ماه/روز بنویسید.';
+                invalid = invalid || !resolved.ok;
+                return { id: row.id, amount: Money.normalizeAmount(row.amount), dueDate: resolved.value };
             });
             if (invalid || !this.canSaveEdit(invoice)) {
                 this.panelError = 'مبلغ‌ها و تاریخ‌ها را کامل و درست پر کنید.';

@@ -1,6 +1,6 @@
 # Tuition Installments And Discounts
 
-Status: proposed and implemented 2026-10-13 (`V28`, `V29`, the `/finance` and `/my-invoices`
+Status: proposed and implemented 2026-10-13 (`V28`, `V29`, `V30`, `V31`, the `/finance` and `/my-invoices`
 pages); current behavior is in [`specs/current-system.md`](../specs/current-system.md) under Finance And Academic.
 This record keeps the product-owner answers and the rationale. Not yet walked in a browser.
 
@@ -90,7 +90,8 @@ payable at once, with D written beside it); if D passes unmet it **lapses automa
   has not passed, it becomes `EARNED` (permanent).
 - **Lapsed:** a discount still `PENDING` after its deadline becomes `LAPSED`, `discount_total`
   drops by its amount and the unpaid instalments are re-split over their existing dates
-  (manual edits are lost; the admin can edit again). It happens (a) lazily, under the invoice
+  (manual edits are lost; the admin can edit again; if the remainder has no unpaid instalment to take it,
+  see «Undated remainder»). It happens (a) lazily, under the invoice
   lock, at the start of any payment, discount or instalment write on that invoice, so no
   write ever sees stale data, and (b) in an hourly job that sweeps overdue pending discounts.
   Both are idempotent. Events `DiscountEarnedEvent` / `DiscountLapsedEvent` feed the audit
@@ -100,6 +101,34 @@ payable at once, with D written beside it); if D passes unmet it **lapses automa
   «در صورت تسویه‌ی کامل تا … این تخفیف باقی می‌ماند».
 - Out of scope: conditions other than full settlement (a minimum amount, a rate by date),
   a message to the parent before the deadline.
+
+## Audit (product owner, 2026-10-13; `V31`)
+
+Money needs a complete trail: every change to financial state leaves an immutable `finance.finance_audit` row
+(actor, null = system; time; school; student; **invoice**; and **what changed**). `V31` adds `invoice_id` (no
+cross-module FK) and `details` (compact JSON built with Jackson, free text cut to 512 characters). Rows are
+written only by the `@ApplicationModuleListener` listener from durable events; the repository exposes `save` only.
+
+- `PAYMENT_RECORDED` `{paymentId, method, note}`; `INVOICE_DISCOUNTED` `{discountId, reason, deadline, status}`;
+  `DISCOUNT_EARNED` / `DISCOUNT_LAPSED` `{discountId, deadline, trigger}` (`trigger` = sweep, payment, discount or
+  installments; actor null).
+- `INSTALLMENTS_CHANGED` `{cause, before:[{amount, amountPaid, dueDate}], after:[...]}`, `amount` = sum of `after`;
+  causes `GENERATED`, `EDITED`, `DISCOUNT_RESPLIT`, `DISCOUNT_LAPSE_RESPLIT` (so automatic re-splits that discard manual
+  edits are audited too). Not written when before equals after.
+- `INSTALLMENTS_SETTING_CHANGED` `{from, to}` (no student, no invoice), only when the switch really changes; the
+  controller goes through `FinanceFacade.setInstallmentsEnabled`.
+- `V31` also widens `iam.event_publication.serialized_event` from `varchar(255)` to `text`: the event registry
+  rejected any event whose JSON was longer (a long payment note, an instalment snapshot).
+
+## Undated remainder (product owner, 2026-10-13; `V31`)
+
+When a discount lapses and there is a remainder but no unpaid instalment, the system does **not** invent a due date
+(the earlier «due the next day» is dropped): it creates one unpaid instalment with `due_date = NULL`
+(«بدون سررسید») that the admin dates later. Undated instalments sort last everywhere and are filled by payments
+after the dated ones; they are never overdue (so they never make the invoice `OVERDUE`); `invoice.dueDate` follows the
+last **dated** instalment (untouched when none is dated). In `PUT .../installments` an item's `dueDate` may be null
+only while that instalment is undated; giving it a date is allowed, clearing a date is `400 invalid-installments`.
+`generate` still requires `firstDueDate`.
 
 ## Out Of Scope
 

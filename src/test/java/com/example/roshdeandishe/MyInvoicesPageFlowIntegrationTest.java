@@ -73,6 +73,8 @@ class MyInvoicesPageFlowIntegrationTest {
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("تخفیف")))
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("اقساط")))
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("قسط بعدی")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("بدون سررسید")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("isUndated(item)")))
                 .andExpect(content().string(org.hamcrest.Matchers.containsString(":aria-expanded")))
                 // تخفیف مشروط
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("hasPendingDiscount(invoice)")))

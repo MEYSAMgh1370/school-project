@@ -43,6 +43,35 @@ test('next installment is the first non-paid one by seq', () => {
     assert.equal(p.nextInstallmentId({}), null);
 });
 
+test('an undated installment is detected', () => {
+    const p = page();
+    assert.equal(p.isUndated({ dueDate: null }), true);
+    assert.equal(p.isUndated({}), true);
+    assert.equal(p.isUndated({ dueDate: '' }), true);
+    assert.equal(p.isUndated({ dueDate: '2026-11-01' }), false);
+});
+
+test('next installment prefers a dated unpaid one and falls back to an undated unpaid one', () => {
+    const p = page();
+    const mixed = {
+        installments: [
+            { id: 1, seq: 1, status: 'UNPAID', dueDate: null },
+            { id: 2, seq: 2, status: 'PAID', dueDate: '2026-10-01' },
+            { id: 3, seq: 3, status: 'PARTIAL', dueDate: '2026-12-01' }
+        ]
+    };
+    assert.equal(p.nextInstallmentId(mixed), 3);
+    const onlyUndated = {
+        installments: [
+            { id: 4, seq: 2, status: 'UNPAID', dueDate: null },
+            { id: 5, seq: 1, status: 'PAID', dueDate: '2026-10-01' },
+            { id: 6, seq: 3, status: 'UNPAID', dueDate: null }
+        ]
+    };
+    assert.equal(p.nextInstallmentId(onlyUndated), 4);
+    assert.equal(p.nextInstallmentId({ installments: [{ id: 7, seq: 1, status: 'PAID', dueDate: null }] }), null);
+});
+
 test('installment rows start collapsed and toggle per invoice', () => {
     const p = page();
     const invoice = { id: 7 };

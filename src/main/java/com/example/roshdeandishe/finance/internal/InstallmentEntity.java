@@ -39,7 +39,8 @@ class InstallmentEntity {
     @Column(name = "amount_paid", nullable = false, precision = 12, scale = 2)
     private BigDecimal amountPaid = BigDecimal.ZERO;
 
-    @Column(name = "due_date", nullable = false)
+    /** خالی = «بدون سررسید» (V31): هرگز دیرکرد نمی‌شود و در ترتیب‌ها آخر می‌آید. */
+    @Column(name = "due_date")
     private LocalDate dueDate;
 
     InstallmentEntity(Long schoolId, Long invoiceId, BigDecimal amount, LocalDate dueDate) {
