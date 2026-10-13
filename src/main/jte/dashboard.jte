@@ -115,6 +115,9 @@
                                             @endif
                                         </p>
                                     @endif
+                                    @if(ward.hasSummary())
+                                        @template.layout.student-summary(summary = ward.summary(), gradesHref = "/my-grades?student=" + ward.studentId() + "&school=" + ward.schoolId())
+                                    @endif
                                     <p class="mb-0">
                                         <span class="is-size-7 has-text-grey">وضعیت مالی:</span>
                                         @if(ward.hasNoInvoices())
@@ -326,6 +329,22 @@
             </div>
         </section>
 
+
+        <%-- «خلاصهٔ من» دانش‌آموز: آخرین نمره‌ها، آزمون‌های پیش‌رو و غیبتِ امسال (changes/student-summary.md) --%>
+        @if(!model.ownSummaries().isEmpty())
+            <section class="mb-5" aria-labelledby="dashboard-summary-title" x-data
+                     x-cloak x-show="$store.nav.selectedRole === 'STUDENT'" id="dashboardStudentSummary">
+                <h2 class="title is-5" id="dashboard-summary-title">خلاصه‌ی من</h2>
+                @for(var own : model.ownSummaries())
+                    <div class="box">
+                        @if(model.ownSummaries().size() > 1)
+                            <h3 class="title is-6 mb-2">${own.schoolName()}</h3>
+                        @endif
+                        @template.layout.student-summary(summary = own.summary(), gradesHref = "/my-grades")
+                    </div>
+                @endfor
+            </section>
+        @endif
 
         <%-- CTA ثبت مدرسه فقط در حالت بدون عضویت (جریان بنیان‌گذار):
              به دانش‌آموز/والدِ دعوت‌شده پیشنهاد «مدرسه بسازید» نمی‌دهیم

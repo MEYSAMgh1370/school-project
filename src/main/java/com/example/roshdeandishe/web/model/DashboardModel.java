@@ -5,7 +5,17 @@ import java.util.List;
 public record DashboardModel(String fullName, String email, String phoneNumber, List<MembershipRow> memberships,
                              List<SchoolEntryRow> schoolEntries, boolean parent, List<WardRow> wards,
                              List<TuitionRow> tuition, List<AttendanceTodayRow> attendanceToday,
-                             List<TeacherClassesRow> teacherClasses, String rolesSummary) {
+                             List<TeacherClassesRow> teacherClasses, String rolesSummary,
+                             List<OwnSummaryRow> ownSummaries) {
+
+    /** بدونِ «خلاصهٔ من» دانش‌آموز (کاربرِ غیردانش‌آموز / تست‌های قدیمی). */
+    public DashboardModel(String fullName, String email, String phoneNumber, List<MembershipRow> memberships,
+                          List<SchoolEntryRow> schoolEntries, boolean parent, List<WardRow> wards,
+                          List<TuitionRow> tuition, List<AttendanceTodayRow> attendanceToday,
+                          List<TeacherClassesRow> teacherClasses, String rolesSummary) {
+        this(fullName, email, phoneNumber, memberships, schoolEntries, parent, wards, tuition, attendanceToday,
+                teacherClasses, rolesSummary, List.of());
+    }
 
     /** بدونِ «کلاس‌های من» و خلاصه‌ی نقش‌ها (کاربرِ غیرمعلم / تست‌های قدیمی). */
     public DashboardModel(String fullName, String email, String phoneNumber, List<MembershipRow> memberships,
