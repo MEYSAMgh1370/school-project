@@ -14,6 +14,7 @@ import com.example.roshdeandishe.web.model.AttendanceTodayRow;
 import com.example.roshdeandishe.web.model.DashboardModel;
 import com.example.roshdeandishe.web.model.MembershipRow;
 import com.example.roshdeandishe.web.model.SchoolEntryRow;
+import com.example.roshdeandishe.web.model.StudentSummaryAssembler;
 import com.example.roshdeandishe.web.model.TeacherClassesAssembler;
 import com.example.roshdeandishe.web.model.TeacherClassesRow;
 import com.example.roshdeandishe.web.model.TuitionRow;
@@ -71,11 +72,14 @@ public class DashboardPageController {
     private final FinanceFacade financeFacade;
     private final AttendanceTodayAssembler attendanceTodayAssembler;
     private final TeacherClassesAssembler teacherClassesAssembler;
+    private final StudentSummaryAssembler studentSummaryAssembler;
 
     public DashboardPageController(IamFacade iamFacade, SchoolFacade schoolFacade,
                                    NavbarModelAssembler navbarModelAssembler, WardsAssembler wardsAssembler,
                                    FinanceFacade financeFacade, AttendanceTodayAssembler attendanceTodayAssembler,
-                                   TeacherClassesAssembler teacherClassesAssembler) {
+                                   TeacherClassesAssembler teacherClassesAssembler,
+                                   StudentSummaryAssembler studentSummaryAssembler) {
+        this.studentSummaryAssembler = studentSummaryAssembler;
         this.teacherClassesAssembler = teacherClassesAssembler;
         this.financeFacade = financeFacade;
         this.attendanceTodayAssembler = attendanceTodayAssembler;
@@ -108,7 +112,9 @@ public class DashboardPageController {
                 rows, schoolEntries(memberships, schools), WardsAssembler.isParent(memberships),
                 wardsAssembler.forParent(userId, memberships), tuitionRows(memberships, schools),
                 attendanceTodayRows(userId, memberships, schools),
-                teacherClasses(userId, memberships, schools), rolesSummary(memberships, navbar, schools)));
+                teacherClasses(userId, memberships, schools), rolesSummary(memberships, navbar, schools),
+                studentSummaryAssembler.forOwn(userId, memberships,
+                        id -> schoolName(schools.getOrDefault(id, Optional.empty()), id))));
         model.addAttribute("navbar", navbar);
         return "dashboard";
     }

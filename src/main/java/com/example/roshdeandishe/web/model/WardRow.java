@@ -15,13 +15,26 @@ package com.example.roshdeandishe.web.model;
  * @param invoiceCount همه‌ی فاکتورهای این دانش‌آموز
  * @param overdueCount فاکتورهای دیرکرد (OVERDUE)
  * @param openCount    فاکتورهای باز و سررسید‌نگذشته (UNPAID و PARTIAL)
+ * @param summary      خلاصهٔ نمره‌ها/آزمون‌ها/غیبتِ همین فرزند (تهی = نشان داده نمی‌شود)
  * @param attendance   وضعیتِ حضور و غیابِ امروزِ همین فرزند (تهی = {@link WardAttendance#UNAVAILABLE})
  */
 public record WardRow(Long studentId, Long schoolId, String name, String schoolName, String className, String section,
-                      int invoiceCount, int overdueCount, int openCount, WardAttendance attendance) {
+                      int invoiceCount, int overdueCount, int openCount, WardAttendance attendance,
+                      StudentSummary summary) {
 
     public WardRow {
         attendance = attendance == null ? WardAttendance.UNAVAILABLE : attendance;
+    }
+
+    /** بدونِ خلاصهٔ نمره/آزمون/غیبت (تست‌های قدیمی). */
+    public WardRow(Long studentId, Long schoolId, String name, String schoolName, String className, String section,
+                   int invoiceCount, int overdueCount, int openCount, WardAttendance attendance) {
+        this(studentId, schoolId, name, schoolName, className, section, invoiceCount, overdueCount, openCount,
+                attendance, null);
+    }
+
+    public boolean hasSummary() {
+        return summary != null;
     }
 
     /** بدونِ وضعیتِ حضور و غیاب (مدرسه‌ی بدونِ آن ماژول و تست‌های قدیمی). */
