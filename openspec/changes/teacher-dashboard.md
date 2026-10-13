@@ -25,9 +25,10 @@ with two students plus an unassigned class, and read in code.
 ## Decisions (product owner, 2026-10-12)
 
 In scope: a personal heading, «کلاس‌های من» with today's attendance, the no-class
-message, hiding the class form. Out of scope: «برنامه‌ی امروز» for teachers (the
-`/api/me/schools/{id}/timetable` API already serves a teacher; the dashboard box is
-student-only), and reordering the shortcut cards for a teacher without classes.
+message, hiding the class form. Deferred then, done 2026-10-13: «برنامه‌ی امروز» for teachers (the
+`/api/me/schools/{id}/timetable` API already served a teacher; the dashboard box was
+student-only; now it shows the teacher's own `TEACHING` slots for today with each
+slot's class name and «امروز کلاسی برای تدریس ندارید.» when there are none). Out of scope: reordering the shortcut cards for a teacher without classes.
 
 ## Notes
 
@@ -39,3 +40,7 @@ student-only), and reordering the shortcut cards for a teacher without classes.
   go to the page and the teacher picks the class there.
 - Not changed, noticed: on `/classes` a teacher sees «نام معلم در دسترس نیست» for
   their own class, because the name lookup needs a permission teachers do not hold.
+  Re-checked 2026-10-13: this reason is wrong — the seed grants `TEACHER`
+  `MEMBER_NAMES_VIEW` and `classes.js` falls back to `/memberships/names`; the message
+  can only appear for a teacher who is not an active member (e.g. invite pending).
+  Not reproduced for an active teacher; no code change.
