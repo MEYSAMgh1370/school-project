@@ -163,9 +163,12 @@ document.addEventListener('alpine:init', () => {
                     await this.showError(response);
                     return;
                 }
-                this.notice = 'عضو جدید اضافه شد.';
-                this.form = { email: '', fullName: '', roleCode: 'STUDENT' };
+                const created = await response.json();
+                // نقشِ انتخاب‌شده می‌ماند، تا افزودنِ چند معلمِ پشت‌سرهم هر بار نقش را دوباره انتخاب نخواهد.
+                this.form = { email: '', fullName: '', roleCode: this.form.roleCode };
                 await this.load();
+                // دعوت همان لحظه فرستاده می‌شود؛ مدیر مجبور نیست یادش بماند «ارسال دعوت» را جدا بزند.
+                await this.sendInvite({ membershipId: created.membershipId, fullName: created.fullName }, true);
             } catch (e) {
                 this.error = 'ارتباط با سرور برقرار نشد.';
             } finally {
@@ -234,7 +237,8 @@ document.addEventListener('alpine:init', () => {
             }
         },
 
-        async sendInvite(member) {
+        // added=true یعنی همین الان با «افزودن» ساخته شده؛ فقط متنِ پیام فرق می‌کند.
+        async sendInvite(member, added = false) {
             this.error = '';
             this.notice = '';
             this.invite = null;
@@ -248,14 +252,24 @@ document.addEventListener('alpine:init', () => {
                 });
                 if (!response.ok) {
                     await this.showError(response);
+                    if (added) {
+                        this.notice = member.fullName + ' اضافه شد، ولی دعوت فرستاده نشد؛ از «ارسال/تکرار دعوت» دوباره امتحان کنید.';
+                    }
                     return;
                 }
                 const body = await response.json();
                 if (!body.issued) {
-                    this.notice = 'این کاربر قبلاً حسابش را فعال کرده است.';
+                    this.notice = added
+                        ? member.fullName + ' اضافه شد؛ حسابش از قبل فعال است و به دعوت نیاز ندارد.'
+                        : 'این کاربر قبلاً حسابش را فعال کرده است.';
                 } else if (body.emailSent) {
-                    this.notice = 'ایمیل دعوت ارسال شد.';
+                    this.notice = added
+                        ? member.fullName + ' اضافه شد و ایمیل دعوت برایش فرستاده شد.'
+                        : 'ایمیل دعوت ارسال شد.';
                 } else {
+                    if (added) {
+                        this.notice = member.fullName + ' اضافه شد.';
+                    }
                     this.invite = {
                         fullName: member.fullName,
                         emailSent: false,

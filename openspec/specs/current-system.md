@@ -25,6 +25,8 @@ implemented for an existing registered phone number, but it cannot complete
 outside development: `SmsDriver` has no SMS provider integration, and no
 configuration supplies one. See Current Limitations below.
 
+Inviting a member (`changes/invite-to-first-login.md`): on `/people`, «افزودن» creates the membership and immediately issues the invite (`POST .../memberships` then `POST .../memberships/{id}/invite-token`), so no second click is needed; the notice says whether the email went, and when it did not (SMTP failure or absence) the manual activation link is shown at once. The selected role stays after an add, and a pending member shows only «در انتظار فعال‌سازی» (the «فعال» tag appears once the account has a password). The invite email names the invitation («شما به‌عنوان <role> در <school> دعوت شده‌اید») and says to ask the school admin for a new invite if it expires. `iam` gets the school name through the `iam.shared.SchoolNameSource` interface, implemented in `school`; without it the email and page omit the school. `/activate?token=` shows the invited account's name and email and its role/school (`IamFacade.describeInvite`), hides the manual code field when a link was used, offers a show/hide password control, and for an unknown, used or expired token shows a specific message instead of the form (no account data is revealed for those states). `POST /api/auth/activate` now also returns the activated email; the page signs the user in with it and the new password and goes to `/dashboard` (the invite token proves ownership of the email, as registration does), and falls back to a «ورود به حساب» link if that login fails.
+
 IAM canonicalizes phone numbers at the application boundary before storing or
 looking them up:
 

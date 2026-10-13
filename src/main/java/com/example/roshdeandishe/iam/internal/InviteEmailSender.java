@@ -45,7 +45,7 @@ class InviteEmailSender {
      * @return true اگر ایمیل تحویل SMTP شد؛ false اگر ارسال شکست خورد
      * (توکن همچنان معتبر است و ادمین باید لینک را دستی برساند)
      */
-    boolean sendActivationEmail(String recipientEmail, String fullName, String token) {
+    boolean sendActivationEmail(String recipientEmail, String fullName, String token, String invitationSummary) {
         String activationLink = activationBaseUrl + "/activate?token="
                 + URLEncoder.encode(token, StandardCharsets.UTF_8);
 
@@ -56,14 +56,15 @@ class InviteEmailSender {
         message.setText("""
                 %s عزیز، سلام
 
-                برای شما حسابی در سامانه‌ی رشد اندیشه ساخته شده است. برای \
+                %sبرای شما حسابی در سامانه‌ی رشد اندیشه ساخته شده است. برای \
                 تعیین رمز عبور و فعال‌سازی حساب، روی لینک زیر بزنید:
 
                 %s
 
-                این لینک تا ۷ روز معتبر است و فقط یک بار قابل استفاده است.
+                این لینک تا ۷ روز معتبر است و فقط یک بار قابل استفاده است. اگر منقضی شد، از مدیر مدرسه \
+                بخواهید دعوت‌نامه‌ی تازه‌ای بفرستد.
                 اگر این ایمیل را اشتباهی دریافت کرده‌اید، آن را نادیده بگیرید.
-                """.formatted(fullName, activationLink));
+                """.formatted(fullName, invitationLine(invitationSummary), activationLink));
 
         try {
             mailSender.send(message);
@@ -73,5 +74,13 @@ class InviteEmailSender {
                     recipientEmail, e);
             return false;
         }
+    }
+
+    /** «شما به‌عنوان معلم در دبستان … دعوت شده‌اید.» + یک سطر خالی؛ بدونِ خلاصه چیزی اضافه نمی‌شود. */
+    private static String invitationLine(String invitationSummary) {
+        if (invitationSummary == null || invitationSummary.isBlank()) {
+            return "";
+        }
+        return "شما به‌عنوان " + invitationSummary + " دعوت شده‌اید.\n\n";
     }
 }

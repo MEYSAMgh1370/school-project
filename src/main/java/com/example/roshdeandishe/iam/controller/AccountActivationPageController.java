@@ -1,5 +1,8 @@
 package com.example.roshdeandishe.iam.controller;
 
+import com.example.roshdeandishe.iam.IamFacade;
+import com.example.roshdeandishe.iam.IamFacade.InviteLookup;
+import com.example.roshdeandishe.iam.IamFacade.InviteState;
 import com.example.roshdeandishe.iam.model.ActivatePageModel;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
@@ -20,9 +23,18 @@ import org.springframework.web.bind.annotation.RequestParam;
 @Controller
 public class AccountActivationPageController {
 
+    private final IamFacade iamFacade;
+
+    public AccountActivationPageController(IamFacade iamFacade) {
+        this.iamFacade = iamFacade;
+    }
+
     @GetMapping("/activate")
     public String activatePage(@RequestParam(required = false) String token, Model model) {
-        model.addAttribute("model", new ActivatePageModel(token == null ? "" : token));
+        String safeToken = token == null ? "" : token;
+        InviteLookup invite = safeToken.isBlank() ? InviteLookup.of(InviteState.UNKNOWN)
+                : iamFacade.describeInvite(safeToken);
+        model.addAttribute("model", new ActivatePageModel(safeToken, invite));
         return "activate";
     }
 }

@@ -53,6 +53,7 @@ class IamFacadeImpl implements IamFacade {
     private final PasswordEncoder passwordEncoder;
     private final InviteEmailSender inviteEmailSender;
     private final SmsDriver smsDriver;
+    private final InviteDescriber inviteDescriber;
 
     IamFacadeImpl(
             UserRepository userRepository,
@@ -68,7 +69,8 @@ class IamFacadeImpl implements IamFacade {
             PermissionDecisionService permissionDecisionService,
             PasswordEncoder passwordEncoder,
             InviteEmailSender inviteEmailSender,
-            SmsDriver smsDriver
+            SmsDriver smsDriver,
+            InviteDescriber inviteDescriber
     ) {
         this.userRepository = userRepository;
         this.roleRepository = roleRepository;
@@ -84,6 +86,7 @@ class IamFacadeImpl implements IamFacade {
         this.passwordEncoder = passwordEncoder;
         this.inviteEmailSender = inviteEmailSender;
         this.smsDriver = smsDriver;
+        this.inviteDescriber = inviteDescriber;
     }
 
     @Override
@@ -372,14 +375,15 @@ class IamFacadeImpl implements IamFacade {
 
         // ارسال ایمیل در هر دو حالت (توکن تازه یا موجود) - صدور مجدد یعنی
         // «ایمیل دعوت را دوباره بفرست». شکست ارسال، صدور را باطل نمی‌کند.
-        boolean emailSent = inviteEmailSender.sendActivationEmail(user.getEmail(), user.getFullName(), token);
+        boolean emailSent = inviteEmailSender.sendActivationEmail(
+                user.getEmail(), user.getFullName(), token, inviteDescriber.summaryFor(membership));
 
         return Optional.of(new InviteIssued(token, emailSent));
     }
 
     @Override
     @Transactional
-    public void redeemInviteToken(String token, String newPassword) {
+    public String redeemInviteToken(String token, String newPassword) {
         InviteTokenEntity inviteToken = inviteTokenRepository.findByToken(token)
                 .orElseThrow(() -> new IamException(new IamError.InviteTokenNotFound(token)));
 
@@ -403,6 +407,12 @@ class IamFacadeImpl implements IamFacade {
 
         inviteToken.setRedeemedAt(Instant.now());
         inviteTokenRepository.save(inviteToken);
+        return user.getEmail();
+    }
+
+    @Override
+    public InviteLookup describeInvite(String token) {
+        return inviteDescriber.describe(token);
     }
 
     private static String generateToken() {
