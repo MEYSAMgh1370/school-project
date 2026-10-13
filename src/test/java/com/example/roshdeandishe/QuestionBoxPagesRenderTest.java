@@ -82,10 +82,21 @@ class QuestionBoxPagesRenderTest {
     }
 
     @Test
+    void aColleaguesQuestionOrSheetShowsAWarningAndTheSheetCanBeSavedAsMyOwnCopy() {
+        String box = render("question-box.jte", Map.of("navbar", NAVBAR));
+        assertThat(box).contains("سؤال همکار شماست", "فقط سازنده یا مدیر");
+
+        String sheets = render("question-sheets.jte", Map.of("navbar", NAVBAR));
+        assertThat(sheets).contains("این برگه از همکار شماست", "id=\"sheetCopy\"", "ذخیره به‌عنوان نسخه‌ی جدید");
+    }
+
+    @Test
     void theStylesheetPrintsOnA4HidesControlsAndUsesNoPhysicalDirections() throws IOException {
         String css = resource("/static/css/question-box.css");
 
         assertThat(css).contains("@media print", "size: A4", ".no-print");
+        // خطِ جدیدِ متنِ سؤال (الف/ب در چند خط) باید در چاپ و فهرست بماند
+        assertThat(css).contains("white-space: pre-line");
         assertThat(css).doesNotContainPattern(Pattern.compile(
                 "(margin|padding|border)-(left|right)|(^|[\\s{;])(left|right)\\s*:|text-align:\\s*(left|right)"));
     }

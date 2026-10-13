@@ -50,7 +50,7 @@
                                 <div class="app-question-row" role="listitem">
                                     <div class="app-question-row__main">
                                         <span class="app-question-row__name">
-                                            <span x-show="question.text" x-math="question.text"></span>
+                                            <span class="qb-prewrap" x-show="question.text" x-math="question.text"></span>
                                             <span class="has-text-grey" x-show="!question.text">سؤال فقط‌تصویر</span>
                                         </span>
                                         <span class="is-size-7 has-text-grey">
@@ -93,6 +93,9 @@
             </header>
             <template x-if="form">
             <section class="modal-card-body">
+                <div class="notification is-warning" role="status" x-show="form.id && !form.editable">
+                    سؤال همکار شماست؛ فقط سازنده یا مدیر مدرسه می‌تواند آن را ذخیره کند.
+                </div>
                 <div class="notification is-danger" role="alert" x-show="form && form.error">
                     <span class="app-notice">@template.layout.icon(name = "alert", size = 20)<span x-text="form ? form.error : ''"></span></span>
                 </div>

@@ -35,6 +35,11 @@ class QuestionBoxSheetsFlowIntegrationTest extends QuestionBoxTestSupport {
                 new NewQuestion(topic, text, "الف", "ب", "ج", "د", 1, "پاسخ بانک", null, null)).value();
     }
 
+    /** بانک سؤال (CURRICULUM) پولی است و با ساخت مدرسه فعال نمی‌شود. */
+    private void entitleBank(Fixture f) {
+        iamFacade.setSchoolEntitlement(f.school(), new com.example.roshdeandishe.iam.IamFacade.ModuleCode("CURRICULUM"), true);
+    }
+
     private static String item(String source, long id) {
         return "{\"source\":\"" + source + "\",\"questionId\":" + id + "}";
     }
@@ -62,6 +67,7 @@ class QuestionBoxSheetsFlowIntegrationTest extends QuestionBoxTestSupport {
     @Test
     void saveSheetWithTwoSectionsMixingBoxAndBank() throws Exception {
         Fixture f = fixture();
+        entitleBank(f);
         long mcq = boxQuestion(f, f.teacher1(), mcq("تستی باکس"));
         long essay = boxQuestion(f, f.teacher1(), essay("تشریحی باکس"));
         long bank = bankQuestion(f.school(), "سؤال بانک");
@@ -114,6 +120,7 @@ class QuestionBoxSheetsFlowIntegrationTest extends QuestionBoxTestSupport {
     void bankQuestionNotVisibleToSchoolRejected() throws Exception {
         Fixture a = fixture();
         Fixture b = fixture();
+        entitleBank(b);
         long foreignBank = bankQuestion(a.school(), "بانک مدرسه الف");
         send(b.teacher1(), b.school(), post(b.base() + "/sheets"),
                 sheet("x", null, section("بخش", item("BANK", foreignBank)))).andExpect(status().isBadRequest());
@@ -144,6 +151,7 @@ class QuestionBoxSheetsFlowIntegrationTest extends QuestionBoxTestSupport {
     @Test
     void unavailableBankQuestionResolvesAsPlaceholder() throws Exception {
         Fixture f = fixture();
+        entitleBank(f);
         long bank = bankQuestion(f.school(), "بانک گذرا");
         long id = createSheet(f, f.teacher1(), sheet("برگه", null, section("بخش", item("BANK", bank))));
         jdbc.update("delete from curriculum.questions where id = ?", bank);
@@ -243,5 +251,38 @@ class QuestionBoxSheetsFlowIntegrationTest extends QuestionBoxTestSupport {
                 .andExpect(jsonPath("$[0].itemCount").value(1));
         send(f.admin(), f.school(), delete(f.base() + "/sheets/" + id), null).andExpect(status().isNoContent());
         send(f.admin(), f.school(), get(f.base() + "/sheets/" + id), null).andExpect(status().isNotFound());
+    }
+
+    @Test
+    void bankItemsNeedTheCurriculumEntitlement() throws Exception {
+        Fixture f = fixture();
+        long bank = bankQuestion(f.school(), "بانک پولی");
+        send(f.teacher1(), f.school(), post(f.base() + "/sheets"),
+                sheet("x", null, section("بخش", item("BANK", bank)))).andExpect(status().isBadRequest());
+        entitleBank(f);
+        send(f.teacher1(), f.school(), post(f.base() + "/sheets"),
+                sheet("x", null, section("بخش", item("BANK", bank)))).andExpect(status().isCreated());
+    }
+
+    @Test
+    void anImageOnlyQuestionThatLostItsStemImageResolvesAsUnavailable() throws Exception {
+        Fixture f = fixture();
+        long q = boxQuestion(f, f.teacher1(), "{\"type\":\"MULTIPLE_CHOICE\",\"contentMode\":\"IMAGE_ONLY\",\"correctChoice\":1}");
+        byte[] png = java.util.Base64.getDecoder().decode(
+                "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==");
+        long image = json(mockMvc.perform(multipart(f.base() + "/questions/" + q + "/images")
+                .file(new org.springframework.mock.web.MockMultipartFile("file", "a.png", "image/png", png))
+                .param("role", "STEM")
+                .with(org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf())
+                .header("X-School-ID", String.valueOf(f.school())).session(f.teacher1()))
+                .andExpect(status().isCreated())).get("id").asLong();
+        long id = createSheet(f, f.teacher1(), sheet("برگه", null, section("بخش", item("BOX", q))));
+        assertThat(resolved(f, f.teacher1(), id).get("sections").get(0).get("items").get(0).get("available").asBoolean()).isTrue();
+
+        send(f.teacher1(), f.school(), delete(f.base() + "/questions/" + q + "/images/" + image), null)
+                .andExpect(status().isNoContent());
+
+        JsonNode item = resolved(f, f.teacher1(), id).get("sections").get(0).get("items").get(0);
+        assertThat(item.get("available").asBoolean()).isFalse();
     }
 }

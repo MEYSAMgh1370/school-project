@@ -57,6 +57,11 @@ Online exams from these questions, essay grading, AI generation, server-side PDF
 - **Header in use:** a header used by a saved sheet cannot be deleted (`400 invalid-sheet`); remove it from the sheets first.
 - **Image-only question:** multiple-choice image-only questions carry `correctChoice` but no choice texts; they cannot be added to a sheet until a `STEM` image exists. Saved sheets keep their items without re-validation, so a later-deleted question never blocks re-saving.
 - **Images** are fetched with `fetch` (they need `X-School-ID`) and shown as blob URLs (`x-qbimg`).
+- **Bank items need the paid `CURRICULUM` entitlement:** adding a curriculum-bank question to a sheet is refused (`400 invalid-sheet`) unless the school has `CURRICULUM`, so the free box is not a way around the paid bank. Items already in a sheet keep resolving.
+- **Image bytes are never read for lists:** question images and header images are read through projections (`ImageMeta`, `HeaderRow`), so listing questions or headers and resolving a sheet do not load the `bytea` columns; bytes are read only by `GET .../images/{id}` and `GET .../headers/{id}/image`.
+- **Image-only question without a `STEM` image** (for example after its image was removed) resolves as unavailable instead of printing an empty number.
+- **Oversize upload:** a file above the multipart limit (6 MB) is `413 upload-too-large` (`PlatformExceptionHandler`), and the pages refuse files above 5 MB before uploading.
+- **A colleague's question or sheet** opens with a warning that only the creator or an admin can save it; a sheet can be saved as the user's own copy («ذخیره به‌عنوان نسخه‌ی جدید»).
 - **Logo:** the app has no school logo, so the header's `showLogo` field exists in the API but the UI does not expose it and the print page ignores it.
 - **Print score:** a question's optional `suggestedScore` prints as «(n نمره)» after the question text; the header's score box is an empty cell for the teacher.
 

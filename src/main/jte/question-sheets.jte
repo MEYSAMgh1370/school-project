@@ -84,6 +84,9 @@
 
                         <%-- ------------------------------------------------ سازنده‌ی برگه --%>
                         <div x-show="view === 'builder'" x-cloak>
+                            <div class="notification is-warning" role="status" x-show="draft.id && !draft.editable">
+                                این برگه از همکار شماست؛ فقط سازنده یا مدیر مدرسه می‌تواند آن را ذخیره کند. اگر می‌خواهید روی آن کار کنید، «ذخیره به‌عنوان نسخه‌ی جدید» را بزنید.
+                            </div>
                             <div class="box">
                                 <div class="field">
                                     <label class="label" for="sheetTitle">عنوان برگه</label>
@@ -139,7 +142,7 @@
                                             <div class="app-question-row" role="listitem">
                                                 <div class="app-question-row__main">
                                                     <span class="app-question-row__name">
-                                                        <span x-show="previewText(item)" x-math="previewText(item)"></span>
+                                                        <span class="qb-prewrap" x-show="previewText(item)" x-math="previewText(item)"></span>
                                                         <span class="has-text-grey" x-show="!previewText(item)" x-text="previewFallback(item)"></span>
                                                     </span>
                                                     <span class="is-size-7 has-text-grey" x-text="previewMeta(item)"></span>
@@ -164,6 +167,7 @@
                             <div class="buttons">
                                 <button type="button" class="button is-light" @click="addSection">افزودن بخش</button>
                                 <a class="button is-light" x-show="draft.id" :href="'/question-sheets/' + draft.id + '/print'">پیش‌نمایش و چاپ</a>
+                                <button type="button" class="button is-light" id="sheetCopy" x-show="draft.id" @click="saveAsCopy">ذخیره به‌عنوان نسخه‌ی جدید</button>
                             </div>
                         </div>
                     </div>
@@ -212,7 +216,7 @@
                         <div class="app-question-row" role="listitem">
                             <div class="app-question-row__main">
                                 <span class="app-question-row__name">
-                                    <span x-show="row.text" x-math="row.text"></span>
+                                    <span class="qb-prewrap" x-show="row.text" x-math="row.text"></span>
                                     <span class="has-text-grey" x-show="!row.text">سؤال فقط‌تصویر</span>
                                 </span>
                                 <span class="is-size-7 has-text-grey" x-text="row.type === 'ESSAY' ? 'تشریحی' : 'تستی'"></span>

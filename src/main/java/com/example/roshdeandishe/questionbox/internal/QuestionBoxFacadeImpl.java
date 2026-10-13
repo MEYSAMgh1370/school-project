@@ -113,7 +113,7 @@ class QuestionBoxFacadeImpl implements QuestionBoxFacade {
         validate(question);
         apply(entity, question);
         entity.setUpdatedAt(Instant.now());
-        return toInfo(entity, rule, imageRepository.findByQuestionIdOrderByIdAsc(entity.getId()));
+        return toInfo(entity, rule, imageRepository.findMetaByQuestionIdIn(List.of(entity.getId())));
     }
 
     @Override
@@ -131,7 +131,7 @@ class QuestionBoxFacadeImpl implements QuestionBoxFacade {
     public QuestionInfo getQuestion(Long schoolId, Long actorUserId, Long questionId) {
         BoxQuestionEntity entity = requireVisible(schoolId, questionId);
         return toInfo(entity, new EditRule(iamFacade, schoolId, actorUserId),
-                imageRepository.findByQuestionIdOrderByIdAsc(entity.getId()));
+                imageRepository.findMetaByQuestionIdIn(List.of(entity.getId())));
     }
 
     @Override
@@ -142,9 +142,9 @@ class QuestionBoxFacadeImpl implements QuestionBoxFacade {
         String needle = f.search() == null || f.search().isBlank() ? null : f.search().strip().toLowerCase();
         List<QuestionInfo> result = new ArrayList<>();
         List<BoxQuestionEntity> all = questionRepository.findBySchoolIdAndDeletedAtIsNullOrderByIdDesc(schoolId);
-        Map<Long, List<QuestionImageEntity>> imagesByQuestion = all.isEmpty() ? Map.of()
-                : imageRepository.findByQuestionIdInOrderByIdAsc(all.stream().map(BoxQuestionEntity::getId).toList())
-                .stream().collect(java.util.stream.Collectors.groupingBy(QuestionImageEntity::getQuestionId));
+        Map<Long, List<QuestionImageRepository.ImageMeta>> imagesByQuestion = all.isEmpty() ? Map.of()
+                : imageRepository.findMetaByQuestionIdIn(all.stream().map(BoxQuestionEntity::getId).toList())
+                .stream().collect(java.util.stream.Collectors.groupingBy(QuestionImageRepository.ImageMeta::getQuestionId));
         for (BoxQuestionEntity e : all) {
             if (f.type() != null && e.getType() != f.type()) {
                 continue;
@@ -280,7 +280,7 @@ class QuestionBoxFacadeImpl implements QuestionBoxFacade {
         return new ImageContent(image.getContentType(), image.getData());
     }
 
-    private QuestionInfo toInfo(BoxQuestionEntity e, EditRule rule, List<QuestionImageEntity> images) {
+    private QuestionInfo toInfo(BoxQuestionEntity e, EditRule rule, List<QuestionImageRepository.ImageMeta> images) {
         List<String> choices = e.getChoice1() == null
                 ? List.of()
                 : List.of(e.getChoice1(), e.getChoice2(), e.getChoice3(), e.getChoice4());

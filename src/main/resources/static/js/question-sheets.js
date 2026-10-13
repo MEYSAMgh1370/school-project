@@ -1,4 +1,7 @@
 document.addEventListener('alpine:init', () => {
+    // سقفِ تصویر سمت سرور هم ۵ مگابایت است
+    const MAX_IMAGE_BYTES = 5 * 1024 * 1024;
+
     const FIELD_LABELS = {
         TITLE: 'عنوان آزمون',
         SUBJECT: 'درس',
@@ -22,6 +25,7 @@ document.addEventListener('alpine:init', () => {
 
     const emptyDraft = () => ({
         id: null,
+        editable: true,
         title: '',
         headerId: '',
         headerValues: {},
@@ -61,7 +65,7 @@ document.addEventListener('alpine:init', () => {
         blocked: false,
         layouts: LAYOUTS,
         allFields: Object.entries(FIELD_LABELS).map(([value, label]) => ({ value, label })),
-        // انتخابگر سؤال: همیشه شیء است تا x-model روی null نیفتد؛ open=false یعنی بسته
+        // انتخابگر سؤال: null = بسته؛ قالب فقط وقتی شیء باشد رندر می‌شود (x-if)
         picker: null,
         topicsFlat: [],
         bankQuestions: [],
@@ -163,6 +167,7 @@ document.addEventListener('alpine:init', () => {
             }));
             this.draft = {
                 id: sheet.data.id,
+                editable: sheet.data.editable,
                 title: sheet.data.title,
                 headerId: sheet.data.headerId ? String(sheet.data.headerId) : '',
                 headerValues: { ...sheet.data.headerValues },
@@ -304,6 +309,14 @@ document.addEventListener('alpine:init', () => {
             } finally {
                 this.saving = false;
             }
+        },
+
+        // نسخه‌ی تازه‌ی خودِ کاربر از همین برگه (برای برگه‌ی همکار که ذخیره‌اش 403 می‌دهد)
+        async saveAsCopy() {
+            this.draft.id = null;
+            this.draft.editable = true;
+            this.draft.title = this.draft.title.trim() + ' (نسخه‌ی من)';
+            await this.saveSheet();
         },
 
         // ---- انتخابگر سؤال ----
@@ -494,6 +507,10 @@ document.addEventListener('alpine:init', () => {
             event.target.value = '';
             const f = this.headerForm;
             if (!file || !f || !f.id) {
+                return;
+            }
+            if (file.size > MAX_IMAGE_BYTES) {
+                f.error = 'حجم تصویر نباید از ۵ مگابایت بیشتر باشد.';
                 return;
             }
             this.uploading = true;

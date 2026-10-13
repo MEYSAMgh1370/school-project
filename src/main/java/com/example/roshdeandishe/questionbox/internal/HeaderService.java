@@ -65,7 +65,8 @@ class HeaderService {
     @Transactional(readOnly = true)
     List<HeaderInfo> list(Long schoolId, Long actorUserId) {
         EditRule rule = new EditRule(iamFacade, schoolId, actorUserId);
-        return headerRepository.findBySchoolIdOrderByIdDesc(schoolId).stream().map(e -> toInfo(e, rule.canEdit(e.getCreatedByUserId()))).toList();
+        return headerRepository.findRowsBySchoolId(schoolId).stream()
+                .map(r -> toInfo(r, rule.canEdit(r.createdByUserId()))).toList();
     }
 
     @Transactional
@@ -134,15 +135,19 @@ class HeaderService {
     }
 
     static HeaderInfo toInfo(HeaderEntity e, boolean editable) {
+        return toInfo(new HeaderRow(e.getId(), e.getSchoolId(), e.getCreatedByUserId(), e.getName(), e.getMode(),
+                e.getLayout(), e.isShowSchoolName(), e.isShowLogo(), e.getFields(), e.getImage() != null), editable);
+    }
+
+    static HeaderInfo toInfo(HeaderRow r, boolean editable) {
         Set<HeaderField> fields = EnumSet.noneOf(HeaderField.class);
-        if (!e.getFields().isBlank()) {
-            for (String code : e.getFields().split(",")) {
+        if (!r.fields().isBlank()) {
+            for (String code : r.fields().split(",")) {
                 fields.add(HeaderField.valueOf(code));
             }
         }
-        boolean hasImage = e.getImage() != null;
-        return new HeaderInfo(e.getId(), e.getSchoolId(), e.getCreatedByUserId(),
-                editable, e.getMode() == HeaderMode.LAYOUT || hasImage, e.getName(),
-                e.getMode(), e.getLayout(), e.isShowSchoolName(), e.isShowLogo(), fields, hasImage);
+        return new HeaderInfo(r.id(), r.schoolId(), r.createdByUserId(), editable,
+                r.mode() == HeaderMode.LAYOUT || r.hasImage(), r.name(), r.mode(), r.layout(), r.showSchoolName(),
+                r.showLogo(), fields, r.hasImage());
     }
 }

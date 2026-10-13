@@ -1,6 +1,10 @@
 document.addEventListener('alpine:init', () => {
+    // سقفِ تصویر سمت سرور هم ۵ مگابایت است؛ بررسیِ زودتر از آپلودِ بی‌فایده جلوگیری می‌کند
+    const MAX_IMAGE_BYTES = 5 * 1024 * 1024;
+
     const EMPTY_FORM = () => ({
         id: null,
+        editable: true,
         opener: null,
         type: 'MULTIPLE_CHOICE',
         contentMode: 'TEXT',
@@ -131,6 +135,7 @@ document.addEventListener('alpine:init', () => {
             this.form = {
                 ...EMPTY_FORM(),
                 id: question.id,
+                editable: question.editable,
                 opener: event ? event.currentTarget : null,
                 type: question.type,
                 contentMode: question.contentMode,
@@ -231,6 +236,10 @@ document.addEventListener('alpine:init', () => {
             const file = event.target.files[0];
             event.target.value = '';
             if (!file || !this.form || !this.form.id) {
+                return;
+            }
+            if (file.size > MAX_IMAGE_BYTES) {
+                this.form.imageError = 'حجم تصویر نباید از ۵ مگابایت بیشتر باشد.';
                 return;
             }
             this.uploading = true;

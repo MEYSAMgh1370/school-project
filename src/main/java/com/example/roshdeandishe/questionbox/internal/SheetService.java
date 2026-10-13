@@ -2,6 +2,7 @@ package com.example.roshdeandishe.questionbox.internal;
 
 import com.example.roshdeandishe.curriculum.CurriculumFacade;
 import com.example.roshdeandishe.curriculum.CurriculumFacade.QuestionInfo;
+import com.example.roshdeandishe.iam.AccessContext;
 import com.example.roshdeandishe.iam.IamFacade;
 import com.example.roshdeandishe.questionbox.QuestionBoxFacade.*;
 import com.example.roshdeandishe.questionbox.shared.QuestionBoxError;
@@ -57,7 +58,7 @@ class SheetService {
     SheetInfo create(Long schoolId, Long actorUserId, SheetDraft draft) {
         validateShape(draft);
         SheetEntity sheet = new SheetEntity(schoolId, actorUserId, Instant.now());
-        validateReferences(schoolId, draft, Set.of(), null);
+        validateReferences(schoolId, actorUserId, draft, Set.of(), null);
         apply(sheet, draft);
         sheetRepository.save(sheet);
         replaceSections(sheet.getId(), draft);
@@ -69,7 +70,7 @@ class SheetService {
         SheetEntity sheet = require(schoolId, sheetId);
         requireEditable(new EditRule(iamFacade, schoolId, actorUserId), sheet);
         validateShape(draft);
-        validateReferences(schoolId, draft, existingRefs(sheetId), sheet.getHeaderId());
+        validateReferences(schoolId, actorUserId, draft, existingRefs(sheetId), sheet.getHeaderId());
         apply(sheet, draft);
         sheet.setUpdatedAt(Instant.now());
         sectionRepository.deleteBySheetId(sheetId);
@@ -129,9 +130,9 @@ class SheetService {
         Map<Long, BoxQuestionEntity> boxById = boxIds.isEmpty() ? Map.of()
                 : questionRepository.findByIdInAndSchoolId(boxIds, schoolId).stream()
                 .collect(Collectors.toMap(BoxQuestionEntity::getId, q -> q));
-        Map<Long, List<QuestionImageEntity>> imagesByQuestion = boxById.isEmpty() ? Map.of()
-                : imageRepository.findByQuestionIdInOrderByIdAsc(boxById.keySet()).stream()
-                .collect(Collectors.groupingBy(QuestionImageEntity::getQuestionId));
+        Map<Long, List<QuestionImageRepository.ImageMeta>> imagesByQuestion = boxById.isEmpty() ? Map.of()
+                : imageRepository.findMetaByQuestionIdIn(boxById.keySet()).stream()
+                .collect(Collectors.groupingBy(QuestionImageRepository.ImageMeta::getQuestionId));
         Map<Long, QuestionInfo> bankById = curriculumFacade.findQuestionsVisibleToSchool(schoolId, bankIds).stream()
                 .collect(Collectors.toMap(q -> q.id().value(), q -> q));
 
@@ -150,7 +151,7 @@ class SheetService {
             resolvedSections.add(new ResolvedSection(section.getTitle(), section.getInstruction(), resolvedItems));
         }
         HeaderInfo header = sheet.getHeaderId() == null ? null
-                : headerRepository.findByIdAndSchoolId(sheet.getHeaderId(), schoolId)
+                : headerRepository.findRowByIdAndSchoolId(sheet.getHeaderId(), schoolId)
                 .map(h -> HeaderService.toInfo(h, false)).orElse(null);
         return new ResolvedSheet(sheet.getId(), sheet.getTitle(), header, readValues(sheet.getHeaderValues()),
                 sheet.isShowEssayAnswerSpace(), sheet.isIncludeAnswerKey(), resolvedSections);
@@ -188,7 +189,8 @@ class SheetService {
     }
 
     /** آیتم‌هایی که از قبل در برگه‌اند معاف از بررسی‌اند؛ سربرگِ فعلیِ برگه هم. */
-    private void validateReferences(Long schoolId, SheetDraft d, Set<ItemRef> existing, Long currentHeaderId) {
+    private void validateReferences(Long schoolId, Long actorUserId, SheetDraft d, Set<ItemRef> existing,
+                                   Long currentHeaderId) {
         Set<Long> newBox = new HashSet<>();
         Set<Long> newBank = new HashSet<>();
         for (SectionDraft s : d.sections()) {
@@ -206,9 +208,9 @@ class SheetService {
             Set<Long> needStem = found.values().stream().filter(q -> q.getContentMode() == ContentMode.IMAGE_ONLY)
                     .map(BoxQuestionEntity::getId).collect(Collectors.toSet());
             Set<Long> withStem = needStem.isEmpty() ? Set.of()
-                    : imageRepository.findByQuestionIdInOrderByIdAsc(needStem).stream()
+                    : imageRepository.findMetaByQuestionIdIn(needStem).stream()
                     .filter(i -> i.getRole() == ImageRole.STEM)
-                    .map(QuestionImageEntity::getQuestionId).collect(Collectors.toSet());
+                    .map(QuestionImageRepository.ImageMeta::getQuestionId).collect(Collectors.toSet());
             for (Long id : newBox) {
                 if (!found.containsKey(id)) {
                     throw invalid("سؤال " + id + " در باکس این مدرسه نیست یا حذف شده است.");
@@ -219,6 +221,12 @@ class SheetService {
             }
         }
         if (!newBank.isEmpty()) {
+            // بانک سؤال (CURRICULUM) ماژولِ پولی است؛ باکس رایگان نباید راهِ دور زدنِ آن باشد
+            boolean bankEntitled = iamFacade.checkAccess(new IamFacade.UserId(actorUserId),
+                    new IamFacade.ModuleCode("CURRICULUM"), new AccessContext.SchoolContext(schoolId)).isGranted();
+            if (!bankEntitled) {
+                throw invalid("بانک سؤال برای این مدرسه فعال نیست؛ فقط سؤال‌های باکس را می‌توانید به برگه اضافه کنید.");
+            }
             Set<Long> visible = curriculumFacade.findQuestionsVisibleToSchool(schoolId, newBank).stream()
                     .map(q -> q.id().value()).collect(Collectors.toSet());
             for (Long id : newBank) {
@@ -229,10 +237,10 @@ class SheetService {
         }
         Long headerId = d.headerId();
         if (headerId != null && !headerId.equals(currentHeaderId)) {
-            HeaderEntity header = headerRepository.findByIdAndSchoolId(headerId, schoolId)
+            HeaderRow header = headerRepository.findRowByIdAndSchoolId(headerId, schoolId)
                     .orElseThrow(() -> invalid("سربرگ " + headerId + " در این مدرسه نیست."));
             if (!HeaderService.toInfo(header, false).complete()) {
-                throw invalid("سربرگ «" + header.getName() + "» هنوز تصویر ندارد.");
+                throw invalid("سربرگ «" + header.name() + "» هنوز تصویر ندارد.");
             }
         }
     }
@@ -312,8 +320,13 @@ class SheetService {
     }
 
     private static ResolvedItem resolveBox(int number, Long id, BoxQuestionEntity q,
-                                           Map<Long, List<QuestionImageEntity>> imagesByQuestion) {
+                                           Map<Long, List<QuestionImageRepository.ImageMeta>> imagesByQuestion) {
         if (q == null) {
+            return unavailable(number, ItemSource.BOX, id);
+        }
+        // سؤالِ فقط‌تصویری که تصویرِ صورتش برداشته شده چیزی برای چاپ ندارد؛ شماره‌ی خالی چاپ نمی‌شود
+        if (q.getContentMode() == ContentMode.IMAGE_ONLY && imagesByQuestion.getOrDefault(id, List.of()).stream()
+                .noneMatch(i -> i.getRole() == ImageRole.STEM)) {
             return unavailable(number, ItemSource.BOX, id);
         }
         List<String> choices = q.getChoice1() == null ? List.of()

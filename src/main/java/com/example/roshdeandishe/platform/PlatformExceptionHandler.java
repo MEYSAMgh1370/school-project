@@ -10,6 +10,7 @@ import org.springframework.web.HttpRequestMethodNotSupportedException;
 import org.springframework.web.bind.MissingServletRequestParameterException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.multipart.MaxUploadSizeExceededException;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 import org.springframework.web.servlet.resource.NoResourceFoundException;
 
@@ -60,6 +61,20 @@ public class PlatformExceptionHandler {
                 HttpStatus.BAD_REQUEST, "malformed-request-body",
                 "بدنه‌ی درخواست نامعتبر است",
                 "بدنه‌ی درخواست خوانده نشد؛ قالب JSON و مقدار فیلدها را بررسی کنید."
+        );
+    }
+
+    /**
+     * فایلِ بزرگ‌تر از سقفِ multipart ({@code spring.servlet.multipart.max-file-size}). سقفِ دامنه‌ایِ ۵ مگابایت
+     * (مثلاً پیوست هزینه و تصویر سؤال) پایین‌تر است و پیامِ خودش را می‌دهد؛ این فقط فایل‌های بزرگ‌تر از آن سقف را
+     * (عکسِ خامِ گوشی) از «خطای غیرمنتظره»ی ۵۰۰ به یک ۴۱۳ با پیامِ فارسی تبدیل می‌کند.
+     */
+    @ExceptionHandler(MaxUploadSizeExceededException.class)
+    public ProblemDetail handleUploadTooLarge(MaxUploadSizeExceededException ex) {
+        return ProblemDetailFactory.problem(
+                HttpStatus.PAYLOAD_TOO_LARGE, "upload-too-large",
+                "فایل بیش از حد بزرگ است",
+                "حجم فایل بیش از حد مجاز است؛ فایل را کوچک‌تر کنید (حداکثر ۵ مگابایت)."
         );
     }
 

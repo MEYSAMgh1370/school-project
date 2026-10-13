@@ -20,6 +20,14 @@
   flex: 0 0 auto;
 }
 
+/* خطِ جدیدِ متنِ سؤال و پاسخ (مثلاً بندهای الف/ب) در فهرست و چاپ بماند. */
+.qb-prewrap,
+.qb-question-text,
+.qb-choices li,
+.qb-key-row span {
+  white-space: pre-line;
+}
+
 .qb-image-grid {
   display: flex;
   flex-wrap: wrap;
