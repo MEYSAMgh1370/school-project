@@ -8,7 +8,12 @@
                 <div class="column is-4-desktop is-6-tablet">
                     <div class="box" x-data="registerPage()"
                          data-post-authentication-destination="${postAuthenticationDestination}">
-                        <h1 class="title is-4">ثبت‌نام در رشدِاندیشه</h1>
+                        @if(postAuthenticationDestination.equals("/schools/new"))
+                            <h1 class="title is-4">ساخت حساب مدیر مدرسه</h1>
+                            <p class="subtitle is-6">قدم ۱ از ۲ - بعد از ساخت حساب، مدرسه‌ی خود را ثبت می‌کنید.</p>
+                        @else
+                            <h1 class="title is-4">ثبت‌نام در رشدِاندیشه</h1>
+                        @endif
 
                         <form @submit.prevent="submit">
                             <div class="field">

@@ -14,6 +14,8 @@ import com.example.roshdeandishe.web.model.AttendanceTodayRow;
 import com.example.roshdeandishe.web.model.DashboardModel;
 import com.example.roshdeandishe.web.model.MembershipRow;
 import com.example.roshdeandishe.web.model.SchoolEntryRow;
+import com.example.roshdeandishe.web.model.SetupChecklistAssembler;
+import com.example.roshdeandishe.web.model.SetupChecklistRow;
 import com.example.roshdeandishe.web.model.StudentSummaryAssembler;
 import com.example.roshdeandishe.web.model.TeacherClassesAssembler;
 import com.example.roshdeandishe.web.model.TeacherClassesRow;
@@ -73,12 +75,15 @@ public class DashboardPageController {
     private final AttendanceTodayAssembler attendanceTodayAssembler;
     private final TeacherClassesAssembler teacherClassesAssembler;
     private final StudentSummaryAssembler studentSummaryAssembler;
+    private final SetupChecklistAssembler setupChecklistAssembler;
 
     public DashboardPageController(IamFacade iamFacade, SchoolFacade schoolFacade,
                                    NavbarModelAssembler navbarModelAssembler, WardsAssembler wardsAssembler,
                                    FinanceFacade financeFacade, AttendanceTodayAssembler attendanceTodayAssembler,
                                    TeacherClassesAssembler teacherClassesAssembler,
-                                   StudentSummaryAssembler studentSummaryAssembler) {
+                                   StudentSummaryAssembler studentSummaryAssembler,
+                                   SetupChecklistAssembler setupChecklistAssembler) {
+        this.setupChecklistAssembler = setupChecklistAssembler;
         this.studentSummaryAssembler = studentSummaryAssembler;
         this.teacherClassesAssembler = teacherClassesAssembler;
         this.financeFacade = financeFacade;
@@ -114,7 +119,8 @@ public class DashboardPageController {
                 attendanceTodayRows(userId, memberships, schools),
                 teacherClasses(userId, memberships, schools), rolesSummary(memberships, navbar, schools),
                 studentSummaryAssembler.forOwn(userId, memberships,
-                        id -> schoolName(schools.getOrDefault(id, Optional.empty()), id))));
+                        id -> schoolName(schools.getOrDefault(id, Optional.empty()), id)),
+                setupChecklists(memberships, schools)));
         model.addAttribute("navbar", navbar);
         return "dashboard";
     }
@@ -210,6 +216,29 @@ public class DashboardPageController {
             }
             rows.add(teacherClassesAssembler.forTeacherSchool(userId, membership.schoolId(),
                     schoolName(schools.getOrDefault(membership.schoolId(), Optional.empty()), membership.schoolId())));
+        }
+        return rows;
+    }
+
+    /**
+     * چک‌لیستِ «راه‌اندازی مدرسه» برای مدرسه‌هایی که کاربر در آن‌ها مدیرِ فعال است (همان چکِ literal
+     * {@code SCHOOL_ADMIN} و همان دامنه‌ی {@link #tuitionRows}). مدرسه‌ای که همه‌ی گام‌هایش انجام شده ردیف
+     * نمی‌گیرد، پس کارتش دیگر نمایش داده نمی‌شود.
+     */
+    private List<SetupChecklistRow> setupChecklists(List<MembershipInfo> memberships,
+                                                    Map<Long, Optional<SchoolInfo>> schools) {
+        List<SetupChecklistRow> rows = new ArrayList<>();
+        Set<Long> seen = new LinkedHashSet<>();
+        for (MembershipInfo membership : memberships) {
+            if (!membership.active() || !SCHOOL_ADMIN_ROLE.equals(membership.roleCode())
+                    || !seen.add(membership.schoolId())) {
+                continue;
+            }
+            SetupChecklistRow row = setupChecklistAssembler.forAdminSchool(membership.schoolId(),
+                    schoolName(schools.getOrDefault(membership.schoolId(), Optional.empty()), membership.schoolId()));
+            if (!row.complete()) {
+                rows.add(row);
+            }
         }
         return rows;
     }

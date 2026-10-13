@@ -79,6 +79,8 @@ class LoginDashboardFlowIntegrationTest {
                 .andExpect(status().isOk())
                 .andExpect(content().string(org.hamcrest.Matchers.containsString(
                         "data-post-authentication-destination=\"/schools/new\"")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("ساخت حساب مدیر مدرسه")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("قدم ۱ از ۲")))
                 .andExpect(content().string(org.hamcrest.Matchers.containsString(
                         "href=\"/login?next=/schools/new\"")));
 
@@ -104,7 +106,12 @@ class LoginDashboardFlowIntegrationTest {
         MockHttpSession session = (MockHttpSession) loginResult.getRequest().getSession(false);
 
         mockMvc.perform(get("/schools/new").session(session))
-                .andExpect(status().isOk());
+                .andExpect(status().isOk())
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("تنظیمات پیشرفته")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("schoolTimezone")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("schoolWeekStart")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString(
+                        "اگر خالی بگذارید، مدرسه نشانی اختصاصی نخواهد داشت")));
     }
 
     @Test
@@ -117,7 +124,10 @@ class LoginDashboardFlowIntegrationTest {
         mockMvc.perform(get("/register").param("next", "//example.test"))
                 .andExpect(status().isOk())
                 .andExpect(content().string(org.hamcrest.Matchers.containsString(
-                        "data-post-authentication-destination=\"/dashboard\"")));
+                        "data-post-authentication-destination=\"/dashboard\"")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("ثبت‌نام در رشدِاندیشه")))
+                .andExpect(content().string(org.hamcrest.Matchers.not(
+                        org.hamcrest.Matchers.containsString("ساخت حساب مدیر مدرسه"))));
     }
 
     @Test

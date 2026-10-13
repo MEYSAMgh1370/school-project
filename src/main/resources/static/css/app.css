@@ -988,6 +988,12 @@ button.navbar-burger {
   max-inline-size: 560px;
 }
 
+.app-advanced-settings > summary {
+  cursor: pointer;
+  color: var(--bulma-link-text, inherit);
+  font-weight: 600;
+}
+
 .app-control-align-end {
   align-self: flex-end;
 }
