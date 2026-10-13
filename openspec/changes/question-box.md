@@ -1,6 +1,6 @@
 # Question box («باکس سؤالات»)
 
-Status: proposed 2026-10-13; **not implemented**. Product-owner decisions are recorded below; the open questions at the end are unresolved and must not be settled silently.
+Status: proposed 2026-10-13, **implemented 2026-10-13** (module `questionbox`, migration `V26`, pages `/question-box`, `/question-sheets`, `/question-sheets/{id}/print`; current behavior is in `specs/current-system.md`). Product-owner decisions are recorded below; the open questions at the end are unresolved assumptions and must not be settled silently.
 
 ## Purpose
 
@@ -42,7 +42,7 @@ New Spring Modulith module `questionbox` (apply the `new-module` skill; schema `
 
 ### Pages
 
-- `/question-box`: list with search and type filter, add/edit form with image upload.
+- `/question-box`: list with search and type filter, add/edit dialog with image upload (images are added after the first save), delete with a confirmation dialog.
 - `/question-sheets`: saved sheets; builder to pick from the box and the bank, reorder, and open the print page.
 - Print page: school header, title, essay answer space, optional answer key, print CSS.
 New or restructured JTE pages must follow the `design-page` skill.
@@ -51,7 +51,17 @@ New or restructured JTE pages must follow the `design-page` skill.
 
 Online exams from these questions, essay grading, AI generation, server-side PDF, sharing across schools, and adding essay questions to `curriculum.questions`.
 
-## Open questions
+## Implementation notes (2026-10-13)
 
-- Image limits (max size per file, max images per question, allowed types).
-- Per-question score display on the print page (the header covers student name/class and a score box).
+- **Orphan rule** is "the creator has neither an active `TEACHER` nor an active `SCHOOL_ADMIN` role", so a question an admin created never becomes editable by every teacher. The same `EditRule` guards questions, headers and sheets.
+- **Header in use:** a header used by a saved sheet cannot be deleted (`400 invalid-sheet`); remove it from the sheets first.
+- **Image-only question:** multiple-choice image-only questions carry `correctChoice` but no choice texts; they cannot be added to a sheet until a `STEM` image exists. Saved sheets keep their items without re-validation, so a later-deleted question never blocks re-saving.
+- **Images** are fetched with `fetch` (they need `X-School-ID`) and shown as blob URLs (`x-qbimg`).
+- **Logo:** the app has no school logo, so the header's `showLogo` field exists in the API but the UI does not expose it and the print page ignores it.
+- **Print score:** a question's optional `suggestedScore` prints as «(n نمره)» after the question text; the header's score box is an empty cell for the teacher.
+
+## Open questions (assumptions awaiting product-owner confirmation)
+
+- Image limits: 5 MB per file (the expense-attachment limit), PNG/JPEG/WebP only (detected from the bytes, not the declared type; SVG is refused), at most 6 images per question; a header image has the same limits.
+- The module `QUESTION_BOX` is granted free, like `ATTENDANCE`: new schools get it at creation and existing schools through `QuestionBoxEntitlementBackfill`. Whether it should instead be a paid entitlement is a product decision.
+- Bank questions (the existing curriculum bank) have no images; sheets show them as text only.
