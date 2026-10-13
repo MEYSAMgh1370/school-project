@@ -1,6 +1,6 @@
 # Question box («باکس سؤالات»)
 
-Status: proposed 2026-10-13, **implemented 2026-10-13** (module `questionbox`, migration `V26`, pages `/question-box`, `/question-sheets`, `/question-sheets/{id}/print`; current behavior is in `specs/current-system.md`). Product-owner decisions are recorded below; the open questions at the end are unresolved assumptions and must not be settled silently.
+Status: proposed 2026-10-13, **implemented 2026-10-13** (module `questionbox`, migration `V27`, pages `/question-box`, `/question-sheets`, `/question-sheets/{id}/print`; current behavior is in `specs/current-system.md`). Product-owner decisions are recorded below; the open questions at the end are unresolved assumptions and must not be settled silently.
 
 ## Purpose
 
@@ -24,7 +24,7 @@ Teachers need to build **printable question sheets** (برگه‌ی سؤال) fr
 
 ### Module
 
-New Spring Modulith module `questionbox` (apply the `new-module` skill; schema `questionbox`, migration `V26`, a new module code and permission, e.g. `QUESTION_BOX_MANAGE`, registered in `IamSeedDataRunner`). It reads bank questions only through `CurriculumFacade` and the creator's active roles only through `IamFacade.findActiveRoleCodes`. `curriculum` and `exam` are not changed.
+New Spring Modulith module `questionbox` (apply the `new-module` skill; schema `questionbox`, migration `V27`, a new module code and permission, e.g. `QUESTION_BOX_MANAGE`, registered in `IamSeedDataRunner`). It reads bank questions only through `CurriculumFacade` and the creator's active roles only through `IamFacade.findActiveRoleCodes`. `curriculum` and `exam` are not changed.
 
 ### Data
 

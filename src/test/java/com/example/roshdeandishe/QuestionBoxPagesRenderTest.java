@@ -79,6 +79,7 @@ class QuestionBoxPagesRenderTest {
         assertThat(html).doesNotContain("app-sidebar").doesNotContain("schoolNavbar");
         // سه شکل سربرگ و پاسخنامه‌ی صفحه‌ی جدا
         assertThat(html).contains("qb-sheet-header--", "qb-answer-key", "qb-answer-space");
+        assertThat(html).contains("'qb-question-image--full': item.contentMode === 'IMAGE_ONLY'");
     }
 
     @Test
@@ -97,6 +98,9 @@ class QuestionBoxPagesRenderTest {
         assertThat(css).contains("@media print", "size: A4", ".no-print");
         // خطِ جدیدِ متنِ سؤال (الف/ب در چند خط) باید در چاپ و فهرست بماند
         assertThat(css).contains("white-space: pre-line");
+        // عکسِ زیرِ سؤال کوچک است؛ فقط سؤالِ «فقط تصویر» بزرگ می‌ماند
+        assertThat(css).containsPattern("\\.qb-question-image \\{[^}]*max-inline-size: 55mm");
+        assertThat(css).containsPattern("\\.qb-question-image--full \\{[^}]*max-inline-size: 100%");
         assertThat(css).doesNotContainPattern(Pattern.compile(
                 "(margin|padding|border)-(left|right)|(^|[\\s{;])(left|right)\\s*:|text-align:\\s*(left|right)"));
     }

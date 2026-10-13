@@ -4,7 +4,7 @@
 
 **Goal:** A new `questionbox` module where teachers keep multiple-choice and essay questions (typed or image-only, with images), compose saved sheets from sections of those and curriculum-bank questions, and print them from the browser under a chosen header.
 
-**Architecture:** New Spring Modulith module `questionbox` (schema `questionbox`, migration `V26`) following the `attendance` layout. It reads bank questions only through `CurriculumFacade` and the creator's active roles only through `IamFacade`. `curriculum` and `exam` are untouched. Images live in Postgres `bytea` like `finance.ExpenseAttachmentContentEntity`. Pages are thin JTE shells (`web/controller`) over REST, printing is an `@media print` page.
+**Architecture:** New Spring Modulith module `questionbox` (schema `questionbox`, migration `V27`) following the `attendance` layout. It reads bank questions only through `CurriculumFacade` and the creator's active roles only through `IamFacade`. `curriculum` and `exam` are untouched. Images live in Postgres `bytea` like `finance.ExpenseAttachmentContentEntity`. Pages are thin JTE shells (`web/controller`) over REST, printing is an `@media print` page.
 
 **Tech Stack:** Java/Spring Boot, Spring Modulith, JPA + Flyway, JTE, Alpine.js, Bulma, KaTeX (`/js/math.js`), Testcontainers integration tests.
 
@@ -15,7 +15,7 @@
 - Package layout per `.agents/skills/new-module/SKILL.md` and `openspec/conventions.md` (by-type: `controller/`, `dto/request/`, `dto/response/`, `internal/`, `shared/`). Apply `new-module` before Task 1 and `design-page` before Task 6.
 - Module code `QUESTION_BOX` (SCHOOL scope), permission `QUESTION_BOX_MANAGE`; every endpoint has both `@RequiresModule` and `@RequiresPermission`, and `TenantContext.requireMatches(schoolId)`.
 - Error handling: sealed `QuestionBoxError`, `QuestionBoxException`, `@Component("questionBoxExceptionHandler")` advice using `ProblemDetailFactory`.
-- Flyway owns the schema: add `questionbox` to `spring.flyway.schemas`, new `V26__question_box.sql`, never edit applied migrations.
+- Flyway owns the schema: add `questionbox` to `spring.flyway.schemas`, new `V27__question_box.sql`, never edit applied migrations.
 - Edit/delete of a box question: creator, or `SCHOOL_ADMIN`, or anyone if the creator has no active `TEACHER` role in the school (orphaned). Delete is soft (`deleted_at`).
 - A question is `MULTIPLE_CHOICE` or `ESSAY`; `content_mode` is `TEXT` or `IMAGE_ONLY`. Choices and `correct_choice` exist only for multiple-choice TEXT questions.
 - `sheet_items` reference exactly one of `box_question_id` / `bank_question_id`. Bank questions are read-only here.
@@ -46,14 +46,14 @@
 - `internal/`: `BoxQuestionEntity`, `QuestionImageEntity`, `HeaderEntity`, `SheetEntity`, `SheetSectionEntity`, `SheetItemEntity` + repositories; `QuestionBoxFacadeImpl` (questions, images, authorization), `SheetService` (sheets, sections, items, resolved view), `HeaderService`.
 - `shared/`: `QuestionBoxError`, `QuestionBoxException`, `QuestionBoxExceptionHandler`, `QuestionBoxProblemResolver`.
 
-Other files: `src/main/resources/db/migration/V26__question_box.sql`; `application.yml` (flyway schemas); `iam/internal/IamSeedDataRunner.java` (module, permission, grants, demo entitlement, free-tier backfill); `curriculum/CurriculumFacade.java` (one read method); `web/controller/QuestionBoxPageController.java`, `web/model/NavCatalog.java`; JTE `question-box.jte`, `question-sheets.jte`, `question-sheet-print.jte`; `static/js/question-box.js`, `question-sheets.js`; tests under `src/test/java/com/example/roshdeandishe/`.
+Other files: `src/main/resources/db/migration/V27__question_box.sql`; `application.yml` (flyway schemas); `iam/internal/IamSeedDataRunner.java` (module, permission, grants, demo entitlement, free-tier backfill); `curriculum/CurriculumFacade.java` (one read method); `web/controller/QuestionBoxPageController.java`, `web/model/NavCatalog.java`; JTE `question-box.jte`, `question-sheets.jte`, `question-sheet-print.jte`; `static/js/question-box.js`, `question-sheets.js`; tests under `src/test/java/com/example/roshdeandishe/`.
 
 ---
 
 ### Task 1: Module skeleton, schema, permission, errors
 
 **Files:**
-- Create: `questionbox/package-info.java`, `QuestionBoxFacade.java` (empty-method interface for now), `shared/*` (four classes above), `V26__question_box.sql`
+- Create: `questionbox/package-info.java`, `QuestionBoxFacade.java` (empty-method interface for now), `shared/*` (four classes above), `V27__question_box.sql`
 - Modify: `application.yml` (`spring.flyway.schemas` add `questionbox`), `IamSeedDataRunner.java`
 - Test: `QuestionBoxModuleBootTest.java` (new)
 
@@ -62,7 +62,7 @@ Other files: `src/main/resources/db/migration/V26__question_box.sql`; `applicati
 
 - [ ] **Step 1: Write the failing test** `QuestionBoxModuleBootTest`: `@SpringBootTest` with `TestcontainersConfiguration`; assert via `JdbcTemplate` that tables `questionbox.questions`, `question_images`, `headers`, `sheets`, `sheet_sections`, `sheet_items` exist, and that `iam` has module `QUESTION_BOX` and permission `QUESTION_BOX_MANAGE` granted to roles `TEACHER` and `SCHOOL_ADMIN`.
 - [ ] **Step 2: Run** `./mvnw -q test -Dtest=QuestionBoxModuleBootTest` — Expected: FAIL (tables missing).
-- [ ] **Step 3: Write `V26__question_box.sql`** with the six tables from the spec's Data section. Constraints: `type in ('MULTIPLE_CHOICE','ESSAY')`, `content_mode in ('TEXT','IMAGE_ONLY')`, `role in ('STEM','CHOICE_1'..'CHOICE_4','ANSWER')`, header `mode in ('LAYOUT','IMAGE')`, a check that exactly one of `box_question_id`/`bank_question_id` is non-null on `sheet_items`; `bank_question_id` has no foreign key (cross-module), `school_id`/`created_by_user_id` are plain ids; indexes on `(school_id, deleted_at)` and `(sheet_id, position)`. Image bytes in a `bytea` column of `question_images` and `headers.image` (nullable).
+- [ ] **Step 3: Write `V27__question_box.sql`** with the six tables from the spec's Data section. Constraints: `type in ('MULTIPLE_CHOICE','ESSAY')`, `content_mode in ('TEXT','IMAGE_ONLY')`, `role in ('STEM','CHOICE_1'..'CHOICE_4','ANSWER')`, header `mode in ('LAYOUT','IMAGE')`, a check that exactly one of `box_question_id`/`bank_question_id` is non-null on `sheet_items`; `bank_question_id` has no foreign key (cross-module), `school_id`/`created_by_user_id` are plain ids; indexes on `(school_id, deleted_at)` and `(sheet_id, position)`. Image bytes in a `bytea` column of `question_images` and `headers.image` (nullable).
 - [ ] **Step 4: Add `questionbox` to flyway schemas; seed module and permission** in `IamSeedDataRunner` (idempotent per item like neighbours) plus the demo-school entitlement list entry and the free-tier backfill/new-school grant mirroring `ATTENDANCE`.
 - [ ] **Step 5: Create skeleton** (`package-info` with `@ApplicationModule(displayName="Question Box")`, sealed error, exception, handler with the explicit bean name, resolver mapping each case to a status: not-found cases 404, invalid cases 400, `NotAllowed` 403).
 - [ ] **Step 6: Run** `QuestionBoxModuleBootTest` and `ModularityTests` — Expected: PASS.

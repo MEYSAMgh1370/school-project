@@ -188,11 +188,17 @@
   font-size: 0.9rem;
 }
 
+/* شکلِ زیرِ سؤال کوچک چاپ می‌شود (یک عکسِ کوچک زیرِ متن)؛ سؤالِ «فقط تصویر» خودِ تصویر همان سؤال است و بزرگ می‌ماند. */
 .qb-question-image {
   display: block;
+  max-inline-size: 55mm;
+  max-block-size: 40mm;
+  margin-block: var(--space-2);
+}
+
+.qb-question-image--full {
   max-inline-size: 100%;
   max-block-size: 90mm;
-  margin-block: var(--space-2);
 }
 
 .qb-choices {
@@ -211,8 +217,8 @@
 
 .qb-choice-image {
   display: block;
-  max-inline-size: 100%;
-  max-block-size: 40mm;
+  max-inline-size: 30mm;
+  max-block-size: 22mm;
 }
 
 .qb-answer-space {

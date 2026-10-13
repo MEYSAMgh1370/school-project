@@ -66,7 +66,7 @@
                                     <span class="qb-question-score" x-show="item.suggestedScore" x-text="'(' + num(item.suggestedScore) + ' نمره)'"></span>
                                 </div>
                                 <template x-for="image in imagesOf(item, 'STEM')" :key="'st' + image.id">
-                                    <img class="qb-question-image" x-qbimg="{ kind: 'question', id: image.id }" alt="">
+                                    <img class="qb-question-image" :class="{ 'qb-question-image--full': item.contentMode === 'IMAGE_ONLY' }" x-qbimg="{ kind: 'question', id: image.id }" alt="">
                                 </template>
                                 <ol class="qb-choices" x-show="item.type === 'MULTIPLE_CHOICE' && item.choices.length === 4">
                                     <template x-for="(choice, ci) in item.choices" :key="'c' + ci">
