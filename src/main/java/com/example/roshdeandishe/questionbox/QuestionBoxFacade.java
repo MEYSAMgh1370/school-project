@@ -29,6 +29,36 @@ public interface QuestionBoxFacade {
     /** بایت‌های تصویر؛ سؤالِ حذف‌شده هم تصویرش را می‌دهد (برگه‌های ذخیره‌شده). تصویرِ مدرسه‌ی دیگر: ImageNotFound. */
     ImageContent getImage(Long schoolId, Long imageId);
 
+    HeaderInfo createHeader(Long schoolId, Long actorUserId, NewHeader header);
+
+    HeaderInfo updateHeader(Long schoolId, Long actorUserId, Long headerId, NewHeader header);
+
+    void deleteHeader(Long schoolId, Long actorUserId, Long headerId);
+
+    List<HeaderInfo> listHeaders(Long schoolId, Long actorUserId);
+
+    /** تصویرِ سربرگِ حالت IMAGE را جایگزین می‌کند؛ برای حالت LAYOUT InvalidSheet. */
+    HeaderInfo setHeaderImage(Long schoolId, Long actorUserId, Long headerId, byte[] content);
+
+    ImageContent getHeaderImage(Long schoolId, Long headerId);
+
+    enum HeaderMode {LAYOUT, IMAGE}
+
+    enum HeaderLayout {CLASSIC, COMPACT, BOXED}
+
+    enum HeaderField {TITLE, SUBJECT, CLASS, TEACHER, DATE, DURATION, STUDENT_NAME, SCORE_BOX}
+
+    /** {@code layout} فقط برای LAYOUT لازم است؛ {@code fields} فقط در LAYOUT معنا دارد (تکراری‌ها یکی می‌شوند). */
+    record NewHeader(String name, HeaderMode mode, HeaderLayout layout, boolean showSchoolName, boolean showLogo,
+                     java.util.Set<HeaderField> fields) {
+    }
+
+    /** {@code complete}: سربرگِ IMAGE تا وقتی تصویر ندارد قابل‌استفاده در برگه نیست. */
+    record HeaderInfo(Long id, Long schoolId, Long createdByUserId, boolean editable, boolean complete, String name,
+                      HeaderMode mode, HeaderLayout layout, boolean showSchoolName, boolean showLogo,
+                      java.util.Set<HeaderField> fields, boolean hasImage) {
+    }
+
     enum QuestionType {MULTIPLE_CHOICE, ESSAY}
 
     enum ContentMode {TEXT, IMAGE_ONLY}

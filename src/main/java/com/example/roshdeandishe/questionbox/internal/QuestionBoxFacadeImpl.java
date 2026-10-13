@@ -10,16 +10,11 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Instant;
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 
 @Service
 class QuestionBoxFacadeImpl implements QuestionBoxFacade {
-
-    private static final String ADMIN_ROLE = "SCHOOL_ADMIN";
-    private static final String TEACHER_ROLE = "TEACHER";
 
     /** سقفِ تعداد تصویر برای هر سؤال (فرضِ ثبت‌شده در برنامه، منتظر تأیید). */
     private static final int MAX_IMAGES_PER_QUESTION = 6;
@@ -27,12 +22,44 @@ class QuestionBoxFacadeImpl implements QuestionBoxFacade {
     private final BoxQuestionRepository questionRepository;
     private final QuestionImageRepository imageRepository;
     private final IamFacade iamFacade;
+    private final HeaderService headerService;
 
     QuestionBoxFacadeImpl(BoxQuestionRepository questionRepository, QuestionImageRepository imageRepository,
-                          IamFacade iamFacade) {
+                          IamFacade iamFacade, HeaderService headerService) {
         this.questionRepository = questionRepository;
         this.imageRepository = imageRepository;
         this.iamFacade = iamFacade;
+        this.headerService = headerService;
+    }
+
+    @Override
+    public HeaderInfo createHeader(Long schoolId, Long actorUserId, NewHeader header) {
+        return headerService.create(schoolId, actorUserId, header);
+    }
+
+    @Override
+    public HeaderInfo updateHeader(Long schoolId, Long actorUserId, Long headerId, NewHeader header) {
+        return headerService.update(schoolId, actorUserId, headerId, header);
+    }
+
+    @Override
+    public void deleteHeader(Long schoolId, Long actorUserId, Long headerId) {
+        headerService.delete(schoolId, actorUserId, headerId);
+    }
+
+    @Override
+    public List<HeaderInfo> listHeaders(Long schoolId, Long actorUserId) {
+        return headerService.list(schoolId, actorUserId);
+    }
+
+    @Override
+    public HeaderInfo setHeaderImage(Long schoolId, Long actorUserId, Long headerId, byte[] content) {
+        return headerService.setImage(schoolId, actorUserId, headerId, content);
+    }
+
+    @Override
+    public ImageContent getHeaderImage(Long schoolId, Long headerId) {
+        return headerService.getImage(schoolId, headerId);
     }
 
     @Override
@@ -42,14 +69,14 @@ class QuestionBoxFacadeImpl implements QuestionBoxFacade {
         BoxQuestionEntity entity = new BoxQuestionEntity(schoolId, actorUserId, Instant.now());
         apply(entity, question);
         questionRepository.save(entity);
-        return toInfo(entity, new EditRule(schoolId, actorUserId), List.of());
+        return toInfo(entity, new EditRule(iamFacade, schoolId, actorUserId), List.of());
     }
 
     @Override
     @Transactional
     public QuestionInfo updateQuestion(Long schoolId, Long actorUserId, Long questionId, NewQuestion question) {
         BoxQuestionEntity entity = requireVisible(schoolId, questionId);
-        EditRule rule = new EditRule(schoolId, actorUserId);
+        EditRule rule = new EditRule(iamFacade, schoolId, actorUserId);
         requireEditable(rule, entity);
         validate(question);
         apply(entity, question);
@@ -61,7 +88,7 @@ class QuestionBoxFacadeImpl implements QuestionBoxFacade {
     @Transactional
     public void deleteQuestion(Long schoolId, Long actorUserId, Long questionId) {
         BoxQuestionEntity entity = requireVisible(schoolId, questionId);
-        requireEditable(new EditRule(schoolId, actorUserId), entity);
+        requireEditable(new EditRule(iamFacade, schoolId, actorUserId), entity);
         Instant now = Instant.now();
         entity.setDeletedAt(now);
         entity.setUpdatedAt(now);
@@ -71,14 +98,14 @@ class QuestionBoxFacadeImpl implements QuestionBoxFacade {
     @Transactional(readOnly = true)
     public QuestionInfo getQuestion(Long schoolId, Long actorUserId, Long questionId) {
         BoxQuestionEntity entity = requireVisible(schoolId, questionId);
-        return toInfo(entity, new EditRule(schoolId, actorUserId),
+        return toInfo(entity, new EditRule(iamFacade, schoolId, actorUserId),
                 imageRepository.findByQuestionIdOrderByIdAsc(entity.getId()));
     }
 
     @Override
     @Transactional(readOnly = true)
     public List<QuestionInfo> listQuestions(Long schoolId, Long actorUserId, QuestionListFilter filter) {
-        EditRule rule = new EditRule(schoolId, actorUserId);
+        EditRule rule = new EditRule(iamFacade, schoolId, actorUserId);
         QuestionListFilter f = filter == null ? QuestionListFilter.none() : filter;
         String needle = f.search() == null || f.search().isBlank() ? null : f.search().strip().toLowerCase();
         List<QuestionInfo> result = new ArrayList<>();
@@ -178,7 +205,7 @@ class QuestionBoxFacadeImpl implements QuestionBoxFacade {
     @Transactional
     public ImageRef addImage(Long schoolId, Long actorUserId, Long questionId, ImageRole role, byte[] content) {
         BoxQuestionEntity question = requireVisible(schoolId, questionId);
-        requireEditable(new EditRule(schoolId, actorUserId), question);
+        requireEditable(new EditRule(iamFacade, schoolId, actorUserId), question);
         if (role == null) {
             throw new QuestionBoxException(new QuestionBoxError.InvalidImage("نقش تصویر را مشخص کنید."));
         }
@@ -201,7 +228,7 @@ class QuestionBoxFacadeImpl implements QuestionBoxFacade {
     @Transactional
     public void removeImage(Long schoolId, Long actorUserId, Long questionId, Long imageId) {
         BoxQuestionEntity question = requireVisible(schoolId, questionId);
-        requireEditable(new EditRule(schoolId, actorUserId), question);
+        requireEditable(new EditRule(iamFacade, schoolId, actorUserId), question);
         QuestionImageEntity image = imageRepository.findById(imageId)
                 .filter(i -> i.getQuestionId().equals(questionId))
                 .orElseThrow(() -> new QuestionBoxException(new QuestionBoxError.ImageNotFound(imageId)));
@@ -232,39 +259,5 @@ class QuestionBoxFacadeImpl implements QuestionBoxFacade {
                 e.getType(), e.getContentMode(), e.getTopicId(), e.getText(), choices, e.getCorrectChoice(),
                 e.getAnswer(), e.getSuggestedScore(),
                 images.stream().map(i -> new ImageRef(i.getId(), i.getRole())).toList());
-    }
-
-    /**
-     * قاعده‌ی ویرایش برای یک درخواست: نقش‌های فعالِ کاربر یک بار خوانده می‌شود و نقش‌های هر سازنده یک بار (cache
-     * درون همین شیء، نه بین درخواست‌ها، پس غیرفعال‌شدنِ عضویت در درخواست بعدی دیده می‌شود).
-     */
-    private final class EditRule {
-
-        private final Long schoolId;
-        private final Long actorUserId;
-        private final boolean actorIsAdmin;
-        private final Map<Long, Boolean> orphanByCreator = new HashMap<>();
-
-        EditRule(Long schoolId, Long actorUserId) {
-            this.schoolId = schoolId;
-            this.actorUserId = actorUserId;
-            this.actorIsAdmin = activeRoles(actorUserId).contains(ADMIN_ROLE);
-        }
-
-        boolean canEdit(Long creatorUserId) {
-            return actorIsAdmin
-                    || actorUserId.equals(creatorUserId)
-                    || orphanByCreator.computeIfAbsent(creatorUserId, this::isOrphan);
-        }
-
-        /** سازنده نه معلمِ فعال است نه مدیرِ فعالِ این مدرسه. */
-        private boolean isOrphan(Long creatorUserId) {
-            Set<String> roles = activeRoles(creatorUserId);
-            return !roles.contains(TEACHER_ROLE) && !roles.contains(ADMIN_ROLE);
-        }
-
-        private Set<String> activeRoles(Long userId) {
-            return iamFacade.findActiveRoleCodes(new UserId(userId), schoolId);
-        }
     }
 }
