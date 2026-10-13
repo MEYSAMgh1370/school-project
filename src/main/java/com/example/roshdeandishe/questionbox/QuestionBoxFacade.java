@@ -21,6 +21,14 @@ public interface QuestionBoxFacade {
 
     List<QuestionInfo> listQuestions(Long schoolId, Long actorUserId, QuestionListFilter filter);
 
+    /** تصویر را برای سؤال ذخیره می‌کند؛ نوعِ تصویر از روی بایت‌ها تعیین می‌شود نه از نوعِ اعلامی. */
+    ImageRef addImage(Long schoolId, Long actorUserId, Long questionId, ImageRole role, byte[] content);
+
+    void removeImage(Long schoolId, Long actorUserId, Long questionId, Long imageId);
+
+    /** بایت‌های تصویر؛ سؤالِ حذف‌شده هم تصویرش را می‌دهد (برگه‌های ذخیره‌شده). تصویرِ مدرسه‌ی دیگر: ImageNotFound. */
+    ImageContent getImage(Long schoolId, Long imageId);
+
     enum QuestionType {MULTIPLE_CHOICE, ESSAY}
 
     enum ContentMode {TEXT, IMAGE_ONLY}
@@ -41,6 +49,9 @@ public interface QuestionBoxFacade {
             String answer,
             Integer suggestedScore
     ) {
+    }
+
+    record ImageContent(String contentType, byte[] content) {
     }
 
     record ImageRef(Long id, ImageRole role) {

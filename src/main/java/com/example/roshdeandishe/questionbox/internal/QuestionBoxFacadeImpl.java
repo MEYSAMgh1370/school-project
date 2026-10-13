@@ -21,11 +21,17 @@ class QuestionBoxFacadeImpl implements QuestionBoxFacade {
     private static final String ADMIN_ROLE = "SCHOOL_ADMIN";
     private static final String TEACHER_ROLE = "TEACHER";
 
+    /** سقفِ تعداد تصویر برای هر سؤال (فرضِ ثبت‌شده در برنامه، منتظر تأیید). */
+    private static final int MAX_IMAGES_PER_QUESTION = 6;
+
     private final BoxQuestionRepository questionRepository;
+    private final QuestionImageRepository imageRepository;
     private final IamFacade iamFacade;
 
-    QuestionBoxFacadeImpl(BoxQuestionRepository questionRepository, IamFacade iamFacade) {
+    QuestionBoxFacadeImpl(BoxQuestionRepository questionRepository, QuestionImageRepository imageRepository,
+                          IamFacade iamFacade) {
         this.questionRepository = questionRepository;
+        this.imageRepository = imageRepository;
         this.iamFacade = iamFacade;
     }
 
@@ -36,7 +42,7 @@ class QuestionBoxFacadeImpl implements QuestionBoxFacade {
         BoxQuestionEntity entity = new BoxQuestionEntity(schoolId, actorUserId, Instant.now());
         apply(entity, question);
         questionRepository.save(entity);
-        return toInfo(entity, new EditRule(schoolId, actorUserId));
+        return toInfo(entity, new EditRule(schoolId, actorUserId), List.of());
     }
 
     @Override
@@ -48,7 +54,7 @@ class QuestionBoxFacadeImpl implements QuestionBoxFacade {
         validate(question);
         apply(entity, question);
         entity.setUpdatedAt(Instant.now());
-        return toInfo(entity, rule);
+        return toInfo(entity, rule, imageRepository.findByQuestionIdOrderByIdAsc(entity.getId()));
     }
 
     @Override
@@ -64,7 +70,9 @@ class QuestionBoxFacadeImpl implements QuestionBoxFacade {
     @Override
     @Transactional(readOnly = true)
     public QuestionInfo getQuestion(Long schoolId, Long actorUserId, Long questionId) {
-        return toInfo(requireVisible(schoolId, questionId), new EditRule(schoolId, actorUserId));
+        BoxQuestionEntity entity = requireVisible(schoolId, questionId);
+        return toInfo(entity, new EditRule(schoolId, actorUserId),
+                imageRepository.findByQuestionIdOrderByIdAsc(entity.getId()));
     }
 
     @Override
@@ -74,7 +82,11 @@ class QuestionBoxFacadeImpl implements QuestionBoxFacade {
         QuestionListFilter f = filter == null ? QuestionListFilter.none() : filter;
         String needle = f.search() == null || f.search().isBlank() ? null : f.search().strip().toLowerCase();
         List<QuestionInfo> result = new ArrayList<>();
-        for (BoxQuestionEntity e : questionRepository.findBySchoolIdAndDeletedAtIsNullOrderByIdDesc(schoolId)) {
+        List<BoxQuestionEntity> all = questionRepository.findBySchoolIdAndDeletedAtIsNullOrderByIdDesc(schoolId);
+        Map<Long, List<QuestionImageEntity>> imagesByQuestion = all.isEmpty() ? Map.of()
+                : imageRepository.findByQuestionIdInOrderByIdAsc(all.stream().map(BoxQuestionEntity::getId).toList())
+                .stream().collect(java.util.stream.Collectors.groupingBy(QuestionImageEntity::getQuestionId));
+        for (BoxQuestionEntity e : all) {
             if (f.type() != null && e.getType() != f.type()) {
                 continue;
             }
@@ -84,7 +96,7 @@ class QuestionBoxFacadeImpl implements QuestionBoxFacade {
             if (needle != null && !matches(e, needle)) {
                 continue;
             }
-            result.add(toInfo(e, rule));
+            result.add(toInfo(e, rule, imagesByQuestion.getOrDefault(e.getId(), List.of())));
         }
         return result;
     }
@@ -162,14 +174,64 @@ class QuestionBoxFacadeImpl implements QuestionBoxFacade {
         e.setSuggestedScore(q.suggestedScore());
     }
 
-    private QuestionInfo toInfo(BoxQuestionEntity e, EditRule rule) {
+    @Override
+    @Transactional
+    public ImageRef addImage(Long schoolId, Long actorUserId, Long questionId, ImageRole role, byte[] content) {
+        BoxQuestionEntity question = requireVisible(schoolId, questionId);
+        requireEditable(new EditRule(schoolId, actorUserId), question);
+        if (role == null) {
+            throw new QuestionBoxException(new QuestionBoxError.InvalidImage("نقش تصویر را مشخص کنید."));
+        }
+        if (question.getType() == QuestionType.ESSAY
+                && (role == ImageRole.CHOICE_1 || role == ImageRole.CHOICE_2
+                || role == ImageRole.CHOICE_3 || role == ImageRole.CHOICE_4)) {
+            throw new QuestionBoxException(new QuestionBoxError.InvalidImage("سؤال تشریحی گزینه ندارد."));
+        }
+        String contentType = ImageValidator.validate(content);
+        if (imageRepository.countByQuestionId(questionId) >= MAX_IMAGES_PER_QUESTION) {
+            throw new QuestionBoxException(new QuestionBoxError.InvalidImage(
+                    "هر سؤال حداکثر " + MAX_IMAGES_PER_QUESTION + " تصویر می‌تواند داشته باشد."));
+        }
+        QuestionImageEntity saved = imageRepository.save(
+                new QuestionImageEntity(questionId, role, contentType, content, Instant.now()));
+        return new ImageRef(saved.getId(), saved.getRole());
+    }
+
+    @Override
+    @Transactional
+    public void removeImage(Long schoolId, Long actorUserId, Long questionId, Long imageId) {
+        BoxQuestionEntity question = requireVisible(schoolId, questionId);
+        requireEditable(new EditRule(schoolId, actorUserId), question);
+        QuestionImageEntity image = imageRepository.findById(imageId)
+                .filter(i -> i.getQuestionId().equals(questionId))
+                .orElseThrow(() -> new QuestionBoxException(new QuestionBoxError.ImageNotFound(imageId)));
+        imageRepository.delete(image);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public ImageContent getImage(Long schoolId, Long imageId) {
+        QuestionImageEntity image = imageRepository.findById(imageId)
+                .orElseThrow(() -> new QuestionBoxException(new QuestionBoxError.ImageNotFound(imageId)));
+        boolean sameSchool = questionRepository.findById(image.getQuestionId())
+                .map(q -> q.getSchoolId().equals(schoolId)).orElse(false);
+        if (!sameSchool) {
+            throw new QuestionBoxException(new QuestionBoxError.ImageNotFound(imageId));
+        }
+        return new ImageContent(image.getContentType(), image.getData());
+    }
+
+    private QuestionInfo toInfo(BoxQuestionEntity e, EditRule rule, List<QuestionImageEntity> images) {
         List<String> choices = e.getChoice1() == null
                 ? List.of()
                 : List.of(e.getChoice1(), e.getChoice2(), e.getChoice3(), e.getChoice4());
         return new QuestionInfo(e.getId(), e.getSchoolId(), e.getCreatedByUserId(),
-                rule.canEdit(e.getCreatedByUserId()), e.getContentMode() == ContentMode.TEXT,
+                rule.canEdit(e.getCreatedByUserId()),
+                e.getContentMode() == ContentMode.TEXT
+                        || images.stream().anyMatch(i -> i.getRole() == ImageRole.STEM),
                 e.getType(), e.getContentMode(), e.getTopicId(), e.getText(), choices, e.getCorrectChoice(),
-                e.getAnswer(), e.getSuggestedScore(), List.of());
+                e.getAnswer(), e.getSuggestedScore(),
+                images.stream().map(i -> new ImageRef(i.getId(), i.getRole())).toList());
     }
 
     /**
