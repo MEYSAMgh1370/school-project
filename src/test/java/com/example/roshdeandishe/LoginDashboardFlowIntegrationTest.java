@@ -212,7 +212,7 @@ class LoginDashboardFlowIntegrationTest {
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("SCHOOL_ADMIN")))
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("مدیر مدرسه")))
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("href=\"/people\"")))
-                .andExpect(content().string(org.hamcrest.Matchers.containsString("عضویت‌های من")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("سلام، ")))
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("مدرسه‌ی نمونه")));
     }
 

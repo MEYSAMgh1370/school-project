@@ -11,8 +11,51 @@
 
 <section class="section" id="main-content" role="main" tabindex="-1">
     <div class="container">
-        <h1 class="title is-4">عضویت‌های من</h1>
+        <h1 class="title is-4">سلام، ${model.fullName()}</h1>
+        @if(!model.rolesSummary().isEmpty())
+            <p class="mb-1">${model.rolesSummary()}</p>
+        @endif
         <p class="subtitle is-6" dir="ltr">${model.email()}</p>
+
+        <%-- «کلاس‌های من»: فقط برای معلمِ فعالِ یک مدرسه (چکِ literal TEACHER در کنترلر)؛ کلاس‌ها و وضعیتِ
+             حضور و غیابِ امروز از TeacherClassesAssembler می‌آیند. مدرسه‌ی بدونِ کلاس پیامِ روشن می‌گیرد. --%>
+        @for(var mine : model.teacherClasses())
+            <section class="mb-5" aria-labelledby="dashboard-my-classes-${mine.schoolId()}">
+                <h2 class="title is-5 mb-3" id="dashboard-my-classes-${mine.schoolId()}">
+                    کلاس‌های من
+                    @if(model.teacherClasses().size() > 1)
+                        <span class="has-text-grey is-size-6"> - ${mine.schoolName()}</span>
+                    @endif
+                </h2>
+                @if(mine.empty())
+                    <div class="notification" role="status">
+                        هنوز کلاسی به شما واگذار نشده است. مدیر مدرسه کلاس‌ها را به شما می‌سپارد؛ بعد از آن اینجا
+                        می‌بینید.
+                    </div>
+                @else
+                    <div class="columns is-multiline">
+                        @for(var klass : mine.classes())
+                            <div class="column is-4-desktop is-6-tablet">
+                                <article class="box">
+                                    <h3 class="title is-6 mb-1">
+                                        ${klass.name()}
+                                        @if(klass.hasSection())
+                                            <span class="has-text-grey"> ${klass.section()}</span>
+                                        @endif
+                                    </h3>
+                                    <p class="is-size-7 has-text-grey mb-3">پایه‌ی ${klass.gradeLevel()} · ${klass.studentCount()} دانش‌آموز</p>
+                                    @if(klass.taken())
+                                        <p><span class="tag is-success is-light">حضور و غیاب امروز ثبت شد</span></p>
+                                    @elseif(klass.pending())
+                                        <p><a class="button is-link is-small" href="/attendance">ثبت حضور و غیاب امروز</a></p>
+                                    @endif
+                                </article>
+                            </div>
+                        @endfor
+                    </div>
+                @endif
+            </section>
+        @endfor
 
         <%-- سالِ تحصیلیِ جاریِ مدرسه‌ی انتخاب‌شده (academic-year.md فاز ۱)؛ مدرسه‌ی بدونِ سالِ جاری چیزی نشان نمی‌دهد --%>
         @for(var school : navbar.schools())
