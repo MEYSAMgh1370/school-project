@@ -42,6 +42,53 @@ public interface QuestionBoxFacade {
 
     ImageContent getHeaderImage(Long schoolId, Long headerId);
 
+    SheetInfo createSheet(Long schoolId, Long actorUserId, SheetDraft draft);
+
+    /** بخش‌ها و آیتم‌ها را کامل جایگزین می‌کند؛ موقعیت‌ها از ترتیبِ فهرست ۱..n ساخته می‌شود. */
+    SheetInfo saveSheet(Long schoolId, Long actorUserId, Long sheetId, SheetDraft draft);
+
+    void deleteSheet(Long schoolId, Long actorUserId, Long sheetId);
+
+    List<SheetSummary> listSheets(Long schoolId, Long actorUserId);
+
+    SheetInfo getSheet(Long schoolId, Long actorUserId, Long sheetId);
+
+    /** برگه با سؤال‌های کامل برای چاپ؛ سؤالِ حذفِ‌نرم‌شده همچنان می‌آید، سؤالِ ناپدیدشده {@code available=false}. */
+    ResolvedSheet resolveSheet(Long schoolId, Long sheetId);
+
+    enum ItemSource {BOX, BANK}
+
+    record ItemRef(ItemSource source, Long questionId) {
+    }
+
+    record SectionDraft(String title, String instruction, List<ItemRef> items) {
+    }
+
+    record SheetDraft(String title, Long headerId, java.util.Map<HeaderField, String> headerValues,
+                      boolean showEssayAnswerSpace, boolean includeAnswerKey, List<SectionDraft> sections) {
+    }
+
+    record SheetInfo(Long id, Long schoolId, Long createdByUserId, boolean editable, String title, Long headerId,
+                     java.util.Map<HeaderField, String> headerValues, boolean showEssayAnswerSpace,
+                     boolean includeAnswerKey, List<SectionDraft> sections) {
+    }
+
+    record SheetSummary(Long id, String title, Long createdByUserId, boolean editable, int itemCount,
+                        java.time.Instant updatedAt) {
+    }
+
+    record ResolvedItem(int number, ItemSource source, Long questionId, boolean available, QuestionType type,
+                        ContentMode contentMode, String text, List<String> choices, Integer correctChoice,
+                        String answer, Integer suggestedScore, List<ImageRef> images) {
+    }
+
+    record ResolvedSection(String title, String instruction, List<ResolvedItem> items) {
+    }
+
+    record ResolvedSheet(Long id, String title, HeaderInfo header, java.util.Map<HeaderField, String> headerValues,
+                         boolean showEssayAnswerSpace, boolean includeAnswerKey, List<ResolvedSection> sections) {
+    }
+
     enum HeaderMode {LAYOUT, IMAGE}
 
     enum HeaderLayout {CLASSIC, COMPACT, BOXED}

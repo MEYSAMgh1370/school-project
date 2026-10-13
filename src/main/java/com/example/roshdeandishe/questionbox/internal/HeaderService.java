@@ -22,10 +22,12 @@ import java.util.stream.Collectors;
 class HeaderService {
 
     private final HeaderRepository headerRepository;
+    private final SheetRepository sheetRepository;
     private final IamFacade iamFacade;
 
-    HeaderService(HeaderRepository headerRepository, IamFacade iamFacade) {
+    HeaderService(HeaderRepository headerRepository, SheetRepository sheetRepository, IamFacade iamFacade) {
         this.headerRepository = headerRepository;
+        this.sheetRepository = sheetRepository;
         this.iamFacade = iamFacade;
     }
 
@@ -35,7 +37,7 @@ class HeaderService {
         HeaderEntity entity = new HeaderEntity(schoolId, actorUserId, Instant.now());
         apply(entity, h);
         headerRepository.save(entity);
-        return toInfo(entity, new EditRule(iamFacade, schoolId, actorUserId));
+        return toInfo(entity, true);
     }
 
     @Transactional
@@ -46,20 +48,24 @@ class HeaderService {
         validate(h);
         apply(entity, h);
         entity.setUpdatedAt(Instant.now());
-        return toInfo(entity, rule);
+        return toInfo(entity, true);
     }
 
     @Transactional
     void delete(Long schoolId, Long actorUserId, Long headerId) {
         HeaderEntity entity = require(schoolId, headerId);
         requireEditable(new EditRule(iamFacade, schoolId, actorUserId), entity);
+        if (sheetRepository.existsByHeaderId(headerId)) {
+            throw new QuestionBoxException(new QuestionBoxError.InvalidSheet(
+                    "این سربرگ در برگه‌ای استفاده شده است؛ اول آن را از برگه‌ها بردارید."));
+        }
         headerRepository.delete(entity);
     }
 
     @Transactional(readOnly = true)
     List<HeaderInfo> list(Long schoolId, Long actorUserId) {
         EditRule rule = new EditRule(iamFacade, schoolId, actorUserId);
-        return headerRepository.findBySchoolIdOrderByIdDesc(schoolId).stream().map(e -> toInfo(e, rule)).toList();
+        return headerRepository.findBySchoolIdOrderByIdDesc(schoolId).stream().map(e -> toInfo(e, rule.canEdit(e.getCreatedByUserId()))).toList();
     }
 
     @Transactional
@@ -73,7 +79,7 @@ class HeaderService {
         entity.setImageContentType(ImageValidator.validate(content));
         entity.setImage(content);
         entity.setUpdatedAt(Instant.now());
-        return toInfo(entity, rule);
+        return toInfo(entity, true);
     }
 
     @Transactional(readOnly = true)
@@ -127,7 +133,7 @@ class HeaderService {
         }
     }
 
-    static HeaderInfo toInfo(HeaderEntity e, EditRule rule) {
+    static HeaderInfo toInfo(HeaderEntity e, boolean editable) {
         Set<HeaderField> fields = EnumSet.noneOf(HeaderField.class);
         if (!e.getFields().isBlank()) {
             for (String code : e.getFields().split(",")) {
@@ -136,7 +142,7 @@ class HeaderService {
         }
         boolean hasImage = e.getImage() != null;
         return new HeaderInfo(e.getId(), e.getSchoolId(), e.getCreatedByUserId(),
-                rule.canEdit(e.getCreatedByUserId()), e.getMode() == HeaderMode.LAYOUT || hasImage, e.getName(),
+                editable, e.getMode() == HeaderMode.LAYOUT || hasImage, e.getName(),
                 e.getMode(), e.getLayout(), e.isShowSchoolName(), e.isShowLogo(), fields, hasImage);
     }
 }

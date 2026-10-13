@@ -84,6 +84,12 @@ public interface CurriculumFacade {
     List<QuestionInfo> listQuestions(Long schoolId, QuestionFilter filter);
 
     /**
+     * سؤال‌های این شناسه‌ها که برای مدرسه قابل‌مشاهده‌اند (پلتفرمی یا خودِ مدرسه). شناسه‌ی ناشناخته یا مالِ مدرسه‌ی
+     * دیگر در نتیجه نمی‌آید. خواننده‌ی عمومی برای ماژول‌های دیگر (مثل questionbox).
+     */
+    List<QuestionInfo> findQuestionsVisibleToSchool(Long schoolId, java.util.Collection<Long> questionIds);
+
+    /**
      * ثبت گزارش مشکل یک سؤال. سؤال باید برای مدرسه قابل‌مشاهده باشد (پلتفرمی یا متعلق به همین مدرسه) - وگرنه
      * QuestionNotFound. نوع گزارش الزامی است و توضیح حداکثر ۱۰۰۰ نویسه (InvalidReport وگرنه). خودِ سؤال
      * هرگز تغییر نمی‌کند (D10)؛ گزارش تکراری مجاز است.

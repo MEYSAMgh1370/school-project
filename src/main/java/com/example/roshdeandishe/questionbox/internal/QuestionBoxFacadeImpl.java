@@ -23,13 +23,45 @@ class QuestionBoxFacadeImpl implements QuestionBoxFacade {
     private final QuestionImageRepository imageRepository;
     private final IamFacade iamFacade;
     private final HeaderService headerService;
+    private final SheetService sheetService;
 
     QuestionBoxFacadeImpl(BoxQuestionRepository questionRepository, QuestionImageRepository imageRepository,
-                          IamFacade iamFacade, HeaderService headerService) {
+                          IamFacade iamFacade, HeaderService headerService, SheetService sheetService) {
+        this.sheetService = sheetService;
         this.questionRepository = questionRepository;
         this.imageRepository = imageRepository;
         this.iamFacade = iamFacade;
         this.headerService = headerService;
+    }
+
+    @Override
+    public SheetInfo createSheet(Long schoolId, Long actorUserId, SheetDraft draft) {
+        return sheetService.create(schoolId, actorUserId, draft);
+    }
+
+    @Override
+    public SheetInfo saveSheet(Long schoolId, Long actorUserId, Long sheetId, SheetDraft draft) {
+        return sheetService.save(schoolId, actorUserId, sheetId, draft);
+    }
+
+    @Override
+    public void deleteSheet(Long schoolId, Long actorUserId, Long sheetId) {
+        sheetService.delete(schoolId, actorUserId, sheetId);
+    }
+
+    @Override
+    public List<SheetSummary> listSheets(Long schoolId, Long actorUserId) {
+        return sheetService.list(schoolId, actorUserId);
+    }
+
+    @Override
+    public SheetInfo getSheet(Long schoolId, Long actorUserId, Long sheetId) {
+        return sheetService.get(schoolId, actorUserId, sheetId);
+    }
+
+    @Override
+    public ResolvedSheet resolveSheet(Long schoolId, Long sheetId) {
+        return sheetService.resolve(schoolId, sheetId);
     }
 
     @Override
