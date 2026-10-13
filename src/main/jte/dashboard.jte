@@ -5,7 +5,7 @@
 @param DashboardModel model
 @param NavbarModel navbar
 
-@template.layout.main(title = "پیشخوان", scripts = java.util.List.of("/js/navbar.js", "/js/jalali.js", "/js/calendar.js", "/js/timetable-grid.js", "/js/date-input.js", "/js/school-api.js", "/js/upcoming-events-logic.js", "/js/dashboard.js", "/js/dashboard-timetable.js", "/js/dashboard-upcoming.js", "/js/copy-field.js"),
+@template.layout.main(title = "پیشخوان", scripts = java.util.List.of("/js/navbar.js", "/js/jalali.js", "/js/calendar.js", "/js/timetable-grid.js", "/js/date-input.js", "/js/school-api.js", "/js/upcoming-events-logic.js", "/js/dashboard.js", "/js/dashboard-timetable.js", "/js/dashboard-upcoming.js", "/js/copy-field.js", "/js/setup-checklist.js"),
         styles = java.util.List.of("/css/dashboard.css", "/css/timetable.css"), content = @`
 @template.layout.navbar(navbar = navbar)
 
@@ -148,6 +148,36 @@
             </section>
         @endif
 
+        <%-- «راه‌اندازی مدرسه» (school-admin-onboarding.md، بسته‌ی ۲): فقط برای مدیرِ مدرسه و فقط تا وقتی
+             گامی انجام‌نشده مانده؛ گام‌ها از SetupChecklistAssembler می‌آیند. «پنهان کردن» فقط در
+             localStorageِ همین مرورگر می‌ماند (setup-checklist.js). --%>
+        @for(var checklist : model.setupChecklists())
+            <section class="box mb-5" aria-labelledby="dashboard-setup-title-${checklist.schoolId()}"
+                     x-data="setupChecklist" data-school-id="${checklist.schoolId()}" x-show="!hidden">
+                <div class="is-flex is-justify-content-space-between is-align-items-center mb-2">
+                    <h2 class="title is-5 mb-0" id="dashboard-setup-title-${checklist.schoolId()}">راه‌اندازی ${checklist.schoolName()}</h2>
+                    <button class="button is-text is-small" type="button" @click="hide">پنهان کردن</button>
+                </div>
+                <p class="is-size-7 has-text-grey mb-2">${checklist.doneCount()} از ${checklist.total()} گام انجام شده</p>
+                <progress class="progress is-link is-small" value="${checklist.percent()}" max="100"
+                          aria-label="پیشرفت راه‌اندازی">${checklist.percent()}%</progress>
+                <ul class="app-setup-steps">
+                    @for(var step : checklist.steps())
+                        <li class="app-setup-step">
+                            @if(step.done())
+                                <span class="tag is-success is-light">انجام شد</span>
+                                <span class="app-setup-step-label">${step.label()}</span>
+                            @else
+                                <span class="tag is-light">مانده</span>
+                                <a class="app-setup-step-label" href="${step.href()}">${step.label()}</a>
+                                <span class="is-size-7 has-text-grey">${step.hint()}</span>
+                            @endif
+                        </li>
+                    @endfor
+                </ul>
+            </section>
+        @endfor
+
         <%-- «دسترسی سریع»: همان لینک‌های سایدبار، از منبع واحد NavCatalog (فقط
              نمایش - کنترل دسترسی سمت سرور می‌ماند). نقشِ انتخاب‌شده از
              $store.nav (آینه‌ی سوییچر navbar.js) می‌آید؛ کاربر بدون عضویت نقشی
@@ -210,6 +240,7 @@
              بقیه‌ی بخش‌ها). فقط درصدِ پرداخت به صورت‌حساب است، نه مبلغ (واحد پولی
              تصمیم‌نگرفته). --%>
         @for(var row : model.tuition())
+          @if(row.hasInvoices() || !model.setupIncomplete(row.schoolId()))
             <section class="mb-5" aria-labelledby="dashboard-tuition-title-${row.schoolId()}" x-data
                      x-cloak x-show="$store.nav.selectedRole === 'SCHOOL_ADMIN' && $store.nav.selectedSchoolId === ${row.schoolId()}">
                 <div class="box">
@@ -228,6 +259,7 @@
                     <p class="mt-3 mb-0"><a href="/finance">امور مالی</a></p>
                 </div>
             </section>
+          @endif
         @endfor
 
         <%-- «حضور و غیاب امروز»: کنارِ «وضعیت شهریه»، با همان الگو: فقط برای مدیرِ مدرسه (چکِ literal
@@ -235,6 +267,7 @@
              نمایشِ سمتِ کلاینت هم به نقشِ انتخاب‌شده و مدرسه‌ی انتخاب‌شده وابسته است. فقط رقم‌های خلاصه
              (غایب، درصدِ حضور، کلاسِ بدونِ ثبت)، نه نامِ دانش‌آموزان؛ نام‌ها در /attendance/report می‌مانند. --%>
         @for(var attendance : model.attendanceToday())
+          @if(attendance.hasRoll() || !model.setupIncomplete(attendance.schoolId()))
             <section class="mb-5" aria-labelledby="dashboard-attendance-title-${attendance.schoolId()}" x-data
                      x-cloak x-show="$store.nav.selectedRole === 'SCHOOL_ADMIN' && $store.nav.selectedSchoolId === ${attendance.schoolId()}">
                 <div class="box">
@@ -261,6 +294,7 @@
                     <p class="mt-3 mb-0"><a href="/attendance/report">غایبین امروز</a></p>
                 </div>
             </section>
+          @endif
         @endfor
 
         <%-- «رویدادهای نزدیک»: رویدادهای برنامه‌ی سالانه‌ی مدرسه‌ی انتخاب‌شده که پنجره‌ی یادآوری‌شان شروع شده
