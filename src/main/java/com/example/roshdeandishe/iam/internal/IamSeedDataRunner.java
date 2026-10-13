@@ -129,6 +129,7 @@ class IamSeedDataRunner implements ApplicationRunner {
         module("EXAM", "آزمون", ModuleScope.SCHOOL);
         module("LIBRARY", "کتابخانه", ModuleScope.SCHOOL);
         module("ATTENDANCE", "حضور و غیاب", ModuleScope.SCHOOL);
+        module("QUESTION_BOX", "باکس سؤالات", ModuleScope.SCHOOL);
         module("TRANSPORTATION", "سرویس", ModuleScope.SCHOOL);
 
         module("AI_TUTOR", "معلم هوش مصنوعی", ModuleScope.USER);
@@ -214,6 +215,7 @@ class IamSeedDataRunner implements ApplicationRunner {
         permission(permissions, "ATTENDANCE_RECORD_ANY", "ثبت حضور و غیاب همه‌ی کلاس‌ها");
         permission(permissions, "ATTENDANCE_EDIT_PAST", "ویرایش حضور و غیاب روزهای گذشته");
         permission(permissions, "ATTENDANCE_VIEW_ALL", "مشاهده‌ی حضور و غیاب همه‌ی کلاس‌ها و گزارش آن");
+        permission(permissions, "QUESTION_BOX_MANAGE", "ساخت سؤال، سربرگ و برگه‌ی چاپی در باکس سؤالات");
         // Permission سطح پلتفرم: فقط ردیف کاتالوگ - عمداً به هیچ نقشی grant نمی‌شود؛ تنها مسیر اعطا،
         // شاخه‌ی PlatformContext در PermissionDecisionService برای کاربرِ platform_admins است
         permission(permissions, PlatformPermissions.HOLIDAY_MANAGE, "مدیریت تعطیلی‌های سراسری");
@@ -231,6 +233,8 @@ class IamSeedDataRunner implements ApplicationRunner {
         // گزارش مشکل سؤال (moshavere-content-import.md P6): دانش‌آموز، معلم و مدیر مدرسه؛ ولی (PARENT) نه
         grant(roles.get("STUDENT"), permissions.get("QUESTION_REPORT"));
         grant(roles.get("TEACHER"), permissions.get("QUESTION_REPORT"));
+        grant(roles.get("TEACHER"), permissions.get("QUESTION_BOX_MANAGE"));
+        grant(roles.get("SCHOOL_ADMIN"), permissions.get("QUESTION_BOX_MANAGE"));
         grant(roles.get("SCHOOL_ADMIN"), permissions.get("QUESTION_REPORT"));
 
         grant(roles.get("TEACHER"), permissions.get("GRADES_VIEW"));
@@ -365,7 +369,7 @@ class IamSeedDataRunner implements ApplicationRunner {
      * هرگز به دیتابیس dev از قبل seed شده نمی‌رسید. فقط seed مخصوص dev.
      */
     private void seedDemoSchoolEntitlements() {
-        for (String moduleCode : new String[]{"ACADEMIC", "FINANCE", "ATTENDANCE", "CURRICULUM", "STUDY_PLANNER", "EXAM"}) {
+        for (String moduleCode : new String[]{"ACADEMIC", "FINANCE", "ATTENDANCE", "QUESTION_BOX", "CURRICULUM", "STUDY_PLANNER", "EXAM"}) {
             moduleRepository.findByCode(moduleCode).ifPresent(module -> {
                 boolean exists = schoolEntitlementRepository
                         .findBySchoolIdAndModuleId(DEMO_SCHOOL_ID, module.getId())

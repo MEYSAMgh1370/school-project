@@ -27,7 +27,7 @@ spring:
     # هر هشت schemaی ماژول‌ها. Flyway هر کدام را که نباشد می‌سازد - همان
     # کاری که تا امروز باید دستی با CREATE SCHEMA انجام می‌شد. اولین مورد
     # لیست، محلِ جدول flyway_schema_history هم هست.
-    schemas: iam,school,academic,finance,bale,curriculum,studyplan,exam,attendance
+    schemas: iam,school,academic,finance,bale,curriculum,studyplan,exam,attendance,questionbox
     default-schema: iam
     # برای دیتابیس‌هایی که از قبل با ddl-auto=update ساخته شده‌اند (dev فعلی
     # و استقرار Liara): جدول‌ها موجودند ولی flyway_schema_history نیست، پس
