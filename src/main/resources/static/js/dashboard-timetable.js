@@ -1,7 +1,8 @@
 document.addEventListener('alpine:init', () => {
-    // «برنامه‌ی امروز» روی پیشخوانِ دانش‌آموز (openspec/changes/class-timetable.md، تصمیم ۱۰).
-    // فقط وقتی نقشِ انتخاب‌شده STUDENT است داده می‌گیرد (برای نقش‌های دیگر هیچ درخواستی
-    // نمی‌رود) و فقط «امروز» را از همان endpoint خودسرویسِ /my-timetable نشان می‌دهد.
+    // «برنامه‌ی امروز» روی پیشخوانِ دانش‌آموز و معلم (openspec/changes/class-timetable.md، تصمیم ۱۰).
+    // فقط وقتی نقشِ انتخاب‌شده STUDENT یا TEACHER است داده می‌گیرد (برای نقش‌های دیگر هیچ
+    // درخواستی نمی‌رود) و فقط «امروز» را از همان endpoint خودسرویسِ /my-timetable نشان می‌دهد:
+    // دانش‌آموز دیدِ «OWN» (کلاسِ خودش) و معلم دیدِ «TEACHING» (درس‌هایی که خودش می‌دهد).
     Alpine.data('dashboardTimetable', () => ({
         schoolId: null,
         academicYear: null,
@@ -39,6 +40,14 @@ document.addEventListener('alpine:init', () => {
             return Alpine.store('nav').selectedRole === 'STUDENT';
         },
 
+        isTeacher() {
+            return Alpine.store('nav').selectedRole === 'TEACHER';
+        },
+
+        applies() {
+            return this.isStudent() || this.isTeacher();
+        },
+
         clear() {
             this.academicYear = null;
             this.periods = [];
@@ -53,7 +62,7 @@ document.addEventListener('alpine:init', () => {
             const seq = ++this.seq;
             this.clear();
             this.loading = false;
-            if (!this.isStudent() || !this.schoolId) {
+            if (!this.applies() || !this.schoolId) {
                 return;
             }
             this.loading = true;
@@ -67,7 +76,7 @@ document.addEventListener('alpine:init', () => {
                 }
                 const data = await response.json();
                 if (seq === this.seq) {
-                    const own = data.views.find((view) => view.kind === 'OWN');
+                    const own = data.views.find((view) => view.kind === (this.isTeacher() ? 'TEACHING' : 'OWN'));
                     this.academicYear = data.academicYear;
                     this.periods = data.periods;
                     this.entries = own ? own.entries : [];
@@ -107,6 +116,11 @@ document.addEventListener('alpine:init', () => {
             return this.periods
                 .map((period) => ({ period, entry: window.TimetableGrid.entryAt(this.entries, this.todayCode, period.id) }))
                 .filter((row) => row.entry !== null);
+        },
+
+        // دانش‌آموز نامِ معلمِ هر درس را می‌بیند، معلم نامِ کلاسِ هر درس را
+        metaOf(entry) {
+            return (this.isTeacher() ? entry.className : entry.teacherName) || '';
         },
 
         subjectOf(entry) {

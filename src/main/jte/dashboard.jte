@@ -280,23 +280,23 @@
             </div>
         </section>
 
-        <%-- «برنامه‌ی امروز»: فقط برای نقشِ انتخاب‌شده‌ی «دانش‌آموز» (تصمیمِ محصول: دانش‌آموز
-             برنامه را در صفحه‌ی اول می‌بیند؛ معلم و والد در /my-timetable). داده کاملاً
+        <%-- «برنامه‌ی امروز»: برای نقشِ انتخاب‌شده‌ی «دانش‌آموز» (کلاسِ خودش) و «معلم» (درس‌هایی که
+             خودش می‌دهد، با نامِ کلاس)؛ والد برنامه را در /my-timetable می‌بیند. داده کاملاً
              client-side از /api/me/schools/{id}/timetable می‌آید و برای نقش‌های دیگر هیچ
              درخواستی نمی‌رود. --%>
         <section class="mb-5" aria-labelledby="dashboard-timetable-title" x-data="dashboardTimetable()"
-                 x-cloak x-show="isStudent()" id="dashboardTimetable">
+                 x-cloak x-show="applies()" id="dashboardTimetable">
             <div class="box">
                 <h2 class="title is-5 mb-1" id="dashboard-timetable-title">برنامه‌ی امروز</h2>
                 <p class="is-size-7 has-text-grey mb-3" x-show="isSchoolDay()">
-                    <span id="dashboardTimetableDay" x-text="dayTitle()"></span><span x-show="className" x-text="'، کلاس ' + className"></span>
+                    <span id="dashboardTimetableDay" x-text="dayTitle()"></span><span x-show="className && !isTeacher()" x-text="'، کلاس ' + className"></span>
                 </p>
 
                 <p x-show="loading">در حال بارگذاری...</p>
                 <div class="notification is-danger" role="alert" x-show="error"><span class="app-notice">@template.layout.icon(name = "alert", size = 20)<span x-text="error"></span></span></div>
 
                 <div x-show="loaded && !error">
-                    <p id="dashboardTimetableNotEnrolled" x-show="!enrolled">
+                    <p id="dashboardTimetableNotEnrolled" x-show="!enrolled && !isTeacher()">
                         هنوز در هیچ کلاسی ثبت‌نام نشده‌اید؛ بعد از ثبت‌نام، برنامه‌ی کلاس شما اینجا می‌آید.
                     </p>
                     <p id="dashboardTimetableNoYear" x-show="enrolled && academicYear === null">
@@ -307,7 +307,7 @@
                     </p>
                     <p id="dashboardTimetableNone"
                        x-show="enrolled && academicYear !== null && isSchoolDay() && todayRows().length === 0">
-                        برای امروز درسی در برنامه‌ی کلاس شما ثبت نشده است.
+                        <span x-show="!isTeacher()">برای امروز درسی در برنامه‌ی کلاس شما ثبت نشده است.</span><span x-show="isTeacher()">امروز کلاسی برای تدریس ندارید.</span>
                     </p>
                     <ul class="app-tt-today-list" id="dashboardTimetableList" x-show="enrolled && isSchoolDay() && todayRows().length > 0">
                         <template x-for="row in todayRows()" :key="row.period.id">
@@ -315,7 +315,7 @@
                                 <span class="app-tt-time" x-text="rangeLabel(row.period)"></span>
                                 <span>
                                     <span class="app-tt-subject" x-text="subjectOf(row.entry)"></span>
-                                    <span class="app-tt-meta" x-show="row.entry.teacherName" x-text="row.entry.teacherName"></span>
+                                    <span class="app-tt-meta" x-show="metaOf(row.entry)" x-text="metaOf(row.entry)"></span>
                                 </span>
                             </li>
                         </template>
