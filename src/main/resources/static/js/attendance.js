@@ -33,6 +33,7 @@ document.addEventListener('alpine:init', () => {
         roll: null,
         rollLoading: false,
         rows: [],
+        query: '',
         noteErrors: {},
         statuses: [
             { code: 'PRESENT', label: 'حاضر' },
@@ -78,6 +79,7 @@ document.addEventListener('alpine:init', () => {
         clearRoll() {
             this.roll = null;
             this.rows = [];
+            this.query = '';
             this.noteErrors = {};
             this.rollLoading = false;
         },
@@ -192,6 +194,8 @@ document.addEventListener('alpine:init', () => {
         // پاسخِ سرور (خواندن یا ذخیره) → ردیف‌های قابل‌ویرایش؛ status تهی یعنی حاضر
         applyRoll(roll) {
             this.roll = roll;
+            // جست‌وجو فقط برای فهرستِ همین کلاس-روز است؛ با فهرستِ تازه پاک می‌شود
+            this.query = '';
             this.noteErrors = {};
             this.rows = roll.students.map((s) => ({
                 studentId: s.studentId,
@@ -222,6 +226,18 @@ document.addEventListener('alpine:init', () => {
                 row.note = '';
                 delete this.noteErrors[row.studentId];
             }
+        },
+
+        // ردیف‌ها با شماره‌ی اصلی‌شان (شماره با فیلتر عوض نمی‌شود)؛ جست‌وجو فقط روی نمایش اثر دارد، نه روی چیزی که ذخیره می‌شود
+        visibleRows() {
+            return this.rows
+                .map((row, index) => ({ row, index }))
+                .filter((item) => ListSearch.matches(this.query, [item.row.studentName]));
+        },
+
+        // بدونِ هیچ غایب/تأخیری یک ضربه کافی است: «همه حاضرند»
+        saveLabel() {
+            return this.rows.some((r) => r.status !== 'PRESENT') ? 'ثبت حضور و غیاب' : 'همه حاضرند - ثبت';
         },
 
         countOf(code) {

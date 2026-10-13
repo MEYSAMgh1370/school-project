@@ -3,29 +3,21 @@
 @param NavbarModel navbar
 
 <%-- «حضور و غیاب» (openspec/changes/attendance.md): معلم/مدیر کلاس و روز را انتخاب می‌کند و غایب‌ها و
-     دیرآمدگان را علامت می‌زند؛ اقدامِ اصلی «ثبت حضور و غیاب» در inline-end هدر است. کنترل‌ها هیچ‌وقت به‌خاطرِ
+     دیرآمدگان را علامت می‌زند؛ اقدامِ اصلی «ثبت حضور و غیاب» در نوارِ چسبیدهٔ پایینِ صفحه است (نه هدر)، تا با
+     فهرستِ بلند و روی گوشی نیازی به برگشتن به بالا نباشد، و وقتی هیچ استثنایی علامت نخورده «همه حاضرند - ثبت»
+     می‌شود. کنترل‌ها هیچ‌وقت به‌خاطرِ
      مجوز پنهان/غیرفعال نمی‌شوند: نبودِ مجوز یا ویرایشِ روزِ گذشته 403 می‌گیرد و پیامِ سرور در ناحیه‌ی خطا
      می‌آید. روز جلالی با ارقام فارسی نمایش داده می‌شود و ISO به سرور می‌رود (date-input.js). --%>
 @template.layout.main(title = "حضور و غیاب",
-        scripts = java.util.List.of("/js/navbar.js", "/js/jalali.js", "/js/calendar.js", "/js/date-input.js", "/js/school-api.js", "/js/attendance.js"),
+        scripts = java.util.List.of("/js/navbar.js", "/js/digits.js", "/js/list-search.js", "/js/jalali.js", "/js/calendar.js", "/js/date-input.js", "/js/school-api.js", "/js/attendance.js"),
         styles = java.util.List.of("/css/attendance.css"), content = @`
 @template.layout.navbar(navbar = navbar)
 
 <section class="section" id="main-content" role="main" tabindex="-1" x-data="attendancePage()">
     <div class="container">
-        <div class="level is-mobile">
-            <div class="level-left">
-                <div>
-                    @template.layout.page-header(
-                        title = "حضور و غیاب",
-                        subtitle = "کلاس و روز را انتخاب کنید و غایب‌ها و دیرآمدگان را علامت بزنید؛ دانش‌آموزِ بدونِ علامت حاضر است.")
-                </div>
-            </div>
-            <div class="level-right" x-cloak x-show="schoolId">
-                <button class="button is-link" type="button" id="attendanceSave"
-                        :class="{ 'is-loading': saving }" :disabled="saving" @click="save">ثبت حضور و غیاب</button>
-            </div>
-        </div>
+        @template.layout.page-header(
+            title = "حضور و غیاب",
+            subtitle = "کلاس و روز را انتخاب کنید و فقط غایب‌ها و دیرآمدگان را علامت بزنید؛ دانش‌آموزِ بدونِ علامت حاضر است.")
 
         @template.layout.school-scope(
             noSchoolMessage = "برای ثبت حضور و غیاب، یک مدرسه از سوییچر بالا انتخاب کنید.",
@@ -92,14 +84,20 @@
                                 دانش‌آموزان
                                 <span class="tag is-light" x-text="Calendar.digits(rows.length)"></span>
                             </h2>
+                            <%-- جست‌وجوی نام، فقط برای کلاسِ بلند: غایبِ یک کلاسِ ۲۰ نفره بدونِ اسکرول پیدا شود. --%>
+                            <div class="field" x-show="rows.length > 8">
+                                <label class="label is-sr-only" for="attSearch">جست‌وجوی دانش‌آموز</label>
+                                <input class="input" id="attSearch" type="search" x-model="query"
+                                       placeholder="جست‌وجوی نام دانش‌آموز" autocomplete="off">
+                            </div>
                             <p class="is-size-7 has-text-grey mb-2" id="attSummary">
                                 غایب: <span x-text="Calendar.digits(countOf('ABSENT'))"></span>
                                 · موجه: <span x-text="Calendar.digits(excusedCount())"></span>
                                 · تأخیر: <span x-text="Calendar.digits(countOf('LATE'))"></span>
                             </p>
                             <ul class="app-att-list" id="attRoster">
-                                <template x-for="(row, index) in rows" :key="row.studentId">
-                                    <li class="app-att-row">
+                                <template x-for="item in visibleRows()" :key="item.row.studentId">
+                                    <li class="app-att-row" x-data="{ row: item.row, index: item.index }">
                                         <span class="app-att-name">
                                             <span class="is-size-7 has-text-grey" x-text="Calendar.digits(index + 1)"></span>
                                             <span x-text="row.studentName"></span>
@@ -127,6 +125,19 @@
                                     </li>
                                 </template>
                             </ul>
+                            <p class="mt-3" id="attNoMatch" x-show="query.trim() !== '' && visibleRows().length === 0">
+                                دانش‌آموزی با این نام پیدا نشد.
+                            </p>
+                        </div>
+
+                        <%-- نوارِ چسبیده: همیشه در دسترس و تنها دکمه‌ی اصلیِ صفحه. بدونِ استثنا «همه حاضرند - ثبت». --%>
+                        <div class="app-att-bar" id="attBar" x-cloak x-show="rows.length > 0 && rollRecordable()">
+                            <p class="app-att-bar-summary" id="attBarSummary">
+                                غایب: <span x-text="Calendar.digits(countOf('ABSENT'))"></span>
+                                · تأخیر: <span x-text="Calendar.digits(countOf('LATE'))"></span>
+                            </p>
+                            <button class="button is-link" type="button" id="attendanceSave"
+                                    :class="{ 'is-loading': saving }" :disabled="saving" @click="save"><span x-text="saveLabel()">ثبت حضور و غیاب</span></button>
                         </div>
                     </div>
                 </div>

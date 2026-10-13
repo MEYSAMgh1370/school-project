@@ -170,7 +170,10 @@ A non-school day: no figure.
 
 - `/attendance` (teacher/admin): choose class and day (default today), a list of
   the class's students, each with a present/absent/late control and an optional
-  note, the single primary action «ثبت حضور و غیاب» at inline-end of the header.
+  note, the single primary action «ثبت حضور و غیاب» in a sticky bottom bar (changed
+  2026-10-13 from the header; see `DESIGN.md`) with the live absent/late counts, reading
+  «همه حاضرند - ثبت» while no exception is marked, and a name search for classes over 8
+  students.
   Empty state teaches («کلاسی برای ثبت پیدا نشد»). Unmarked students are present.
   Joins the `NavCatalog` «آموزش» group for `TEACHER` and `SCHOOL_ADMIN`, with a
   dashboard shortcut for both.
