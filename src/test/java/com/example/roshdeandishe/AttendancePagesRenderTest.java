@@ -61,16 +61,31 @@ class AttendancePagesRenderTest {
     }
 
     @Test
-    void thePrimaryActionIsTheOnlyLinkButtonAndSitsInTheHeaderBeforeTheForm() {
+    void thePrimaryActionIsTheOnlyLinkButtonAndSitsInAStickyBarAfterTheRoster() {
         String html = render("attendance.jte");
 
-        assertThat(html).contains("id=\"attendanceSave\"").contains("ثبت حضور و غیاب</button>");
+        assertThat(html).contains("id=\"attendanceSave\"").contains("x-text=\"saveLabel()\">ثبت حضور و غیاب</span>");
         assertThat(html).contains("@click=\"save\"").contains(":class=\"{ 'is-loading': saving }\"");
         assertThat(count(html, "button is-link")).isEqualTo(1);
-        assertThat(html.indexOf("id=\"attendanceSave\"")).isLessThan(html.indexOf("id=\"attClass\""));
-        // اقدامِ اصلی در inline-end (level-right، پس از عنوانِ level-left)
-        assertThat(html.indexOf("level-left")).isLessThan(html.indexOf("level-right"));
-        assertThat(html.indexOf("level-right")).isLessThan(html.indexOf("id=\"attendanceSave\""));
+        // نوار چسبیده بعد از فهرست می‌آید و فقط وقتی فهرست و روزِ قابل‌ثبت هست دیده می‌شود
+        assertThat(html).contains("id=\"attBar\"").contains("app-att-bar");
+        assertThat(html.indexOf("id=\"attRoster\"")).isLessThan(html.indexOf("id=\"attBar\""));
+        assertThat(html.indexOf("id=\"attBar\"")).isLessThan(html.indexOf("id=\"attendanceSave\""));
+        assertThat(html).contains("rows.length > 0 && rollRecordable()");
+        // سرصفحه دیگر دکمه ندارد (سرریزِ موبایل از همان level بود)
+        assertThat(html).doesNotContain("level-right").doesNotContain("level is-mobile");
+    }
+
+    @Test
+    void aLongRollHasANameSearchAndTheBarShowsLiveCounts() {
+        String html = render("attendance.jte");
+
+        assertThat(html).contains("id=\"attSearch\"", "x-model=\"query\"", "rows.length > 8");
+        assertThat(html).contains("x-for=\"item in visibleRows()\"");
+        assertThat(html).contains("id=\"attNoMatch\"", "دانش‌آموزی با این نام پیدا نشد");
+        assertThat(html).contains("id=\"attBarSummary\"", "countOf('ABSENT')", "countOf('LATE')");
+        assertThat(html).contains("/js/digits.js", "/js/list-search.js");
+        assertThat(html.indexOf("/js/list-search.js")).isLessThan(html.indexOf("/js/attendance.js"));
     }
 
     @Test
