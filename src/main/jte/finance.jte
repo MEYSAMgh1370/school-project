@@ -186,6 +186,10 @@
                                     · پرداخت‌شده: <strong x-text="Money.formatAmount(invoice.amountPaid)"></strong>
                                     · مانده: <strong x-text="Money.formatAmount(remaining(invoice))"></strong>
                                 </p>
+                                <%-- سابقه‌ی تغییرات همین فاکتور (صفحه‌ی فقط‌خواندنیِ /finance-audit؛ فیلتر از query string پر می‌شود) --%>
+                                <p class="mb-3">
+                                    <a data-invoice-audit-link :href="'/finance-audit?invoiceId=' + encodeURIComponent(invoice.id)">سابقه‌ی این فاکتور</a>
+                                </p>
                                 <template x-for="pending in pendingDiscounts()" :key="'pending-' + pending.id">
                                     <p class="help is-warning mb-3" data-pending-discount>
                                         تخفیف مشروط (<span x-text="Money.formatAmount(pending.amount)"></span>) تا

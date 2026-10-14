@@ -1,6 +1,7 @@
 package com.example.roshdeandishe;
 
 import com.example.roshdeandishe.finance.FinanceFacade;
+import com.example.roshdeandishe.finance.internal.DiscountSweepHook;
 import com.example.roshdeandishe.finance.FinanceFacade.DiscountInfo;
 import com.example.roshdeandishe.finance.FinanceFacade.InstallmentEdit;
 import com.example.roshdeandishe.finance.FinanceFacade.InstallmentInfo;
@@ -201,7 +202,7 @@ class FinanceAuditTrailFlowIntegrationTest {
                 schoolId, lapseInvoice.id(), new BigDecimal("100.00"), null, deadline);
         actAsSystem();
         expire(lapsing.id());
-        financeFacade.sweepExpiredDiscounts();
+        DiscountSweepHook.sweep(financeFacade);
 
         Map<String, Object> earned = awaitRow(schoolId, "DISCOUNT_EARNED", 0);
         assertThat(earned.get("actor_user_id")).isNull(); // سیستم، نه کاربرِ پرداخت‌کننده
@@ -281,7 +282,7 @@ class FinanceAuditTrailFlowIntegrationTest {
         // DISCOUNT_LAPSE_RESPLIT (خودکار؛ سیستم): تخفیف برمی‌خیزد و اقساط به ۳۰۰ برمی‌گردند
         actAsSystem();
         expire(discount.id());
-        financeFacade.sweepExpiredDiscounts();
+        DiscountSweepHook.sweep(financeFacade);
         Map<String, Object> lapse = awaitRow(schoolId, "INSTALLMENTS_CHANGED", 3);
         assertCommon(lapse, schoolId, invoice.id(), null);
         JsonNode lapseDetails = details(lapse);
@@ -363,7 +364,7 @@ class FinanceAuditTrailFlowIntegrationTest {
         financeFacade.applyDiscount(schoolId, invoice.id(), new BigDecimal("10.00"), "t", today().plusDays(2));
         financeFacade.generateInstallments(schoolId, invoice.id(), 2, today().plusDays(5), 1);
         financeFacade.setInstallmentsEnabled(schoolId, false);
-        financeFacade.sweepExpiredDiscounts();
+        DiscountSweepHook.sweep(financeFacade);
         await().atMost(Duration.ofSeconds(15)).untilAsserted(() -> {
             assertThat(rows(schoolId, "PAYMENT_RECORDED")).hasSize(2);
             assertThat(rows(schoolId, "INSTALLMENTS_CHANGED")).hasSize(1);
@@ -372,10 +373,10 @@ class FinanceAuditTrailFlowIntegrationTest {
 
         assertThat(rows(schoolId, "PAYMENT_RECORDED").get(0)).isEqualTo(first);
 
-        // سطحِ repository فقط save دارد: مسیری برای update/delete نیست
+        // سطحِ repository فقط save و خواندنِ search دارد: مسیری برای update/delete نیست
         Class<?> repository = Class.forName("com.example.roshdeandishe.finance.internal.FinanceAuditRepository");
         Set<String> methods = java.util.Arrays.stream(repository.getMethods()).map(Method::getName)
                 .collect(Collectors.toSet());
-        assertThat(methods).containsExactly("save");
+        assertThat(methods).containsExactlyInAnyOrder("save", "search");
     }
 }

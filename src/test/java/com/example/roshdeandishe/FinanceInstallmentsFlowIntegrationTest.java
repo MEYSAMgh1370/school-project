@@ -1,6 +1,7 @@
 package com.example.roshdeandishe;
 
 import com.example.roshdeandishe.finance.FinanceFacade;
+import com.example.roshdeandishe.finance.internal.DiscountSweepHook;
 import com.example.roshdeandishe.finance.FinanceFacade.InstallmentEdit;
 import com.example.roshdeandishe.finance.FinanceFacade.InstallmentInfo;
 import com.example.roshdeandishe.finance.FinanceFacade.InvoiceInfo;
@@ -618,7 +619,7 @@ class FinanceInstallmentsFlowIntegrationTest {
         financeFacade.recordPayment(schoolId, invoice.id(), new BigDecimal("6000000.00"), PaymentMethod.CASH, null);
         jdbcTemplate.update("update finance.invoice_discounts set status = 'PENDING', deadline = ? where id = ?",
                 LocalDate.now(TEHRAN).minusDays(1), discount.id());
-        financeFacade.sweepExpiredDiscounts();
+        DiscountSweepHook.sweep(financeFacade);
         return invoice;
     }
 

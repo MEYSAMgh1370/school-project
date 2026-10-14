@@ -2,6 +2,7 @@ package com.example.roshdeandishe;
 
 import com.example.roshdeandishe.finance.DiscountStatus;
 import com.example.roshdeandishe.finance.FinanceFacade;
+import com.example.roshdeandishe.finance.internal.DiscountSweepHook;
 import com.example.roshdeandishe.finance.FinanceFacade.DiscountInfo;
 import com.example.roshdeandishe.finance.FinanceFacade.InstallmentInfo;
 import com.example.roshdeandishe.finance.FinanceFacade.InvoiceInfo;
@@ -187,7 +188,7 @@ class FinanceConditionalDiscountFlowIntegrationTest {
 
         // حتی اگر مهلت بعداً بگذرد، جارو آن را برنمی‌دارد
         expire(discount.id());
-        financeFacade.sweepExpiredDiscounts();
+        DiscountSweepHook.sweep(financeFacade);
         assertThat(discount(schoolId, invoice.id(), discount.id()).status()).isEqualTo(DiscountStatus.EARNED);
         InvoiceInfo after = reload(schoolId, invoice.id());
         assertThat(after.discountTotal()).isEqualByComparingTo("200000.00");
@@ -233,7 +234,7 @@ class FinanceConditionalDiscountFlowIntegrationTest {
         assertThat(remaining(reload(schoolId, invoice.id()))).isEqualByComparingTo("300000.00");
 
         expire(discount.id());
-        assertThat(financeFacade.sweepExpiredDiscounts()).isGreaterThanOrEqualTo(1);
+        assertThat(DiscountSweepHook.sweep(financeFacade)).isGreaterThanOrEqualTo(1);
 
         DiscountInfo lapsed = discount(schoolId, invoice.id(), discount.id());
         assertThat(lapsed.status()).isEqualTo(DiscountStatus.LAPSED);
@@ -244,7 +245,7 @@ class FinanceConditionalDiscountFlowIntegrationTest {
         assertThat(after.status()).isEqualTo(InvoiceStatus.PARTIAL);
 
         // دوباره: چیزی برای برداشتن نمانده
-        assertThat(financeFacade.sweepExpiredDiscounts()).isZero();
+        assertThat(DiscountSweepHook.sweep(financeFacade)).isZero();
         assertThat(reload(schoolId, invoice.id()).discountTotal()).isEqualByComparingTo("0");
 
         await().atMost(Duration.ofSeconds(15)).untilAsserted(() ->
@@ -323,7 +324,7 @@ class FinanceConditionalDiscountFlowIntegrationTest {
         financeFacade.recordPayment(schoolId, invoice.id(), new BigDecimal("2000000.00"), PaymentMethod.CASH, null);
 
         expire(discount.id());
-        financeFacade.sweepExpiredDiscounts();
+        DiscountSweepHook.sweep(financeFacade);
 
         // قابل پرداخت ۹٬۰۰۰٬۰۰۰؛ قسطِ اول (پرداخت‌شده) می‌ماند و ۷٬۰۰۰٬۰۰۰ روی دو قسطِ باقی‌مانده تقسیم می‌شود
         List<InstallmentInfo> plan = financeFacade.listInstallments(schoolId, invoice.id());
@@ -354,7 +355,7 @@ class FinanceConditionalDiscountFlowIntegrationTest {
         assertThat(reload(schoolId, invoice.id()).discountTotal()).isEqualByComparingTo("600000.00");
 
         expire(soon.id());
-        financeFacade.sweepExpiredDiscounts();
+        DiscountSweepHook.sweep(financeFacade);
 
         assertThat(discount(schoolId, invoice.id(), soon.id()).status()).isEqualTo(DiscountStatus.LAPSED);
         assertThat(discount(schoolId, invoice.id(), later.id()).status()).isEqualTo(DiscountStatus.PENDING);
@@ -442,7 +443,7 @@ class FinanceConditionalDiscountFlowIntegrationTest {
         assertThat(pending.get("discountTotal").decimalValue()).isEqualByComparingTo("200000.00");
 
         expire(discountId);
-        financeFacade.sweepExpiredDiscounts();
+        DiscountSweepHook.sweep(financeFacade);
 
         JsonNode lapsed = myInvoice(parentSession, studentId);
         assertThat(lapsed.get("pendingDiscount").decimalValue()).isEqualByComparingTo("0");

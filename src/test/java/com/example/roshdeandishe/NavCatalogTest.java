@@ -173,6 +173,20 @@ class NavCatalogTest {
         assertThat(linkOf("/timetable").permissionSets()).containsExactly(List.of("TIMETABLE_MANAGE"));
     }
 
+    @Test
+    void financeAuditIsAFinanceLinkForTheSameRolesAsFinanceNeedingManageAndWithoutADashboardShortcut() {
+        Link audit = linkOf("/finance-audit");
+
+        assertThat(audit.label()).isEqualTo("سابقه‌ی تغییرات مالی");
+        assertThat(groupOf("/finance-audit")).isEqualTo("finance");
+        assertThat(audit.roles()).containsExactly("SCHOOL_ADMIN", "FINANCE_ADMIN").isEqualTo(linkOf("/finance").roles());
+        assertThat(audit.shortcutRoles()).isEmpty();
+        assertThat(audit.permissions()).containsExactly("FINANCE_MANAGE");
+        assertThat(audit.visibleWhen("role", "perms")).isEqualTo(
+                "['SCHOOL_ADMIN', 'FINANCE_ADMIN'].includes(role) || ['FINANCE_MANAGE'].every(p => perms.includes(p))");
+        assertThat(NavCatalog.shortcuts()).doesNotContain(audit);
+    }
+
     private static Link linkOf(String href) {
         return allLinks().stream().filter(l -> l.href().equals(href)).findFirst().orElseThrow();
     }

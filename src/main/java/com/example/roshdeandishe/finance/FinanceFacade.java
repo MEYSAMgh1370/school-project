@@ -117,14 +117,6 @@ public interface FinanceFacade {
     java.util.Map<Long, PendingDiscountSummary> pendingDiscountsForInvoices(
             Long schoolId, java.util.Collection<Long> invoiceIds);
 
-    /**
-     * جاروی تخفیف‌های مشروطِ مهلت‌گذشته (کارِ ساعتیِ ExpiredDiscountSweeper): هر فاکتور در تراکنشِ خودش و زیر
-     * قفل؛ شکستِ یک فاکتور بقیه را متوقف نمی‌کند. Idempotent.
-     *
-     * @return تعداد تخفیف‌های LAPSEDشده
-     */
-    int sweepExpiredDiscounts();
-
     /** اقساطِ یک فاکتور به ترتیب (سررسید، seq)؛ خالی = فاکتور طرحِ اقساط ندارد. InvoiceNotFound اگر فاکتور نباشد. */
     List<InstallmentInfo> listInstallments(Long schoolId, Long invoiceId);
 
@@ -219,6 +211,28 @@ public interface FinanceFacade {
     }
 
     record InstallmentEdit(Long id, BigDecimal amount, java.time.LocalDate dueDate) {
+    }
+
+    /**
+     * خواندنِ audit trail مالیِ یک مدرسه (فقط‌خواندنی)، جدیدترین اول. همه‌ی فیلترها اختیاری‌اند؛ {@code from}/{@code to}
+     * روزِ کامل (شاملِ هر دو سر) در منطقه‌ی زمانیِ خودِ مدرسه‌اند.
+     *
+     * @throws com.example.roshdeandishe.finance.shared.FinanceException با FinanceError.InvalidAuditFilter اگر
+     * from > to یا page < 0 یا size خارج از 1..100 باشد
+     */
+    AuditPage listAuditTrail(Long schoolId, AuditQuery query);
+
+    record AuditQuery(Long invoiceId, Long studentId, String action, java.time.LocalDate from,
+                      java.time.LocalDate to, int page, int size) {
+    }
+
+    /** نام‌ها (actorName/studentName) برای شناسه‌ی ناشناخته تهی‌اند؛ details همان JSON ذخیره‌شده (تهی اگر نبود/نامعتبر). */
+    record AuditEntry(Long id, Instant occurredAt, String action, Long actorUserId, String actorName,
+                      Long studentId, String studentName, Long invoiceId, Long expenseId, BigDecimal amount,
+                      java.util.Map<String, Object> details) {
+    }
+
+    record AuditPage(int page, int size, long totalItems, List<AuditEntry> items) {
     }
 
     record PaymentInfo(Long id, Long invoiceId, BigDecimal amount, PaymentMethod method, String note,

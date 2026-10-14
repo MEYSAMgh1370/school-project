@@ -67,6 +67,15 @@ class FinancePageRenderTest {
     }
 
     @Test
+    void theInvoicePanelLinksToThatInvoicesAuditTrail() {
+        String html = render();
+
+        assertThat(html).contains("data-invoice-audit-link")
+                .contains(":href=\"'/finance-audit?invoiceId=' + encodeURIComponent(invoice.id)\"")
+                .contains(">سابقه‌ی این فاکتور</a>");
+    }
+
+    @Test
     void theInvoicePanelShowsTheSummaryTheDiscountFormAndTheInstallmentSections() {
         String html = render();
 

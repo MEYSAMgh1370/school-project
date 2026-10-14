@@ -69,6 +69,11 @@ public class FinanceProblemResolver {
                     "حداکثر تخفیف قابل ثبت برای فاکتور " + e.invoiceId() + " برابر " + e.maxDiscount()
                             + " است؛ مبلغ پرداخت‌شده را نمی‌شود تخفیف داد."
             );
+            case FinanceError.InvalidAuditFilter e -> ProblemDetailFactory.problem(
+                    HttpStatus.BAD_REQUEST, "invalid-audit-filter",
+                    "فیلتر گزارش تغییرات نامعتبر است",
+                    e.reason()
+            );
             case FinanceError.InvalidSetting e -> ProblemDetailFactory.problem(
                     HttpStatus.BAD_REQUEST, "invalid-setting",
                     "مقدار تنظیم نامعتبر است",

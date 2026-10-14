@@ -102,4 +102,8 @@ public sealed interface FinanceError {
     /** فایل خالی، بزرگ‌تر از سقف، یا بدون نام - سقف دامنه‌ای، نه servlet. */
     record InvalidAttachment(String reason) implements FinanceError {
     }
+
+    /** فیلترِ خواندنِ audit نامعتبر است (from > to، تاریخِ بد، page/size خارج از بازه). */
+    record InvalidAuditFilter(String reason) implements FinanceError {
+    }
 }

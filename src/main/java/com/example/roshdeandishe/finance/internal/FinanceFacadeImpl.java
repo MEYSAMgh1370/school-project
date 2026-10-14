@@ -69,6 +69,7 @@ class FinanceFacadeImpl implements FinanceFacade {
     private final PaymentRepository paymentRepository;
     private final InvoiceDiscountRepository discountRepository;
     private final InstallmentRepository installmentRepository;
+    private final FinanceAuditRepository financeAuditRepository;
     private final ApplicationEventPublisher eventPublisher;
     private final IamFacade iamFacade;
     private final AcademicFacade academicFacade;
@@ -82,6 +83,7 @@ class FinanceFacadeImpl implements FinanceFacade {
             PaymentRepository paymentRepository,
             InvoiceDiscountRepository discountRepository,
             InstallmentRepository installmentRepository,
+            FinanceAuditRepository financeAuditRepository,
             ApplicationEventPublisher eventPublisher,
             IamFacade iamFacade,
             AcademicFacade academicFacade,
@@ -95,6 +97,7 @@ class FinanceFacadeImpl implements FinanceFacade {
         this.paymentRepository = paymentRepository;
         this.discountRepository = discountRepository;
         this.installmentRepository = installmentRepository;
+        this.financeAuditRepository = financeAuditRepository;
         this.eventPublisher = eventPublisher;
         this.iamFacade = iamFacade;
         this.academicFacade = academicFacade;
@@ -356,7 +359,13 @@ class FinanceFacadeImpl implements FinanceFacade {
                                         .min(Comparator.naturalOrder()).orElseThrow())));
     }
 
-    @Override
+    /**
+     * جاروی تخفیف‌های مشروطِ مهلت‌گذشته (کارِ ساعتیِ ExpiredDiscountSweeper): هر فاکتور در تراکنشِ خودش و زیر
+     * قفل؛ شکستِ یک فاکتور بقیه را متوقف نمی‌کند. Idempotent. عمداً در {@link FinanceFacade} نیست (کارِ نگهداریِ
+     * داخلیِ همین ماژول است، نه API برای ماژول‌های دیگر)؛ public است تا proxyِ CGLIB آن را به targetِ اصلی بسپارد.
+     *
+     * @return تعداد تخفیف‌های LAPSEDشده
+     */
     public int sweepExpiredDiscounts() {
         int lapsed = 0;
         for (Long invoiceId : discountRepository.findInvoiceIdsWithCandidateExpiredDiscounts(DiscountStatus.PENDING)) {
@@ -1012,6 +1021,97 @@ class FinanceFacadeImpl implements FinanceFacade {
      * StudentEnrolledEventListener (بدون کاربر احراز هویت‌شده) فراخوانی شود.
      * در حالت دوم actor را null می‌گذاریم به‌جای شکست دادن کل عملیات.
      */
+    private static final com.fasterxml.jackson.databind.ObjectMapper AUDIT_JSON =
+            new com.fasterxml.jackson.databind.ObjectMapper()
+                    .enable(com.fasterxml.jackson.databind.DeserializationFeature.USE_BIG_DECIMAL_FOR_FLOATS);
+    private static final Instant AUDIT_MIN = Instant.parse("1970-01-01T00:00:00Z");
+    private static final Instant AUDIT_MAX = Instant.parse("9999-01-01T00:00:00Z");
+
+    @Override
+    @Transactional(readOnly = true)
+    public AuditPage listAuditTrail(Long schoolId, AuditQuery query) {
+        if (query.page() < 0) {
+            throw new FinanceException(new FinanceError.InvalidAuditFilter("شماره‌ی صفحه نباید منفی باشد."));
+        }
+        if (query.size() < 1 || query.size() > 100) {
+            throw new FinanceException(new FinanceError.InvalidAuditFilter("اندازه‌ی صفحه باید بین ۱ تا ۱۰۰ باشد."));
+        }
+        if (query.from() != null && query.to() != null && query.from().isAfter(query.to())) {
+            throw new FinanceException(new FinanceError.InvalidAuditFilter("تاریخِ شروع نباید بعد از تاریخِ پایان باشد."));
+        }
+        ZoneId zone = zoneOf(schoolId);
+        Instant from = query.from() == null ? AUDIT_MIN : query.from().atStartOfDay(zone).toInstant();
+        Instant toExclusive = query.to() == null ? AUDIT_MAX : query.to().plusDays(1).atStartOfDay(zone).toInstant();
+        String action = query.action() == null || query.action().isBlank() ? null : query.action().trim();
+
+        org.springframework.data.domain.Page<FinanceAuditEntity> page = financeAuditRepository.search(
+                schoolId, query.invoiceId(), query.studentId(), action, from, toExclusive,
+                org.springframework.data.domain.PageRequest.of(query.page(), query.size()));
+
+        Map<Long, String> userNames = new HashMap<>();
+        Map<Long, String> studentNames = new HashMap<>();
+        resolveAuditNames(schoolId, page.getContent(), userNames, studentNames);
+
+        List<AuditEntry> items = page.getContent().stream().map(row -> new AuditEntry(
+                row.getId(), row.getOccurredAt(), row.getAction(),
+                row.getActorUserId(), row.getActorUserId() == null ? null : userNames.get(row.getActorUserId()),
+                row.getStudentId(), row.getStudentId() == null ? null : studentNames.get(row.getStudentId()),
+                row.getInvoiceId(), row.getExpenseId(), row.getAmount(), parseAuditDetails(row.getDetails())
+        )).toList();
+        return new AuditPage(query.page(), query.size(), page.getTotalElements(), items);
+    }
+
+    /**
+     * نامِ کاربرها با یک خواندنِ عضویت‌های مدرسه و نامِ دانش‌آموزها با یک خواندنِ فهرستِ دانش‌آموزان؛ فقط کاربری که
+     * عضوِ این مدرسه نیست (مثلاً ادمینِ پلتفرم) با findUser جداگانه (فقط شناسه‌های یکتای همین صفحه) پر می‌شود.
+     */
+    private void resolveAuditNames(Long schoolId, List<FinanceAuditEntity> rows, Map<Long, String> userNames,
+                                   Map<Long, String> studentNames) {
+        Set<Long> actorIds = rows.stream().map(FinanceAuditEntity::getActorUserId)
+                .filter(java.util.Objects::nonNull).collect(Collectors.toSet());
+        Set<Long> studentIds = rows.stream().map(FinanceAuditEntity::getStudentId)
+                .filter(java.util.Objects::nonNull).collect(Collectors.toSet());
+        if (actorIds.isEmpty() && studentIds.isEmpty()) {
+            return;
+        }
+        Map<Long, String> memberNames = new HashMap<>();
+        for (IamFacade.MembershipInfo membership : iamFacade.findMembershipsBySchool(schoolId)) {
+            memberNames.putIfAbsent(membership.userId().value(), membership.fullName());
+        }
+        for (Long actorId : actorIds) {
+            userNames.put(actorId, nameOfUser(actorId, memberNames));
+        }
+        if (!studentIds.isEmpty()) {
+            for (AcademicFacade.StudentInfo student : academicFacade.listStudents(schoolId)) {
+                if (studentIds.contains(student.id().value())) {
+                    studentNames.put(student.id().value(), nameOfUser(student.userId(), memberNames));
+                }
+            }
+        }
+    }
+
+    private String nameOfUser(Long userId, Map<Long, String> memberNames) {
+        String name = memberNames.get(userId);
+        if (name != null) {
+            return name;
+        }
+        return iamFacade.findUser(new IamFacade.UserId(userId)).map(IamFacade.UserProfile::fullName).orElse(null);
+    }
+
+    private static Map<String, Object> parseAuditDetails(String text) {
+        if (text == null || text.isBlank()) {
+            return null;
+        }
+        try {
+            com.fasterxml.jackson.databind.JsonNode node = AUDIT_JSON.readTree(text);
+            return node != null && node.isObject()
+                    ? AUDIT_JSON.convertValue(node, new com.fasterxml.jackson.core.type.TypeReference<Map<String, Object>>() { })
+                    : null;
+        } catch (com.fasterxml.jackson.core.JsonProcessingException | IllegalArgumentException e) {
+            return null;
+        }
+    }
+
     private Long currentActorOrNull() {
         try {
             return iamFacade.currentUserId().value();
