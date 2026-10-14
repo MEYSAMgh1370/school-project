@@ -203,28 +203,20 @@
 
                                 <h4 class="title is-6">پرداخت‌ها</h4>
                                 <p x-show="paymentsLoading">در حال بارگذاری...</p>
-                                <div class="table-container" x-show="!paymentsLoading && payments.length > 0">
-                                <table class="table is-fullwidth">
-                                    <thead>
-                                    <tr>
-                                        <th scope="col">مبلغ</th>
-                                        <th scope="col">روش</th>
-                                        <th scope="col">توضیح</th>
-                                        <th scope="col">تاریخ</th>
-                                    </tr>
-                                    </thead>
-                                    <tbody>
+                                <ul aria-label="پرداخت‌ها" x-show="!paymentsLoading && payments.length > 0">
                                     <template x-for="payment in payments" :key="payment.id">
-                                        <tr>
-                                            <td x-text="Money.formatAmount(payment.amount)"></td>
-                                            <td x-text="methodLabel(payment.method)"></td>
-                                            <td x-text="payment.note || '—'"></td>
-                                            <td dir="ltr" x-text="Calendar.formatDate(payment.paidAt)"></td>
-                                        </tr>
+                                        <li class="py-3" data-payment-row>
+                                            <div class="is-flex is-justify-content-space-between is-align-items-center is-flex-wrap-wrap">
+                                                <strong x-text="Money.formatAmount(payment.amount)"></strong>
+                                                <span class="tag is-light" x-text="methodLabel(payment.method)"></span>
+                                            </div>
+                                            <div class="is-flex is-justify-content-space-between is-flex-wrap-wrap mt-1">
+                                                <span x-text="payment.note || '—'"></span>
+                                                <span dir="ltr" x-text="Calendar.formatDate(payment.paidAt)"></span>
+                                            </div>
+                                        </li>
                                     </template>
-                                    </tbody>
-                                </table>
-                                </div>
+                                </ul>
                                 <p x-show="!paymentsLoading && payments.length === 0">
                                     هنوز پرداختی برای این فاکتور ثبت نشده است.
                                 </p>
@@ -311,34 +303,24 @@
                                 <p class="help" x-show="remaining(invoice) <= 0">این فاکتور تسویه شده است؛ تخفیف تازه ممکن نیست.</p>
 
                                 <p class="mt-3" x-show="discountsLoading">در حال بارگذاری...</p>
-                                <div class="table-container" x-show="!discountsLoading && discounts.length > 0">
-                                <table class="table is-fullwidth">
-                                    <thead>
-                                    <tr>
-                                        <th scope="col">مبلغ</th>
-                                        <th scope="col">دلیل</th>
-                                        <th scope="col">تاریخ</th>
-                                        <th scope="col">وضعیت</th>
-                                    </tr>
-                                    </thead>
-                                    <tbody>
+                                <ul aria-label="تخفیف‌ها" x-show="!discountsLoading && discounts.length > 0">
                                     <template x-for="discount in discounts" :key="discount.id">
-                                        <tr :class="{ 'has-text-grey': discount.status === 'LAPSED' }">
-                                            <td>
-                                                <s x-show="discount.status === 'LAPSED'" x-text="Money.formatAmount(discount.amount)"></s>
-                                                <span x-show="discount.status !== 'LAPSED'" x-text="Money.formatAmount(discount.amount)"></span>
-                                            </td>
-                                            <td x-text="discount.reason || '—'"></td>
-                                            <td dir="ltr" x-text="Calendar.formatDate(discount.createdAt)"></td>
-                                            <td>
+                                        <li class="py-3" data-discount-row :class="{ 'has-text-grey': discount.status === 'LAPSED' }">
+                                            <div class="is-flex is-justify-content-space-between is-align-items-center is-flex-wrap-wrap">
+                                                <strong>
+                                                    <s x-show="discount.status === 'LAPSED'" x-text="Money.formatAmount(discount.amount)"></s>
+                                                    <span x-show="discount.status !== 'LAPSED'" x-text="Money.formatAmount(discount.amount)"></span>
+                                                </strong>
                                                 <span class="tag" :class="discountStatusClass(discount)"
                                                       x-text="discountStatusLabel(discount)"></span>
-                                            </td>
-                                        </tr>
+                                            </div>
+                                            <div class="is-flex is-justify-content-space-between is-flex-wrap-wrap mt-1">
+                                                <span x-text="discount.reason || '—'"></span>
+                                                <span dir="ltr" x-text="Calendar.formatDate(discount.createdAt)"></span>
+                                            </div>
+                                        </li>
                                     </template>
-                                    </tbody>
-                                </table>
-                                </div>
+                                </ul>
                                 <p class="help" x-show="!discountsLoading && discounts.some(d => d.status === 'LAPSED')">
                                     تخفیف‌های «ساقط‌شده» در مبلغ قابل پرداخت حساب نمی‌شوند.
                                 </p>

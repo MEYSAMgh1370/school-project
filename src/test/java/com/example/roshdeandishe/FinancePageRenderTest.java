@@ -90,7 +90,8 @@ class FinancePageRenderTest {
         assertThat(html).contains("تخفیف مشروط").contains("x-model=\"discountForm.conditional\"")
                 .contains("'discountDeadline-' + invoice.id").contains("در صورت تسویه‌ی کامل تا تاریخ")
                 .contains("اگر تا پایان این روز کل مبلغ قابل پرداخت تسویه نشود، تخفیف خودکار لغو می‌شود.")
-                .contains("!discountDeadlineValid()").contains("<th scope=\"col\">وضعیت</th>")
+                .contains("!discountDeadlineValid()").contains("data-discount-row").contains("data-payment-row")
+                .doesNotContain("<table").doesNotContain("table-container")
                 .contains("discountStatusLabel(discount)").contains("data-pending-discount")
                 .contains("در صورت عدم تسویه‌ی کامل ساقط می‌شود").contains("در مبلغ قابل پرداخت حساب نمی‌شوند");
         // اقساط: تعریف / تغییر تعداد / ویرایش با شاخص جمع
