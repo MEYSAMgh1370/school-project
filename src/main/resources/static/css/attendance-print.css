@@ -1,0 +1,126 @@
+/* Printable student attendance sheet (/attendance/report/student/{id}). Self-contained on purpose: the few print
+   rules are copied here rather than shared with question-box.css, so attendance does not depend on that module.
+   Logical properties only (RTL app); spacing from the shared tokens; the only physical units are the A4 page
+   margins and the sheet width. */
+.app-sheet-page {
+  padding-block: var(--space-5);
+}
+
+.app-sheet-toolbar,
+.app-sheet-notice,
+.app-sheet {
+  max-inline-size: 48rem;
+  margin-inline: auto;
+}
+
+.app-sheet-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  margin-block-end: var(--space-4);
+}
+
+.app-sheet-toolbar .buttons {
+  margin-block-end: 0;
+}
+
+.app-sheet-section {
+  margin-block-start: var(--space-5);
+}
+
+.app-sheet-percent {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.app-sheet-percent .progress {
+  flex: 1 1 auto;
+  margin-block-end: 0;
+}
+
+.app-sheet-percent strong {
+  flex: 0 0 auto;
+}
+
+.app-sheet-foot {
+  margin-block-start: var(--space-5);
+  padding-block-start: var(--space-3);
+  border-block-start: thin solid var(--bulma-border);
+}
+
+@media print {
+  @page {
+    size: A4;
+    margin: 12mm;
+  }
+
+  html,
+  body {
+    background: #fff;
+    color: #000;
+  }
+
+  .no-print,
+  .app-skip-link,
+  .navbar,
+  .sidebar {
+    display: none !important;
+  }
+
+  .app-sheet-page {
+    padding: 0;
+  }
+
+  .app-sheet {
+    max-inline-size: none;
+    margin: 0;
+    padding: 0;
+    border: 0;
+    border-radius: 0;
+    box-shadow: none;
+    background: #fff;
+    color: #000;
+  }
+
+  .app-sheet .title,
+  .app-sheet .subtitle,
+  .app-sheet .table,
+  .app-sheet .table th,
+  .app-sheet .table td,
+  .app-sheet .tag {
+    color: #000;
+    background: transparent;
+  }
+
+  .app-sheet .table-container {
+    overflow: visible;
+  }
+
+  .app-sheet .tag {
+    border: thin solid #000;
+  }
+
+  /* the bar is a progress element, but the number beside it is text too, so a printer that drops
+     backgrounds still shows the figure */
+  .app-sheet .progress {
+    print-color-adjust: exact;
+    -webkit-print-color-adjust: exact;
+  }
+
+  .app-sheet thead {
+    display: table-header-group;
+  }
+
+  .app-sheet tr,
+  .app-sheet-percent {
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+
+  .app-sheet-foot {
+    border-color: #000;
+  }
+}

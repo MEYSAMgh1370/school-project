@@ -7,13 +7,13 @@
      ورودی جلالی با ارقام فارسی‌اند و ISO به سرور می‌رود (date-input.js). دو بخشِ اول خواندنی‌اند؛ بخشِ سومِ
      «عذرخواهی‌ها» تأیید/ردِ عذر را می‌نویسد، پس ناحیه‌ی پیامِ موفقیتِ مشترک (notice) فعال است. --%>
 @template.layout.main(title = "گزارش حضور و غیاب",
-        scripts = java.util.List.of("/js/navbar.js", "/js/jalali.js", "/js/calendar.js", "/js/date-input.js", "/js/school-api.js", "/js/attendance-report.js"),
+        scripts = java.util.List.of("/js/navbar.js", "/js/jalali.js", "/js/calendar.js", "/js/date-input.js", "/js/school-api.js", "/js/attendance-report-logic.js", "/js/attendance-report.js"),
         styles = java.util.List.of("/css/attendance.css"), content = @`
 @template.layout.navbar(navbar = navbar)
 
 <section class="section" id="main-content" role="main" tabindex="-1" x-data="attendanceReportPage()">
     <div class="container">
-        <div class="level is-mobile">
+        <div class="level is-mobile app-att-header">
             <div class="level-left">
                 <div>
                     @template.layout.page-header(
@@ -23,7 +23,7 @@
             </div>
             <div class="level-right" x-cloak x-show="schoolId">
                 <button class="button is-link" type="button" id="attendanceRun"
-                        :class="{ 'is-loading': dayLoading || rangeLoading || excusesLoading }" @click="run">نمایش گزارش</button>
+                        :class="{ 'is-loading': dayLoading || rangeLoading || classReportLoading || teacherLoading || excusesLoading }" @click="run">نمایش گزارش</button>
             </div>
         </div>
 
@@ -32,7 +32,7 @@
             content = @`
 
                 <div x-show="!blocked">
-                    <div class="tabs">
+                    <div class="tabs app-att-tabs">
                         <ul role="tablist">
                             <li :class="{ 'is-active': tab === 'day' }" role="presentation">
                                 <a href="#" role="tab" id="attTabDay" :aria-selected="tab === 'day'"
@@ -41,6 +41,14 @@
                             <li :class="{ 'is-active': tab === 'range' }" role="presentation">
                                 <a href="#" role="tab" id="attTabRange" :aria-selected="tab === 'range'"
                                    @click.prevent="showTab('range')">گزارش بازه‌ای</a>
+                            </li>
+                            <li :class="{ 'is-active': tab === 'classes' }" role="presentation">
+                                <a href="#" role="tab" id="attTabClasses" :aria-selected="tab === 'classes'"
+                                   @click.prevent="showTab('classes')">کلاس‌ها</a>
+                            </li>
+                            <li :class="{ 'is-active': tab === 'teachers' }" role="presentation">
+                                <a href="#" role="tab" id="attTabTeachers" :aria-selected="tab === 'teachers'"
+                                   @click.prevent="showTab('teachers')">معلم‌ها</a>
                             </li>
                             <li :class="{ 'is-active': tab === 'excuses' }" role="presentation">
                                 <a href="#" role="tab" id="attTabExcuses" :aria-selected="tab === 'excuses'"
@@ -142,24 +150,24 @@
                     </div>
 
                     <%-- ------------------------------------------------ گزارش بازه‌ای --%>
-                    <div x-show="tab === 'range'" id="attPanelRange">
-                        <div class="box">
+                    <%-- بازه (و فیلتر کلاس) بین «گزارش بازه‌ای»، «کلاس‌ها» و «معلم‌ها» مشترک است؛ نام فقط برای دانش‌آموزان --%>
+                    <div class="box" id="attRangeFilters" x-show="rangeTab()">
                             <div class="field is-grouped is-grouped-multiline">
                                 <div class="control">
                                     <label class="label" for="attFrom">از تاریخ</label>
                                     <input class="input app-input-w-8" id="attFrom" type="text" dir="ltr" inputmode="numeric"
                                            autocomplete="off" :placeholder="exampleDate()" x-model="fromText"
-                                           :class="{ 'is-danger': fromError }" @keydown.enter.prevent="loadRange()">
+                                           :class="{ 'is-danger': fromError }" @keydown.enter.prevent="run()">
                                     <p class="help is-danger" role="alert" id="attFromError" x-show="fromError"><span class="app-notice">@template.layout.icon(name = "alert", size = 16)<span x-text="fromError"></span></span></p>
                                 </div>
                                 <div class="control">
                                     <label class="label" for="attTo">تا تاریخ</label>
                                     <input class="input app-input-w-8" id="attTo" type="text" dir="ltr" inputmode="numeric"
                                            autocomplete="off" :placeholder="exampleDate()" x-model="toText"
-                                           :class="{ 'is-danger': toError }" @keydown.enter.prevent="loadRange()">
+                                           :class="{ 'is-danger': toError }" @keydown.enter.prevent="run()">
                                     <p class="help is-danger" role="alert" id="attToError" x-show="toError"><span class="app-notice">@template.layout.icon(name = "alert", size = 16)<span x-text="toError"></span></span></p>
                                 </div>
-                                <div class="control">
+                                <div class="control" x-show="tab !== 'teachers'">
                                     <label class="label" for="attClassFilter">کلاس</label>
                                     <div class="select">
                                         <select id="attClassFilter" x-model="classFilter">
@@ -170,14 +178,17 @@
                                         </select>
                                     </div>
                                 </div>
-                                <div class="control is-expanded">
+                                <div class="control is-expanded" x-show="tab === 'range'">
                                     <label class="label" for="attName">نام دانش‌آموز</label>
                                     <input class="input" id="attName" type="text" maxlength="100" autocomplete="off"
-                                           x-model="name" @keydown.enter.prevent="loadRange()">
+                                           x-model="name" @keydown.enter.prevent="run()">
                                 </div>
                             </div>
-                            <p class="help">بخشی از نام کافی است. بازه حداکثر ۳۶۶ روز است.</p>
-                        </div>
+                            <p class="help">بازه حداکثر ۳۶۶ روز است. <span x-show="tab === 'range'">بخشی از نام کافی است.</span></p>
+                    </div>
+
+                    <%-- ------------------------------------------------ گزارش بازه‌ای --%>
+                    <div x-show="tab === 'range'" id="attPanelRange">
 
                         <p x-show="rangeLoading && !rangeLoaded">در حال بارگذاری...</p>
 
@@ -197,6 +208,7 @@
                                     <thead>
                                     <tr>
                                         <th scope="col">دانش‌آموز</th>
+                                        <th scope="col">درصد حضور</th>
                                         <th scope="col">کلاس</th>
                                         <th scope="col">روزهای غیبت</th>
                                         <th scope="col">روزهای تأخیر</th>
@@ -206,7 +218,17 @@
                                     <tbody>
                                     <template x-for="row in pagedRows()" :key="row.studentId + '-' + row.classId">
                                         <tr>
-                                            <td x-text="row.studentName"></td>
+                                            <td>
+                                                <span x-text="row.studentName"></span><br>
+                                                <a class="is-size-7" :href="sheetHref(row)" target="_blank" rel="noopener"
+                                                   :aria-label="'برگه‌ی حضور ' + row.studentName">برگه‌ی حضور</a>
+                                            </td>
+                                            <td class="app-att-pct">
+                                                <strong x-text="pct(row.presentPercent)"></strong>
+                                                <progress class="progress is-primary is-small mb-0" max="100" x-show="hasPct(row.presentPercent)"
+                                                          :value="bar(row.presentPercent)"
+                                                          :aria-label="'درصد حضور ' + row.studentName"></progress>
+                                            </td>
                                             <td x-text="row.className"></td>
                                             <td x-text="Calendar.digits(row.absentDays)"></td>
                                             <td x-text="Calendar.digits(row.lateDays)"></td>
@@ -227,6 +249,109 @@
                                     </li>
                                 </ul>
                             </nav>
+                        </div>
+                    </div>
+
+                    <%-- ------------------------------------------------ کلاس‌ها
+                         هر ردیف یک کلاسِ دارای حضور و غیابِ ثبت‌شده؛ بدونِ جدولِ عریض (موبایل). «دانش‌آموزان» همان کلاس را
+                         در بخشِ بازه‌ای فیلتر می‌کند. --%>
+                    <div x-show="tab === 'classes'" id="attPanelClasses">
+                        <p x-show="classReportLoading && !classReportLoaded">در حال بارگذاری...</p>
+
+                        @template.layout.empty-state(
+                            show = "classReportLoaded && !classReportLoading && classRows.length === 0",
+                            art = "list",
+                            message = @`در این بازه حضور و غیابی ثبت نشده است. بازه را بزرگ‌تر کنید یا فیلتر کلاس را بردارید؛ حضور و غیاب را معلم‌ها از صفحه‌ی <a href="/attendance">حضور و غیاب</a> ثبت می‌کنند.`)
+
+                        <div x-show="classRows.length > 0" id="attClassList">
+                            <p class="is-size-7 has-text-grey mb-2">
+                                از <span x-text="classReportLabel()"></span> ·
+                                <span x-text="Calendar.digits(classRows.length)"></span> کلاس
+                            </p>
+                            <p class="is-size-7 has-text-grey mb-3">کلاس‌هایی که در این بازه حضور و غیابشان ثبت نشده در فهرست نیستند.</p>
+                            <ul class="app-att-list">
+                                <template x-for="item in classRows" :key="item.classId">
+                                    <li class="app-att-report-row">
+                                        <div class="app-att-report-head">
+                                            <strong x-text="item.className"></strong>
+                                            <strong x-text="pct(item.presentPercent)"></strong>
+                                        </div>
+                                        <progress class="progress is-primary is-small mb-0" max="100" x-show="hasPct(item.presentPercent)"
+                                                  :value="bar(item.presentPercent)"
+                                                  :aria-label="'درصد حضور کلاس ' + item.className"></progress>
+                                        <p class="is-size-7 has-text-grey mb-0">
+                                            <span x-text="Calendar.digits(item.daysTaken)"></span> روز ثبت شده
+                                            · غایب: <span x-text="Calendar.digits(item.absentDays)"></span>
+                                            · تأخیر: <span x-text="Calendar.digits(item.lateDays)"></span>
+                                            · حاضر: <span x-text="Calendar.digits(item.presentDays)"></span>
+                                        </p>
+                                        <p class="mb-0">
+                                            <a href="#" class="is-size-7" :aria-label="'دانش‌آموزان کلاس ' + item.className"
+                                               @click.prevent="showClassStudents(item)">دانش‌آموزان</a>
+                                        </p>
+                                    </li>
+                                </template>
+                            </ul>
+                        </div>
+                    </div>
+
+                    <%-- ------------------------------------------------ معلم‌ها
+                         کلاسی که چند معلم دارد زیرِ هر کدام می‌آید، پس جمعِ معلم‌ها با جمعِ مدرسه برابر نیست (یادداشتِ بالای فهرست). --%>
+                    <div x-show="tab === 'teachers'" id="attPanelTeachers">
+                        <p x-show="teacherLoading && !teacherLoaded">در حال بارگذاری...</p>
+
+                        @template.layout.empty-state(
+                            show = "teacherLoaded && !teacherLoading && teacherRows.length === 0",
+                            art = "list",
+                            message = @`در این بازه حضور و غیابی ثبت نشده است. بازه را بزرگ‌تر کنید؛ حضور و غیاب را معلم‌ها از صفحه‌ی <a href="/attendance">حضور و غیاب</a> ثبت می‌کنند.`)
+
+                        <div x-show="teacherRows.length > 0" id="attTeacherList">
+                            <p class="is-size-7 has-text-grey mb-2">
+                                از <span x-text="teacherRangeLabel()"></span> ·
+                                <span x-text="Calendar.digits(teacherRows.length)"></span> معلم
+                            </p>
+                            <p class="is-size-7 has-text-grey mb-3" id="attTeacherNote">اگر یک کلاس چند معلم داشته باشد، در فهرست هر کدام جداگانه می‌آید؛ جمع ردیف‌ها با جمع مدرسه برابر نیست.</p>
+                            <ul class="app-att-list">
+                                <template x-for="item in teacherRows" :key="item.teacherUserId">
+                                    <li class="app-att-report-row">
+                                        <div class="app-att-report-head">
+                                            <strong x-text="teacherLabel(item)"></strong>
+                                            <strong x-text="pct(item.presentPercent)"></strong>
+                                        </div>
+                                        <progress class="progress is-primary is-small mb-0" max="100" x-show="hasPct(item.presentPercent)"
+                                                  :value="bar(item.presentPercent)"
+                                                  :aria-label="'درصد حضور ' + teacherLabel(item)"></progress>
+                                        <p class="is-size-7 has-text-grey mb-0">
+                                            <span x-text="Calendar.digits(item.classCount)"></span> کلاس
+                                            · <span x-text="Calendar.digits(item.daysTaken)"></span> روز ثبت شده
+                                            · غایب: <span x-text="Calendar.digits(item.absentDays)"></span>
+                                            · تأخیر: <span x-text="Calendar.digits(item.lateDays)"></span>
+                                        </p>
+                                        <p class="mb-0">
+                                            <button class="button is-small is-light" type="button"
+                                                    :aria-expanded="isExpanded(item) ? 'true' : 'false'"
+                                                    :aria-controls="'attTeacherClasses' + item.teacherUserId"
+                                                    @click="toggleTeacher(item)">کلاس‌ها</button>
+                                        </p>
+                                        <ul class="app-att-sublist" :id="'attTeacherClasses' + item.teacherUserId" x-show="isExpanded(item)">
+                                            <template x-for="cls in item.classes" :key="cls.classId">
+                                                <li class="app-att-subrow">
+                                                    <strong x-text="cls.className"></strong>
+                                                    <strong x-text="pct(cls.presentPercent)"></strong>
+                                                    <progress class="progress is-primary is-small mb-0" max="100" x-show="hasPct(cls.presentPercent)"
+                                                              :value="bar(cls.presentPercent)"
+                                                              :aria-label="'درصد حضور کلاس ' + cls.className"></progress>
+                                                    <span class="is-size-7 has-text-grey">
+                                                        <span x-text="Calendar.digits(cls.daysTaken)"></span> روز
+                                                        · غایب: <span x-text="Calendar.digits(cls.absentDays)"></span>
+                                                        · تأخیر: <span x-text="Calendar.digits(cls.lateDays)"></span>
+                                                    </span>
+                                                </li>
+                                            </template>
+                                        </ul>
+                                    </li>
+                                </template>
+                            </ul>
                         </div>
                     </div>
 
