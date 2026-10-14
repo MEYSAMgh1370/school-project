@@ -80,6 +80,10 @@ class MyInvoicesPageFlowIntegrationTest {
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("hasPendingDiscount(invoice)")))
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("تخفیف مشروط")))
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("invoice.pendingDiscountDeadline")))
+                // کارتِ هر فاکتور (بدون جدولِ پهن و اسکرولِ افقی)
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("data-invoice-card")))
+                .andExpect(content().string(org.hamcrest.Matchers.not(org.hamcrest.Matchers.containsString("<table"))))
+                .andExpect(content().string(org.hamcrest.Matchers.not(org.hamcrest.Matchers.containsString("table-container"))))
                 // لینک‌های ناوبری روی همه‌ی صفحه‌های مدیریتی هستند
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("href=\"/dashboard\"")));
     }

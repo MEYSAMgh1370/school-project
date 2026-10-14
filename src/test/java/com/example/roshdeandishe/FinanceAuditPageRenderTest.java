@@ -43,16 +43,17 @@ class FinanceAuditPageRenderTest {
     }
 
     @Test
-    void theTableHasTheSettledColumnsInsideATableContainerAndAnExpandableDetailRow() {
+    void eachEntryIsACardWithTheDetailsToggleFirstAndAnExpandableDetailBlock() {
         String html = render();
 
-        assertThat(html).contains("class=\"table-container\"");
-        assertThat(html).contains(">زمان</th>").contains(">چه کسی</th>").contains(">تغییر</th>")
-                .contains(">دانش‌آموز</th>").contains(">فاکتور</th>").contains(">مبلغ</th>").contains(">خلاصه</th>")
-                .contains(">جزئیات</th>");
+        assertThat(html).contains("data-audit-card").contains("class=\"box\"");
+        assertThat(html).doesNotContain("<table").doesNotContain("table-container");
+        // دکمه‌ی «جزئیات» اولین عنصرِ کارت (سمتِ شروعِ RTL) است، پیش از زمان و مجری
+        assertThat(html.indexOf("@click=\"toggle(item)\"")).isLessThan(html.indexOf("actor(item)"));
+        assertThat(html).contains("دانش‌آموز:").contains("item.amount != null");
         assertThat(html).contains("data-audit-row").contains("data-audit-detail")
                 .contains(":aria-expanded=\"isExpanded(item) ? 'true' : 'false'\"").contains("@click=\"toggle(item)\"");
-        // اقساط: دو جدولِ «قبل» و «بعد»؛ بقیه کلید/مقدار
+        // اقساط: «قبل» و «بعد» زیر هم (سطرهای چیده‌شده)؛ بقیه کلید/مقدار
         assertThat(html).contains("'قبل'").contains("'بعد'").contains("dueLabel(row)")
                 .contains("x-for=\"entry in detailEntries(item)\"");
     }

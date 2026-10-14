@@ -81,91 +81,68 @@
                         <p role="status" x-show="loading && items.length === 0">در حال بارگذاری...</p>
 
                         <div x-show="items.length > 0" id="financeAuditResults">
-                            <div class="table-container">
-                                <table class="table is-fullwidth">
-                                    <caption class="is-sr-only">سابقه‌ی تغییرات مالی، جدیدترین اول</caption>
-                                    <thead>
-                                    <tr>
-                                        <th scope="col">زمان</th>
-                                        <th scope="col">چه کسی</th>
-                                        <th scope="col">تغییر</th>
-                                        <th scope="col">دانش‌آموز</th>
-                                        <th scope="col">فاکتور</th>
-                                        <th scope="col">مبلغ</th>
-                                        <th scope="col">خلاصه</th>
-                                        <th scope="col">جزئیات</th>
-                                    </tr>
-                                    </thead>
-                                    <template x-for="item in items" :key="item.id">
-                                        <tbody>
-                                        <tr data-audit-row>
-                                            <td>
-                                                <span dir="ltr"><span x-text="whenDate(item)"></span> <span x-text="whenTime(item)"></span></span>
-                                            </td>
-                                            <td x-text="actor(item)"></td>
-                                            <td><span class="tag is-light" x-text="actionLabel(item)"></span></td>
-                                            <td x-text="item.studentName || '—'"></td>
-                                            <td x-text="item.invoiceId == null ? '—' : fa(item.invoiceId)"></td>
-                                            <td x-text="amountText(item)"></td>
-                                            <td x-text="summary(item) || '—'"></td>
-                                            <td>
-                                                <button class="button is-light" type="button" x-show="hasDetails(item)"
-                                                        :aria-expanded="isExpanded(item) ? 'true' : 'false'"
-                                                        :aria-controls="'auditDetail-' + item.id"
-                                                        :class="{ 'is-link': isExpanded(item) }"
-                                                        @click="toggle(item)">جزئیات</button>
-                                            </td>
-                                        </tr>
-                                        <tr x-show="isExpanded(item)" x-cloak :id="'auditDetail-' + item.id" data-audit-detail>
-                                            <td colspan="8">
-                                                <template x-if="tables(item)">
-                                                    <div class="columns">
-                                                        <template x-for="side in [{ label: 'قبل', rows: tables(item).before }, { label: 'بعد', rows: tables(item).after }]" :key="side.label">
-                                                            <div class="column">
-                                                                <p class="label" x-text="side.label"></p>
-                                                                <p class="has-text-grey" x-show="side.rows.length === 0">قسطی ثبت نشده بود.</p>
-                                                                <div class="table-container" x-show="side.rows.length > 0">
-                                                                    <table class="table is-narrow is-fullwidth">
-                                                                        <thead>
-                                                                        <tr>
-                                                                            <th scope="col">مبلغ</th>
-                                                                            <th scope="col">پرداخت‌شده</th>
-                                                                            <th scope="col">سررسید</th>
-                                                                        </tr>
-                                                                        </thead>
-                                                                        <tbody>
-                                                                        <template x-for="(row, index) in side.rows" :key="index">
-                                                                            <tr>
-                                                                                <td x-text="Money.formatAmount(row.amount)"></td>
-                                                                                <td x-text="Money.formatAmount(row.amountPaid)"></td>
-                                                                                <td><span :dir="row.dueDate ? 'ltr' : null" x-text="dueLabel(row)"></span></td>
-                                                                            </tr>
-                                                                        </template>
-                                                                        </tbody>
-                                                                    </table>
-                                                                </div>
-                                                            </div>
-                                                        </template>
+                            <%-- یک کارت برای هر تغییر (جدیدترین اول): بدون جدول و بدون اسکرولِ افقی --%>
+                            <h2 class="is-sr-only">سابقه‌ی تغییرات مالی، جدیدترین اول</h2>
+                            <template x-for="item in items" :key="item.id">
+                                <article class="box" data-audit-card data-audit-row>
+                                    <div class="is-flex is-justify-content-space-between is-align-items-center is-flex-wrap-wrap mb-2">
+                                        <button class="button is-light is-small" type="button" x-show="hasDetails(item)"
+                                                :aria-expanded="isExpanded(item) ? 'true' : 'false'"
+                                                :aria-controls="'auditDetail-' + item.id"
+                                                :class="{ 'is-link': isExpanded(item) }"
+                                                @click="toggle(item)">جزئیات</button>
+                                        <p>
+                                            <span dir="ltr"><span x-text="whenDate(item)"></span> <span x-text="whenTime(item)"></span></span>
+                                            <span class="has-text-grey">·</span>
+                                            <span x-text="actor(item)"></span>
+                                        </p>
+                                    </div>
+                                    <p>
+                                        <span class="tag is-light" x-text="actionLabel(item)"></span>
+                                        <span x-text="summary(item) || '—'"></span>
+                                    </p>
+                                    <p class="has-text-grey mt-2">
+                                        دانش‌آموز: <span x-text="item.studentName || '—'"></span>
+                                        · فاکتور <span x-text="item.invoiceId == null ? '—' : fa(item.invoiceId)"></span>
+                                    </p>
+                                    <p class="mt-1" x-show="item.amount != null">
+                                        <span class="has-text-grey">مبلغ:</span>
+                                        <span x-text="amountText(item)"></span>
+                                    </p>
+                                    <div class="mt-3" x-show="isExpanded(item)" x-cloak :id="'auditDetail-' + item.id" data-audit-detail>
+                                        <template x-if="tables(item)">
+                                            <div>
+                                                <template x-for="side in [{ label: 'قبل', rows: tables(item).before }, { label: 'بعد', rows: tables(item).after }]" :key="side.label">
+                                                    <div class="mb-3">
+                                                        <p class="label" x-text="side.label"></p>
+                                                        <p class="has-text-grey" x-show="side.rows.length === 0">قسطی ثبت نشده بود.</p>
+                                                        <%-- هر قسط یک سطرِ چیده‌شده (نه جدول) تا در ۳۲۰ پیکسل هم بریده نشود --%>
+                                                        <ul x-show="side.rows.length > 0">
+                                                            <template x-for="(row, index) in side.rows" :key="index">
+                                                                <li class="py-1">
+                                                                    <span class="has-text-grey">مبلغ</span> <span x-text="Money.formatAmount(row.amount)"></span>
+                                                                    · <span class="has-text-grey">پرداخت‌شده</span> <span x-text="Money.formatAmount(row.amountPaid)"></span>
+                                                                    · <span class="has-text-grey">سررسید</span> <span :dir="row.dueDate ? 'ltr' : null" x-text="dueLabel(row)"></span>
+                                                                </li>
+                                                            </template>
+                                                        </ul>
                                                     </div>
                                                 </template>
-                                                <template x-if="!tables(item)">
-                                                    <table class="table is-narrow">
-                                                        <tbody>
-                                                        <template x-for="entry in detailEntries(item)" :key="entry.label">
-                                                            <tr>
-                                                                <th scope="row" x-text="entry.label"></th>
-                                                                <td x-text="entry.value"></td>
-                                                            </tr>
-                                                        </template>
-                                                        </tbody>
-                                                    </table>
+                                            </div>
+                                        </template>
+                                        <template x-if="!tables(item)">
+                                            <dl>
+                                                <template x-for="entry in detailEntries(item)" :key="entry.label">
+                                                    <div class="py-1">
+                                                        <dt class="has-text-grey" x-text="entry.label"></dt>
+                                                        <dd x-text="entry.value"></dd>
+                                                    </div>
                                                 </template>
-                                            </td>
-                                        </tr>
-                                        </tbody>
-                                    </template>
-                                </table>
-                            </div>
+                                            </dl>
+                                        </template>
+                                    </div>
+                                </article>
+                            </template>
 
                             <p class="help" x-text="rangeText()"></p>
 
