@@ -356,68 +356,60 @@
 
                                 <template x-if="!installmentsLoading && installments.length > 0">
                                     <div>
-                                        <div class="table-container">
-                                        <table class="table is-fullwidth">
-                                            <thead>
-                                            <tr>
-                                                <th scope="col">ردیف</th>
-                                                <th scope="col">مبلغ</th>
-                                                <th scope="col">سررسید</th>
-                                                <th scope="col">پرداخت‌شده</th>
-                                                <th scope="col">وضعیت</th>
-                                            </tr>
-                                            </thead>
-                                            <tbody>
+                                        <ul aria-label="اقساط">
                                             <template x-for="item in installments" :key="item.id">
-                                                <tr>
-                                                    <td x-text="fa(item.seq)"></td>
-                                                    <td>
-                                                        <template x-if="editing && FinanceLogic.isEditable(item) && editRow(item)">
-                                                            <div>
-                                                                <label class="label is-sr-only" :for="'installmentAmount-' + item.id"
+                                                <li class="py-3" data-installment-row>
+                                                    <div class="is-flex is-justify-content-space-between is-align-items-center is-flex-wrap-wrap">
+                                                        <span>
+                                                            <strong>قسط <span x-text="fa(item.seq)"></span></strong>
+                                                            <span class="tag is-light" x-show="!(editing && FinanceLogic.isEditable(item)) && FinanceLogic.isUndated(item)">بدون سررسید</span>
+                                                            <span dir="ltr" x-show="!(editing && FinanceLogic.isEditable(item)) && !FinanceLogic.isUndated(item)"
+                                                                  x-text="FinanceLogic.isUndated(item) ? '' : Calendar.formatDate(item.dueDate)"></span>
+                                                        </span>
+                                                        <span class="tag" :class="statusClass(item.status)"
+                                                              x-text="statusLabel(item.status)"></span>
+                                                    </div>
+                                                    <template x-if="editing && FinanceLogic.isEditable(item) && editRow(item)">
+                                                        <div class="mt-2">
+                                                            <div class="field">
+                                                                <label class="label" :for="'installmentAmount-' + item.id"
                                                                        x-text="'مبلغ قسط ' + fa(item.seq)"></label>
-                                                                <input class="input" dir="ltr" :id="'installmentAmount-' + item.id"
-                                                                       type="text" inputmode="numeric" pattern="[0-9]+"
-                                                                       x-model="editRow(item).amount"
-                                                                       @input="editRow(item).amount = Money.normalizeAmountInput($event)">
+                                                                <div class="control">
+                                                                    <input class="input" dir="ltr" :id="'installmentAmount-' + item.id"
+                                                                           type="text" inputmode="numeric" pattern="[0-9]+"
+                                                                           x-model="editRow(item).amount"
+                                                                           @input="editRow(item).amount = Money.normalizeAmountInput($event)">
+                                                                </div>
                                                                 <p class="help" x-show="Money.tomanWords(editRow(item).amount)"
                                                                    x-text="Money.tomanWords(editRow(item).amount)"></p>
                                                             </div>
-                                                        </template>
-                                                        <span x-show="!(editing && FinanceLogic.isEditable(item))"
-                                                              x-text="Money.formatAmount(item.amount)"></span>
-                                                    </td>
-                                                    <td>
-                                                        <template x-if="editing && FinanceLogic.isEditable(item) && editRow(item)">
-                                                            <div>
-                                                                <label class="label is-sr-only" :for="'installmentDue-' + item.id"
+                                                            <div class="field">
+                                                                <label class="label" :for="'installmentDue-' + item.id"
                                                                        x-text="'سررسید قسط ' + fa(item.seq)"></label>
-                                                                <input class="input" dir="ltr" :id="'installmentDue-' + item.id"
-                                                                       type="text" inputmode="numeric" autocomplete="off"
-                                                                       :placeholder="editRow(item).undated ? 'اختیاری' : exampleDate()"
-                                                                       :aria-describedby="editRow(item).undated ? 'installmentDueHelp-' + item.id : null"
-                                                                       :class="{ 'is-danger': editRow(item).dateError }"
-                                                                       x-model="editRow(item).dueDate">
+                                                                <div class="control">
+                                                                    <input class="input" dir="ltr" :id="'installmentDue-' + item.id"
+                                                                           type="text" inputmode="numeric" autocomplete="off"
+                                                                           :placeholder="editRow(item).undated ? 'اختیاری' : exampleDate()"
+                                                                           :aria-describedby="editRow(item).undated ? 'installmentDueHelp-' + item.id : null"
+                                                                           :class="{ 'is-danger': editRow(item).dateError }"
+                                                                           x-model="editRow(item).dueDate">
+                                                                </div>
                                                                 <p class="help" :id="'installmentDueHelp-' + item.id"
                                                                    x-show="editRow(item).undated">اختیاری — تاریخ را بعداً هم می‌شود تعیین کرد</p>
                                                                 <p class="help is-danger" x-show="editRow(item).dateError"
                                                                    x-text="editRow(item).dateError"></p>
                                                             </div>
-                                                        </template>
-                                                        <span class="tag is-light" x-show="!(editing && FinanceLogic.isEditable(item)) && FinanceLogic.isUndated(item)">بدون سررسید</span>
-                                                        <span dir="ltr" x-show="!(editing && FinanceLogic.isEditable(item)) && !FinanceLogic.isUndated(item)"
-                                                              x-text="FinanceLogic.isUndated(item) ? '' : Calendar.formatDate(item.dueDate)"></span>
-                                                    </td>
-                                                    <td x-text="Money.formatAmount(item.amountPaid)"></td>
-                                                    <td>
-                                                        <span class="tag" :class="statusClass(item.status)"
-                                                              x-text="statusLabel(item.status)"></span>
-                                                    </td>
-                                                </tr>
+                                                        </div>
+                                                    </template>
+                                                    <div class="is-flex is-justify-content-space-between is-align-items-center is-flex-wrap-wrap mt-1"
+                                                         x-show="!(editing && FinanceLogic.isEditable(item))">
+                                                        <span x-text="Money.formatAmount(item.amount)"></span>
+                                                        <span class="has-text-grey">پرداخت‌شده
+                                                            <span x-text="Money.formatAmount(item.amountPaid)"></span></span>
+                                                    </div>
+                                                </li>
                                             </template>
-                                            </tbody>
-                                        </table>
-                                        </div>
+                                        </ul>
 
                                         <p class="has-text-grey" x-show="!installmentsEnabled">
                                             اقساط تعریف‌شده فقط‌خواندنی است؛ برای تغییر، «اقساط شهریه» را در بالای صفحه فعال کنید.

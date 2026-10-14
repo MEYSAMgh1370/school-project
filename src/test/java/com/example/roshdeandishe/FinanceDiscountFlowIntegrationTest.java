@@ -301,7 +301,10 @@ class FinanceDiscountFlowIntegrationTest {
         mockMvc.perform(get("/api/me/schools/1/invoices").session(parentSession))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$[?(@.studentId == " + studentId + ")].discountTotal")
-                        .value(Matchers.contains(200000.00)));
+                        .value(Matchers.contains(200000.00)))
+                // نامِ فرزند برای صفحه‌ی خانواده (به‌جای «دانش‌آموز #شماره»)
+                .andExpect(jsonPath("$[?(@.studentId == " + studentId + ")].studentName")
+                        .value(Matchers.contains("دانش‌آموز تخفیف")));
 
         // فاکتور مدرسه‌ی دیگر: NotFound
         mockMvc.perform(post("/api/admin/schools/1/invoices/" + newInvoice(9309L, 59L, "100000.00").id()

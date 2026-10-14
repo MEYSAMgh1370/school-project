@@ -96,3 +96,16 @@ test('OVERDUE has a label and a class', () => {
     assert.equal(p.statusLabel('OVERDUE'), 'دیرکرد');
     assert.equal(p.statusClass('OVERDUE'), 'is-danger');
 });
+
+test('student label prefers the name and falls back to the numbered label', () => {
+    global.Calendar = { digits: (v) => String(v) };
+    const p = page();
+    assert.equal(p.studentLabel({ studentId: 7, studentName: ' سارا احمدی ' }), 'سارا احمدی');
+    assert.equal(p.studentLabel({ studentId: 7, studentName: null }), 'دانش‌آموز #7');
+    assert.equal(p.studentLabel({ studentId: 7, studentName: '   ' }), 'دانش‌آموز #7');
+    p.invoices = [{ studentId: 7, studentName: 'سارا احمدی' }];
+    p.studentFilter = 7;
+    assert.equal(p.studentFilterLabel(), 'سارا احمدی');
+    p.studentFilter = 9;
+    assert.equal(p.studentFilterLabel(), 'دانش‌آموز #9');
+});

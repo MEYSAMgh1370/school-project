@@ -20,7 +20,7 @@
 
                 <%-- فیلتر یک فرزند (از لینک پیشخوان): همیشه دیده می‌شود و راه برگشت دارد. --%>
                 <div class="notification is-light" x-cloak x-show="studentFilter !== null">
-                    فقط فاکتورهای دانش‌آموز #<span x-text="Calendar.digits(studentFilter)"></span> نمایش داده می‌شود.
+                    فقط فاکتورهای <span x-text="studentFilterLabel()"></span> نمایش داده می‌شود.
                     <a href="/my-invoices">نمایش همه</a>
                 </div>
 
@@ -30,7 +30,7 @@
                         <article class="box" data-invoice-card>
                             <div class="is-flex is-justify-content-space-between is-align-items-center is-flex-wrap-wrap mb-3">
                                 <p class="has-text-weight-semibold">
-                                    دانش‌آموز #<span x-text="Calendar.digits(invoice.studentId)"></span>
+                                    <span x-text="studentLabel(invoice)"></span>
                                     <%-- سالِ فاکتور: فاکتورِ مانده‌دارِ سال‌های قبل هم در این فهرست می‌آید --%>
                                     <span class="tag is-light" dir="ltr" x-show="invoice.academicYear"
                                           x-text="invoice.academicYear ? Calendar.digits(invoice.academicYear) : ''"></span>

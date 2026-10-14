@@ -100,6 +100,10 @@ class FinancePageRenderTest {
                 .contains("ویرایش مبالغ و تاریخ‌ها").contains("جمع اقساط:").contains("باید برابر باشد با")
                 .contains("canSaveEdit(invoice)").contains("saveEditing(invoice)")
                 .contains("اقساط تعریف‌شده فقط‌خواندنی است");
+        // اقساط: فهرست انباشته (بدون جدول و اسکرول افقی)، نه جدول
+        String installments = html.substring(html.indexOf("<h4 class=\"title is-6\">اقساط</h4>"));
+        installments = installments.substring(0, installments.indexOf("@submit.prevent=\"generateInstallments(invoice)\""));
+        assertThat(installments).contains("data-installment-row").doesNotContain("<table").doesNotContain("table-container");
         // هر ورودیِ ویرایشِ قسط برچسب دارد
         assertThat(html).contains("'installmentAmount-' + item.id").contains("'installmentDue-' + item.id");
         // قسطِ بدون سررسید: برچسبِ نمایش و راهنمای ورودیِ اختیاری، بدون صدا زدنِ formatDate روی null

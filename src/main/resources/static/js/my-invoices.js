@@ -57,6 +57,18 @@ document.addEventListener('alpine:init', () => {
                 : this.invoices.filter((invoice) => invoice.studentId === this.studentFilter);
         },
 
+        // نامِ دانش‌آموز؛ اگر سرور نام ندهد همان «دانش‌آموز #شماره» (شماره با رقم فارسی)
+        studentLabel(invoice) {
+            const name = invoice && typeof invoice.studentName === 'string' ? invoice.studentName.trim() : '';
+            return name || 'دانش‌آموز #' + Calendar.digits(invoice.studentId);
+        },
+
+        // برچسبِ فیلترِ ?student=<id>: نامِ همان دانش‌آموز اگر در فاکتورهای بارشده باشد
+        studentFilterLabel() {
+            const match = this.invoices.find((invoice) => invoice.studentId === this.studentFilter);
+            return match ? this.studentLabel(match) : 'دانش‌آموز #' + Calendar.digits(this.studentFilter);
+        },
+
         // قابل‌پرداخت = مبلغ - تخفیف؛ مانده = قابل‌پرداخت - پرداخت‌شده (هرگز منفی نمی‌شود)
         discount(invoice) {
             return Number(invoice.discountTotal) || 0;

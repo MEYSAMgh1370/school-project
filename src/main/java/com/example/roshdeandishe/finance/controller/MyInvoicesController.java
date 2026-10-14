@@ -54,13 +54,19 @@ public class MyInvoicesController {
         java.util.Set<String> activeRoles = iamFacade.findActiveRoleCodes(new IamFacade.UserId(userId), schoolId);
 
         List<Long> studentIds = new ArrayList<>();
+        // نامِ هر دانش‌آموز: دانش‌آموزیِ خودِ کاربر با نامِ خودش، فرزندان با نامِ حسابِ خودشان (تعدادشان کم است)
+        Map<Long, String> studentNames = new java.util.HashMap<>();
         if (activeRoles.contains("STUDENT")) {
-            academicFacade.findMyEnrollment(userId, schoolId)
-                    .ifPresent(enrollment -> studentIds.add(enrollment.studentId().value()));
+            academicFacade.findMyEnrollment(userId, schoolId).ifPresent(enrollment -> {
+                studentIds.add(enrollment.studentId().value());
+                studentNames.put(enrollment.studentId().value(), nameOf(userId));
+            });
         }
         if (activeRoles.contains("PARENT")) {
-            academicFacade.listWards(userId, schoolId)
-                    .forEach(ward -> studentIds.add(ward.id().value()));
+            academicFacade.listWards(userId, schoolId).forEach(ward -> {
+                studentIds.add(ward.id().value());
+                studentNames.putIfAbsent(ward.id().value(), nameOf(ward.userId()));
+            });
         }
         if (studentIds.isEmpty()) {
             return List.of();
@@ -75,7 +81,13 @@ public class MyInvoicesController {
                 schoolId, invoices.stream().map(FinanceFacade.InvoiceInfo::id).toList());
         return invoices.stream()
                 .map(invoice -> MyInvoiceResponse.from(
-                        invoice, plans.getOrDefault(invoice.id(), List.of()), pending.get(invoice.id())))
+                        invoice, plans.getOrDefault(invoice.id(), List.of()), pending.get(invoice.id()),
+                        studentNames.get(invoice.studentId())))
                 .toList();
+    }
+
+    private String nameOf(Long userId) {
+        return userId == null ? null
+                : iamFacade.findUser(new IamFacade.UserId(userId)).map(IamFacade.UserProfile::fullName).orElse(null);
     }
 }
