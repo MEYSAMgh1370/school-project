@@ -290,6 +290,13 @@
             <artifactId>awaitility</artifactId>
             <scope>test</scope>
         </dependency>
+        <!-- قوانین معماری (ArchitectureTests) -->
+        <dependency>
+            <groupId>com.tngtech.archunit</groupId>
+            <artifactId>archunit-junit5</artifactId>
+            <version>1.5.1</version>
+            <scope>test</scope>
+        </dependency>
         <!-- MockMvc در Boot 4 به ماژول تست جداگانه‌ی webmvc منتقل شده -->
         <dependency>
             <groupId>org.springframework.boot</groupId>
@@ -322,6 +329,27 @@
                         <spring.autoconfigure.exclude>org.springframework.boot.session.autoconfigure.SessionAutoConfiguration,org.springframework.boot.session.jdbc.autoconfigure.JdbcSessionAutoConfiguration</spring.autoconfigure.exclude>
                     </systemPropertyVariables>
                 </configuration>
+            </plugin>
+            <!-- گزارش پوشش تست: target/site/jacoco. فقط گزارش می‌دهد و آستانه‌ای
+                 اعمال نمی‌کند؛ پس از دیدن عدد پایه می‌توان آستانه گذاشت. -->
+            <plugin>
+                <groupId>org.jacoco</groupId>
+                <artifactId>jacoco-maven-plugin</artifactId>
+                <version>0.8.15</version>
+                <executions>
+                    <execution>
+                        <goals>
+                            <goal>prepare-agent</goal>
+                        </goals>
+                    </execution>
+                    <execution>
+                        <id>report</id>
+                        <phase>verify</phase>
+                        <goals>
+                            <goal>report</goal>
+                        </goals>
+                    </execution>
+                </executions>
             </plugin>
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
