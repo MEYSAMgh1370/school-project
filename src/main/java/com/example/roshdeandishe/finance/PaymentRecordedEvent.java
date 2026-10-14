@@ -12,6 +12,9 @@ import java.time.Instant;
  * <p>
  * {@code actorUserId} مثل InvoiceIssuedEvent nullable است، هرچند در عمل
  * ثبت پرداخت فعلاً همیشه از یک درخواست HTTP احراز هویت‌شده می‌آید.
+ * <p>
+ * {@code method}، {@code note} و {@code paymentId} برای جزئیاتِ audit هستند (ردیفِ audit فقط append است و
+ * باید بگوید دقیقاً چه پرداختی ثبت شد).
  */
 public record PaymentRecordedEvent(
         Long schoolId,
@@ -19,6 +22,9 @@ public record PaymentRecordedEvent(
         Long studentId,
         BigDecimal amount,
         Long actorUserId,
-        Instant occurredAt
+        Instant occurredAt,
+        PaymentMethod method,
+        String note,
+        Long paymentId
 ) {
 }

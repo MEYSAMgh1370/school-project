@@ -10,6 +10,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 
 /**
  * «فاکتورهای من/فرزندانم در این مدرسه» - همان مدل اعتماد
@@ -53,20 +54,40 @@ public class MyInvoicesController {
         java.util.Set<String> activeRoles = iamFacade.findActiveRoleCodes(new IamFacade.UserId(userId), schoolId);
 
         List<Long> studentIds = new ArrayList<>();
+        // نامِ هر دانش‌آموز: دانش‌آموزیِ خودِ کاربر با نامِ خودش، فرزندان با نامِ حسابِ خودشان (تعدادشان کم است)
+        Map<Long, String> studentNames = new java.util.HashMap<>();
         if (activeRoles.contains("STUDENT")) {
-            academicFacade.findMyEnrollment(userId, schoolId)
-                    .ifPresent(enrollment -> studentIds.add(enrollment.studentId().value()));
+            academicFacade.findMyEnrollment(userId, schoolId).ifPresent(enrollment -> {
+                studentIds.add(enrollment.studentId().value());
+                studentNames.put(enrollment.studentId().value(), nameOf(userId));
+            });
         }
         if (activeRoles.contains("PARENT")) {
-            academicFacade.listWards(userId, schoolId)
-                    .forEach(ward -> studentIds.add(ward.id().value()));
+            academicFacade.listWards(userId, schoolId).forEach(ward -> {
+                studentIds.add(ward.id().value());
+                studentNames.putIfAbsent(ward.id().value(), nameOf(ward.userId()));
+            });
         }
         if (studentIds.isEmpty()) {
             return List.of();
         }
 
-        return financeFacade.listInvoicesForStudents(schoolId, studentIds).stream()
-                .map(MyInvoiceResponse::from)
+        List<FinanceFacade.InvoiceInfo> invoices = financeFacade.listInvoicesForStudents(schoolId, studentIds);
+        // اقساطِ همه‌ی فاکتورها با یک query (بدون N+1)
+        Map<Long, List<FinanceFacade.InstallmentInfo>> plans = financeFacade.listInstallmentsForInvoices(
+                schoolId, invoices.stream().map(FinanceFacade.InvoiceInfo::id).toList());
+        // تخفیف‌های مشروطِ باز هم با یک query
+        Map<Long, FinanceFacade.PendingDiscountSummary> pending = financeFacade.pendingDiscountsForInvoices(
+                schoolId, invoices.stream().map(FinanceFacade.InvoiceInfo::id).toList());
+        return invoices.stream()
+                .map(invoice -> MyInvoiceResponse.from(
+                        invoice, plans.getOrDefault(invoice.id(), List.of()), pending.get(invoice.id()),
+                        studentNames.get(invoice.studentId())))
                 .toList();
+    }
+
+    private String nameOf(Long userId) {
+        return userId == null ? null
+                : iamFacade.findUser(new IamFacade.UserId(userId)).map(IamFacade.UserProfile::fullName).orElse(null);
     }
 }

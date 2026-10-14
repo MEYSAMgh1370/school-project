@@ -1,7 +1,6 @@
 package com.example.roshdeandishe.web.controller;
 
 import com.example.roshdeandishe.finance.FinanceFacade;
-import com.example.roshdeandishe.finance.FinanceFacade.InvoiceInfo;
 import com.example.roshdeandishe.iam.IamFacade;
 import com.example.roshdeandishe.iam.IamFacade.MembershipInfo;
 import com.example.roshdeandishe.iam.IamFacade.UserId;
@@ -168,12 +167,10 @@ public class DashboardPageController {
                     || !seen.add(membership.schoolId())) {
                 continue;
             }
-            List<InvoiceInfo> invoices = financeFacade.listInvoices(membership.schoolId(), null);
-            BigDecimal billed = invoices.stream().map(InvoiceInfo::amount).reduce(BigDecimal.ZERO, BigDecimal::add);
-            BigDecimal paid = invoices.stream().map(InvoiceInfo::amountPaid).reduce(BigDecimal.ZERO, BigDecimal::add);
+            FinanceFacade.TuitionSummary summary = financeFacade.tuitionSummary(membership.schoolId(), null);
             rows.add(TuitionRow.of(membership.schoolId(),
                     schoolName(schools.getOrDefault(membership.schoolId(), Optional.empty()), membership.schoolId()),
-                    invoices.size(), billed, paid));
+                    summary.invoiceCount(), summary.billed(), summary.paid()));
         }
         return rows;
     }

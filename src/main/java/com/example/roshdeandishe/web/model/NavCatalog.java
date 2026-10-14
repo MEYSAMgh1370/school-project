@@ -86,6 +86,9 @@ public final class NavCatalog {
             new Group("finance", "مالی", List.of(
                     new Link("/finance", "امور مالی", "شهریه، پرداخت‌ها و فاکتورها",
                             List.of(ADMIN, FINANCE), List.of(ADMIN, FINANCE)).withPermissions("FINANCE_MANAGE", "FINANCE_VIEW").withIcon("finance"),
+                    // فقط‌خواندنی؛ API آن FINANCE_MANAGE می‌خواهد. بدون کارتِ «دسترسی سریع»
+                    new Link("/finance-audit", "سابقه‌ی تغییرات مالی", "چه کسی، کی و چه چیزی را در امور مالی تغییر داده است",
+                            List.of(ADMIN, FINANCE), List.of()).withPermissions("FINANCE_MANAGE").withIcon("finance"),
                     new Link("/expenses", "هزینه‌ها", "ثبت و پیگیری هزینه‌ها",
                             List.of(ADMIN, FINANCE), List.of(FINANCE)).withPermissions("EXPENSE_VIEW").withIcon("finance"),
                     new Link("/my-invoices", "فاکتورهای من", "شهریه و پرداخت‌های شما",

@@ -58,6 +58,10 @@ class InvoiceEntity {
             columnDefinition = "numeric(12,2) default 0 not null")
     private BigDecimal amountPaid;
 
+    /** جمعِ نگه‌داشته‌شده‌ی تخفیف‌ها (InvoiceDiscountEntity)؛ مبلغ قابل پرداخت = amount - discountTotal (V28). */
+    @Column(name = "discount_total", nullable = false, precision = 12, scale = 2)
+    private BigDecimal discountTotal = BigDecimal.ZERO;
+
     /** کدِ canonical سالِ تحصیلی؛ خالی = «به سالی نسبت داده نشده» (academic-year.md فاز ۲). */
     @Column(name = "academic_year", length = 16)
     private String academicYear;

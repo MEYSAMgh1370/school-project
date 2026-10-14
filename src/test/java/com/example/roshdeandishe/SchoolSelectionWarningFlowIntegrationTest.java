@@ -31,6 +31,7 @@ class SchoolSelectionWarningFlowIntegrationTest {
             new PageWarning("/students", "برای مدیریت دانش‌آموزان، یک مدرسه از سوییچر بالا انتخاب کنید."),
             new PageWarning("/grades", "برای مدیریت نمرات، یک مدرسه از سوییچر بالا انتخاب کنید."),
             new PageWarning("/finance", "برای مدیریت امور مالی، یک مدرسه از سوییچر بالا انتخاب کنید."),
+            new PageWarning("/finance-audit", "برای مشاهده‌ی سابقه‌ی تغییرات مالی، یک مدرسه از سوییچر بالا انتخاب کنید."),
             new PageWarning("/expenses", "برای مدیریت هزینه‌ها، یک مدرسه از سوییچر بالا انتخاب کنید."),
             new PageWarning("/curriculum", "برای مدیریت سرفصل‌ها و سؤال‌ها، یک مدرسه از سوییچر بالا انتخاب کنید."),
             new PageWarning("/study-plans", "برای مدیریت برنامه‌های مطالعه، یک مدرسه از سوییچر بالا انتخاب کنید."),

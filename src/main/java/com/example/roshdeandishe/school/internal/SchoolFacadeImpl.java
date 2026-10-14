@@ -162,6 +162,22 @@ class SchoolFacadeImpl implements SchoolFacade {
     }
 
     @Override
+    public boolean isInstallmentsEnabled(SchoolId schoolId) {
+        return schoolRepository.findById(schoolId.value())
+                .orElseThrow(() -> new SchoolException(new SchoolError.SchoolNotFound(schoolId.value())))
+                .isInstallmentsEnabled();
+    }
+
+    @Override
+    @Transactional
+    public void setInstallmentsEnabled(SchoolId schoolId, boolean enabled) {
+        SchoolEntity school = schoolRepository.findById(schoolId.value())
+                .orElseThrow(() -> new SchoolException(new SchoolError.SchoolNotFound(schoolId.value())));
+        school.setInstallmentsEnabled(enabled);
+        schoolRepository.save(school);
+    }
+
+    @Override
     public List<CalendarEntryInfo> listCalendar(SchoolId schoolId, LocalDate from, LocalDate to) {
         if (from == null || to == null || from.isAfter(to)) {
             throw new SchoolException(new SchoolError.InvalidCalendarEntry(
@@ -474,5 +490,10 @@ class SchoolFacadeImpl implements SchoolFacade {
     @Override
     public String formatSolarDate(java.time.LocalDate date) {
         return SolarCalendar.format(date);
+    }
+
+    @Override
+    public LocalDate addSolarMonths(LocalDate gregorian, int months) {
+        return SolarCalendar.addMonths(gregorian, months);
     }
 }
