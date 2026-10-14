@@ -79,3 +79,19 @@ This phase compensates for the workflow's structural weakness: you could not cor
 
 - Summarize for the user: what was built, files changed, how it was verified, any open questions or follow-ups deferred (YAGNI list).
 - Suggest a commit message. Do not commit unless the user has authorized it.
+
+## Phase 5 — Finish (only after the user says to merge)
+
+When the user asks to merge ("merge it", "ادغام کن"), finish the whole job with one command instead of hand-running git:
+
+```bash
+scripts/finish-pr.sh <PR-number>          # add --dry-run first if unsure
+```
+
+It merges only when the PR is mergeable and every check passed, then fast-forwards the main checkout, removes the PR's worktree and local branch (refusing if there are uncommitted changes or commits that are not in `origin/<base>`), deletes the remote branch, and runs `mvn -o compile` in the main checkout so new Flyway migrations and precompiled JTE templates are in its build (otherwise a stale build gives "Circular view path" 500s).
+
+- Run the full review (Phase 3) before the user merges; the script is not a review.
+- The repository deletes merged head branches itself (`delete_branch_on_merge`); the script covers the local side and the case where that setting is off.
+- If `gh pr merge` is denied by the permission mode, stop and tell the user: merge in GitHub, or add a permission rule for `gh pr merge`; then run `scripts/finish-pr.sh <PR> --no-merge` for the cleanup. Do not look for another way to merge.
+- Removing the worktree this session runs in leaves the session without a working directory, so make it the last action.
+- After a merge that adds Flyway migrations, tell the user the migrations run on first start of every database (staging first) and have only been exercised on Testcontainers unless the verification says otherwise.
