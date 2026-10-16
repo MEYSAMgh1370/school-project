@@ -14,7 +14,8 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 @JsonIgnoreProperties(ignoreUnknown = true)
 record BaleUpdate(
         @JsonProperty("update_id") Long updateId,
-        BaleMessage message
+        BaleMessage message,
+        @JsonProperty("callback_query") BaleCallbackQuery callbackQuery
 ) {
 
     @JsonIgnoreProperties(ignoreUnknown = true)
@@ -35,6 +36,15 @@ record BaleUpdate(
     @JsonIgnoreProperties(ignoreUnknown = true)
     record BaleContact(
             @JsonProperty("phone_number") String phoneNumber
+    ) {
+    }
+
+    /** کلیک روی یک دکمه‌ی اینلاین؛ message پیامی است که دکمه زیر آن بوده (chat همان‌جاست). */
+    @JsonIgnoreProperties(ignoreUnknown = true)
+    record BaleCallbackQuery(
+            String id,
+            BaleMessage message,
+            String data
     ) {
     }
 }
