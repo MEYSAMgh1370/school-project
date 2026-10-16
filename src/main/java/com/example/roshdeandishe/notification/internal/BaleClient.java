@@ -112,6 +112,31 @@ class BaleClient {
         }
     }
 
+    /**
+     * پیام همراه با کیبورد پاسخِ پایدار (منوی همیشه‌نمایان): resize_keyboard=true و one_time_keyboard=false؛ هر
+     * عنصر rows یک ردیف از متن دکمه‌هاست. بدون توکن هیچ تماسی برقرار نمی‌شود.
+     */
+    boolean sendMenu(Long chatId, String text, List<List<String>> rows) {
+        if (botToken == null || botToken.isBlank()) {
+            log.warn("roshdeandishe.bale.bot-token پیکربندی نشده - پیام منو به chatId={} ارسال نشد.", chatId);
+            return false;
+        }
+
+        MenuKeyboardMarkup markup = new MenuKeyboardMarkup(rows, true, false);
+
+        try {
+            restClient.post()
+                    .uri("/bot{token}/sendMessage", botToken)
+                    .body(new SendMessageRequest(chatId, text, markup))
+                    .retrieve()
+                    .toBodilessEntity();
+            return true;
+        } catch (RestClientException e) {
+            log.warn("ارسال پیام منو به chatId={} شکست خورد.", chatId, e);
+            return false;
+        }
+    }
+
     /** سقف callback_data در Bot API (تلگرام/بله): ۱ تا ۶۴ بایت UTF-8. */
     private static final int MAX_CALLBACK_DATA_BYTES = 64;
 
@@ -193,6 +218,13 @@ class BaleClient {
     private record KeyboardButton(
             String text,
             @JsonProperty("request_contact") boolean requestContact
+    ) {
+    }
+
+    private record MenuKeyboardMarkup(
+            @JsonProperty("keyboard") List<List<String>> keyboard,
+            @JsonProperty("resize_keyboard") boolean resizeKeyboard,
+            @JsonProperty("one_time_keyboard") boolean oneTimeKeyboard
     ) {
     }
 

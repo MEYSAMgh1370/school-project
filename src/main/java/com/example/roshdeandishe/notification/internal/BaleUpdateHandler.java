@@ -42,22 +42,6 @@ class BaleUpdateHandler {
             "FINANCE_ADMIN", "مدیر مالی"
     );
 
-    private static final String WELCOME_TEXT = """
-            به ربات رشد اندیشه خوش آمدید!
-
-            برای اتصال حساب کاربری‌تان، لطفاً شماره تلفنی که در پروفایل حساب \
-            کاربری‌تان (در سایت) ثبت کرده‌اید را با دکمه‌ی زیر به اشتراک بگذارید.""";
-
-    private static final String NOT_LINKED_TEXT = "حساب شما هنوز متصل نشده است. لطفاً ابتدا /start را ارسال کنید.";
-
-    private static final String UNKNOWN_COMMAND_TEXT =
-            "دستور نامعتبر است. برای راهنما، «راهنما» را ارسال کنید.";
-
-    private static final String HELP_TEXT = """
-            دستورهای قابل استفاده:
-            «مدرسه‌های من» - فهرست مدرسه‌ها و نقش‌های شما
-            «فرزندان من» - فهرست فرزندان لینک‌شده و وضعیت مالی هرکدام""";
-
     private final BaleLinkRepository baleLinkRepository;
     private final BotContextLoader botContextLoader;
     private final BaleClient baleClient;
@@ -103,22 +87,22 @@ class BaleUpdateHandler {
 
         String text = message.text() == null ? "" : message.text().trim();
         if ("/start".equals(text)) {
-            baleClient.sendContactRequest(chatId, WELCOME_TEXT);
+            baleClient.sendContactRequest(chatId, BotTexts.WELCOME_TEXT);
             return;
         }
 
         Optional<BotContext> context = botContextLoader.load(chatId);
         if (context.isEmpty()) {
-            baleClient.sendMessage(chatId, NOT_LINKED_TEXT);
+            baleClient.sendMessage(chatId, BotTexts.NOT_LINKED_TEXT);
             return;
         }
 
         BotContext ctx = context.get();
         switch (text) {
-            case "راهنما" -> baleClient.sendMessage(chatId, HELP_TEXT);
+            case "راهنما" -> baleClient.sendMessage(chatId, BotTexts.HELP_TEXT);
             case "مدرسه‌های من" -> baleClient.sendMessage(chatId, describeMemberships(ctx));
             case "فرزندان من" -> baleClient.sendMessage(chatId, describeWards(ctx));
-            default -> baleClient.sendMessage(chatId, UNKNOWN_COMMAND_TEXT);
+            default -> baleClient.sendMessage(chatId, BotTexts.UNKNOWN_COMMAND_TEXT);
         }
     }
 
@@ -134,10 +118,10 @@ class BaleUpdateHandler {
         }
         Long chatId = callback.message().chat().id();
         if (botContextLoader.load(chatId).isEmpty()) {
-            baleClient.sendMessage(chatId, NOT_LINKED_TEXT);
+            baleClient.sendMessage(chatId, BotTexts.NOT_LINKED_TEXT);
             return;
         }
-        baleClient.sendMessage(chatId, HELP_TEXT);
+        baleClient.sendMessage(chatId, BotTexts.HELP_TEXT);
     }
 
     private void handleContactShared(Long chatId, String phoneNumber) {
