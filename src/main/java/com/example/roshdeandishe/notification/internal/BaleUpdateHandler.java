@@ -10,6 +10,10 @@ import com.example.roshdeandishe.school.SchoolFacade;
 import com.example.roshdeandishe.school.SchoolFacade.SchoolId;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.time.Instant;
 import java.util.List;
@@ -32,6 +36,8 @@ import java.util.Optional;
  */
 @Component
 class BaleUpdateHandler {
+
+    private static final Logger log = LoggerFactory.getLogger(BaleUpdateHandler.class);
 
     private final BaleLinkRepository baleLinkRepository;
     private final BotContextLoader botContextLoader;
@@ -154,12 +160,30 @@ class BaleUpdateHandler {
         baleLinkRepository.save(link);
 
         String confirmation = BotTexts.linkSuccess(matchedUser.get().fullName());
+        sendAfterCommit(() -> sendLinkConfirmation(chatId, confirmation));
+    }
+
+    /** تأییدیه فقط پس از commitِ لینک فرستاده می‌شود (خطای منو نباید تراکنش را rollback-only کند). */
+    private static void sendAfterCommit(Runnable action) {
+        if (TransactionSynchronizationManager.isSynchronizationActive()) {
+            TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+                @Override
+                public void afterCommit() {
+                    action.run();
+                }
+            });
+        } else {
+            action.run();
+        }
+    }
+
+    private void sendLinkConfirmation(Long chatId, String confirmation) {
         List<List<String>> menu = List.of();
         try {
-            // خطا در ساختنِ منو نباید لینکِ تازه‌ذخیره‌شده را برگرداند (تراکنش)
             menu = botContextLoader.load(chatId).map(botRouter::menu).orElse(List.of());
         } catch (RuntimeException e) {
-            // فقط تأییدیه‌ی ساده فرستاده می‌شود
+            log.warn("Building the menu after linking failed: chatId={} error={}",
+                    chatId, e.getClass().getSimpleName());
         }
         if (menu.isEmpty()) {
             baleClient.sendMessage(chatId, confirmation);

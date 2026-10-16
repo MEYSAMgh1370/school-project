@@ -169,4 +169,34 @@ class SubjectResolverTest {
 
         org.mockito.Mockito.verifyNoInteractions(academic);
     }
+
+    @Test
+    void menuCheckForMultiChildParentIsCheap() {
+        when(academic.listWards(USER, 10L)).thenReturn(List.of(
+                new StudentInfo(new StudentId(100L), 1000L, 10L, null),
+                new StudentInfo(new StudentId(101L), 1001L, 10L, null),
+                new StudentInfo(new StudentId(102L), 1002L, 10L, null)));
+        BotContext parent = ctx(m(10L, "PARENT", true), m(10L, "TEACHER", true));
+
+        for (BotIntent.TargetKind kind : BotIntent.TargetKind.values()) {
+            resolver.hasAny(parent, kind);
+        }
+
+        org.mockito.Mockito.verify(academic, org.mockito.Mockito.times(2)).listWards(USER, 10L); // STUDENT_TARGET و WARD_TARGET
+        org.mockito.Mockito.verify(iam, org.mockito.Mockito.never()).findUser(any());
+        org.mockito.Mockito.verify(school, org.mockito.Mockito.never()).findSchool(any());
+    }
+
+    @Test
+    void hasAnyAgreesWithTargets() {
+        assertThat(resolver.hasAny(ctx(m(10L, "STUDENT", true)), BotIntent.TargetKind.WARD_TARGET)).isFalse();
+        assertThat(resolver.hasAny(ctx(m(10L, "STUDENT", true)), BotIntent.TargetKind.STUDENT_TARGET)).isFalse();
+        when(academic.findMyEnrollment(USER, 10L)).thenReturn(Optional.of(
+                new EnrollmentInfo(new StudentId(100L), 10L, null, null, null)));
+        assertThat(resolver.hasAny(ctx(m(10L, "STUDENT", true)), BotIntent.TargetKind.STUDENT_TARGET)).isTrue();
+        assertThat(resolver.hasAny(ctx(m(10L, "STUDENT", true)), BotIntent.TargetKind.WARD_TARGET)).isFalse();
+        assertThat(resolver.hasAny(ctx(m(10L, "STUDENT", true)), BotIntent.TargetKind.TEACHER_SCHOOL)).isFalse();
+        assertThat(resolver.hasAny(ctx(m(10L, "STUDENT", true)), BotIntent.TargetKind.MEMBER_SCHOOL)).isTrue();
+        assertThat(resolver.hasAny(ctx(), BotIntent.TargetKind.MEMBER_SCHOOL)).isFalse();
+    }
 }

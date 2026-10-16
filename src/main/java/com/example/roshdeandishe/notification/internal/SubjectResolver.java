@@ -47,6 +47,32 @@ class SubjectResolver {
         };
     }
 
+    /**
+     * آیا کاربر دست‌کم یک هدف از این نوع دارد؟ برای ساختن منو: در اولین برخورد متوقف می‌شود و نام‌ها را
+     * نمی‌خواند (findUser/findSchool صدا زده نمی‌شود)؛ با {@link #targets} هم‌معنا است.
+     */
+    boolean hasAny(BotContext ctx, BotIntent.TargetKind kind) {
+        List<MembershipInfo> active = ctx.memberships().stream().filter(MembershipInfo::active).toList();
+        return switch (kind) {
+            case TEACHER_SCHOOL -> active.stream().anyMatch(m -> "TEACHER".equals(m.roleCode()));
+            case MEMBER_SCHOOL -> !active.isEmpty();
+            case STUDENT_TARGET, WARD_TARGET -> {
+                boolean includeOwn = kind == BotIntent.TargetKind.STUDENT_TARGET;
+                for (Long schoolId : active.stream().map(MembershipInfo::schoolId).distinct().sorted().toList()) {
+                    if (hasRole(active, schoolId, "PARENT")
+                            && !academicFacade.listWards(ctx.userId().value(), schoolId).isEmpty()) {
+                        yield true;
+                    }
+                    if (includeOwn && hasRole(active, schoolId, "STUDENT")
+                            && academicFacade.findMyEnrollment(ctx.userId().value(), schoolId).isPresent()) {
+                        yield true;
+                    }
+                }
+                yield false;
+            }
+        };
+    }
+
     private List<BotTarget> students(BotContext ctx, List<MembershipInfo> active,
                                      Map<Long, String> schoolNames, boolean includeOwn) {
         List<Long> schoolIds = active.stream().map(MembershipInfo::schoolId).distinct().sorted().toList();

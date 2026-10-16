@@ -42,9 +42,11 @@ class BotRouter {
 
     /** فقط دکمه‌هایی که intentشان دست‌کم یک هدف دارد، دوتا در هر ردیف، و «راهنما» آخر. */
     List<List<String>> menu(BotContext ctx) {
+        // یک بررسیِ ارزان برای هر نوعِ هدف (نه برای هر intent)؛ بدون خواندنِ نام‌ها
+        java.util.Map<BotIntent.TargetKind, Boolean> hasAny = new java.util.EnumMap<>(BotIntent.TargetKind.class);
         List<String> buttons = new ArrayList<>();
         for (BotIntent intent : BotIntent.values()) {
-            if (!resolver.targets(ctx, intent).isEmpty()) {
+            if (hasAny.computeIfAbsent(intent.targetKind(), k -> resolver.hasAny(ctx, k))) {
                 buttons.add(intent.button());
             }
         }

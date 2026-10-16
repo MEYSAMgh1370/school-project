@@ -38,12 +38,8 @@ class BotRouterTest {
 
     @Test
     void studentMenuHasNoInvoiceButton() {
-        BotTarget own = student(100L, "علی", "مدرسه", false);
-        for (BotIntent i : List.of(BotIntent.ATTENDANCE_TODAY, BotIntent.ATTENDANCE_SUMMARY, BotIntent.GRADES,
-                BotIntent.EXAMS, BotIntent.TIMETABLE_TODAY)) {
-            when(resolver.targets(ctx, i)).thenReturn(List.of(own));
-        }
-        when(resolver.targets(ctx, BotIntent.EVENTS)).thenReturn(List.of(new BotTarget.School(10L, "مدرسه")));
+        when(resolver.hasAny(ctx, BotIntent.TargetKind.STUDENT_TARGET)).thenReturn(true);
+        when(resolver.hasAny(ctx, BotIntent.TargetKind.MEMBER_SCHOOL)).thenReturn(true);
 
         List<String> flat = router.menu(ctx).stream().flatMap(List::stream).toList();
 
@@ -55,14 +51,20 @@ class BotRouterTest {
 
     @Test
     void teacherMenuHasTeacherButtons() {
-        BotTarget school = new BotTarget.School(10L, "مدرسه");
-        when(resolver.targets(ctx, BotIntent.TEACHER_TODAY)).thenReturn(List.of(school));
-        when(resolver.targets(ctx, BotIntent.TEACHER_ROLL)).thenReturn(List.of(school));
-        when(resolver.targets(ctx, BotIntent.EVENTS)).thenReturn(List.of(school));
+        when(resolver.hasAny(ctx, BotIntent.TargetKind.TEACHER_SCHOOL)).thenReturn(true);
+        when(resolver.hasAny(ctx, BotIntent.TargetKind.MEMBER_SCHOOL)).thenReturn(true);
 
         assertThat(router.menu(ctx)).containsExactly(
                 List.of(BotTexts.BTN_TEACHER_TODAY, BotTexts.BTN_TEACHER_ROLL),
                 List.of(BotTexts.BTN_EVENTS, BotTexts.BTN_HELP));
+    }
+
+    @Test
+    void menuChecksEachTargetKindOnce() {
+        router.menu(ctx);
+
+        verify(resolver, org.mockito.Mockito.times(4)).hasAny(any(), any());
+        verify(resolver, org.mockito.Mockito.never()).targets(any(), any());
     }
 
     @Test

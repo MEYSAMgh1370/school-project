@@ -19,6 +19,7 @@ import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.Mockito.mock;
@@ -37,6 +38,7 @@ class BaleUpdateHandlerTest {
     private AcademicFacade academic;
     private FinanceFacade finance;
     private StudentAnswers studentAnswers;
+    private SchoolAnswers schoolAnswers;
     private BaleUpdateHandler handler;
 
     @BeforeEach
@@ -49,8 +51,8 @@ class BaleUpdateHandlerTest {
         finance = mock(FinanceFacade.class);
         SubjectResolver resolver = new SubjectResolver(academic, school, iam);
         studentAnswers = mock(StudentAnswers.class);
-        BotRouter router = new BotRouter(resolver, studentAnswers, mock(TimetableAnswers.class),
-                mock(SchoolAnswers.class));
+        schoolAnswers = mock(SchoolAnswers.class);
+        BotRouter router = new BotRouter(resolver, studentAnswers, mock(TimetableAnswers.class), schoolAnswers);
         handler = new BaleUpdateHandler(links, client, iam, school, finance,
                 new BotContextLoader(links, iam), resolver, router);
         when(academic.listWards(any(), any())).thenReturn(List.of());
@@ -177,5 +179,40 @@ class BaleUpdateHandlerTest {
 
         verify(client).sendMessage(42L,
                 "- سارا (مدرسه #10): 0 فاکتور صادرشده\n- دانش‌آموز #2000 (مدرسه #10): 0 فاکتور صادرشده");
+    }
+
+    @Test
+    void linkConfirmationFallsBackToPlainTextWhenMenuFails() {
+        when(iam.findUserByPhoneNumber("0912"))
+                .thenReturn(Optional.of(new UserProfile(new UserId(7L), "a@b.c", "والد", "0912")));
+        when(links.findByUserId(7L)).thenReturn(Optional.empty());
+        link(42L, 7L);
+        when(iam.findMembershipsByUser(new UserId(7L))).thenThrow(new IllegalStateException("boom"));
+
+        handler.handle(new BaleUpdate(1L, new BaleMessage(1L, new BaleChat(42L), null,
+                new BaleUpdate.BaleContact("0912")), null));
+
+        verify(client).sendMessage(42L, BotTexts.linkSuccess("والد"));
+        org.mockito.Mockito.verify(client, org.mockito.Mockito.never()).sendMenu(any(), any(), any());
+    }
+
+    @Test
+    void pureStudentHasNoInvoicesAndOwnIdCallbackIsNotAvailable() {
+        link(42L, 7L);
+        when(iam.findMembershipsByUser(new UserId(7L))).thenReturn(List.of(
+                new MembershipInfo(1L, new UserId(7L), "a@b.c", "دانش‌آموز", 10L, "STUDENT", true, true)));
+        when(academic.findMyEnrollment(7L, 10L)).thenReturn(Optional.of(
+                new AcademicFacade.EnrollmentInfo(new StudentId(100L), 10L, null, null, null)));
+
+        handler.handle(textUpdate(42L, "سلام"));
+        handler.handle(callbackUpdate("cb9", 42L, "i:100"));
+
+        org.mockito.ArgumentCaptor<List<List<String>>> menu = org.mockito.ArgumentCaptor.forClass(List.class);
+        verify(client).sendMenu(org.mockito.ArgumentMatchers.eq(42L),
+                org.mockito.ArgumentMatchers.eq(BotTexts.UNKNOWN_TEXT), menu.capture());
+        assertThat(menu.getValue().stream().flatMap(List::stream).toList())
+                .contains(BotTexts.BTN_GRADES).doesNotContain(BotTexts.BTN_INVOICES);
+        verify(client).sendMessage(42L, BotTexts.NOT_AVAILABLE);
+        verifyNoInteractions(schoolAnswers);
     }
 }
