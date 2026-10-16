@@ -14,14 +14,11 @@ COPY src ./src
 RUN mvn -B -ntp -DskipTests package
 
 # ---------- مرحله‌ی runtime ----------
-FROM eclipse-temurin:21-jre
+FROM bellsoft/hardened-liberica-runtime-container:jre-21-nonroot-musl
 WORKDIR /app
 
-# curl فقط برای اینکه دستور healthCheck در liara.json چیزی برای اجرا داشته
-# باشد؛ ایمیج پایه‌ی JRE آن را ندارد.
-RUN apt-get update \
-    && apt-get install -y --no-install-recommends curl \
-    && rm -rf /var/lib/apt/lists/*
+# ایمیج پایه‌ی hardened (Alpaquita با musl) curl ندارد؛ healthCheck در liara.json
+# با busybox wget اجرا می‌شود که در همین ایمیج هست، پس نیازی به apt-get نیست.
 
 # دیتای این سامانه تقویم شمسی/زمان ایران است؛ کانتینر پیش‌فرض UTC است.
 ENV TZ=Asia/Tehran
@@ -53,10 +50,10 @@ ENV JAVA_OPTS="-Xmx192m -Xms64m -XX:+UseSerialGC -Xss512k -XX:ReservedCodeCacheS
 # اجرا می‌کنید، با -e SPRING_PROFILES_ACTIVE=... بازنویسی‌اش کنید.
 ENV SPRING_PROFILES_ACTIVE=prod
 
-COPY --from=build /workspace/target/roshdeandishe-*.jar /app/app.jar
-
-RUN useradd --uid 1001 app && chown app:app /app/app.jar
-USER app
+# کاربر به‌صورت عددی تعریف می‌شود تا به نام کاربرِ ایمیج پایه وابسته نباشد
+# (ایمیج nonroot کاربری به نام appuser دارد). useradd هم در این ایمیج نیست.
+COPY --from=build --chown=1001:1001 /workspace/target/roshdeandishe-*.jar /app/app.jar
+USER 1001:1001
 
 EXPOSE 8080
 # exec تا JVM خودش PID 1 شود و SIGTERM لیارا به graceful shutdown اسپرینگ برسد.
