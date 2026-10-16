@@ -28,6 +28,8 @@ final class ChatSerialExecutor {
     private final Executor pool;
     private final int maxPending;
     private final Map<Long, ArrayDeque<Runnable>> queues = new HashMap<>();
+    /** تعداد کل کارهای منتظر شروع در همه‌ی چت‌ها؛ فقط زیر قفل {@code queues} تغییر می‌کند. */
+    private int pending;
 
     ChatSerialExecutor(Executor pool, int maxPending) {
         this.pool = pool;
@@ -37,7 +39,7 @@ final class ChatSerialExecutor {
     /**
      * کارهای هم‌کلید یکی‌یکی و به ترتیب ارسال اجرا می‌شوند؛ کلیدهای مختلف
      * ممکن است موازی بروند. {@code key == null} بدون ترتیب اجرا می‌شود.
-     * اگر {@code maxPending} کار منتظر شروع باشد یا pool رد کند
+     * اگر {@code maxPending} کار (در مجموع همه‌ی کلیدها) منتظر شروع باشد یا pool رد کند
      * {@link RejectedExecutionException} می‌دهد و کار رد شده هرگز اجرا نمی‌شود.
      */
     void execute(Long key, Runnable task) {
@@ -46,22 +48,26 @@ final class ChatSerialExecutor {
             return;
         }
         synchronized (queues) {
+            if (pending >= maxPending) {
+                throw new RejectedExecutionException("صف کارها پر است");
+            }
             ArrayDeque<Runnable> queue = queues.get(key);
             if (queue != null) {
-                if (queue.size() >= maxPending) {
-                    throw new RejectedExecutionException("صف چت " + key + " پر است");
-                }
                 queue.add(task);
+                pending++;
                 return;
             }
             queue = new ArrayDeque<>();
             queue.add(task);
             queues.put(key, queue);
+            pending++;
             try {
                 pool.execute(() -> drain(key));
-            } catch (RuntimeException e) {
+            } catch (Throwable t) {
+                // حتی Error (مثلاً نشد thread ساخت): کلید نماند تا چت برای همیشه گیر نکند
                 queues.remove(key);
-                throw e;
+                pending--;
+                throw t;
             }
         }
     }
@@ -77,10 +83,11 @@ final class ChatSerialExecutor {
                     queues.remove(key);
                     return;
                 }
+                pending--;
             }
             try {
                 next.run();
-            } catch (RuntimeException e) {
+            } catch (Throwable e) {
                 log.warn("کار چت {} شکست خورد؛ کارهای بعدی همان چت ادامه می‌یابند.", key, e);
             }
         }

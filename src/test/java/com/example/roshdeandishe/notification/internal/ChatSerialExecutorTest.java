@@ -11,6 +11,7 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.RejectedExecutionException;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -102,6 +103,65 @@ class ChatSerialExecutorTest {
         executor.execute(1L, secondRan::countDown);
 
         assertThat(secondRan.await(WAIT_SECONDS, TimeUnit.SECONDS)).isTrue();
+    }
+
+    @Test
+    void maxPendingIsGlobalAcrossKeysAndARejectedTaskNeverRuns() throws Exception {
+        var executor = new ChatSerialExecutor(pool, 2);
+        CountDownLatch started = new CountDownLatch(2);
+        CountDownLatch release = new CountDownLatch(1);
+        for (long key : new long[] {1L, 2L}) {
+            executor.execute(key, () -> {
+                started.countDown();
+                await(release);
+            });
+        }
+        assertThat(started.await(WAIT_SECONDS, TimeUnit.SECONDS)).isTrue();
+        CountDownLatch queuedRan = new CountDownLatch(2);
+        executor.execute(1L, queuedRan::countDown);
+        executor.execute(2L, queuedRan::countDown);
+
+        AtomicBoolean rejectedRan = new AtomicBoolean();
+        assertThatThrownBy(() -> executor.execute(1L, () -> rejectedRan.set(true)))
+                .isInstanceOf(RejectedExecutionException.class);
+        assertThatThrownBy(() -> executor.execute(3L, () -> rejectedRan.set(true)))
+                .isInstanceOf(RejectedExecutionException.class);
+        release.countDown();
+        assertThat(queuedRan.await(WAIT_SECONDS, TimeUnit.SECONDS)).isTrue();
+
+        // بعد از اجرای کارهای منتظر، ظرفیت دوباره آزاد است
+        CountDownLatch after = new CountDownLatch(1);
+        executor.execute(1L, after::countDown);
+        assertThat(after.await(WAIT_SECONDS, TimeUnit.SECONDS)).isTrue();
+        assertThat(rejectedRan).isFalse();
+    }
+
+    @Test
+    void anErrorFromATaskDoesNotStallTheChat() throws Exception {
+        var executor = new ChatSerialExecutor(pool, 100);
+        CountDownLatch secondRan = new CountDownLatch(1);
+        executor.execute(1L, () -> {
+            throw new AssertionError("boom");
+        });
+        executor.execute(1L, secondRan::countDown);
+
+        assertThat(secondRan.await(WAIT_SECONDS, TimeUnit.SECONDS)).isTrue();
+    }
+
+    @Test
+    void anErrorFromThePoolLeavesTheKeyUsable() throws Exception {
+        AtomicBoolean fail = new AtomicBoolean(true);
+        var executor = new ChatSerialExecutor(task -> {
+            if (fail.getAndSet(false)) {
+                throw new NoClassDefFoundError("boom");
+            }
+            pool.execute(task);
+        }, 1);
+        assertThatThrownBy(() -> executor.execute(1L, () -> { })).isInstanceOf(NoClassDefFoundError.class);
+
+        CountDownLatch ran = new CountDownLatch(1);
+        executor.execute(1L, ran::countDown);
+        assertThat(ran.await(WAIT_SECONDS, TimeUnit.SECONDS)).isTrue();
     }
 
     private static void await(CountDownLatch latch) {
