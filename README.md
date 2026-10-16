@@ -66,7 +66,8 @@ separate build artifacts.
 ## Deploying (Liara / any Docker host)
 
 The repo root carries a multi-stage [`Dockerfile`](Dockerfile) (Maven +
-Temurin 21 to build, `eclipse-temurin:21-jre` to run) and a minimal
+Temurin 21 to build, BellSoft's hardened Liberica JRE 21 image on musl to run;
+its `busybox wget` serves the health check, since it has no `curl`) and a minimal
 [`liara.json`](liara.json) (`platform: docker`, `port: 8080`). Tests are
 skipped in the image build on purpose — they need Testcontainers, i.e. a
 Docker daemon, which a PaaS build environment doesn't provide.
