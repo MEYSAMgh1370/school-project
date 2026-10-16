@@ -33,7 +33,7 @@ class BaleWebhookServiceTest {
         service(direct).processRawUpdate(WITH_ID_9);
 
         verify(handler).handle(new BaleUpdate(9L,
-                new BaleUpdate.BaleMessage(1L, new BaleUpdate.BaleChat(5L), "x", null), null));
+                new BaleUpdate.BaleMessage(1L, null, new BaleUpdate.BaleChat(5L, null), "x", null), null));
     }
 
     @Test

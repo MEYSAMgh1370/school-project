@@ -10,7 +10,9 @@ import com.example.roshdeandishe.iam.IamFacade.UserId;
 import com.example.roshdeandishe.iam.IamFacade.UserProfile;
 import com.example.roshdeandishe.notification.internal.BaleUpdate.BaleCallbackQuery;
 import com.example.roshdeandishe.notification.internal.BaleUpdate.BaleChat;
+import com.example.roshdeandishe.notification.internal.BaleUpdate.BaleContact;
 import com.example.roshdeandishe.notification.internal.BaleUpdate.BaleMessage;
+import com.example.roshdeandishe.notification.internal.BaleUpdate.BaleUser;
 import com.example.roshdeandishe.school.SchoolFacade;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -23,6 +25,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
@@ -60,12 +63,26 @@ class BaleUpdateHandlerTest {
     }
 
     private static BaleUpdate callbackUpdate(String id, Long chatId, String data) {
-        BaleMessage message = new BaleMessage(1L, new BaleChat(chatId), null, null);
+        return callbackUpdate(id, chatId, "private", data);
+    }
+
+    private static BaleUpdate callbackUpdate(String id, Long chatId, String chatType, String data) {
+        BaleMessage message = new BaleMessage(1L, new BaleUser(chatId), new BaleChat(chatId, chatType), null, null);
         return new BaleUpdate(1L, null, new BaleCallbackQuery(id, message, data));
     }
 
     private static BaleUpdate textUpdate(Long chatId, String text) {
-        return new BaleUpdate(1L, new BaleMessage(1L, new BaleChat(chatId), text, null), null);
+        return textUpdate(chatId, "private", text);
+    }
+
+    private static BaleUpdate textUpdate(Long chatId, String chatType, String text) {
+        return new BaleUpdate(1L,
+                new BaleMessage(1L, new BaleUser(chatId), new BaleChat(chatId, chatType), text, null), null);
+    }
+
+    private static BaleUpdate contactUpdate(Long chatId, String chatType, Long fromId, String phone, Long contactUserId) {
+        return new BaleUpdate(1L, new BaleMessage(1L, fromId == null ? null : new BaleUser(fromId),
+                new BaleChat(chatId, chatType), null, new BaleContact(phone, contactUserId)), null);
     }
 
     private void link(Long chatId, Long userId) {
@@ -138,10 +155,115 @@ class BaleUpdateHandlerTest {
         link(42L, 7L);
         when(iam.findMembershipsByUser(new UserId(7L))).thenReturn(List.of());
 
-        handler.handle(new BaleUpdate(1L, new BaleMessage(1L, new BaleChat(42L), null,
-                new BaleUpdate.BaleContact("0912")), null));
+        handler.handle(contactUpdate(42L, "private", 42L, "0912", 42L));
 
         verify(client).sendMenu(42L, BotTexts.linkSuccess("والد"), List.of(List.of(BotTexts.BTN_HELP)));
+    }
+
+    @Test
+    void ownContactInPrivateChatLinks() {
+        when(iam.findUserByPhoneNumber("0912"))
+                .thenReturn(Optional.of(new UserProfile(new UserId(7L), "a@b.c", "والد", "0912")));
+        when(links.findByUserId(7L)).thenReturn(Optional.empty());
+        link(42L, 7L);
+        when(iam.findMembershipsByUser(new UserId(7L))).thenReturn(List.of());
+
+        handler.handle(contactUpdate(42L, "private", 555L, "0912", 555L));
+
+        verify(links).save(any(BaleLinkEntity.class));
+        verify(client).sendMenu(42L, BotTexts.linkSuccess("والد"), List.of(List.of(BotTexts.BTN_HELP)));
+    }
+
+    @Test
+    void someoneElsesContactIsRejectedAndLinksNothing() {
+        handler.handle(contactUpdate(42L, "private", 555L, "0912", 556L));
+
+        verify(client).sendMessage(42L, BotTexts.CONTACT_NOT_OWN);
+        verify(links, never()).save(any());
+        verifyNoInteractions(iam);
+    }
+
+    @Test
+    void contactWithoutUserIdIsRejected() {
+        handler.handle(contactUpdate(42L, "private", 555L, "0912", null));
+
+        verify(client).sendMessage(42L, BotTexts.CONTACT_NOT_OWN);
+        verify(links, never()).save(any());
+        verifyNoInteractions(iam);
+    }
+
+    @Test
+    void contactWithoutSenderIsRejected() {
+        handler.handle(contactUpdate(42L, "private", null, "0912", 555L));
+
+        verify(client).sendMessage(42L, BotTexts.CONTACT_NOT_OWN);
+        verify(links, never()).save(any());
+    }
+
+    @Test
+    void existingLinkOfThePhoneOwnerIsNotMovedByAForeignContact() {
+        BaleLinkEntity existing = new BaleLinkEntity(7L, 100L, Instant.now());
+        when(links.findByUserId(7L)).thenReturn(Optional.of(existing));
+        when(iam.findUserByPhoneNumber("0912"))
+                .thenReturn(Optional.of(new UserProfile(new UserId(7L), "a@b.c", "والد", "0912")));
+
+        handler.handle(contactUpdate(42L, "private", 555L, "0912", 556L));
+
+        assertThat(existing.getChatId()).isEqualTo(100L);
+        verify(links, never()).save(any());
+        verify(links, never()).findByUserId(anyLong());
+        verify(client).sendMessage(42L, BotTexts.CONTACT_NOT_OWN);
+    }
+
+    @Test
+    void groupChatGetsPrivateOnlyAndNoData() {
+        link(42L, 7L);
+
+        handler.handle(textUpdate(42L, "group", "فرزندان من"));
+
+        verify(client).sendMessage(42L, BotTexts.PRIVATE_CHAT_ONLY);
+        verifyNoInteractions(finance, academic, school);
+        verify(client, never()).sendMenu(any(), any(), any());
+        verify(client, never()).sendContactRequest(any(), any());
+    }
+
+    @Test
+    void startInGroupGetsPrivateOnlyWithoutContactKeyboard() {
+        handler.handle(textUpdate(42L, "group", "/start"));
+
+        verify(client).sendMessage(42L, BotTexts.PRIVATE_CHAT_ONLY);
+        verify(client, never()).sendContactRequest(any(), any());
+    }
+
+    @Test
+    void contactInGroupLinksNothing() {
+        handler.handle(contactUpdate(42L, "group", 555L, "0912", 555L));
+
+        verify(client).sendMessage(42L, BotTexts.PRIVATE_CHAT_ONLY);
+        verify(links, never()).save(any());
+        verifyNoInteractions(iam);
+    }
+
+    @Test
+    void callbackInGroupIsAnsweredThenPrivateOnly() {
+        link(42L, 7L);
+
+        handler.handle(callbackUpdate("cbg", 42L, "group", "g:100"));
+
+        org.mockito.InOrder order = org.mockito.Mockito.inOrder(client);
+        order.verify(client).answerCallbackQuery("cbg");
+        order.verify(client).sendMessage(42L, BotTexts.PRIVATE_CHAT_ONLY);
+        verifyNoInteractions(studentAnswers, schoolAnswers, academic, finance);
+    }
+
+    @Test
+    void missingChatTypeIsTreatedAsNotPrivate() {
+        link(42L, 7L);
+
+        handler.handle(textUpdate(42L, null, "فرزندان من"));
+
+        verify(client).sendMessage(42L, BotTexts.PRIVATE_CHAT_ONLY);
+        verifyNoInteractions(finance, academic);
     }
 
     @Test
@@ -189,8 +311,7 @@ class BaleUpdateHandlerTest {
         link(42L, 7L);
         when(iam.findMembershipsByUser(new UserId(7L))).thenThrow(new IllegalStateException("boom"));
 
-        handler.handle(new BaleUpdate(1L, new BaleMessage(1L, new BaleChat(42L), null,
-                new BaleUpdate.BaleContact("0912")), null));
+        handler.handle(contactUpdate(42L, "private", 42L, "0912", 42L));
 
         verify(client).sendMessage(42L, BotTexts.linkSuccess("والد"));
         org.mockito.Mockito.verify(client, org.mockito.Mockito.never()).sendMenu(any(), any(), any());

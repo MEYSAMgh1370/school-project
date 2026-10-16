@@ -59,6 +59,11 @@ final class BotTexts {
             "شماره‌ی به‌اشتراک‌گذاشته‌شده با هیچ حسابی در سامانه مطابقت ندارد. " +
             "ابتدا از طریق پروفایل حساب کاربری‌تان در سایت، همین شماره را ثبت کنید.";
 
+    static final String CONTACT_NOT_OWN =
+            "لطفاً شماره‌ی خودتان را با دکمه‌ی «اشتراک‌گذاری شماره تلفن» بفرستید؛ " +
+            "شماره‌ی شخص دیگری پذیرفته نمی‌شود.";
+    static final String PRIVATE_CHAT_ONLY = "این بات فقط در گفتگوی خصوصی کار می‌کند.";
+
     static final String NO_MEMBERSHIPS = "شما در حال حاضر عضو هیچ مدرسه‌ای نیستید.";
     static final String MEMBERSHIPS_HEADER = "مدرسه‌ها و نقش‌های شما:\n";
     static final String NOT_A_PARENT = "شما در هیچ مدرسه‌ای نقش والد ندارید.";

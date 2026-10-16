@@ -83,8 +83,14 @@ class BaleUpdateHandler {
 
         Long chatId = message.chat().id();
 
+        // فقط گفتگوی خصوصی: در گروه/کانال (یا نوع نامشخص) نه داده‌ای داده می‌شود نه لینکی ساخته می‌شود
+        if (!isPrivate(message)) {
+            baleClient.sendMessage(chatId, BotTexts.PRIVATE_CHAT_ONLY);
+            return;
+        }
+
         if (message.contact() != null) {
-            handleContactShared(chatId, message.contact().phoneNumber());
+            handleContactShared(chatId, message);
             return;
         }
 
@@ -135,6 +141,10 @@ class BaleUpdateHandler {
             return;
         }
         Long chatId = callback.message().chat().id();
+        if (!isPrivate(callback.message())) {
+            baleClient.sendMessage(chatId, BotTexts.PRIVATE_CHAT_ONLY);
+            return;
+        }
         Optional<BotContext> context = botContextLoader.load(chatId);
         if (context.isEmpty()) {
             baleClient.sendMessage(chatId, BotTexts.NOT_LINKED_TEXT);
@@ -143,8 +153,23 @@ class BaleUpdateHandler {
         send(chatId, botRouter.onCallback(context.get(), callback.data()));
     }
 
-    private void handleContactShared(Long chatId, String phoneNumber) {
-        Optional<UserProfile> matchedUser = iamFacade.findUserByPhoneNumber(phoneNumber);
+    private static boolean isPrivate(BaleMessage message) {
+        return "private".equals(message.chat().type());
+    }
+
+    /**
+     * لینک فقط وقتی ساخته می‌شود که مخاطب، شماره‌ی خودِ فرستنده باشد (contact.user_id == from.id)؛ بله
+     * اجازه می‌دهد هر مخاطبِ دفترچه‌تلفن فرستاده شود. این بررسی پیش از جست‌وجوی شماره است تا مخاطب
+     * بیگانه هرگز معلوم نکند شماره‌ای ثبت شده یا نه؛ نبودنِ user_id هم رد می‌شود (fail closed).
+     */
+    private void handleContactShared(Long chatId, BaleMessage message) {
+        Long contactUserId = message.contact().userId();
+        if (contactUserId == null || message.from() == null || !contactUserId.equals(message.from().id())) {
+            baleClient.sendMessage(chatId, BotTexts.CONTACT_NOT_OWN);
+            return;
+        }
+
+        Optional<UserProfile> matchedUser = iamFacade.findUserByPhoneNumber(message.contact().phoneNumber());
         if (matchedUser.isEmpty()) {
             baleClient.sendMessage(chatId, BotTexts.CONTACT_NOT_MATCHED);
             return;

@@ -200,6 +200,28 @@ class BaleFlowIntegrationTest {
     }
 
     @Test
+    void contactOfAnotherUserDoesNotLink() throws Exception {
+        String email = "bale-victim-" + System.nanoTime() + "@roshdeandishe.test";
+        String phoneNumber = uniquePhoneNumber();
+        MockHttpSession session = registerAndLogin(email, "قربانی بله");
+        setPhoneNumber(session, phoneNumber);
+        long chatId = uniqueChatId();
+
+        mockMvc.perform(post("/api/bale/webhook/" + WEBHOOK_SECRET)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(contactShareUpdateJson(chatId, chatId + 1, phoneNumber)))
+                .andExpect(status().isOk());
+
+        awaitSentMessageCount(1);
+        assertThat(SENT_MESSAGES.get(0)).contains("شماره‌ی خودتان");
+        await().during(Duration.ofSeconds(1)).atMost(Duration.ofSeconds(10)).untilAsserted(() -> {
+            Integer linkCount = jdbcTemplate.queryForObject(
+                    "select count(*) from bale.bale_links where chat_id = ?", Integer.class, chatId);
+            assertThat(linkCount).isZero();
+        });
+    }
+
+    @Test
     void contactShareLinksMatchingPhoneNumberAndConfirms() throws Exception {
         String email = "bale-user-" + System.nanoTime() + "@roshdeandishe.test";
         String phoneNumber = uniquePhoneNumber();
@@ -389,13 +411,20 @@ class BaleFlowIntegrationTest {
     }
 
     private static String updateJsonForText(long chatId, String text) {
-        return "{\"update_id\":%d,\"message\":{\"message_id\":1,\"chat\":{\"id\":%d},\"text\":\"%s\"}}"
-                .formatted(SEQ.incrementAndGet(), chatId, text);
+        return ("{\"update_id\":%d,\"message\":{\"message_id\":1,\"from\":{\"id\":%d,\"is_bot\":false,\"first_name\":\"t\"},"
+                + "\"chat\":{\"id\":%d,\"type\":\"private\"},\"text\":\"%s\"}}")
+                .formatted(SEQ.incrementAndGet(), chatId, chatId, text);
     }
 
     private static String contactShareUpdateJson(long chatId, String phoneNumber) {
-        return "{\"update_id\":%d,\"message\":{\"message_id\":1,\"chat\":{\"id\":%d},\"contact\":{\"phone_number\":\"%s\"}}}"
-                .formatted(SEQ.incrementAndGet(), chatId, phoneNumber);
+        return contactShareUpdateJson(chatId, chatId, phoneNumber);
+    }
+
+    private static String contactShareUpdateJson(long chatId, long contactUserId, String phoneNumber) {
+        return ("{\"update_id\":%d,\"message\":{\"message_id\":1,\"from\":{\"id\":%d,\"is_bot\":false,\"first_name\":\"t\"},"
+                + "\"chat\":{\"id\":%d,\"type\":\"private\"},"
+                + "\"contact\":{\"phone_number\":\"%s\",\"first_name\":\"t\",\"user_id\":%d}}}")
+                .formatted(SEQ.incrementAndGet(), chatId, chatId, phoneNumber, contactUserId);
     }
 
     private static String chatIdField(long chatId) {
