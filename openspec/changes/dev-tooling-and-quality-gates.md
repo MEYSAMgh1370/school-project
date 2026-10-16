@@ -1,6 +1,6 @@
 # Dev Tooling And Quality Gates
 
-Status: proposed (not started). Derived from a reviewed external "Dev Tooling,
+Status: steps 1-3 implemented 2026-10-14 (steps 4-5 optional, not started). Derived from a reviewed external "Dev Tooling,
 Observability & Code Quality" plan, adapted to this repository.
 
 ## Intent
