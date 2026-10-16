@@ -98,6 +98,23 @@ class AttendanceMathTest {
     }
 
     @Test
+    void rangePercentFloorsCountsLateAsPresentAndIsNullWithoutABase() {
+        assertThat(AttendanceMath.rangePercent(1000, 1)).isEqualTo(99);   // ۹۹٫۹٪ هرگز ۱۰۰ نیست
+        assertThat(AttendanceMath.rangePercent(9, 2)).isEqualTo(77);
+        assertThat(AttendanceMath.rangePercent(5, 0)).isEqualTo(100);
+        assertThat(AttendanceMath.rangePercent(4, 4)).isZero();
+        assertThat(AttendanceMath.rangePercent(0, 0)).isNull();
+        assertThat(AttendanceMath.rangePercent(-1, 0)).isNull();
+        assertThat(AttendanceMath.rangePercent(3, 5)).isZero(); // هرگز منفی نیست
+    }
+
+    @Test
+    void reportRowCarriesTheRangePercentAndLateDoesNotLowerIt() {
+        assertThat(AttendanceMath.reportRow(1L, "علی", 7L, "کلاس", 10, 2, 5).presentPercent()).isEqualTo(80);
+        assertThat(AttendanceMath.reportRow(1L, "علی", 7L, "کلاس", 0, 0, 0).presentPercent()).isNull();
+    }
+
+    @Test
     void reportPresentDaysNeverGoNegative() {
         assertThat(AttendanceMath.reportRow(1L, "علی", 7L, "کلاس", 1, 2, 0).presentDays()).isZero();
     }

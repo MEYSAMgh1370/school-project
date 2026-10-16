@@ -24,6 +24,11 @@ public class AttendanceProblemResolver {
                     "کلاس یافت نشد",
                     "کلاسی با شناسه " + e.classId() + " یافت نشد."
             );
+            case AttendanceError.StudentNotFound e -> ProblemDetailFactory.problem(
+                    HttpStatus.NOT_FOUND, "student-not-found",
+                    "دانش‌آموز یافت نشد",
+                    "دانش‌آموزی با شناسه " + e.studentId() + " یافت نشد."
+            );
             case AttendanceError.SchoolNotFound e -> ProblemDetailFactory.problem(
                     HttpStatus.NOT_FOUND, "school-not-found",
                     "مدرسه یافت نشد",

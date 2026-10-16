@@ -60,14 +60,20 @@ final class AttendanceMath {
         return (int) (100L * present / expected);
     }
 
+    /** درصدِ حضورِ یک بازه: همان {@link #presentPercent}؛ {@code base} مجموعِ مبنای روزهای بازه است. */
+    static Integer rangePercent(int base, int absent) {
+        return presentPercent(base, absent);
+    }
+
     /**
      * یک ردیفِ گزارش: مبنا = روزهای بازه که حضور و غیابِ کلاس گرفته شده ({@code rollDays})؛
      * {@code present = rollDays − absent} (تأخیر حاضر است و جدا در {@code lateDays} می‌آید).
      */
     static ReportRow reportRow(Long studentId, String studentName, Long classId, String className, int rollDays,
                                int absentDays, int lateDays) {
-        return new ReportRow(studentId, studentName, classId, className, absentDays, lateDays,
-                Math.max(0, rollDays - absentDays));
+        int present = Math.max(0, rollDays - absentDays);
+        return new ReportRow(studentId, studentName, classId, className, absentDays, lateDays, present,
+                rangePercent(present + absentDays, absentDays));
     }
 
     /**

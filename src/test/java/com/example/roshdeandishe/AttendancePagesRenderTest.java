@@ -214,12 +214,53 @@ class AttendancePagesRenderTest {
     }
 
     @Test
+    void theRangeRowsShowThePercentWithABarAndLinkToTheStudentSheet() {
+        String html = render("attendance-report.jte");
+
+        assertThat(html).contains(">درصد حضور</th>", "x-text=\"pct(row.presentPercent)\"");
+        assertThat(html).contains(":aria-label=\"'درصد حضور ' + row.studentName\"", ":value=\"bar(row.presentPercent)\"");
+        // برگه‌ی چاپی در برگه‌ی تازه، با بازه‌ی ISO از state
+        assertThat(html).contains(":href=\"sheetHref(row)\"", "target=\"_blank\"", "rel=\"noopener\"", "برگه‌ی حضور");
+        assertThat(html).contains("class=\"table-container\"");
+    }
+
+    @Test
+    void theClassesTabListsClassesWithABarAndLinksBackToTheirStudents() {
+        String html = render("attendance-report.jte");
+
+        assertThat(html).contains("id=\"attTabClasses\"", "id=\"attPanelClasses\"", "id=\"attClassList\"");
+        assertThat(html).contains("x-for=\"item in classRows\"", "x-text=\"pct(item.presentPercent)\"");
+        assertThat(html).contains("کلاس‌هایی که در این بازه حضور و غیابشان ثبت نشده در فهرست نیستند.");
+        assertThat(html).contains("@click.prevent=\"showClassStudents(item)\">دانش‌آموزان</a>");
+        assertThat(HtmlUtils.htmlUnescape(html)).contains("classReportLoaded && !classReportLoading && classRows.length === 0");
+        assertThat(html).contains("در این بازه حضور و غیابی ثبت نشده است");
+        // بازه‌ی مشترک: ورودی‌ها بیرون از پنلِ بازه‌ای و برای هر سه بخش دیده می‌شوند
+        assertThat(html.indexOf("id=\"attFrom\"")).isLessThan(html.indexOf("id=\"attPanelRange\""));
+        assertThat(html).contains("x-show=\"rangeTab()\"");
+    }
+
+    @Test
+    void theTeachersTabExplainsTheOverlapAndExpandsToTheClasses() {
+        String html = render("attendance-report.jte");
+
+        assertThat(html).contains("id=\"attTabTeachers\"", "id=\"attPanelTeachers\"", "id=\"attTeacherNote\"");
+        assertThat(html).contains("اگر یک کلاس چند معلم داشته باشد، در فهرست هر کدام جداگانه می‌آید؛ جمع ردیف‌ها با جمع مدرسه برابر نیست.");
+        assertThat(html).contains("x-for=\"item in teacherRows\"", "x-text=\"teacherLabel(item)\"", "x-for=\"cls in item.classes\"");
+        assertThat(html).contains(":aria-expanded=\"isExpanded(item) ? 'true' : 'false'\"", "@click=\"toggleTeacher(item)\">کلاس‌ها</button>");
+        assertThat(HtmlUtils.htmlUnescape(html)).contains("teacherLoaded && !teacherLoading && teacherRows.length === 0");
+        // هنوز تنها یک دکمه‌ی اصلی
+        assertThat(count(html, "button is-link")).isEqualTo(1);
+    }
+
+    @Test
     void theReportPageLoadsItsScriptsAndStyles() {
         // (بخشِ عذرخواهی‌ها هم از همین فایل‌ها می‌خواند و فایلِ تازه‌ای نمی‌خواهد)
         String html = render("attendance-report.jte");
 
-        assertThat(html).contains("/js/date-input.js", "/js/school-api.js", "/js/attendance-report.js", "/css/attendance.css");
+        assertThat(html).contains("/js/date-input.js", "/js/school-api.js", "/js/attendance-report-logic.js",
+                "/js/attendance-report.js", "/css/attendance.css");
         assertThat(html.indexOf("/js/school-api.js")).isLessThan(html.indexOf("/js/attendance-report.js"));
+        assertThat(html.indexOf("/js/attendance-report-logic.js")).isLessThan(html.indexOf("/js/attendance-report.js"));
     }
 
     // ------------------------------------------------------------------ /calendar
@@ -270,7 +311,7 @@ class AttendancePagesRenderTest {
                     .doesNotContain("is-pulled-left").doesNotContain("is-pulled-right");
         }
         assertThat(resource("/static/css/attendance.css")).doesNotContainPattern("(?i)\\b(left|right)\\b");
-        for (String script : List.of("date-input", "school-api", "school-calendar", "attendance", "attendance-report")) {
+        for (String script : List.of("date-input", "school-api", "school-calendar", "attendance", "attendance-report", "attendance-report-logic")) {
             assertThat(resource("/static/js/" + script + ".js")).as(script)
                     .doesNotContainPattern("(?i)\\b(margin|padding|border|text-align)-?(left|right)\\b");
         }

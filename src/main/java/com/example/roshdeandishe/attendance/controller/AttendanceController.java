@@ -8,10 +8,13 @@ import com.example.roshdeandishe.attendance.dto.request.DecideExcuseRequest;
 import com.example.roshdeandishe.attendance.dto.request.SaveRollRequest;
 import com.example.roshdeandishe.attendance.dto.response.ClassAbsenteesResponse;
 import com.example.roshdeandishe.attendance.dto.response.ClassDayResponse;
+import com.example.roshdeandishe.attendance.dto.response.ClassReportRowResponse;
 import com.example.roshdeandishe.attendance.dto.response.DaySummaryResponse;
 import com.example.roshdeandishe.attendance.dto.response.ExcuseResponse;
 import com.example.roshdeandishe.attendance.dto.response.RecordableClassResponse;
 import com.example.roshdeandishe.attendance.dto.response.ReportRowResponse;
+import com.example.roshdeandishe.attendance.dto.response.StudentSheetResponse;
+import com.example.roshdeandishe.attendance.dto.response.TeacherReportRowResponse;
 import com.example.roshdeandishe.attendance.shared.AttendanceError;
 import com.example.roshdeandishe.attendance.shared.AttendanceException;
 import com.example.roshdeandishe.iam.AccessContext;
@@ -135,6 +138,46 @@ public class AttendanceController {
         TenantContext.requireMatches(schoolId);
 
         return attendanceFacade.report(schoolId, from, to, classId, name).stream().map(ReportRowResponse::from).toList();
+    }
+
+    /** گزارشِ هر کلاس در بازه (فقط کلاس‌های دارای حضور و غیاب)؛ {@code classId} اختیاری است. */
+    @GetMapping("/report/classes")
+    @RequiresPermission("ATTENDANCE_VIEW_ALL")
+    public List<ClassReportRowResponse> classReport(
+            @PathVariable Long schoolId,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate from,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to,
+            @RequestParam(required = false) Long classId) {
+        TenantContext.requireMatches(schoolId);
+
+        return attendanceFacade.classReport(schoolId, from, to, classId).stream()
+                .map(ClassReportRowResponse::from).toList();
+    }
+
+    /** گزارشِ هر معلم در بازه، با کلاس‌هایش (کلاسِ چندمعلمی زیرِ هر معلم می‌آید). */
+    @GetMapping("/report/teachers")
+    @RequiresPermission("ATTENDANCE_VIEW_ALL")
+    public List<TeacherReportRowResponse> teacherReport(
+            @PathVariable Long schoolId,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate from,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to) {
+        TenantContext.requireMatches(schoolId);
+
+        return attendanceFacade.teacherReport(schoolId, from, to).stream()
+                .map(TeacherReportRowResponse::from).toList();
+    }
+
+    /** برگه‌ی یک دانش‌آموز در بازه (ردیف‌ها، درصد، فهرستِ روزهای غیبت و تأخیر). */
+    @GetMapping("/report/students/{studentId}")
+    @RequiresPermission("ATTENDANCE_VIEW_ALL")
+    public StudentSheetResponse studentSheet(
+            @PathVariable Long schoolId,
+            @PathVariable Long studentId,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate from,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to) {
+        TenantContext.requireMatches(schoolId);
+
+        return StudentSheetResponse.from(attendanceFacade.studentSheet(schoolId, studentId, from, to));
     }
 
     // ---- عذرها (مدیر) ----
