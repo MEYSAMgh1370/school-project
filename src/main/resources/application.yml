@@ -188,8 +188,10 @@ roshdeandishe:
     # صدور/اعتبارسنجی توکن Bearer برای اپ موبایل (additive به session cookie
     # وب - iam.internal.JwtTokenProvider). این مقدار dev-only است؛ در
     # deployment واقعی باید از طریق env var override شود، همان الگوی
-    # roshdeandishe.bale.bot-token. کلید HMAC-SHA256، حداقل ۲۵۶ بیت.
-    secret: xYpDz1+SLoB2muDdXqrUsLpIKOZyZf1qqZW6hX336PM=
+    # roshdeandishe.bale.bot-token. کلید HMAC-SHA256، حداقل ۲۵۶ بیت (Base64).
+    # هیچ کلیدی در گیت نیست: خالی یعنی JwtTokenProvider برای همین اجرا یک کلید
+    # تصادفی می‌سازد (توکن‌ها با ری‌استارت باطل می‌شوند - برای dev/test کافی است).
+    secret: ${JWT_SECRET:}
     # طول عمر توکن: ۱۲ ساعت. عمداً بدون refresh-token در v1 - نبود
     # sync/push در پس‌زمینه یعنی لاگین مجدد روزانه هزینه‌ی UX پذیرفتنی‌ای
     # است؛ اگر در عمل مزاحم شد، آن‌وقت refresh token اضافه شود، نه از قبل.
