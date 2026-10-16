@@ -15,6 +15,10 @@ public sealed interface AttendanceError {
     record ClassNotFound(Long classId) implements AttendanceError {
     }
 
+    /** دانش‌آموز در این مدرسه نیست (دانش‌آموزِ مدرسه‌ی دیگر هم همین است). */
+    record StudentNotFound(Long studentId) implements AttendanceError {
+    }
+
     record SchoolNotFound(Long schoolId) implements AttendanceError {
     }
 

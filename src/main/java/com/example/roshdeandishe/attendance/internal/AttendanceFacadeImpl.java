@@ -297,13 +297,124 @@ class AttendanceFacadeImpl implements AttendanceFacade {
     @Override
     public List<ReportRow> report(Long schoolId, LocalDate from, LocalDate to, Long classId, String nameFilter) {
         requireSchool(schoolId);
+        requireRange(from, to);
+        if (classId != null) {
+            requireClass(schoolId, classId);
+        }
+        return studentRows(schoolId, loadRange(schoolId, from, to, classId), namesByUser(schoolId), nameFilter, null);
+    }
+
+    @Override
+    public List<ClassReportRow> classReport(Long schoolId, LocalDate from, LocalDate to, Long classId) {
+        requireSchool(schoolId);
+        requireRange(from, to);
+        return classRows(loadRange(schoolId, from, to, classId));
+    }
+
+    @Override
+    public List<TeacherReportRow> teacherReport(Long schoolId, LocalDate from, LocalDate to) {
+        requireSchool(schoolId);
+        requireRange(from, to);
+        List<ClassRange> ranges = loadRange(schoolId, from, to, null);
+        if (ranges.isEmpty()) {
+            return List.of();
+        }
+        Map<Long, ClassReportRow> rowByClass = new HashMap<>();
+        classRows(ranges).forEach(r -> rowByClass.put(r.classId(), r));
+
+        // معلمِ هر کلاس: teacherId خودِ کلاس یا معلمِ یک خانه‌ی برنامه (همان قاعده‌ی requireMayAccessClass)؛ خانه‌ها
+        // در سالِ خودِ کلاس (یا سالِ جاری برای کلاسِ بی‌سال) و با یک query برای هر سال
+        Optional<String> currentYear = currentYearCode(schoolId);
+        Map<String, List<Long>> classIdsByYear = new HashMap<>();
+        for (ClassRange range : ranges) {
+            String year = range.cls().academicYear() != null ? range.cls().academicYear() : currentYear.orElse(null);
+            if (year != null) {
+                classIdsByYear.computeIfAbsent(year, y -> new ArrayList<>()).add(range.cls().id().value());
+            }
+        }
+        Map<Long, Set<Long>> teachersByClass = new HashMap<>();
+        for (ClassRange range : ranges) {
+            if (range.cls().teacherId() != null) {
+                teachersByClass.computeIfAbsent(range.cls().id().value(), k -> new LinkedHashSet<>())
+                        .add(range.cls().teacherId());
+            }
+        }
+        classIdsByYear.forEach((year, ids) -> timetableFacade.listEntriesForClasses(schoolId, year, ids).stream()
+                .filter(e -> e.teacherUserId() != null)
+                .forEach(e -> teachersByClass.computeIfAbsent(e.classId(), k -> new LinkedHashSet<>())
+                        .add(e.teacherUserId())));
+
+        Map<Long, List<ClassReportRow>> classesByTeacher = new LinkedHashMap<>();
+        teachersByClass.forEach((cid, teachers) -> {
+            ClassReportRow row = rowByClass.get(cid);
+            if (row != null) {
+                teachers.forEach(t -> classesByTeacher.computeIfAbsent(t, k -> new ArrayList<>()).add(row));
+            }
+        });
+
+        Map<Long, String> names = namesByUser(schoolId);
+        Comparator<ClassReportRow> byName = Comparator
+                .comparing(ClassReportRow::className, Comparator.nullsLast(Comparator.<String>naturalOrder()))
+                .thenComparing(ClassReportRow::classId);
+        List<TeacherReportRow> result = new ArrayList<>();
+        classesByTeacher.forEach((teacherId, rows) -> {
+            List<ClassReportRow> sorted = rows.stream().sorted(byName).toList();
+            int days = sorted.stream().mapToInt(ClassReportRow::daysTaken).sum();
+            int absent = sorted.stream().mapToInt(ClassReportRow::absentDays).sum();
+            int late = sorted.stream().mapToInt(ClassReportRow::lateDays).sum();
+            int present = sorted.stream().mapToInt(ClassReportRow::presentDays).sum();
+            result.add(new TeacherReportRow(teacherId, names.get(teacherId), sorted.size(), days, absent, late,
+                    present, AttendanceMath.rangePercent(present + absent, absent), sorted));
+        });
+        result.sort(Comparator
+                .comparing(TeacherReportRow::teacherName, Comparator.nullsLast(Comparator.<String>naturalOrder()))
+                .thenComparing(TeacherReportRow::teacherUserId));
+        return result;
+    }
+
+    @Override
+    public StudentSheet studentSheet(Long schoolId, Long studentId, LocalDate from, LocalDate to) {
+        requireSchool(schoolId);
+        requireRange(from, to);
+        StudentInfo student = academicFacade.findStudentInfo(studentId)
+                .filter(s -> schoolId.equals(s.schoolId()))
+                .orElseThrow(() -> new AttendanceException(new AttendanceError.StudentNotFound(studentId)));
+        Map<Long, String> names = namesByUser(schoolId);
+        List<ClassRange> ranges = loadRange(schoolId, from, to, null);
+        List<ReportRow> rows = studentRows(schoolId, ranges, names, null, studentId);
+        List<SheetDay> days = new ArrayList<>();
+        for (ClassRange range : ranges) {
+            for (MarkEntity mark : range.marks()) {
+                if (mark.getStudentId().equals(studentId)) {
+                    days.add(new SheetDay(mark.getDay(), range.cls().id().value(), range.cls().name(),
+                            mark.getStatus(), mark.getStatus() == AttendanceStatus.ABSENT && mark.isExcused(),
+                            mark.getNote()));
+                }
+            }
+        }
+        days.sort(Comparator.comparing(SheetDay::day)
+                .thenComparing(SheetDay::className, Comparator.nullsLast(Comparator.<String>naturalOrder()))
+                .thenComparing(SheetDay::classId));
+        int absent = rows.stream().mapToInt(ReportRow::absentDays).sum();
+        int present = rows.stream().mapToInt(ReportRow::presentDays).sum();
+        return new StudentSheet(studentId, names.get(student.userId()), from, to,
+                AttendanceMath.rangePercent(present + absent, absent), rows, days);
+    }
+
+    private static void requireRange(LocalDate from, LocalDate to) {
         String rangeProblem = AttendanceRules.rangeProblem(from, to);
         if (rangeProblem != null) {
             throw new AttendanceException(new AttendanceError.InvalidRange(rangeProblem));
         }
-        if (classId != null) {
-            requireClass(schoolId, classId);
-        }
+    }
+
+    /** داده‌ی یک کلاس در بازه: rollها، مُهرها و مبنای روزِ هر دانش‌آموز (بر پایه‌ی فهرستِ ذخیره‌شده‌ی هر roll). */
+    private record ClassRange(ClassInfo cls, int daysTaken, List<MarkEntity> marks, Map<Long, Integer> baseDays,
+                              List<StudentInfo> liveRoster) {
+    }
+
+    /** یک بار rollها، مُهرها و فهرست‌های ذخیره‌شده‌ی بازه را می‌خواند؛ فقط کلاس‌های دارای roll. */
+    private List<ClassRange> loadRange(Long schoolId, LocalDate from, LocalDate to, Long classId) {
         List<RollEntity> rolls = rollRepository.findBySchoolIdAndDayBetween(schoolId, from, to).stream()
                 .filter(r -> classId == null || classId.equals(r.getClassId()))
                 .toList();
@@ -327,9 +438,8 @@ class AttendanceFacadeImpl implements AttendanceFacade {
             academicFacade.findClass(schoolId, id).ifPresent(c -> classes.put(id, c));
         }
         Map<Long, List<StudentInfo>> rosters = academicFacade.listStudentsByClass(schoolId, classes.keySet());
-        Map<Long, String> names = namesByUser(schoolId);
 
-        List<ReportRow> rows = new ArrayList<>();
+        List<ClassRange> result = new ArrayList<>();
         for (ClassInfo cls : classes.values()) {
             Long id = cls.id().value();
             List<MarkEntity> classMarks = marksByClass.getOrDefault(id, List.of());
@@ -348,18 +458,32 @@ class AttendanceFacadeImpl implements AttendanceFacade {
                 members.addAll(markedByDay.getOrDefault(roll.getDay(), Set.of()));
                 rollRosters.add(members);
             }
-            Map<Long, Integer> baseDays = AttendanceMath.baseDaysByStudent(rollRosters);
-            if (baseDays.isEmpty()) {
+            result.add(new ClassRange(cls, rollsByClass.get(id).size(), classMarks,
+                    AttendanceMath.baseDaysByStudent(rollRosters), liveRoster));
+        }
+        return result;
+    }
+
+    /** ردیف‌های (دانش‌آموز، کلاس)؛ {@code onlyStudentId} تهی = همه. */
+    private List<ReportRow> studentRows(Long schoolId, List<ClassRange> ranges, Map<Long, String> names,
+                                        String nameFilter, Long onlyStudentId) {
+        List<ReportRow> rows = new ArrayList<>();
+        for (ClassRange range : ranges) {
+            Long id = range.cls().id().value();
+            Map<Long, Integer> baseDays = range.baseDays();
+            Set<Long> wanted = onlyStudentId == null ? baseDays.keySet()
+                    : baseDays.containsKey(onlyStudentId) ? Set.of(onlyStudentId) : Set.of();
+            if (wanted.isEmpty()) {
                 continue;
             }
-            for (StudentInfo student : membersOf(schoolId, liveRoster, baseDays.keySet(), List.of())) {
+            for (StudentInfo student : membersOf(schoolId, range.liveRoster(), wanted, List.of())) {
                 String name = names.get(student.userId());
                 if (!AttendanceMath.nameMatches(name, nameFilter)) {
                     continue;
                 }
                 int absent = 0;
                 int late = 0;
-                for (MarkEntity mark : classMarks) {
+                for (MarkEntity mark : range.marks()) {
                     if (mark.getStudentId().equals(student.id().value())) {
                         if (mark.getStatus() == AttendanceStatus.ABSENT) {
                             absent++;
@@ -368,12 +492,34 @@ class AttendanceFacadeImpl implements AttendanceFacade {
                         }
                     }
                 }
-                rows.add(AttendanceMath.reportRow(student.id().value(), name, id, cls.name(),
+                rows.add(AttendanceMath.reportRow(student.id().value(), name, id, range.cls().name(),
                         baseDays.get(student.id().value()), absent, late));
             }
         }
         rows.sort(Comparator.comparing(ReportRow::className, Comparator.nullsLast(Comparator.<String>naturalOrder()))
                 .thenComparing(ReportRow::studentName, Comparator.nullsLast(Comparator.<String>naturalOrder())));
+        return rows;
+    }
+
+    private static List<ClassReportRow> classRows(List<ClassRange> ranges) {
+        List<ClassReportRow> rows = new ArrayList<>();
+        for (ClassRange range : ranges) {
+            int base = range.baseDays().values().stream().mapToInt(Integer::intValue).sum();
+            int absent = 0;
+            int late = 0;
+            for (MarkEntity mark : range.marks()) {
+                if (mark.getStatus() == AttendanceStatus.ABSENT) {
+                    absent++;
+                } else {
+                    late++;
+                }
+            }
+            int present = Math.max(0, base - absent);
+            rows.add(new ClassReportRow(range.cls().id().value(), range.cls().name(), range.daysTaken(), absent,
+                    late, present, AttendanceMath.rangePercent(present + absent, absent)));
+        }
+        rows.sort(Comparator.comparing(ClassReportRow::className, Comparator.nullsLast(Comparator.<String>naturalOrder()))
+                .thenComparing(ClassReportRow::classId));
         return rows;
     }
 

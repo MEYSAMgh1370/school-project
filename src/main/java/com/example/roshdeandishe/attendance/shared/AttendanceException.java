@@ -17,6 +17,7 @@ public final class AttendanceException extends RuntimeException {
         return switch (error) {
             case AttendanceError.InvalidAttendanceDay e -> e.reason();
             case AttendanceError.ClassNotFound e -> "کلاسی با شناسه " + e.classId() + " یافت نشد.";
+            case AttendanceError.StudentNotFound e -> "دانش‌آموزی با شناسه " + e.studentId() + " یافت نشد.";
             case AttendanceError.SchoolNotFound e -> "مدرسه‌ای با شناسه " + e.schoolId() + " یافت نشد.";
             case AttendanceError.ClassNotInCurrentYear e ->
                     "کلاس " + e.classId() + " برای سال «" + e.classYear() + "» است، نه سال جاری «" + e.currentYear() + "».";

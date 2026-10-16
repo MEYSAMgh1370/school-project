@@ -9,6 +9,7 @@ document.addEventListener('alpine:init', () => {
         entitled: 'این مدرسه ماژول حضور و غیاب را فعال ندارد. برای فعال‌سازی با پشتیبانی تماس بگیرید.',
         denied: 'نقش انتخاب‌شده‌ی شما اجازه‌ی دیدنِ گزارش حضور و غیاب را ندارد.'
     };
+    const Report = window.AttendanceReportLogic;
     const BASE = (schoolId) => `/api/admin/schools/${schoolId}/attendance`;
     // سقفِ بازه‌ی گزارش در سرور (AttendanceFacade.MAX_REPORT_DAYS)
     const MAX_REPORT_DAYS = 366;
@@ -77,9 +78,24 @@ document.addEventListener('alpine:init', () => {
         page: 1,
         pageSize: 25,
 
+        // ---- کلاس‌ها (همان بازه و فیلتر کلاسِ گزارش بازه‌ای)
+        classRows: [],
+        classReportQueried: null,
+        classReportLoading: false,
+        classReportLoaded: false,
+
+        // ---- معلم‌ها (همان بازه)؛ expanded = { [teacherUserId]: true } برای بخشِ بازشده‌ی «کلاس‌ها»
+        teacherRows: [],
+        teacherQueried: null,
+        teacherLoading: false,
+        teacherLoaded: false,
+        expanded: {},
+
         daySeq: 0,
         rangeSeq: 0,
         classesSeq: 0,
+        classReportSeq: 0,
+        teacherSeq: 0,
 
         init() {
             const saved = parseInt(localStorage.getItem('selectedSchoolId') || '', 10);
@@ -108,6 +124,17 @@ document.addEventListener('alpine:init', () => {
             this.daySeq++;
             this.rangeSeq++;
             this.classesSeq++;
+            this.classReportSeq++;
+            this.teacherSeq++;
+            this.classRows = [];
+            this.classReportQueried = null;
+            this.classReportLoading = false;
+            this.classReportLoaded = false;
+            this.teacherRows = [];
+            this.teacherQueried = null;
+            this.teacherLoading = false;
+            this.teacherLoaded = false;
+            this.expanded = {};
             this.excusesSeq++;
             this.decideSeq++;
             this.notice = '';
@@ -158,14 +185,38 @@ document.addEventListener('alpine:init', () => {
             if (this.tab === 'day') {
                 this.loadDay();
             } else if (this.tab === 'range') {
+                this.invalidateRangeTabs();
                 this.loadRange();
+            } else if (this.tab === 'classes') {
+                this.invalidateRangeTabs();
+                this.loadClassReport();
+            } else if (this.tab === 'teachers') {
+                this.invalidateRangeTabs();
+                this.loadTeacherReport();
             } else {
                 this.loadExcuses();
             }
         },
 
+        // بازه/فیلتر بین سه بخشِ بازه‌ای مشترک است؛ بخش‌های دیگر با ورودیِ تازه، هنگامِ باز شدن دوباره خوانده می‌شوند
+        invalidateRangeTabs() {
+            this.rangeLoaded = false;
+            this.classReportLoaded = false;
+            this.teacherLoaded = false;
+        },
+
+        rangeTab() {
+            return this.tab === 'range' || this.tab === 'classes' || this.tab === 'teachers';
+        },
+
         showTab(tab) {
             this.tab = tab;
+            if (tab === 'classes' && !this.classReportLoaded && !this.classReportLoading) {
+                this.loadClassReport();
+            }
+            if (tab === 'teachers' && !this.teacherLoaded && !this.teacherLoading) {
+                this.loadTeacherReport();
+            }
             // اولین بار که بازه‌ای باز می‌شود، همان پیش‌فرض (ماهِ جاری) خوانده می‌شود
             if (tab === 'range' && !this.rangeLoaded && !this.rangeLoading) {
                 this.loadRange();
@@ -377,6 +428,123 @@ document.addEventListener('alpine:init', () => {
         rangeLabel() {
             return this.queried === null ? ''
                 : DateInput.format(this.queried.from) + ' تا ' + DateInput.format(this.queried.to);
+        },
+
+        // ---------------------------------------------------------------- درصد، کلاس‌ها، معلم‌ها
+
+        pct(percent) {
+            return Report.percentLabel(percent, Calendar.digits);
+        },
+
+        bar(percent) {
+            return Report.barValue(percent);
+        },
+
+        hasPct(percent) {
+            return Report.hasPercent(percent);
+        },
+
+        // پیوندِ برگه‌ی چاپیِ دانش‌آموز: بازه‌ی همان گزارشی که روی صفحه است
+        sheetHref(row) {
+            return this.queried === null ? '#' : Report.sheetHref(row.studentId, this.queried);
+        },
+
+        // بخشِ «دانش‌آموزان» در ردیفِ یک کلاس: فیلترِ کلاسِ گزارش بازه‌ای را می‌گذارد و به آن بخش می‌رود
+        showClassStudents(item) {
+            this.classFilter = String(item.classId);
+            this.tab = 'range';
+            this.invalidateRangeTabs();
+            this.loadRange();
+        },
+
+        // خواندنِ مشترکِ دو گزارشِ تازه: بازه را اعتبارسنجی می‌کند و (seq، گرفتن، خطا) را به صدا زننده می‌سپارد
+        async loadRangeReport(kind, seqKey, begin, apply, fail, end) {
+            if (!this.schoolId) {
+                return;
+            }
+            const range = this.validateRange();
+            if (range === null) {
+                this.error = 'بازه را درست بنویسید، بعد گزارش را نمایش دهید.';
+                return;
+            }
+            this.setFrom(range.from);
+            this.setTo(range.to);
+            const seq = ++this[seqKey];
+            begin();
+            this.error = '';
+            const classId = kind === 'classes' ? this.classFilter : '';
+            try {
+                const rows = await SchoolApi.request(this.schoolId, 'GET',
+                    Report.reportPath(this.schoolId, kind, range, classId), undefined, MESSAGES);
+                if (seq === this[seqKey]) {
+                    apply(rows, range);
+                }
+            } catch (e) {
+                if (seq === this[seqKey]) {
+                    fail();
+                    this.blocked = !!e.blocking;
+                    this.error = SchoolApi.messageOf(e);
+                }
+            } finally {
+                if (seq === this[seqKey]) {
+                    end();
+                }
+            }
+        },
+
+        loadClassReport() {
+            return this.loadRangeReport('classes', 'classReportSeq',
+                () => { this.classReportLoading = true; },
+                (rows, range) => {
+                    this.classRows = rows;
+                    this.classReportQueried = { from: range.from, to: range.to };
+                    this.classReportLoaded = true;
+                },
+                () => {
+                    this.classRows = [];
+                    this.classReportQueried = null;
+                    this.classReportLoaded = false;
+                },
+                () => { this.classReportLoading = false; });
+        },
+
+        loadTeacherReport() {
+            return this.loadRangeReport('teachers', 'teacherSeq',
+                () => { this.teacherLoading = true; },
+                (rows, range) => {
+                    this.teacherRows = Report.sortedTeachers(rows);
+                    this.teacherQueried = { from: range.from, to: range.to };
+                    this.expanded = {};
+                    this.teacherLoaded = true;
+                },
+                () => {
+                    this.teacherRows = [];
+                    this.teacherQueried = null;
+                    this.teacherLoaded = false;
+                },
+                () => { this.teacherLoading = false; });
+        },
+
+        classReportLabel() {
+            return this.classReportQueried === null ? ''
+                : DateInput.format(this.classReportQueried.from) + ' تا ' + DateInput.format(this.classReportQueried.to);
+        },
+
+        teacherRangeLabel() {
+            return this.teacherQueried === null ? ''
+                : DateInput.format(this.teacherQueried.from) + ' تا ' + DateInput.format(this.teacherQueried.to);
+        },
+
+        teacherLabel(item) {
+            return Report.teacherLabel(item, Calendar.digits);
+        },
+
+        toggleTeacher(item) {
+            this.expanded = { ...this.expanded, [item.teacherUserId]: !this.expanded[item.teacherUserId] };
+        },
+
+        isExpanded(item) {
+            return this.expanded[item.teacherUserId] === true;
         },
 
         // ---------------------------------------------------------------- عذرخواهی‌ها

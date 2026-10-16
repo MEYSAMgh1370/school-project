@@ -75,6 +75,65 @@
   font-weight: var(--bulma-weight-semibold);
 }
 
+/* Report tabs (/attendance/report): five tabs wrap on a phone instead of scrolling sideways. */
+.app-att-tabs ul {
+  flex-wrap: wrap;
+  /* Bulma's .tabs ul does not shrink, so without this the five tabs stay one line wide and widen the page. */
+  flex-shrink: 1;
+  min-inline-size: 0;
+}
+
+/* The report header (title + «نمایش گزارش») wraps on a phone instead of widening the page. */
+.app-att-header {
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+.app-att-header > :first-child {
+  min-inline-size: 0;
+}
+
+/* Percent cell of the range table: number over a slim bar, wide enough to stay readable. */
+.app-att-pct {
+  min-inline-size: 6rem;
+}
+
+/* Stacked report rows of the class and teacher tabs (no wide table): name and percent on the first line,
+   bar, counts, then the actions. */
+.app-att-report-row {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding-block: var(--space-3);
+  border-block-end: 1px solid var(--bulma-border);
+}
+
+.app-att-report-row:last-child {
+  border-block-end: 0;
+}
+
+.app-att-report-head {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: var(--space-2) var(--space-3);
+}
+
+.app-att-sublist {
+  margin: 0;
+  padding-inline-start: var(--space-4);
+  list-style: none;
+  border-inline-start: 1px solid var(--bulma-border);
+}
+
+.app-att-subrow {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  padding-block: var(--space-2);
+}
+
 /* Class cards of the daily absentees view (/attendance/report). */
 .app-att-class {
   block-size: 100%;

@@ -108,6 +108,24 @@ public interface AttendanceFacade {
      */
     ExcuseRow decideExcuse(Long schoolId, Long excuseId, ExcuseStatus decision, Long deciderUserId);
 
+    /**
+     * گزارشِ هر کلاس در بازه (یک ردیف برای هر کلاسِ دارای حداقل یک roll، به ترتیبِ نام)؛ {@code classId} اختیاری و
+     * کلاسِ ناشناخته/مدرسه‌ی دیگر فهرستِ خالی می‌دهد. بازه مثل {@link #report} ({@code InvalidRange}).
+     */
+    List<ClassReportRow> classReport(Long schoolId, LocalDate from, LocalDate to, Long classId);
+
+    /**
+     * گزارشِ هر معلم: کلاس‌های دارای rollِ بازه که معلمِ آن‌هاست ({@code teacherId} کلاس یا معلمِ یک خانه‌ی برنامه).
+     * کلاسِ چندمعلمی زیرِ هر معلم می‌آید و جمع‌ها بین معلم‌ها یکی نمی‌شوند. نامِ ناشناخته: تهی.
+     */
+    List<TeacherReportRow> teacherReport(Long schoolId, LocalDate from, LocalDate to);
+
+    /**
+     * برگه‌ی یک دانش‌آموز در بازه: ردیف‌های هر کلاس، درصدِ کل و فهرستِ روزهای غیبت/تأخیر. دانش‌آموزِ ناشناخته یا
+     * از مدرسه‌ی دیگر: {@code StudentNotFound}.
+     */
+    StudentSheet studentSheet(Long schoolId, Long studentId, LocalDate from, LocalDate to);
+
     /** سقفِ بازه‌ی گزارش (روز، شاملِ دو سر). */
     int MAX_REPORT_DAYS = 366;
 
@@ -138,8 +156,27 @@ public interface AttendanceFacade {
                       Integer presentPercent, int classesTaken, int classesTotal) {
     }
 
+    /** {@code presentPercent} = floor(۱۰۰×present/(present+absent))؛ تهی اگر مبنا صفر باشد. */
     record ReportRow(Long studentId, String studentName, Long classId, String className, int absentDays,
-                     int lateDays, int presentDays) {
+                     int lateDays, int presentDays, Integer presentPercent) {
+    }
+
+    /** {@code daysTaken} = شمارِ rollهای کلاس در بازه. */
+    record ClassReportRow(Long classId, String className, int daysTaken, int absentDays, int lateDays,
+                          int presentDays, Integer presentPercent) {
+    }
+
+    record TeacherReportRow(Long teacherUserId, String teacherName, int classCount, int daysTaken, int absentDays,
+                            int lateDays, int presentDays, Integer presentPercent, List<ClassReportRow> classes) {
+    }
+
+    /** {@code status} ABSENT یا LATE؛ {@code excused} فقط برای ABSENT. */
+    record SheetDay(LocalDate day, Long classId, String className, AttendanceStatus status, boolean excused,
+                    String note) {
+    }
+
+    record StudentSheet(Long studentId, String studentName, LocalDate from, LocalDate to, Integer presentPercent,
+                        List<ReportRow> rows, List<SheetDay> days) {
     }
 
     record RecordableClass(Long classId, String name, String section, int gradeLevel, boolean taken) {
