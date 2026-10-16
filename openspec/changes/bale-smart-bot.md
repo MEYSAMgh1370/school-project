@@ -1,6 +1,6 @@
 # Bale smart bot (بات هوشمند بله)
 
-Status: proposed 2026-10-15, revised 2026-10-16 (classification contract with confidence, Jev as a candidate), stage 1 implemented 2026-10-16 (`studentview` module, callback queries and inline keyboards, `BotContext`, asynchronous de-duplicated webhook handling; current behavior is in `specs/current-system.md`); later stages not implemented. Designed with the product owner in a brainstorming session on 2026-10-15; every decision below marked **(PO)** was made by the product owner, items marked **assumption** were not and are listed under Unresolved questions.
+Status: proposed 2026-10-15, revised 2026-10-16 (classification contract with confidence, Jev as a candidate), stage 1 implemented 2026-10-16 (`studentview` module, callback queries and inline keyboards, `BotContext`, asynchronous de-duplicated webhook handling; current behavior is in `specs/current-system.md`); stage 2 implemented 2026-10-16 (per-chat ordering, role-based button menu answering every phase-1 intent, rial amounts; current behavior is in `specs/current-system.md`); stages 3 and 4 not implemented. Designed with the product owner in a brainstorming session on 2026-10-15; every decision below marked **(PO)** was made by the product owner, items marked **assumption** were not and are listed under Unresolved questions.
 
 ## Goal
 
@@ -8,7 +8,7 @@ Let linked users (parents, students, teachers) use the service from the Bale bot
 
 ## Current behavior (evidence)
 
-Note: written before stage 1; the synchronous handling, the missing callback support and the `web`-only student summary below were changed by stage 1 (see Status and `specs/current-system.md`).
+Note: written before stage 1; the synchronous handling, the missing callback support and the `web`-only student summary below were changed by stage 1, and the command-only bot with the «دستور نامعتبر است» fallback by stage 2 (see Status and `specs/current-system.md`).
 
 - `notification/internal/BaleUpdateHandler` is a command bot: `/start` (contact-share request), contact sharing (links a chat to the user whose profile phone matches, stored in `BaleLinkEntity`), «راهنما», «مدرسه‌های من», «فرزندان من» (ward names and invoice count). Any other text answers «دستور نامعتبر است».
 - Security model: there is no session; every query reads only the linked user's data (from `BaleLinkEntity`) or their linked wards, the same trust pattern as `/api/me` (class comment in `BaleUpdateHandler`).
@@ -31,6 +31,8 @@ The `BaleUpdateHandler` class comment cites "CLAUDE.md §10: do not build AI". T
 6. **A config switch `BOT_LLM_ENABLED`**; off or unavailable means a fully button-driven bot.
 7. **Daily LLM limit per role**, teacher (and the default) 30 per day.
 8. **Classification contract (2026-10-16):** the model port is "text plus closed option lists → chosen option plus confidence", so a decision model such as TypeSafe AI's Jev and an ordinary LLM fit the same port; low confidence falls back to the menu.
+9. **Money in bot messages is shown in rial (PO, 2026-10-16):** whole Rial, Persian digits, `٬` grouping, labelled «ریال»; the web read-only display unit is still open (`finance-monetary-unit.md`).
+10. **Bot copy lives in `BotTexts` (PO, 2026-10-16)** and is tuned after user testing or A/B; the current wording is a first version, not final.
 
 ## Approach: what needs what
 
@@ -167,9 +169,9 @@ Out of phase 1: payments, recording attendance, submitting an excuse (first phas
 
 The PR #153 review raised these; the product owner chose to schedule them, not to fix them in stage 1. Each belongs to the stage named.
 
-- **Stage 2 — per-chat ordering (must do).** `BaleWebhookService` handles updates on 2–4 pool threads with no per-chat order. Bale delivers a bot's updates one at a time, so before stage 1 they were effectively serial. Now a «راهنما» sent right after a contact share can be answered «متصل نشده» before the link commits, and two concurrent contact shares for one user can race on the link upsert. Serialize handling per `chat.id`, while different chats stay parallel.
-- **Stage 2 — lazy `BotContext`.** `BotContextLoader.load` runs the full ward lookup (`listWards` per PARENT membership plus `findUser` per ward) on every linked update, including «راهنما» and callbacks that only need "is linked". Load wards only for intents that use them.
-- **Stage 2 — prune unused groundwork.** `BotContext.rolesIn`, `wardsIn`, `Ward.studentUserId`, `Ward.classId` and the inline-keyboard `sendMessage` overload have no production caller yet; the first intents must use them or they are removed.
+- [x] **Stage 2 — per-chat ordering (must do).** Done 2026-10-16 (`ChatSerialExecutor`). `BaleWebhookService` handles updates on 2–4 pool threads with no per-chat order. Bale delivers a bot's updates one at a time, so before stage 1 they were effectively serial. Now a «راهنما» sent right after a contact share can be answered «متصل نشده» before the link commits, and two concurrent contact shares for one user can race on the link upsert. Serialize handling per `chat.id`, while different chats stay parallel.
+- [x] **Stage 2 — lazy `BotContext`.** Done 2026-10-16 (`BotContext` holds memberships only; targets come from `SubjectResolver`, the menu from its cheap `hasAny`). `BotContextLoader.load` runs the full ward lookup (`listWards` per PARENT membership plus `findUser` per ward) on every linked update, including «راهنما» and callbacks that only need "is linked". Load wards only for intents that use them.
+- [x] **Stage 2 — prune unused groundwork.** Done 2026-10-16: `rolesIn`, `Student.classId`/`studentUserId` and the inline-keyboard `sendMessage` are used by the intents; `BotContext.wardsIn` and `BotContext.Ward` were removed. `BotContext.rolesIn`, `wardsIn`, `Ward.studentUserId`, `Ward.classId` and the inline-keyboard `sendMessage` overload have no production caller yet; the first intents must use them or they are removed.
 - **Separate small PR — one "today" zone fallback.** `TodayAttendanceReader.today` and `web` `AttendanceTodayAssembler.today` fall back to the server zone, while `SchoolInfo.zoneId()` (event reminders) falls back to `Asia/Tehran`; a school with a blank or invalid zone can see a different "today" in the reminder job than on the dashboard and the bot. Pre-existing, kept unchanged in stage 1 on purpose; unify on `SchoolInfo.zoneId()` with its own change note.
 - **Revisit with real traffic — de-duplication scope.** `RecentUpdateIds` is in memory, per instance, and lost on restart, which are the cases where Bale re-delivery is most likely. Acceptable while production runs a single instance (`DEPLOYMENT.md`), with capacity per question 7; if the app ever runs several instances, or duplicate handling causes harm, move to a database-backed unique `update_id` or idempotent handlers.
 - **Kept as decided — linked chat whose user no longer exists** gets the not-linked text (stage 1 ruling R4); no change planned.
@@ -194,4 +196,4 @@ The PR #153 review raised these; the product owner chose to schedule them, not t
 5. Whether daily counters may be in memory (single instance) or must be persisted.
 6. Whether the provider's data-processing terms are acceptable for pseudonymised text from minors' parents and students.
 7. Stage 1 assumptions, not confirmed by the product owner: the webhook handling pool (core 2, max 4, queue 100) and the de-duplication capacity (last 1000 `update_id`s) were chosen without load data; both should be revisited with real traffic.
-8. Per-chat ordering: updates from one chat can be handled out of order on the 2-4 pool threads of `BaleWebhookService`; scheduled for stage 2 (see "Carried forward from the stage 1 review").
+8. Per-chat ordering: resolved in stage 2 (`ChatSerialExecutor`); the global cap of 100 waiting updates is still an assumption without load data (see question 7).
