@@ -9,7 +9,11 @@ import com.example.roshdeandishe.finance.FinanceFacade.InstallmentInfo;
 import com.example.roshdeandishe.finance.FinanceFacade.InvoiceInfo;
 import com.example.roshdeandishe.finance.InstallmentStatus;
 import com.example.roshdeandishe.finance.InvoiceStatus;
+import com.example.roshdeandishe.iam.AccessContext;
+import com.example.roshdeandishe.iam.AccessDecision;
+import com.example.roshdeandishe.iam.IamFacade;
 import com.example.roshdeandishe.iam.IamFacade.MembershipInfo;
+import com.example.roshdeandishe.iam.IamFacade.ModuleCode;
 import com.example.roshdeandishe.iam.IamFacade.UserId;
 import com.example.roshdeandishe.school.SchoolFacade;
 import com.example.roshdeandishe.school.SchoolFacade.ReminderEvent;
@@ -31,6 +35,8 @@ import java.util.Set;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 class SchoolAnswersTest {
@@ -39,6 +45,7 @@ class SchoolAnswersTest {
     private static final SchoolId SCHOOL_ID = new SchoolId(5L);
     private static final LocalDate TODAY = LocalDate.of(2026, 10, 17);
 
+    private IamFacade iam;
     private FinanceFacade finance;
     private AttendanceFacade attendance;
     private SchoolFacade school;
@@ -53,6 +60,9 @@ class SchoolAnswersTest {
 
     @BeforeEach
     void setUp() {
+        iam = mock(IamFacade.class);
+        when(iam.checkAccess(USER, new ModuleCode("ATTENDANCE"), new AccessContext.SchoolContext(5L)))
+                .thenReturn(new AccessDecision.Granted("test"));
         finance = mock(FinanceFacade.class);
         attendance = mock(AttendanceFacade.class);
         school = mock(SchoolFacade.class);
@@ -65,7 +75,7 @@ class SchoolAnswersTest {
     }
 
     private SchoolAnswers answersAt(String instant) {
-        return new SchoolAnswers(finance, attendance, school, Clock.fixed(Instant.parse(instant), ZoneOffset.UTC));
+        return new SchoolAnswers(iam, finance, attendance, school, Clock.fixed(Instant.parse(instant), ZoneOffset.UTC));
     }
 
     private static InvoiceInfo invoice(long id, String amount, String discount, String paid, InvoiceStatus status) {
@@ -159,6 +169,17 @@ class SchoolAnswersTest {
     }
 
     @Test
+    void partialInstallmentIsTheNextOneAndShowsItsUnpaidRemainder() {
+        when(finance.listInvoicesForStudents(5L, List.of(11L))).thenReturn(List.of(
+                invoice(1, "6000000", "0", "1000000", InvoiceStatus.PARTIAL)));
+        when(finance.listInstallmentsForInvoices(5L, List.of(1L))).thenReturn(Map.of(1L, List.of(
+                installment(10, 1, "3000000", "1000000", LocalDate.of(2026, 11, 1), InstallmentStatus.PARTIAL),
+                installment(11, 1, "3000000", "0", LocalDate.of(2026, 12, 1), InstallmentStatus.UNPAID))));
+        assertThat(answers.answer(BotIntent.INVOICES, ctx, ward))
+                .contains("قسط بعدی: ۲٬۰۰۰٬۰۰۰ ریال تا تاریخ:2026-11-01");
+    }
+
+    @Test
     void eventsWithoutSelectionAreForEveryRoleAndEmptyListSaysNone() {
         when(school.reminderRoleCodes(SCHOOL_ID)).thenReturn(Optional.empty());
         when(school.dueReminderEvents(SCHOOL_ID, TODAY)).thenReturn(List.of());
@@ -174,6 +195,15 @@ class SchoolAnswersTest {
         String text = answers.answer(BotIntent.TEACHER_ROLL, ctx, target);
         assertThat(text).contains("حضور و غیاب این کلاس‌ها هنوز ثبت نشده: هفتم الف، نهم ج")
                 .doesNotContain("هشتم");
+    }
+
+    @Test
+    void teacherRollWithoutAttendanceModuleIsNotAvailableAndNeverListsClasses() {
+        when(iam.checkAccess(USER, new ModuleCode("ATTENDANCE"), new AccessContext.SchoolContext(5L)))
+                .thenReturn(new AccessDecision.Denied("no module"));
+        assertThat(answers.answer(BotIntent.TEACHER_ROLL, ctx, target))
+                .contains("وضعیت حضور و غیاب کلاس‌ها در دسترس نیست.");
+        verify(attendance, never()).listRecordableClasses(any(), any(), org.mockito.ArgumentMatchers.anyBoolean(), any());
     }
 
     @Test

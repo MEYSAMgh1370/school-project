@@ -9,6 +9,9 @@ import com.example.roshdeandishe.finance.FinanceFacade.InvoiceInfo;
 import com.example.roshdeandishe.finance.InstallmentStatus;
 import com.example.roshdeandishe.finance.InvoiceStatus;
 import com.example.roshdeandishe.finance.shared.FinanceException;
+import com.example.roshdeandishe.iam.AccessContext;
+import com.example.roshdeandishe.iam.IamFacade;
+import com.example.roshdeandishe.iam.IamFacade.ModuleCode;
 import com.example.roshdeandishe.school.SchoolFacade;
 import com.example.roshdeandishe.school.SchoolFacade.ReminderEvent;
 import com.example.roshdeandishe.school.SchoolFacade.SchoolId;
@@ -34,7 +37,8 @@ import java.util.Set;
  * ({@code TEACHER_ROLL}) و رویدادهای نزدیک ({@code EVENTS}). مانده‌ی هر فاکتور
  * {@code max(0, مبلغ − تخفیف − پرداخت)} است؛ فاکتورِ تسویه‌شده فهرست نمی‌شود. «امروز» از منطقه‌ی زمانیِ مدرسه
  * می‌آید. قاعده‌ی نقشِ دریافت‌کننده‌ی رویداد عیناً مثل {@code EventReminderController.upcomingEvents} است. خطای
- * دامنه‌ی facade به «در دسترس نیست» تبدیل و warn لاگ می‌شود.
+ * دامنه‌ی facade به «در دسترس نیست» تبدیل و warn لاگ می‌شود. {@code TEACHER_ROLL} فقط برای مدرسه‌ای که ماژول
+ * {@code ATTENDANCE} را دارد پاسخ می‌دهد (مثل کارت‌های پیشخوان)؛ وگرنه «در دسترس نیست».
  */
 @Component
 class SchoolAnswers {
@@ -45,19 +49,24 @@ class SchoolAnswers {
     private static final Set<InstallmentStatus> OPEN_INSTALLMENT = EnumSet.of(
             InstallmentStatus.UNPAID, InstallmentStatus.PARTIAL, InstallmentStatus.OVERDUE);
 
+    private static final String ATTENDANCE_MODULE = "ATTENDANCE";
+
+    private final IamFacade iamFacade;
     private final FinanceFacade financeFacade;
     private final AttendanceFacade attendanceFacade;
     private final SchoolFacade schoolFacade;
     private final Clock clock;
 
     @Autowired
-    SchoolAnswers(FinanceFacade financeFacade, AttendanceFacade attendanceFacade, SchoolFacade schoolFacade) {
-        this(financeFacade, attendanceFacade, schoolFacade, Clock.systemUTC());
+    SchoolAnswers(IamFacade iamFacade, FinanceFacade financeFacade, AttendanceFacade attendanceFacade,
+                  SchoolFacade schoolFacade) {
+        this(iamFacade, financeFacade, attendanceFacade, schoolFacade, Clock.systemUTC());
     }
 
     /** برای آزمون: ساعتِ ثابت. */
-    SchoolAnswers(FinanceFacade financeFacade, AttendanceFacade attendanceFacade, SchoolFacade schoolFacade,
-                  Clock clock) {
+    SchoolAnswers(IamFacade iamFacade, FinanceFacade financeFacade, AttendanceFacade attendanceFacade,
+                  SchoolFacade schoolFacade, Clock clock) {
+        this.iamFacade = iamFacade;
         this.financeFacade = financeFacade;
         this.attendanceFacade = attendanceFacade;
         this.schoolFacade = schoolFacade;
@@ -129,6 +138,11 @@ class SchoolAnswers {
     }
 
     private String teacherRoll(BotContext ctx, Long schoolId) {
+        boolean entitled = iamFacade.checkAccess(ctx.userId(), new ModuleCode(ATTENDANCE_MODULE),
+                new AccessContext.SchoolContext(schoolId)).isGranted();
+        if (!entitled) {
+            return BotTexts.ROLL_UNAVAILABLE;
+        }
         SchoolToday today = SchoolToday.of(schoolFacade, clock, new SchoolId(schoolId));
         if (today.closed()) {
             return BotTexts.HOLIDAY_TODAY;

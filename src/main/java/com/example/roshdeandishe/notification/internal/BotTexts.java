@@ -24,12 +24,10 @@ final class BotTexts {
     static final String BTN_EVENTS = "رویدادهای نزدیک";
     static final String BTN_HELP = "راهنما";
 
-    static final String MENU_PROMPT = "از دکمه‌های پایین انتخاب کنید.";
     static final String UNKNOWN_TEXT = "متوجه نشدم. لطفاً از دکمه‌های پایین انتخاب کنید.";
     static final String NOT_AVAILABLE = "این مورد برای شما در دسترس نیست.";
     static final String CHOOSE_STUDENT = "برای کدام دانش‌آموز؟";
     static final String CHOOSE_SCHOOL = "برای کدام مدرسه؟";
-    static final String NO_STUDENT = "دانش‌آموزی برای نمایش پیدا نشد.";
 
     static final String WELCOME_TEXT = """
             به ربات رشد اندیشه خوش آمدید!
@@ -38,9 +36,6 @@ final class BotTexts {
             کاربری‌تان (در سایت) ثبت کرده‌اید را با دکمه‌ی زیر به اشتراک بگذارید.""";
 
     static final String NOT_LINKED_TEXT = "حساب شما هنوز متصل نشده است. لطفاً ابتدا /start را ارسال کنید.";
-
-    static final String UNKNOWN_COMMAND_TEXT =
-            "دستور نامعتبر است. برای راهنما، «راهنما» را ارسال کنید.";
 
     static final String HELP_TEXT = """
             از دکمه‌های پایین انتخاب کنید؛ فقط مواردی که برای شما در دسترس است نمایش داده می‌شود:

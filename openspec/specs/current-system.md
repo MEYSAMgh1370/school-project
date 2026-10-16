@@ -268,7 +268,7 @@ Stages 1 and 2 of `openspec/changes/bale-smart-bot.md`, implemented 2026-10-16, 
 - **Menu.** The bot sends a persistent reply keyboard (`BaleClient.sendMenu`). «راهنما» and unknown text show it, and a successful contact share sends it with the link confirmation (the link is committed first, then the confirmation with the menu is sent; if building the menu fails the plain confirmation is sent). The menu has a button only for each intent the user has at least one target for (two per row, «راهنما» last), so a pure student has no «شهریه» and a user with no matching membership sees only «راهنما». Menu buttons are checked with `SubjectResolver.hasAny`, which stops at the first hit and does not read names.
 - **Intents** (`BotIntent`, nine; callback data is `<code>:<id>` via `CallbackCodec`, at most 64 bytes):
   - attendance today and attendance summary (counts of absent, excused, late), grades (the latest 3, no average) and exams, for a student or a ward;
-  - today's timetable for a student or a ward, and for a teacher («برنامه‌ی امروز» across the school, with class names);
+  - today's timetable for a student or a ward, and for a teacher («کلاس‌های امروز من» across the school, with class names);
   - invoices for **parents only** (about a ward): the remaining amount over unpaid, partly paid and overdue invoices, with remaining = max(0, amount − discount − paid), the number of overdue invoices when above zero, and the next open instalment (due date, remaining amount; a partly paid instalment counts);
   - a teacher's pending rolls today (their classes in the school with no roll taken);
   - upcoming events of a school, shown only to roles the school selected for event reminders (the same rule as the dashboard box; no selection means every member).
