@@ -1,6 +1,6 @@
 # Bale smart bot (بات هوشمند بله)
 
-Status: proposed 2026-10-15, not implemented. Designed with the product owner in a brainstorming session on 2026-10-15; every decision below marked **(PO)** was made by the product owner, items marked **assumption** were not and are listed under Unresolved questions.
+Status: proposed 2026-10-15, revised 2026-10-16 (classification contract with confidence, Jev as a candidate), not implemented. Designed with the product owner in a brainstorming session on 2026-10-15; every decision below marked **(PO)** was made by the product owner, items marked **assumption** were not and are listed under Unresolved questions.
 
 ## Goal
 
@@ -28,6 +28,7 @@ The `BaleUpdateHandler` class comment cites "CLAUDE.md §10: do not build AI". T
 5. **Phase-1 intent list approved** (below); **students never see finance**.
 6. **A config switch `BOT_LLM_ENABLED`**; off or unavailable means a fully button-driven bot.
 7. **Daily LLM limit per role**, teacher (and the default) 30 per day.
+8. **Classification contract (2026-10-16):** the model port is "text plus closed option lists → chosen option plus confidence", so a decision model such as TypeSafe AI's Jev and an ordinary LLM fit the same port; low confidence falls back to the menu.
 
 ## Approach: what needs what
 
@@ -68,8 +69,11 @@ BaleWebhookController (existing)
 
 - **`BotContext`** — the linked user, active memberships, roles per school and linked wards, built once per update **from server data only**. Nothing produced by the model enters it.
 - **`Pseudonymizer`** — replaces the user's and wards' names and long digit runs (phone, national id) in the text with labels (`[فرزند_۱]`, …). Matching normalises Arabic/Persian ی and ک, ZWNJ and spaces, and prefers the longest match (`علیرضا` before `علی`). The label map lives only for the request.
-- **`LlmClient`** — one method: text plus allowed intents → JSON. First adapter: OpenAI-compatible chat completions; base URL, key and model from configuration (env). `temperature=0`.
-- **`IntentParser` / `Validator`** — parse against a closed schema; the intent must be in the list *and* allowed for the user's roles; `child` must be one of this request's labels. Any failure yields `UNKNOWN`.
+- **`LlmClient`** — one method, a classification: pseudonymised text plus closed option lists (the allowed intents; the ward labels) → for each list, the chosen option and a confidence in `0..1`. Adapters:
+  - **OpenAI-compatible chat completions** (most domestic providers), `temperature=0`, JSON-schema or JSON mode where offered; confidence is reported as `1.0` when the reply parses, since such models give no calibrated probability.
+  - **Decision model** (TypeSafe AI's Jev, candidate): one `Choice` question per list; its returned probability is the confidence.
+  - Base URL, key, model and adapter type come from configuration (env).
+- **`IntentParser` / `Validator`** — check the result against the closed lists; the intent must be in the list *and* allowed for the user's roles; `child` must be one of this request's labels; each confidence must reach `bot.llm.min-confidence` (**assumption:** 0.7). Any failure yields `UNKNOWN`. A constrained model can still return a valid but wrong option, so this check and the server-side ownership rules stay even with a model that cannot emit an invalid type.
 - **`IntentHandler`** — one class per intent, input `BotContext` plus validated arguments, output a reply model. Reads only through public facades.
 - **`ReplyRenderer`** — Persian templates, Solar dates (`SchoolFacade.formatSolarDate`), follow-up buttons.
 - Summary and today's-attendance logic is moved out of `web/model` into a facade both the dashboard and the bot use, so both give the same answer.
@@ -107,7 +111,7 @@ Out of phase 1: payments, recording attendance, submitting an excuse (first phas
 - **Sent:** the pseudonymised text, the intents allowed for this user's roles, the ward labels.
 - **Never sent:** ids, names, school name, phone numbers, any database result.
 - Text longer than 500 characters (**assumption**) is not sent; the menu is shown.
-- Output: `{"intent": "...", "child": "[فرزند_۱]"}`; any other field is ignored.
+- Output: per list, one option and a confidence, e.g. `intent = CHILD_RECENT_GRADES (0.91)`, `child = [فرزند_۱] (0.88)`; anything else in the reply is ignored.
 - Prompt injection cannot leak data: the model holds none, `child` is restricted to this user's labels, and `userId` comes from `BaleLink`. The worst outcome is a different allowed intent for the same user.
 - Text from an **unlinked** chat is never sent to the LLM.
 
@@ -123,7 +127,7 @@ Out of phase 1: payments, recording attendance, submitting an excuse (first phas
 | Situation | Behavior |
 |---|---|
 | LLM timeout (**assumption:** 8 s) or network error | menu + «متوجه نشدم، از گزینه‌ها انتخاب کنید» |
-| Invalid JSON, unknown or disallowed intent | same menu, no retry |
+| Unparsable reply, unknown or disallowed intent, confidence below `bot.llm.min-confidence` | same menu, no retry |
 | `BOT_LLM_ENABLED=false` (default) | free text goes straight to the menu |
 | Unlinked user | current message, no LLM |
 | Daily limit reached | «لطفاً از دکمه‌ها استفاده کنید»; buttons keep working |
@@ -138,7 +142,7 @@ Out of phase 1: payments, recording attendance, submitting an excuse (first phas
 3. A student never receives a finance intent or finance data, from buttons or text.
 4. Text from an unlinked chat never reaches `LlmClient`.
 5. The request to the LLM contains no user or ward name, no id and no phone number (asserted on the captured request).
-6. An LLM timeout, error or invalid output answers the menu within the timeout plus rendering time; the webhook itself answers 200 without waiting.
+6. An LLM timeout, error, invalid output or confidence below the threshold answers the menu within the timeout plus rendering time; the webhook itself answers 200 without waiting.
 7. A repeated `update_id` is processed once.
 8. A user over their daily limit gets the limit message; buttons still work; the limit is the highest of their active roles.
 9. Logs contain intent, outcome and latency, and never the user's text.
@@ -148,7 +152,7 @@ Out of phase 1: payments, recording attendance, submitting an excuse (first phas
 - **Unit:** `Pseudonymizer` (Persian names, ی/ک, ZWNJ, `علی`/`علیرضا`); `Validator` (role-disallowed intent, forged label, broken JSON); each `IntentHandler` with fake facades; limit resolution across several roles.
 - **Security:** acceptance criteria 2–5 as dedicated tests.
 - **Integration:** webhook with a stub `LlmClient` returning canned output; timeout, limit and duplicate-update scenarios.
-- **Model evaluation (manual, not in CI):** about 100 realistic Persian sentences with the expected intent, and a script reporting accuracy per provider, used to choose among domestic providers.
+- **Model evaluation (manual, not in CI):** about 100 realistic Persian sentences with the expected intent, and a script reporting accuracy per provider, used to choose among providers (domestic APIs and Jev); it also reports accuracy at several confidence thresholds to set `bot.llm.min-confidence`.
 
 ## Delivery stages (one deployable PR each)
 
@@ -170,8 +174,9 @@ Out of phase 1: payments, recording attendance, submitting an excuse (first phas
 
 ## Unresolved questions
 
-1. Which LLM provider (domestic API, foreign API or self-hosted); to be decided with the evaluation set.
-2. Exact `SCHOOL_ADMIN` daily limit (100 is an assumption) and the service-wide daily cap.
-3. LLM timeout (8 s) and maximum text length (500) are assumptions.
-4. Whether daily counters may be in memory (single instance) or must be persisted.
-5. Whether the provider's data-processing terms are acceptable for pseudonymised text from minors' parents and students.
+1. Which provider (domestic API, foreign API, self-hosted, or a decision model such as TypeSafe AI's Jev); to be decided with the evaluation set. For Jev specifically: Persian support is not stated in its public material (as of 2026-10-16), it is a foreign service (access and payment from Iran, data leaving the country), and it is a new release whose speed figures are the vendor's own.
+2. The confidence threshold (0.7 is an assumption), set from the evaluation set.
+3. Exact `SCHOOL_ADMIN` daily limit (100 is an assumption) and the service-wide daily cap.
+4. LLM timeout (8 s) and maximum text length (500) are assumptions.
+5. Whether daily counters may be in memory (single instance) or must be persisted.
+6. Whether the provider's data-processing terms are acceptable for pseudonymised text from minors' parents and students.
