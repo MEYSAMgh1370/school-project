@@ -280,6 +280,34 @@ class BaleFlowIntegrationTest {
     }
 
     @Test
+    void linkedParentAsksGradesFromTheMenu() throws Exception {
+        long schoolId = schoolFacade.createSchool(
+                "مدرسه‌ی تست بله ۳", "Asia/Tehran", "fa-IR", SchoolLevel.ELEMENTARY, null).value();
+        String parentEmail = "bale-menu-parent-" + System.nanoTime() + "@roshdeandishe.test";
+        String parentPhone = uniquePhoneNumber();
+        MockHttpSession parentSession = registerAndLogin(parentEmail, "والد منو");
+        setPhoneNumber(parentSession, parentPhone);
+        IamFacade.UserId parentUserId = iamFacade.findOrCreateUser(parentEmail, "والد منو");
+        iamFacade.createMembership(parentUserId, schoolId, "PARENT");
+
+        AcademicFacade.ClassId classId = academicFacade.createClass(schoolId, "کلاس منو", null, null, 5, GradingScheme.NUMERIC);
+        AcademicFacade.StudentId studentId = academicFacade.enrollStudent(
+                "bale-menu-ward-" + System.nanoTime() + "@roshdeandishe.test", "فرزند منو", schoolId, classId.value());
+        academicFacade.linkGuardian(schoolId, studentId.value(), parentUserId.value());
+
+        long chatId = uniqueChatId();
+        linkChatToPhoneNumber(chatId, parentPhone);
+
+        mockMvc.perform(post("/api/bale/webhook/" + WEBHOOK_SECRET)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(updateJsonForText(chatId, "نمره‌ها")))
+                .andExpect(status().isOk());
+
+        awaitSentMessageCount(1);
+        assertThat(SENT_MESSAGES.get(0)).contains("فرزند منو");
+    }
+
+    @Test
     void invoiceIssuedNotifiesLinkedStudentAndLinkedGuardians() throws Exception {
         // همان دلیل تست بالا: schoolId باید یک SchoolEntity واقعی داشته باشد.
         long schoolId = schoolFacade.createSchool(

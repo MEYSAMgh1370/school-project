@@ -40,6 +40,7 @@ class BaleUpdateHandler {
     private final SchoolFacade schoolFacade;
     private final FinanceFacade financeFacade;
     private final SubjectResolver subjectResolver;
+    private final BotRouter botRouter;
 
     BaleUpdateHandler(
             BaleLinkRepository baleLinkRepository,
@@ -48,7 +49,8 @@ class BaleUpdateHandler {
             SchoolFacade schoolFacade,
             FinanceFacade financeFacade,
             BotContextLoader botContextLoader,
-            SubjectResolver subjectResolver
+            SubjectResolver subjectResolver,
+            BotRouter botRouter
     ) {
         this.baleLinkRepository = baleLinkRepository;
         this.baleClient = baleClient;
@@ -57,6 +59,7 @@ class BaleUpdateHandler {
         this.financeFacade = financeFacade;
         this.botContextLoader = botContextLoader;
         this.subjectResolver = subjectResolver;
+        this.botRouter = botRouter;
     }
 
     @Transactional
@@ -93,17 +96,32 @@ class BaleUpdateHandler {
 
         BotContext ctx = context.get();
         switch (text) {
-            case BotTexts.BTN_HELP -> baleClient.sendMessage(chatId, BotTexts.HELP_TEXT);
+            case BotTexts.BTN_HELP -> baleClient.sendMenu(chatId, BotTexts.HELP_TEXT, botRouter.menu(ctx));
             case BotTexts.CMD_MY_SCHOOLS -> baleClient.sendMessage(chatId, describeMemberships(ctx));
             case BotTexts.CMD_MY_WARDS -> baleClient.sendMessage(chatId, describeWards(ctx));
-            default -> baleClient.sendMessage(chatId, BotTexts.UNKNOWN_COMMAND_TEXT);
+            default -> {
+                BotRouter.Reply reply = botRouter.onText(ctx, text);
+                if (reply == null) {
+                    baleClient.sendMenu(chatId, BotTexts.UNKNOWN_TEXT, botRouter.menu(ctx));
+                } else {
+                    send(chatId, reply);
+                }
+            }
+        }
+    }
+
+    private void send(Long chatId, BotRouter.Reply reply) {
+        if (reply.choices().isEmpty()) {
+            baleClient.sendMessage(chatId, reply.text());
+        } else {
+            baleClient.sendMessage(chatId, reply.text(), reply.choices());
         }
     }
 
     /**
-     * کلیک روی دکمه‌ی اینلاین: اول همیشه تأیید می‌شود (وگرنه بله برای
-     * همیشه spinner نشان می‌دهد)، بعد مثل پیامی از همان chat رفتار می‌شود.
-     * فعلاً intent مبتنی بر callback نداریم، پس کاربرِ لینک‌شده راهنما می‌گیرد.
+     * کلیک روی دکمه‌ی اینلاین: اول همیشه تأیید می‌شود (وگرنه بله برای همیشه spinner نشان می‌دهد)، بعد
+     * پاسخ از {@link BotRouter#onCallback}؛ userId فقط از لینکِ chat می‌آید و شناسه‌ی callback فقط یک
+     * انتخاب است که با هدف‌های همان کاربر سنجیده می‌شود.
      */
     private void handleCallback(BaleCallbackQuery callback) {
         baleClient.answerCallbackQuery(callback.id());
@@ -111,11 +129,12 @@ class BaleUpdateHandler {
             return;
         }
         Long chatId = callback.message().chat().id();
-        if (botContextLoader.load(chatId).isEmpty()) {
+        Optional<BotContext> context = botContextLoader.load(chatId);
+        if (context.isEmpty()) {
             baleClient.sendMessage(chatId, BotTexts.NOT_LINKED_TEXT);
             return;
         }
-        baleClient.sendMessage(chatId, BotTexts.HELP_TEXT);
+        send(chatId, botRouter.onCallback(context.get(), callback.data()));
     }
 
     private void handleContactShared(Long chatId, String phoneNumber) {
@@ -134,7 +153,19 @@ class BaleUpdateHandler {
         link.setUserId(userId);
         baleLinkRepository.save(link);
 
-        baleClient.sendMessage(chatId, BotTexts.linkSuccess(matchedUser.get().fullName()));
+        String confirmation = BotTexts.linkSuccess(matchedUser.get().fullName());
+        List<List<String>> menu = List.of();
+        try {
+            // خطا در ساختنِ منو نباید لینکِ تازه‌ذخیره‌شده را برگرداند (تراکنش)
+            menu = botContextLoader.load(chatId).map(botRouter::menu).orElse(List.of());
+        } catch (RuntimeException e) {
+            // فقط تأییدیه‌ی ساده فرستاده می‌شود
+        }
+        if (menu.isEmpty()) {
+            baleClient.sendMessage(chatId, confirmation);
+        } else {
+            baleClient.sendMenu(chatId, confirmation, menu);
+        }
     }
 
     private String describeMemberships(BotContext ctx) {

@@ -23,15 +23,12 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 class BaleUpdateHandlerTest {
 
     private static final String NOT_LINKED = "حساب شما هنوز متصل نشده است. لطفاً ابتدا /start را ارسال کنید.";
-    private static final String HELP = """
-            دستورهای قابل استفاده:
-            «مدرسه‌های من» - فهرست مدرسه‌ها و نقش‌های شما
-            «فرزندان من» - فهرست فرزندان لینک‌شده و وضعیت مالی هرکدام""";
 
     private BaleLinkRepository links;
     private BaleClient client;
@@ -39,6 +36,7 @@ class BaleUpdateHandlerTest {
     private SchoolFacade school;
     private AcademicFacade academic;
     private FinanceFacade finance;
+    private StudentAnswers studentAnswers;
     private BaleUpdateHandler handler;
 
     @BeforeEach
@@ -49,8 +47,14 @@ class BaleUpdateHandlerTest {
         school = mock(SchoolFacade.class);
         academic = mock(AcademicFacade.class);
         finance = mock(FinanceFacade.class);
+        SubjectResolver resolver = new SubjectResolver(academic, school, iam);
+        studentAnswers = mock(StudentAnswers.class);
+        BotRouter router = new BotRouter(resolver, studentAnswers, mock(TimetableAnswers.class),
+                mock(SchoolAnswers.class));
         handler = new BaleUpdateHandler(links, client, iam, school, finance,
-                new BotContextLoader(links, iam), new SubjectResolver(academic, school, iam));
+                new BotContextLoader(links, iam), resolver, router);
+        when(academic.listWards(any(), any())).thenReturn(List.of());
+        when(academic.findMyEnrollment(any(), any())).thenReturn(Optional.empty());
     }
 
     private static BaleUpdate callbackUpdate(String id, Long chatId, String data) {
@@ -79,18 +83,84 @@ class BaleUpdateHandlerTest {
     }
 
     @Test
-    void callbackFromLinkedChatIsAnsweredAndGetsHelp() {
+    void malformedCallbackFromLinkedChatIsAnsweredAndNotAvailable() {
         link(42L, 7L);
         when(iam.findMembershipsByUser(new UserId(7L))).thenReturn(List.of());
 
         handler.handle(callbackUpdate("cb2", 42L, "X"));
 
         verify(client).answerCallbackQuery("cb2");
-        verify(client).sendMessage(42L, HELP);
+        verify(client).sendMessage(42L, BotTexts.NOT_AVAILABLE);
     }
 
     @Test
-    void myWardsTextGivesTheSameAnswerAsBefore() {
+    void callbackForAForeignStudentIsNotAvailableAndCallsNoAnswerClass() {
+        link(42L, 7L);
+        when(iam.findMembershipsByUser(new UserId(7L))).thenReturn(List.of(
+                new MembershipInfo(1L, new UserId(7L), "a@b.c", "والد", 10L, "PARENT", true, true)));
+        when(academic.listWards(7L, 10L)).thenReturn(List.of(
+                new StudentInfo(new StudentId(100L), 1000L, 10L, null)));
+        when(school.findSchool(any())).thenReturn(Optional.empty());
+
+        handler.handle(callbackUpdate("cb3", 42L, "g:999"));
+
+        verify(client).sendMessage(42L, BotTexts.NOT_AVAILABLE);
+        verifyNoInteractions(studentAnswers);
+    }
+
+    @Test
+    void unknownTextShowsTheMenu() {
+        link(42L, 7L);
+        when(iam.findMembershipsByUser(new UserId(7L))).thenReturn(List.of());
+
+        handler.handle(textUpdate(42L, "سلام"));
+
+        verify(client).sendMenu(42L, BotTexts.UNKNOWN_TEXT, List.of(List.of(BotTexts.BTN_HELP)));
+    }
+
+    @Test
+    void helpAlsoSendsTheMenu() {
+        link(42L, 7L);
+        when(iam.findMembershipsByUser(new UserId(7L))).thenReturn(List.of());
+
+        handler.handle(textUpdate(42L, "راهنما"));
+
+        verify(client).sendMenu(42L, BotTexts.HELP_TEXT, List.of(List.of(BotTexts.BTN_HELP)));
+    }
+
+    @Test
+    void linkingSendsTheMenu() {
+        when(iam.findUserByPhoneNumber("0912"))
+                .thenReturn(Optional.of(new UserProfile(new UserId(7L), "a@b.c", "والد", "0912")));
+        when(links.findByUserId(7L)).thenReturn(Optional.empty());
+        link(42L, 7L);
+        when(iam.findMembershipsByUser(new UserId(7L))).thenReturn(List.of());
+
+        handler.handle(new BaleUpdate(1L, new BaleMessage(1L, new BaleChat(42L), null,
+                new BaleUpdate.BaleContact("0912")), null));
+
+        verify(client).sendMenu(42L, BotTexts.linkSuccess("والد"), List.of(List.of(BotTexts.BTN_HELP)));
+    }
+
+    @Test
+    void severalChoicesAreSentAsInlineButtons() {
+        link(42L, 7L);
+        when(iam.findMembershipsByUser(new UserId(7L))).thenReturn(List.of(
+                new MembershipInfo(1L, new UserId(7L), "a@b.c", "والد", 10L, "PARENT", true, true)));
+        when(academic.listWards(7L, 10L)).thenReturn(List.of(
+                new StudentInfo(new StudentId(100L), 1000L, 10L, null),
+                new StudentInfo(new StudentId(200L), 2000L, 10L, null)));
+        when(school.findSchool(any())).thenReturn(Optional.empty());
+
+        handler.handle(textUpdate(42L, BotTexts.BTN_GRADES));
+
+        verify(client).sendMessage(org.mockito.ArgumentMatchers.eq(42L),
+                org.mockito.ArgumentMatchers.eq(BotTexts.CHOOSE_STUDENT),
+                org.mockito.ArgumentMatchers.<List<List<BaleClient.InlineButton>>>any());
+    }
+
+    @Test
+    void existingCommandsAnswerAsBefore() {
         link(42L, 7L);
         when(iam.findMembershipsByUser(new UserId(7L))).thenReturn(List.of(
                 new MembershipInfo(1L, new UserId(7L), "a@b.c", "والد", 10L, "PARENT", true, true)));

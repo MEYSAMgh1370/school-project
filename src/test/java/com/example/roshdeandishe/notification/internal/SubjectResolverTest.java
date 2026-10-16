@@ -51,6 +51,11 @@ class SubjectResolverTest {
         return new MembershipInfo(1L, new UserId(USER), "a@b.c", "علی", schoolId, role, active, true);
     }
 
+    private static SchoolInfo schoolInfo(Long id, String name) {
+        return new SchoolInfo(new com.example.roshdeandishe.school.SchoolFacade.SchoolId(id), name, null,
+                "Asia/Tehran", null, null, null, null);
+    }
+
     private static BotContext ctx(MembershipInfo... memberships) {
         List<MembershipInfo> active = java.util.Arrays.stream(memberships).filter(MembershipInfo::active).toList();
         return new BotContext(42L, new UserId(USER), "علی رضایی", active);
@@ -128,5 +133,40 @@ class SubjectResolverTest {
 
         assertThat(teacher).containsExactly(new BotTarget.School(10L, "مدرسه #10"), new BotTarget.School(20L, "مدرسه #20"));
         assertThat(member).containsExactly(new BotTarget.School(10L, "مدرسه #10"), new BotTarget.School(20L, "مدرسه #20"));
+    }
+
+    @Test
+    void parentInTwoSchoolsGetsWardsInSchoolThenFacadeOrderWithOwnSchoolNames() {
+        when(school.findSchool(new com.example.roshdeandishe.school.SchoolFacade.SchoolId(10L)))
+                .thenReturn(Optional.of(schoolInfo(10L, "مدرسه‌ی ده")));
+        when(school.findSchool(new com.example.roshdeandishe.school.SchoolFacade.SchoolId(20L)))
+                .thenReturn(Optional.of(schoolInfo(20L, "مدرسه‌ی بیست")));
+        when(academic.listWards(USER, 10L)).thenReturn(List.of(
+                new StudentInfo(new StudentId(101L), 1001L, 10L, null),
+                new StudentInfo(new StudentId(100L), 1000L, 10L, null)));
+        when(academic.listWards(USER, 20L)).thenReturn(List.of(
+                new StudentInfo(new StudentId(200L), 2000L, 20L, null)));
+        when(iam.findUser(any())).thenAnswer(inv -> {
+            UserId id = inv.getArgument(0);
+            return Optional.of(new UserProfile(id, "s@b.c", "نام " + id.value(), null));
+        });
+
+        // ترتیبِ عضویت‌ها عمداً برعکس است؛ خروجی باید بر اساس schoolId مرتب باشد
+        List<BotTarget> targets = resolver.targets(ctx(m(20L, "PARENT", true), m(10L, "PARENT", true)), GRADES);
+
+        assertThat(targets).containsExactly(
+                new BotTarget.Student(10L, 101L, 1001L, null, "نام 1001", "مدرسه‌ی ده", true),
+                new BotTarget.Student(10L, 100L, 1000L, null, "نام 1000", "مدرسه‌ی ده", true),
+                new BotTarget.Student(20L, 200L, 2000L, null, "نام 2000", "مدرسه‌ی بیست", true));
+    }
+
+    @Test
+    void schoolTargetsNeverTouchTheAcademicFacade() {
+        BotContext teacher = ctx(m(10L, "TEACHER", true));
+
+        resolver.targets(teacher, TEACHER_TODAY);
+        resolver.targets(teacher, EVENTS);
+
+        org.mockito.Mockito.verifyNoInteractions(academic);
     }
 }
