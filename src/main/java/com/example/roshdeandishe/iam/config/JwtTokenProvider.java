@@ -36,7 +36,12 @@ public class JwtTokenProvider {
             @Value("${roshdeandishe.jwt.secret}") String secret,
             @Value("${roshdeandishe.jwt.expiration-seconds}") long expirationSeconds
     ) {
-        this.signingKey = Keys.hmacShaKeyFor(Base64.getDecoder().decode(secret));
+        if (secret == null || secret.isBlank()) {
+            // dev/test: کلیدی در گیت نیست؛ برای همین اجرا کلید تصادفی (prod خالی را رد می‌کند)
+            this.signingKey = Jwts.SIG.HS256.key().build();
+        } else {
+            this.signingKey = Keys.hmacShaKeyFor(Base64.getDecoder().decode(secret));
+        }
         this.expirationSeconds = expirationSeconds;
     }
 
