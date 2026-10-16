@@ -1,12 +1,10 @@
 package com.example.roshdeandishe.notification.internal;
 
-import com.example.roshdeandishe.academic.AcademicFacade;
-import com.example.roshdeandishe.academic.AcademicFacade.StudentInfo;
+import com.example.roshdeandishe.notification.internal.BaleUpdate.BaleCallbackQuery;
 import com.example.roshdeandishe.notification.internal.BaleUpdate.BaleMessage;
 import com.example.roshdeandishe.finance.FinanceFacade;
 import com.example.roshdeandishe.iam.IamFacade;
 import com.example.roshdeandishe.iam.IamFacade.MembershipInfo;
-import com.example.roshdeandishe.iam.IamFacade.UserId;
 import com.example.roshdeandishe.iam.IamFacade.UserProfile;
 import com.example.roshdeandishe.school.SchoolFacade;
 import com.example.roshdeandishe.school.SchoolFacade.SchoolId;
@@ -20,7 +18,8 @@ import java.util.Optional;
 
 /**
  * منطق پردازش یک Update ورودی از وب‌هوک بله. یک بات دستوری ساده است - نه
- * مکالمه‌ی آزاد و نه هیچ مدل زبانی‌ای (CLAUDE.md §10: «هوش مصنوعی نسازید»).
+ * مکالمه‌ی آزاد و نه هیچ مدل زبانی‌ای ({@code CLAUDE_LEGACY.md} §10، که برای
+ * مسیریاب متن آزاد با {@code openspec/changes/bale-smart-bot.md} جایگزین شده).
  * <p>
  * چون این کد در پاسخ به یک HTTP Request از سرور بله اجرا می‌شود - نه یک
  * درخواست مرورگر با سشن - هیچ‌کدام از {@code @RequiresModule}/
@@ -59,10 +58,10 @@ class BaleUpdateHandler {
             «فرزندان من» - فهرست فرزندان لینک‌شده و وضعیت مالی هرکدام""";
 
     private final BaleLinkRepository baleLinkRepository;
+    private final BotContextLoader botContextLoader;
     private final BaleClient baleClient;
     private final IamFacade iamFacade;
     private final SchoolFacade schoolFacade;
-    private final AcademicFacade academicFacade;
     private final FinanceFacade financeFacade;
 
     BaleUpdateHandler(
@@ -70,19 +69,25 @@ class BaleUpdateHandler {
             BaleClient baleClient,
             IamFacade iamFacade,
             SchoolFacade schoolFacade,
-            AcademicFacade academicFacade,
-            FinanceFacade financeFacade
+            FinanceFacade financeFacade,
+            BotContextLoader botContextLoader
     ) {
         this.baleLinkRepository = baleLinkRepository;
         this.baleClient = baleClient;
         this.iamFacade = iamFacade;
         this.schoolFacade = schoolFacade;
-        this.academicFacade = academicFacade;
         this.financeFacade = financeFacade;
+        this.botContextLoader = botContextLoader;
     }
 
     @Transactional
     void handle(BaleUpdate update) {
+        BaleCallbackQuery callback = update.callbackQuery();
+        if (callback != null) {
+            handleCallback(callback);
+            return;
+        }
+
         BaleMessage message = update.message();
         if (message == null || message.chat() == null) {
             return; // آپدیت‌هایی غیر از پیام معمولی (مثلاً edited_message) فعلاً نادیده گرفته می‌شوند
@@ -101,19 +106,37 @@ class BaleUpdateHandler {
             return;
         }
 
-        Optional<Long> linkedUserId = baleLinkRepository.findByChatId(chatId).map(BaleLinkEntity::getUserId);
-        if (linkedUserId.isEmpty()) {
+        Optional<BotContext> context = botContextLoader.load(chatId);
+        if (context.isEmpty()) {
             baleClient.sendMessage(chatId, NOT_LINKED_TEXT);
             return;
         }
 
-        UserId userId = new UserId(linkedUserId.get());
+        BotContext ctx = context.get();
         switch (text) {
             case "راهنما" -> baleClient.sendMessage(chatId, HELP_TEXT);
-            case "مدرسه‌های من" -> baleClient.sendMessage(chatId, describeMemberships(userId));
-            case "فرزندان من" -> baleClient.sendMessage(chatId, describeWards(userId));
+            case "مدرسه‌های من" -> baleClient.sendMessage(chatId, describeMemberships(ctx));
+            case "فرزندان من" -> baleClient.sendMessage(chatId, describeWards(ctx));
             default -> baleClient.sendMessage(chatId, UNKNOWN_COMMAND_TEXT);
         }
+    }
+
+    /**
+     * کلیک روی دکمه‌ی اینلاین: اول همیشه تأیید می‌شود (وگرنه بله برای
+     * همیشه spinner نشان می‌دهد)، بعد مثل پیامی از همان chat رفتار می‌شود.
+     * فعلاً intent مبتنی بر callback نداریم، پس کاربرِ لینک‌شده راهنما می‌گیرد.
+     */
+    private void handleCallback(BaleCallbackQuery callback) {
+        baleClient.answerCallbackQuery(callback.id());
+        if (callback.message() == null || callback.message().chat() == null) {
+            return;
+        }
+        Long chatId = callback.message().chat().id();
+        if (botContextLoader.load(chatId).isEmpty()) {
+            baleClient.sendMessage(chatId, NOT_LINKED_TEXT);
+            return;
+        }
+        baleClient.sendMessage(chatId, HELP_TEXT);
     }
 
     private void handleContactShared(Long chatId, String phoneNumber) {
@@ -138,10 +161,8 @@ class BaleUpdateHandler {
                 matchedUser.get().fullName() + " عزیز، حساب شما با موفقیت متصل شد. برای راهنما «راهنما» را ارسال کنید.");
     }
 
-    private String describeMemberships(UserId userId) {
-        List<MembershipInfo> memberships = iamFacade.findMembershipsByUser(userId).stream()
-                .filter(MembershipInfo::active)
-                .toList();
+    private String describeMemberships(BotContext ctx) {
+        List<MembershipInfo> memberships = ctx.memberships();
 
         if (memberships.isEmpty()) {
             return "شما در حال حاضر عضو هیچ مدرسه‌ای نیستید.";
@@ -158,39 +179,23 @@ class BaleUpdateHandler {
         return sb.toString().stripTrailing();
     }
 
-    private String describeWards(UserId guardianUserId) {
-        List<MembershipInfo> parentMemberships = iamFacade.findMembershipsByUser(guardianUserId).stream()
-                .filter(m -> m.active() && "PARENT".equals(m.roleCode()))
-                .toList();
-
-        if (parentMemberships.isEmpty()) {
+    private String describeWards(BotContext ctx) {
+        if (!ctx.hasRole("PARENT")) {
             return "شما در هیچ مدرسه‌ای نقش والد ندارید.";
+        }
+        if (ctx.wards().isEmpty()) {
+            return "هیچ دانش‌آموزی به شما لینک نشده است.";
         }
 
         StringBuilder sb = new StringBuilder();
-        boolean anyWard = false;
-        for (MembershipInfo membership : parentMemberships) {
-            Long schoolId = membership.schoolId();
-            List<StudentInfo> wards = academicFacade.listWards(guardianUserId.value(), schoolId);
-            if (wards.isEmpty()) {
-                continue;
-            }
-            anyWard = true;
+        for (BotContext.Ward ward : ctx.wards()) {
+            Long schoolId = ward.schoolId();
             String schoolName = schoolFacade.findSchool(new SchoolId(schoolId)).map(s -> s.name())
                     .orElse("مدرسه #" + schoolId);
-            for (StudentInfo ward : wards) {
-                String wardName = iamFacade.findUser(new UserId(ward.userId()))
-                        .map(UserProfile::fullName)
-                        .orElse("دانش‌آموز #" + ward.userId());
-                // همان دیدِ خانواده (سالِ جاری + «بدون سال»)، نه همه‌ی سال‌ها
-                long invoiceCount = financeFacade.listInvoicesForStudents(schoolId, List.of(ward.id().value())).size();
-                sb.append("- ").append(wardName).append(" (").append(schoolName).append("): ")
-                        .append(invoiceCount).append(" فاکتور صادرشده\n");
-            }
-        }
-
-        if (!anyWard) {
-            return "هیچ دانش‌آموزی به شما لینک نشده است.";
+            // همان دیدِ خانواده (سالِ جاری + «بدون سال»)، نه همه‌ی سال‌ها
+            long invoiceCount = financeFacade.listInvoicesForStudents(schoolId, List.of(ward.studentId())).size();
+            sb.append("- ").append(ward.fullName()).append(" (").append(schoolName).append("): ")
+                    .append(invoiceCount).append(" فاکتور صادرشده\n");
         }
         return sb.toString().stripTrailing();
     }
