@@ -1,5 +1,7 @@
 package com.example.roshdeandishe.notification.internal;
 
+import java.util.Map;
+
 /**
  * همه‌ی متن‌های رو به کاربرِ ربات بله (دکمه‌ها و پیام‌ها) یک‌جا، تا بعد از آزمون کاربری یا A/B بدون دست‌زدن به
  * منطق قابل تنظیم باشند. فقط ثابت یا ساخت رشته؛ بدون منطق.
@@ -42,4 +44,50 @@ final class BotTexts {
             دستورهای قابل استفاده:
             «مدرسه‌های من» - فهرست مدرسه‌ها و نقش‌های شما
             «فرزندان من» - فهرست فرزندان لینک‌شده و وضعیت مالی هرکدام""";
+
+    /** برچسب فرمان‌های متنی (علاوه بر BTN_HELP). */
+    static final String CMD_MY_SCHOOLS = "مدرسه‌های من";
+    static final String CMD_MY_WARDS = "فرزندان من";
+
+    static final String CONTACT_NOT_MATCHED =
+            "شماره‌ی به‌اشتراک‌گذاشته‌شده با هیچ حسابی در سامانه مطابقت ندارد. " +
+            "ابتدا از طریق پروفایل حساب کاربری‌تان در سایت، همین شماره را ثبت کنید.";
+
+    static final String NO_MEMBERSHIPS = "شما در حال حاضر عضو هیچ مدرسه‌ای نیستید.";
+    static final String MEMBERSHIPS_HEADER = "مدرسه‌ها و نقش‌های شما:\n";
+    static final String NOT_A_PARENT = "شما در هیچ مدرسه‌ای نقش والد ندارید.";
+    static final String NO_WARDS = "هیچ دانش‌آموزی به شما لینک نشده است.";
+
+    private static final Map<String, String> ROLE_LABELS = Map.of(
+            "STUDENT", "دانش‌آموز",
+            "TEACHER", "معلم",
+            "PARENT", "والد",
+            "SCHOOL_ADMIN", "مدیر مدرسه",
+            "FINANCE_ADMIN", "مدیر مالی"
+    );
+
+    /** پیام موفقیتِ اتصال حساب. */
+    static String linkSuccess(String fullName) {
+        return fullName + " عزیز، حساب شما با موفقیت متصل شد. برای راهنما «راهنما» را ارسال کنید.";
+    }
+
+    /** نام جایگزین وقتی مدرسه پیدا نشود. */
+    static String schoolFallback(Long schoolId) {
+        return "مدرسه #" + schoolId;
+    }
+
+    /** برچسب نقش؛ کد ناشناخته همان‌طور برمی‌گردد. */
+    static String roleLabel(String roleCode) {
+        return ROLE_LABELS.getOrDefault(roleCode, roleCode);
+    }
+
+    /** یک خط از فهرست مدرسه‌ها و نقش‌ها (با newline پایانی). */
+    static String membershipLine(String schoolName, String roleCode) {
+        return "- " + schoolName + " (" + roleLabel(roleCode) + ")\n";
+    }
+
+    /** یک خط از فهرست فرزندان (با newline پایانی). */
+    static String wardLine(String studentName, String schoolName, long invoiceCount) {
+        return "- " + studentName + " (" + schoolName + "): " + invoiceCount + " فاکتور صادرشده\n";
+    }
 }

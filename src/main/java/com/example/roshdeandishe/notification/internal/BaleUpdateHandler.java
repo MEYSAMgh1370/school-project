@@ -34,14 +34,6 @@ import java.util.Optional;
 @Component
 class BaleUpdateHandler {
 
-    private static final Map<String, String> ROLE_LABELS = Map.of(
-            "STUDENT", "دانش‌آموز",
-            "TEACHER", "معلم",
-            "PARENT", "والد",
-            "SCHOOL_ADMIN", "مدیر مدرسه",
-            "FINANCE_ADMIN", "مدیر مالی"
-    );
-
     private final BaleLinkRepository baleLinkRepository;
     private final BotContextLoader botContextLoader;
     private final BaleClient baleClient;
@@ -99,9 +91,9 @@ class BaleUpdateHandler {
 
         BotContext ctx = context.get();
         switch (text) {
-            case "راهنما" -> baleClient.sendMessage(chatId, BotTexts.HELP_TEXT);
-            case "مدرسه‌های من" -> baleClient.sendMessage(chatId, describeMemberships(ctx));
-            case "فرزندان من" -> baleClient.sendMessage(chatId, describeWards(ctx));
+            case BotTexts.BTN_HELP -> baleClient.sendMessage(chatId, BotTexts.HELP_TEXT);
+            case BotTexts.CMD_MY_SCHOOLS -> baleClient.sendMessage(chatId, describeMemberships(ctx));
+            case BotTexts.CMD_MY_WARDS -> baleClient.sendMessage(chatId, describeWards(ctx));
             default -> baleClient.sendMessage(chatId, BotTexts.UNKNOWN_COMMAND_TEXT);
         }
     }
@@ -127,9 +119,7 @@ class BaleUpdateHandler {
     private void handleContactShared(Long chatId, String phoneNumber) {
         Optional<UserProfile> matchedUser = iamFacade.findUserByPhoneNumber(phoneNumber);
         if (matchedUser.isEmpty()) {
-            baleClient.sendMessage(chatId,
-                    "شماره‌ی به‌اشتراک‌گذاشته‌شده با هیچ حسابی در سامانه مطابقت ندارد. " +
-                    "ابتدا از طریق پروفایل حساب کاربری‌تان در سایت، همین شماره را ثبت کنید.");
+            baleClient.sendMessage(chatId, BotTexts.CONTACT_NOT_MATCHED);
             return;
         }
 
@@ -142,45 +132,42 @@ class BaleUpdateHandler {
         link.setUserId(userId);
         baleLinkRepository.save(link);
 
-        baleClient.sendMessage(chatId,
-                matchedUser.get().fullName() + " عزیز، حساب شما با موفقیت متصل شد. برای راهنما «راهنما» را ارسال کنید.");
+        baleClient.sendMessage(chatId, BotTexts.linkSuccess(matchedUser.get().fullName()));
     }
 
     private String describeMemberships(BotContext ctx) {
         List<MembershipInfo> memberships = ctx.memberships();
 
         if (memberships.isEmpty()) {
-            return "شما در حال حاضر عضو هیچ مدرسه‌ای نیستید.";
+            return BotTexts.NO_MEMBERSHIPS;
         }
 
-        StringBuilder sb = new StringBuilder("مدرسه‌ها و نقش‌های شما:\n");
+        StringBuilder sb = new StringBuilder(BotTexts.MEMBERSHIPS_HEADER);
         for (MembershipInfo m : memberships) {
             String schoolName = schoolFacade.findSchool(new SchoolId(m.schoolId()))
                     .map(s -> s.name())
-                    .orElse("مدرسه #" + m.schoolId());
-            sb.append("- ").append(schoolName).append(" (")
-                    .append(ROLE_LABELS.getOrDefault(m.roleCode(), m.roleCode())).append(")\n");
+                    .orElse(BotTexts.schoolFallback(m.schoolId()));
+            sb.append(BotTexts.membershipLine(schoolName, m.roleCode()));
         }
         return sb.toString().stripTrailing();
     }
 
     private String describeWards(BotContext ctx) {
         if (!ctx.hasRole("PARENT")) {
-            return "شما در هیچ مدرسه‌ای نقش والد ندارید.";
+            return BotTexts.NOT_A_PARENT;
         }
         if (ctx.wards().isEmpty()) {
-            return "هیچ دانش‌آموزی به شما لینک نشده است.";
+            return BotTexts.NO_WARDS;
         }
 
         StringBuilder sb = new StringBuilder();
         for (BotContext.Ward ward : ctx.wards()) {
             Long schoolId = ward.schoolId();
             String schoolName = schoolFacade.findSchool(new SchoolId(schoolId)).map(s -> s.name())
-                    .orElse("مدرسه #" + schoolId);
+                    .orElse(BotTexts.schoolFallback(schoolId));
             // همان دیدِ خانواده (سالِ جاری + «بدون سال»)، نه همه‌ی سال‌ها
             long invoiceCount = financeFacade.listInvoicesForStudents(schoolId, List.of(ward.studentId())).size();
-            sb.append("- ").append(ward.fullName()).append(" (").append(schoolName).append("): ")
-                    .append(invoiceCount).append(" فاکتور صادرشده\n");
+            sb.append(BotTexts.wardLine(ward.fullName(), schoolName, invoiceCount));
         }
         return sb.toString().stripTrailing();
     }
