@@ -121,21 +121,21 @@ class DashboardWardsRenderTest {
         assertThat(render(true, List.of())).contains("/js/jalali.js");
     }
 
-    private static WardRow wardToday(com.example.roshdeandishe.web.model.WardAttendance attendance) {
+    private static WardRow wardToday(com.example.roshdeandishe.studentview.TodayAttendance attendance) {
         return new WardRow(100L, 5L, "آرین رضایی", "مدرسه‌ی نمونه", "پنجم", "الف", 0, 0, 0, attendance);
     }
 
     @Test
     void eachWardShowsTodaysAttendanceOnlyWhenItIsKnown() {
-        record Case(com.example.roshdeandishe.web.model.WardAttendance state, String text) {
+        record Case(com.example.roshdeandishe.studentview.TodayAttendance state, String text) {
         }
         for (Case c : List.of(
-                new Case(com.example.roshdeandishe.web.model.WardAttendance.PRESENT, "حاضر"),
-                new Case(com.example.roshdeandishe.web.model.WardAttendance.LATE, "دیر آمده"),
-                new Case(com.example.roshdeandishe.web.model.WardAttendance.ABSENT, "غایب"),
-                new Case(com.example.roshdeandishe.web.model.WardAttendance.ABSENT_EXCUSED, "غایب (موجه)"),
-                new Case(com.example.roshdeandishe.web.model.WardAttendance.PENDING, "هنوز ثبت نشده"),
-                new Case(com.example.roshdeandishe.web.model.WardAttendance.NOT_SCHOOL_DAY, "امروز روز درسی نیست"))) {
+                new Case(com.example.roshdeandishe.studentview.TodayAttendance.PRESENT, "حاضر"),
+                new Case(com.example.roshdeandishe.studentview.TodayAttendance.LATE, "دیر آمده"),
+                new Case(com.example.roshdeandishe.studentview.TodayAttendance.ABSENT, "غایب"),
+                new Case(com.example.roshdeandishe.studentview.TodayAttendance.ABSENT_EXCUSED, "غایب (موجه)"),
+                new Case(com.example.roshdeandishe.studentview.TodayAttendance.PENDING, "هنوز ثبت نشده"),
+                new Case(com.example.roshdeandishe.studentview.TodayAttendance.NOT_SCHOOL_DAY, "امروز روز درسی نیست"))) {
             assertThat(render(true, List.of(wardToday(c.state())))).contains("امروز:", c.text());
         }
         // مدرسه‌ی بدونِ ماژولِ حضور و غیاب: هیچ ردیفی برای امروز نمی‌آید

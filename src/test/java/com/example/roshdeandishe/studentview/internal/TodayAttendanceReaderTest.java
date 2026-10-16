@@ -1,4 +1,4 @@
-package com.example.roshdeandishe.web.model;
+package com.example.roshdeandishe.studentview.internal;
 
 import com.example.roshdeandishe.attendance.AttendanceFacade;
 import com.example.roshdeandishe.attendance.AttendanceFacade.ClassDay;
@@ -12,6 +12,7 @@ import com.example.roshdeandishe.iam.IamFacade;
 import com.example.roshdeandishe.iam.IamFacade.ModuleCode;
 import com.example.roshdeandishe.iam.IamFacade.UserId;
 import com.example.roshdeandishe.school.SchoolFacade;
+import com.example.roshdeandishe.studentview.TodayAttendance;
 import org.junit.jupiter.api.Test;
 
 import java.time.LocalDate;
@@ -30,7 +31,7 @@ import static org.mockito.Mockito.when;
  * وضعیتِ امروزِ فرزند روی کارتِ والد، بدون Spring و Docker: ثبت‌نشده هرگز «حاضر» نیست، فقط ردیفِ همین فرزند
  * خوانده می‌شود، و بدونِ ماژول/کلاس یا با خطا چیزی نشان داده نمی‌شود.
  */
-class WardAttendanceResolverTest {
+class TodayAttendanceReaderTest {
 
     private static final UserId PARENT = new UserId(9L);
     private static final long SCHOOL = 7L;
@@ -40,7 +41,7 @@ class WardAttendanceResolverTest {
     private final IamFacade iam = mock(IamFacade.class);
     private final AttendanceFacade attendance = mock(AttendanceFacade.class);
     private final SchoolFacade school = mock(SchoolFacade.class);
-    private final WardAttendanceResolver resolver = new WardAttendanceResolver(iam, attendance, school);
+    private final TodayAttendanceReader resolver = new TodayAttendanceReader(iam, attendance, school);
 
     private void givenEntitlement(boolean granted) {
         when(iam.checkAccess(any(UserId.class), any(ModuleCode.class), any(AccessContext.class)))
@@ -53,7 +54,7 @@ class WardAttendanceResolverTest {
                 new ClassDay(CLASS, "اول الف", LocalDate.now(), taken, recordable, List.of(marks)));
     }
 
-    private WardAttendance today() {
+    private TodayAttendance today() {
         return resolver.todayFor(PARENT, SCHOOL, CLASS, CHILD);
     }
 
@@ -62,7 +63,7 @@ class WardAttendanceResolverTest {
         givenEntitlement(true);
         givenDay(true, false, new StudentMark(CHILD, "فرزند", null, false, null));
 
-        assertThat(today()).isEqualTo(WardAttendance.PENDING);
+        assertThat(today()).isEqualTo(TodayAttendance.PENDING);
     }
 
     @Test
@@ -70,7 +71,7 @@ class WardAttendanceResolverTest {
         givenEntitlement(true);
         givenDay(false, false);
 
-        assertThat(today()).isEqualTo(WardAttendance.NOT_SCHOOL_DAY);
+        assertThat(today()).isEqualTo(TodayAttendance.NOT_SCHOOL_DAY);
     }
 
     @Test
@@ -79,16 +80,16 @@ class WardAttendanceResolverTest {
         givenDay(true, true,
                 new StudentMark(1L, "همکلاسی", AttendanceStatus.ABSENT, false, null),
                 new StudentMark(CHILD, "فرزند", null, false, null));
-        assertThat(today()).isEqualTo(WardAttendance.PRESENT);
+        assertThat(today()).isEqualTo(TodayAttendance.PRESENT);
 
         givenDay(true, true, new StudentMark(CHILD, "فرزند", AttendanceStatus.LATE, false, null));
-        assertThat(today()).isEqualTo(WardAttendance.LATE);
+        assertThat(today()).isEqualTo(TodayAttendance.LATE);
 
         givenDay(true, true, new StudentMark(CHILD, "فرزند", AttendanceStatus.ABSENT, false, null));
-        assertThat(today()).isEqualTo(WardAttendance.ABSENT);
+        assertThat(today()).isEqualTo(TodayAttendance.ABSENT);
 
         givenDay(true, true, new StudentMark(CHILD, "فرزند", AttendanceStatus.ABSENT, true, null));
-        assertThat(today()).isEqualTo(WardAttendance.ABSENT_EXCUSED);
+        assertThat(today()).isEqualTo(TodayAttendance.ABSENT_EXCUSED);
     }
 
     @Test
@@ -96,20 +97,20 @@ class WardAttendanceResolverTest {
         givenEntitlement(true);
         givenDay(true, true, new StudentMark(1L, "همکلاسی", null, false, null));
 
-        assertThat(today()).isEqualTo(WardAttendance.UNAVAILABLE);
+        assertThat(today()).isEqualTo(TodayAttendance.UNAVAILABLE);
     }
 
     @Test
     void noModuleNoClassOrAFailureShowsNothingAndSkipsTheFacadeWhereItShould() {
         givenEntitlement(false);
-        assertThat(today()).isEqualTo(WardAttendance.UNAVAILABLE);
+        assertThat(today()).isEqualTo(TodayAttendance.UNAVAILABLE);
         verify(attendance, never()).getClassDay(anyLong(), anyLong(), any());
 
-        assertThat(resolver.todayFor(PARENT, SCHOOL, null, CHILD)).isEqualTo(WardAttendance.UNAVAILABLE);
+        assertThat(resolver.todayFor(PARENT, SCHOOL, null, CHILD)).isEqualTo(TodayAttendance.UNAVAILABLE);
 
         givenEntitlement(true);
         when(attendance.getClassDay(anyLong(), anyLong(), any(LocalDate.class)))
                 .thenThrow(new AttendanceException(new AttendanceError.NotYourClass(CLASS)));
-        assertThat(today()).isEqualTo(WardAttendance.UNAVAILABLE);
+        assertThat(today()).isEqualTo(TodayAttendance.UNAVAILABLE);
     }
 }

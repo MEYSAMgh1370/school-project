@@ -1,4 +1,4 @@
-@import com.example.roshdeandishe.web.model.StudentSummary
+@import com.example.roshdeandishe.studentview.StudentSummary
 
 @param StudentSummary summary
 @param String gradesHref

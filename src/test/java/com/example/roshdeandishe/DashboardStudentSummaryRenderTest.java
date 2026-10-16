@@ -4,8 +4,8 @@ import com.example.roshdeandishe.web.model.DashboardModel;
 import com.example.roshdeandishe.web.model.MembershipRow;
 import com.example.roshdeandishe.web.model.NavbarModel;
 import com.example.roshdeandishe.web.model.OwnSummaryRow;
-import com.example.roshdeandishe.web.model.StudentSummary;
-import com.example.roshdeandishe.web.model.WardAttendance;
+import com.example.roshdeandishe.studentview.StudentSummary;
+import com.example.roshdeandishe.studentview.TodayAttendance;
 import com.example.roshdeandishe.web.model.WardRow;
 import gg.jte.ContentType;
 import gg.jte.TemplateEngine;
@@ -68,7 +68,7 @@ class DashboardStudentSummaryRenderTest {
     @Test
     void eachWardCardCarriesThatChildsSummaryWithAGradesLinkForThatChild() {
         WardRow ward = new WardRow(100L, 5L, "نیکا", "مدرسه‌ی نمونه", "پنجم", "الف", 0, 0, 0,
-                WardAttendance.UNAVAILABLE, full());
+                TodayAttendance.UNAVAILABLE, full());
         String html = org.springframework.web.util.HtmlUtils.htmlUnescape(render(List.of(), List.of(ward)));
 
         assertThat(html).contains("آخرین نمره‌ها:", "آزمون‌های پیش‌رو:", "غیبت امسال:",

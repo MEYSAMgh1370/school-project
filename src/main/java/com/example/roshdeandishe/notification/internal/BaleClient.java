@@ -13,6 +13,7 @@ import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestClient;
 import org.springframework.web.client.RestClientException;
 
+import java.nio.charset.StandardCharsets;
 import java.util.List;
 
 /**
@@ -111,10 +112,75 @@ class BaleClient {
         }
     }
 
+    /** سقف callback_data در Bot API (تلگرام/بله): ۱ تا ۶۴ بایت UTF-8. */
+    private static final int MAX_CALLBACK_DATA_BYTES = 64;
+
+    /** یک دکمه‌ی اینلاین؛ callbackData در کلیک به شکل callback_query.data برمی‌گردد. */
+    record InlineButton(String text, String callbackData) {
+    }
+
+    /**
+     * پیام همراه با کیبورد اینلاین (reply_markup.inline_keyboard). بله callbackData را فقط ۱ تا ۶۴ بایت UTF-8
+     * می‌پذیرد، پس callbackData خالی، تهی یا بلندتر قبل از هر تماس HTTP با IllegalArgumentException (خطای
+     * برنامه‌نویس) رد می‌شود.
+     */
+    boolean sendMessage(Long chatId, String text, List<List<InlineButton>> inlineKeyboard) {
+        for (List<InlineButton> row : inlineKeyboard) {
+            for (InlineButton button : row) {
+                String data = button.callbackData();
+                int bytes = data == null ? 0 : data.getBytes(StandardCharsets.UTF_8).length;
+                if (bytes < 1 || bytes > MAX_CALLBACK_DATA_BYTES) {
+                    throw new IllegalArgumentException("callbackData دکمه‌ی «" + button.text() + "» باید ۱ تا "
+                            + MAX_CALLBACK_DATA_BYTES + " بایت باشد، نه " + bytes);
+                }
+            }
+        }
+        if (botToken == null || botToken.isBlank()) {
+            log.warn("roshdeandishe.bale.bot-token پیکربندی نشده - پیام کیبورددار به chatId={} ارسال نشد.", chatId);
+            return false;
+        }
+
+        InlineKeyboardMarkup markup = new InlineKeyboardMarkup(inlineKeyboard.stream()
+                .map(row -> row.stream().map(b -> new InlineButtonJson(b.text(), b.callbackData())).toList())
+                .toList());
+
+        try {
+            restClient.post()
+                    .uri("/bot{token}/sendMessage", botToken)
+                    .body(new SendMessageRequest(chatId, text, markup))
+                    .retrieve()
+                    .toBodilessEntity();
+            return true;
+        } catch (RestClientException e) {
+            log.warn("ارسال پیام کیبورددار به chatId={} شکست خورد.", chatId, e);
+            return false;
+        }
+    }
+
+    /** پاسخ به callback_query تا spinner دکمه در کلاینت بله قطع شود. */
+    boolean answerCallbackQuery(String callbackQueryId) {
+        if (botToken == null || botToken.isBlank()) {
+            log.warn("roshdeandishe.bale.bot-token پیکربندی نشده - پاسخ callback_query ارسال نشد.");
+            return false;
+        }
+
+        try {
+            restClient.post()
+                    .uri("/bot{token}/answerCallbackQuery", botToken)
+                    .body(new AnswerCallbackQueryRequest(callbackQueryId))
+                    .retrieve()
+                    .toBodilessEntity();
+            return true;
+        } catch (RestClientException e) {
+            log.warn("پاسخ به callback_query شکست خورد.", e);
+            return false;
+        }
+    }
+
     private record SendMessageRequest(
             @JsonProperty("chat_id") Long chatId,
             String text,
-            @JsonProperty("reply_markup") ReplyKeyboardMarkup replyMarkup
+            @JsonProperty("reply_markup") Object replyMarkup
     ) {
     }
 
@@ -127,6 +193,22 @@ class BaleClient {
     private record KeyboardButton(
             String text,
             @JsonProperty("request_contact") boolean requestContact
+    ) {
+    }
+
+    private record InlineKeyboardMarkup(
+            @JsonProperty("inline_keyboard") List<List<InlineButtonJson>> inlineKeyboard
+    ) {
+    }
+
+    private record InlineButtonJson(
+            String text,
+            @JsonProperty("callback_data") String callbackData
+    ) {
+    }
+
+    private record AnswerCallbackQueryRequest(
+            @JsonProperty("callback_query_id") String callbackQueryId
     ) {
     }
 }

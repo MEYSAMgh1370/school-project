@@ -1,5 +1,8 @@
 package com.example.roshdeandishe.web.model;
 
+import com.example.roshdeandishe.studentview.StudentSummary;
+import com.example.roshdeandishe.studentview.TodayAttendance;
+
 /**
  * یک فرزندِ لینک‌شده‌ی والد برای بخش «فرزندان من» پیشخوان.
  * <p>
@@ -16,19 +19,19 @@ package com.example.roshdeandishe.web.model;
  * @param overdueCount فاکتورهای دیرکرد (OVERDUE)
  * @param openCount    فاکتورهای باز و سررسید‌نگذشته (UNPAID و PARTIAL)
  * @param summary      خلاصهٔ نمره‌ها/آزمون‌ها/غیبتِ همین فرزند (تهی = نشان داده نمی‌شود)
- * @param attendance   وضعیتِ حضور و غیابِ امروزِ همین فرزند (تهی = {@link WardAttendance#UNAVAILABLE})
+ * @param attendance   وضعیتِ حضور و غیابِ امروزِ همین فرزند (تهی = {@link TodayAttendance#UNAVAILABLE})
  */
 public record WardRow(Long studentId, Long schoolId, String name, String schoolName, String className, String section,
-                      int invoiceCount, int overdueCount, int openCount, WardAttendance attendance,
+                      int invoiceCount, int overdueCount, int openCount, TodayAttendance attendance,
                       StudentSummary summary) {
 
     public WardRow {
-        attendance = attendance == null ? WardAttendance.UNAVAILABLE : attendance;
+        attendance = attendance == null ? TodayAttendance.UNAVAILABLE : attendance;
     }
 
     /** بدونِ خلاصهٔ نمره/آزمون/غیبت (تست‌های قدیمی). */
     public WardRow(Long studentId, Long schoolId, String name, String schoolName, String className, String section,
-                   int invoiceCount, int overdueCount, int openCount, WardAttendance attendance) {
+                   int invoiceCount, int overdueCount, int openCount, TodayAttendance attendance) {
         this(studentId, schoolId, name, schoolName, className, section, invoiceCount, overdueCount, openCount,
                 attendance, null);
     }
@@ -41,11 +44,11 @@ public record WardRow(Long studentId, Long schoolId, String name, String schoolN
     public WardRow(Long studentId, Long schoolId, String name, String schoolName, String className, String section,
                    int invoiceCount, int overdueCount, int openCount) {
         this(studentId, schoolId, name, schoolName, className, section, invoiceCount, overdueCount, openCount,
-                WardAttendance.UNAVAILABLE);
+                TodayAttendance.UNAVAILABLE);
     }
 
     public boolean hasAttendance() {
-        return attendance != WardAttendance.UNAVAILABLE;
+        return attendance != TodayAttendance.UNAVAILABLE;
     }
 
     public boolean hasClass() {

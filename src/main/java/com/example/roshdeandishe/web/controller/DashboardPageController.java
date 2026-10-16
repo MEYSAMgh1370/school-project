@@ -8,14 +8,15 @@ import com.example.roshdeandishe.iam.IamFacade.UserProfile;
 import com.example.roshdeandishe.school.SchoolFacade;
 import com.example.roshdeandishe.school.SchoolFacade.SchoolId;
 import com.example.roshdeandishe.school.SchoolFacade.SchoolInfo;
+import com.example.roshdeandishe.studentview.StudentViewFacade;
 import com.example.roshdeandishe.web.model.AttendanceTodayAssembler;
 import com.example.roshdeandishe.web.model.AttendanceTodayRow;
 import com.example.roshdeandishe.web.model.DashboardModel;
 import com.example.roshdeandishe.web.model.MembershipRow;
 import com.example.roshdeandishe.web.model.SchoolEntryRow;
+import com.example.roshdeandishe.web.model.OwnSummaryRow;
 import com.example.roshdeandishe.web.model.SetupChecklistAssembler;
 import com.example.roshdeandishe.web.model.SetupChecklistRow;
-import com.example.roshdeandishe.web.model.StudentSummaryAssembler;
 import com.example.roshdeandishe.web.model.TeacherClassesAssembler;
 import com.example.roshdeandishe.web.model.TeacherClassesRow;
 import com.example.roshdeandishe.web.model.TuitionRow;
@@ -73,17 +74,17 @@ public class DashboardPageController {
     private final FinanceFacade financeFacade;
     private final AttendanceTodayAssembler attendanceTodayAssembler;
     private final TeacherClassesAssembler teacherClassesAssembler;
-    private final StudentSummaryAssembler studentSummaryAssembler;
+    private final StudentViewFacade studentViewFacade;
     private final SetupChecklistAssembler setupChecklistAssembler;
 
     public DashboardPageController(IamFacade iamFacade, SchoolFacade schoolFacade,
                                    NavbarModelAssembler navbarModelAssembler, WardsAssembler wardsAssembler,
                                    FinanceFacade financeFacade, AttendanceTodayAssembler attendanceTodayAssembler,
                                    TeacherClassesAssembler teacherClassesAssembler,
-                                   StudentSummaryAssembler studentSummaryAssembler,
+                                   StudentViewFacade studentViewFacade,
                                    SetupChecklistAssembler setupChecklistAssembler) {
         this.setupChecklistAssembler = setupChecklistAssembler;
-        this.studentSummaryAssembler = studentSummaryAssembler;
+        this.studentViewFacade = studentViewFacade;
         this.teacherClassesAssembler = teacherClassesAssembler;
         this.financeFacade = financeFacade;
         this.attendanceTodayAssembler = attendanceTodayAssembler;
@@ -117,8 +118,7 @@ public class DashboardPageController {
                 wardsAssembler.forParent(userId, memberships), tuitionRows(memberships, schools),
                 attendanceTodayRows(userId, memberships, schools),
                 teacherClasses(userId, memberships, schools), rolesSummary(memberships, navbar, schools),
-                studentSummaryAssembler.forOwn(userId, memberships,
-                        id -> schoolName(schools.getOrDefault(id, Optional.empty()), id)),
+                ownSummaries(userId, memberships, schools),
                 setupChecklists(memberships, schools)));
         model.addAttribute("navbar", navbar);
         return "dashboard";
@@ -195,6 +195,15 @@ public class DashboardPageController {
                     .ifPresent(rows::add);
         }
         return rows;
+    }
+
+    private List<OwnSummaryRow> ownSummaries(UserId userId, List<MembershipInfo> memberships,
+                                            Map<Long, Optional<SchoolInfo>> schools) {
+        return studentViewFacade.ownSummaries(userId, memberships).stream()
+                .map(own -> new OwnSummaryRow(
+                        schoolName(schools.getOrDefault(own.schoolId(), Optional.empty()), own.schoolId()),
+                        own.summary()))
+                .toList();
     }
 
     /**

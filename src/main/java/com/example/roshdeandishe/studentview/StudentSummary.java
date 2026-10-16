@@ -1,4 +1,4 @@
-package com.example.roshdeandishe.web.model;
+package com.example.roshdeandishe.studentview;
 
 import java.util.List;
 
