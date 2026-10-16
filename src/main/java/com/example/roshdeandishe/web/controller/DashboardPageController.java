@@ -197,11 +197,6 @@ public class DashboardPageController {
         return rows;
     }
 
-    /**
-     * «کلاس‌های من» برای مدرسه‌هایی که کاربر در آن‌ها معلمِ فعال است (چکِ literal {@code TEACHER}؛ مدیر و
-     * نقش‌های سفارشی چیزی نمی‌گیرند). مدرسه‌ی معلمِ بدونِ کلاس هم ردیف می‌گیرد، تا «هنوز کلاسی به شما واگذار
-     * نشده» نشان داده شود، نه یک صفحه‌ی ساکت.
-     */
     private List<OwnSummaryRow> ownSummaries(UserId userId, List<MembershipInfo> memberships,
                                             Map<Long, Optional<SchoolInfo>> schools) {
         return studentViewFacade.ownSummaries(userId, memberships).stream()
@@ -211,6 +206,11 @@ public class DashboardPageController {
                 .toList();
     }
 
+    /**
+     * «کلاس‌های من» برای مدرسه‌هایی که کاربر در آن‌ها معلمِ فعال است (چکِ literal {@code TEACHER}؛ مدیر و
+     * نقش‌های سفارشی چیزی نمی‌گیرند). مدرسه‌ی معلمِ بدونِ کلاس هم ردیف می‌گیرد، تا «هنوز کلاسی به شما واگذار
+     * نشده» نشان داده شود، نه یک صفحه‌ی ساکت.
+     */
     private List<TeacherClassesRow> teacherClasses(UserId userId, List<MembershipInfo> memberships,
                                                    Map<Long, Optional<SchoolInfo>> schools) {
         List<TeacherClassesRow> rows = new ArrayList<>();
