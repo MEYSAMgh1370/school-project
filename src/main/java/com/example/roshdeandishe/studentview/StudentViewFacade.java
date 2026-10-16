@@ -19,7 +19,11 @@ public interface StudentViewFacade {
      */
     List<OwnSummary> ownSummaries(UserId userId, List<MembershipInfo> memberships);
 
-    /** وضعیتِ امروزِ یک دانش‌آموز؛ {@link TodayAttendance#UNAVAILABLE} اگر ماژول یا کلاس در دسترس نباشد. */
+    /**
+     * وضعیتِ امروزِ یک دانش‌آموز؛ {@link TodayAttendance#UNAVAILABLE} اگر ماژول یا کلاس در دسترس نباشد.
+     * فراخواننده رابطهٔ {@code viewer} و دانش‌آموز را از قبل سنجیده و {@code classId} کلاسِ همان دانش‌آموز است؛
+     * این متد فقط دسترسیِ ماژول (entitlement) را می‌سنجد.
+     */
     TodayAttendance todayAttendance(UserId viewer, Long schoolId, Long classId, Long studentId);
 
     /** خلاصهٔ خودِ دانش‌آموز در یک مدرسه. */

@@ -183,3 +183,4 @@ Out of phase 1: payments, recording attendance, submitting an excuse (first phas
 5. Whether daily counters may be in memory (single instance) or must be persisted.
 6. Whether the provider's data-processing terms are acceptable for pseudonymised text from minors' parents and students.
 7. Stage 1 assumptions, not confirmed by the product owner: the webhook handling pool (core 2, max 4, queue 100) and the de-duplication capacity (last 1000 `update_id`s) were chosen without load data; both should be revisited with real traffic.
+8. Per-chat ordering: updates from one chat can be handled out of order on the 2-4 pool threads of `BaleWebhookService`; consider serializing per `chat.id` in stage 2.

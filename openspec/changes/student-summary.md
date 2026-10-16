@@ -30,7 +30,7 @@ each needed a separate page (`/my-grades`, `/my-exams`, `/my-attendance`).
 
 ## Implementation
 
-`web.model.StudentSummaryAssembler` composes the summary from the public facades
+`web.model.StudentSummaryAssembler` (moved to `studentview` by bale-smart-bot stage 1 (2026-10-16)) composes the summary from the public facades
 (`AcademicFacade.listGradesForStudents`, `ExamFacade.listExamsForStudent`,
 `AttendanceFacade.listMyAttendance`, `SchoolFacade`), shared template
 `layout/student-summary.jte`. `WardRow.summary` carries each child's; 

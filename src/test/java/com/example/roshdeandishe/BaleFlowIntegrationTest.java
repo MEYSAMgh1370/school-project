@@ -323,6 +323,9 @@ class BaleFlowIntegrationTest {
                         .content(contactShareUpdateJson(chatId, phoneNumber)))
                 .andExpect(status().isOk());
         awaitSentMessageCount(1); // پردازش ناهمگام است؛ تا رسیدن تأییدیه صبر می‌کنیم
+        // تأییدیه پیش از commit تراکنشِ handle() ارسال می‌شود؛ تا ثبتِ ردیفِ لینک صبر می‌کنیم
+        await().atMost(Duration.ofSeconds(10)).untilAsserted(() -> assertThat(jdbcTemplate.queryForObject(
+                "select count(*) from bale.bale_links where chat_id = ?", Integer.class, chatId)).isEqualTo(1));
         SENT_MESSAGES.clear(); // پیام تأییدیه‌ی همین لینک را دور می‌ریزیم، سناریوی اصلی تست چیز دیگری‌ست
     }
 

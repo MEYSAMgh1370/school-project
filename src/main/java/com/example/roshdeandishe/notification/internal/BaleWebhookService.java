@@ -9,6 +9,7 @@ import org.springframework.stereotype.Component;
 
 import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.Executor;
+import java.util.concurrent.ExecutorService;
 import java.util.concurrent.RejectedExecutionException;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
@@ -82,15 +83,18 @@ class BaleWebhookService {
      * اگر pool پر باشد Update با یک لاگ دور ریخته می‌شود (هرگز بلاک نمی‌شود).
      */
     void processRawUpdate(String rawBody) {
+        Long updateId = null;
         try {
             BaleUpdate update = objectMapper.readValue(rawBody, BaleUpdate.class);
+            updateId = update.updateId();
             if (update.updateId() != null && !recentUpdateIds.markSeen(update.updateId())) {
                 log.debug("Update تکراری از بله دور ریخته شد: {}", update.updateId());
                 return;
             }
             executor.execute(() -> handleSafely(update));
         } catch (RejectedExecutionException e) {
-            log.warn("صف پردازش Updateهای بله پر است؛ Update دور ریخته شد.");
+            log.warn("Update {} از بله دور ریخته شد؛ صف پر است یا pool خاموش شده (خاموش={}).",
+                    updateId, executor instanceof ExecutorService pool && pool.isShutdown());
         } catch (Exception e) {
             log.warn("پردازش Update ورودی از بله شکست خورد.", e);
         }
