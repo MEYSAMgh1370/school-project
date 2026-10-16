@@ -6,6 +6,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.Executor;
 import java.util.concurrent.RejectedExecutionException;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatCode;
@@ -77,5 +78,21 @@ class BaleWebhookServiceTest {
         };
         assertThatCode(() -> service(rejecting).processRawUpdate(WITH_ID_9)).doesNotThrowAnyException();
         verify(handler, never()).handle(any());
+    }
+
+    @Test
+    void anUpdateDroppedByAFullPoolIsHandledWhenItArrivesAgain() {
+        AtomicBoolean full = new AtomicBoolean(true);
+        Executor fullOnce = task -> {
+            if (full.getAndSet(false)) {
+                throw new RejectedExecutionException("full");
+            }
+            task.run();
+        };
+        var service = service(fullOnce);
+        service.processRawUpdate(WITH_ID_9);
+        service.processRawUpdate(WITH_ID_9);
+
+        verify(handler, times(1)).handle(any());
     }
 }

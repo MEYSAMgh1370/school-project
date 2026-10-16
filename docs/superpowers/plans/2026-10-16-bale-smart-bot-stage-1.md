@@ -309,3 +309,17 @@ Classes stay package-private in `notification/internal` for now. The spec's `bot
   git add openspec
   git commit -m "docs(openspec): record Bale smart bot stage 1 as implemented"
   ```
+
+---
+
+## Follow-ups after stage 1 (from the PR #153 review)
+
+Fixed in PR #153 after the review: an update dropped by a full pool is no longer kept as "seen" (`RecentUpdateIds.forget`); empty or missing `callback_data` is rejected like over-long data; the `BaleUpdateHandler` comment no longer claims the legacy "no AI" rule is already superseded.
+
+Scheduled for later stages — the list and reasons live in `openspec/changes/bale-smart-bot.md` under "Carried forward from the stage 1 review", and the stage 2 plan must start from it:
+
+- [ ] Stage 2: serialize update handling per `chat.id` (must do before any new intent).
+- [ ] Stage 2: load `BotContext` wards lazily.
+- [ ] Stage 2: use or remove the unused groundwork API.
+- [ ] Separate small PR: one "today" zone fallback (`SchoolInfo.zoneId()`).
+- [ ] With real traffic: revisit in-memory de-duplication scope.

@@ -31,4 +31,11 @@ final class RecentUpdateIds {
             return ids.put(updateId, Boolean.TRUE) == null;
         }
     }
+
+    /** شناسه را فراموش می‌کند تا اگر دوباره رسید، دوباره «جدید» حساب شود (مثلاً وقتی پردازشش رد شد). */
+    void forget(long updateId) {
+        synchronized (ids) {
+            ids.remove(updateId);
+        }
+    }
 }

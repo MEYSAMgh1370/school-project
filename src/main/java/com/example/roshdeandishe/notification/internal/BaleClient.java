@@ -120,14 +120,18 @@ class BaleClient {
     }
 
     /**
-     * پیام همراه با کیبورد اینلاین (reply_markup.inline_keyboard). callbackData بیش از ۶۴ بایت UTF-8 را
-     * بله رد می‌کند، پس قبل از هر تماس HTTP با IllegalArgumentException (خطای برنامه‌نویس) رد می‌شود.
+     * پیام همراه با کیبورد اینلاین (reply_markup.inline_keyboard). بله callbackData را فقط ۱ تا ۶۴ بایت UTF-8
+     * می‌پذیرد، پس callbackData خالی، تهی یا بلندتر قبل از هر تماس HTTP با IllegalArgumentException (خطای
+     * برنامه‌نویس) رد می‌شود.
      */
     boolean sendMessage(Long chatId, String text, List<List<InlineButton>> inlineKeyboard) {
         for (List<InlineButton> row : inlineKeyboard) {
             for (InlineButton button : row) {
-                if (button.callbackData().getBytes(StandardCharsets.UTF_8).length > MAX_CALLBACK_DATA_BYTES) {
-                    throw new IllegalArgumentException("callbackData بیش از " + MAX_CALLBACK_DATA_BYTES + " بایت است");
+                String data = button.callbackData();
+                int bytes = data == null ? 0 : data.getBytes(StandardCharsets.UTF_8).length;
+                if (bytes < 1 || bytes > MAX_CALLBACK_DATA_BYTES) {
+                    throw new IllegalArgumentException("callbackData دکمه‌ی «" + button.text() + "» باید ۱ تا "
+                            + MAX_CALLBACK_DATA_BYTES + " بایت باشد، نه " + bytes);
                 }
             }
         }

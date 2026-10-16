@@ -163,6 +163,17 @@ Out of phase 1: payments, recording attendance, submitting an excuse (first phas
 3. **LLM layer:** `Pseudonymizer`, `LlmClient`, `Validator`, limits, `BOT_LLM_ENABLED` (default off), evaluation set.
 4. **Phase 2 (separate design):** actions with an explicit «تأیید / لغو» step, starting with submitting an absence excuse; decide there whether conversation memory, an agent framework or MCP is needed.
 
+### Carried forward from the stage 1 review (2026-10-16)
+
+The PR #153 review raised these; the product owner chose to schedule them, not to fix them in stage 1. Each belongs to the stage named.
+
+- **Stage 2 — per-chat ordering (must do).** `BaleWebhookService` handles updates on 2–4 pool threads with no per-chat order. Bale delivers a bot's updates one at a time, so before stage 1 they were effectively serial. Now a «راهنما» sent right after a contact share can be answered «متصل نشده» before the link commits, and two concurrent contact shares for one user can race on the link upsert. Serialize handling per `chat.id`, while different chats stay parallel.
+- **Stage 2 — lazy `BotContext`.** `BotContextLoader.load` runs the full ward lookup (`listWards` per PARENT membership plus `findUser` per ward) on every linked update, including «راهنما» and callbacks that only need "is linked". Load wards only for intents that use them.
+- **Stage 2 — prune unused groundwork.** `BotContext.rolesIn`, `wardsIn`, `Ward.studentUserId`, `Ward.classId` and the inline-keyboard `sendMessage` overload have no production caller yet; the first intents must use them or they are removed.
+- **Separate small PR — one "today" zone fallback.** `TodayAttendanceReader.today` and `web` `AttendanceTodayAssembler.today` fall back to the server zone, while `SchoolInfo.zoneId()` (event reminders) falls back to `Asia/Tehran`; a school with a blank or invalid zone can see a different "today" in the reminder job than on the dashboard and the bot. Pre-existing, kept unchanged in stage 1 on purpose; unify on `SchoolInfo.zoneId()` with its own change note.
+- **Revisit with real traffic — de-duplication scope.** `RecentUpdateIds` is in memory, per instance, and lost on restart, which are the cases where Bale re-delivery is most likely. Acceptable for the single production instance (question 7); if the app ever runs several instances, or duplicate handling causes harm, move to a database-backed unique `update_id` or idempotent handlers.
+- **Kept as decided — linked chat whose user no longer exists** gets the not-linked text (stage 1 ruling R4); no change planned.
+
 ## Compatibility
 
 - Existing commands («راهنما», «مدرسه‌های من», «فرزندان من»), `/start` and contact linking keep working.
@@ -183,4 +194,4 @@ Out of phase 1: payments, recording attendance, submitting an excuse (first phas
 5. Whether daily counters may be in memory (single instance) or must be persisted.
 6. Whether the provider's data-processing terms are acceptable for pseudonymised text from minors' parents and students.
 7. Stage 1 assumptions, not confirmed by the product owner: the webhook handling pool (core 2, max 4, queue 100) and the de-duplication capacity (last 1000 `update_id`s) were chosen without load data; both should be revisited with real traffic.
-8. Per-chat ordering: updates from one chat can be handled out of order on the 2-4 pool threads of `BaleWebhookService`; consider serializing per `chat.id` in stage 2.
+8. Per-chat ordering: updates from one chat can be handled out of order on the 2-4 pool threads of `BaleWebhookService`; scheduled for stage 2 (see "Carried forward from the stage 1 review").

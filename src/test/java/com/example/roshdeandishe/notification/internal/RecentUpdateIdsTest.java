@@ -31,6 +31,14 @@ class RecentUpdateIdsTest {
     }
 
     @Test
+    void aForgottenIdIsNewAgain() {
+        var seen = new RecentUpdateIds(10);
+        seen.markSeen(7);
+        seen.forget(7);
+        assertThat(seen.markSeen(7)).isTrue();
+    }
+
+    @Test
     void concurrentSameIdIsNewExactlyOnce() throws Exception {
         var seen = new RecentUpdateIds(10);
         int threads = 16;

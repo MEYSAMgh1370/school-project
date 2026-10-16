@@ -93,6 +93,10 @@ class BaleWebhookService {
             }
             executor.execute(() -> handleSafely(update));
         } catch (RejectedExecutionException e) {
+            // پردازش نشده، پس «دیده‌شده» هم نماند: اگر همین Update دوباره رسید، دور ریخته نشود
+            if (updateId != null) {
+                recentUpdateIds.forget(updateId);
+            }
             log.warn("Update {} از بله دور ریخته شد؛ صف پر است یا pool خاموش شده (خاموش={}).",
                     updateId, executor instanceof ExecutorService pool && pool.isShutdown());
         } catch (Exception e) {
