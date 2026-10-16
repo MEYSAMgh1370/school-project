@@ -29,7 +29,7 @@ summary of exams, latest grades and absences on the student's dashboard.
 
 ## Notes
 
-- `getClassDay` returns the whole class, so `WardAttendanceResolver` keeps only the
+- `getClassDay` returns the whole class, so `WardAttendanceResolver` (moved to `studentview` by bale-smart-bot stage 1 (2026-10-16)) keeps only the
   child's own row; nothing about other students reaches the page model.
 - A class whose roll has not been taken is `PENDING`, never "present" (the same
   rule as the admin's figure). `recordable == false` is a non-school day.
