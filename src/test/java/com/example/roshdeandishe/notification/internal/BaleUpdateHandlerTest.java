@@ -50,7 +50,7 @@ class BaleUpdateHandlerTest {
         academic = mock(AcademicFacade.class);
         finance = mock(FinanceFacade.class);
         handler = new BaleUpdateHandler(links, client, iam, school, finance,
-                new BotContextLoader(links, iam, academic));
+                new BotContextLoader(links, iam), new SubjectResolver(academic, school, iam));
     }
 
     private static BaleUpdate callbackUpdate(String id, Long chatId, String data) {

@@ -13,7 +13,6 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Instant;
 import java.util.List;
-import java.util.Map;
 import java.util.Optional;
 
 /**
@@ -40,6 +39,7 @@ class BaleUpdateHandler {
     private final IamFacade iamFacade;
     private final SchoolFacade schoolFacade;
     private final FinanceFacade financeFacade;
+    private final SubjectResolver subjectResolver;
 
     BaleUpdateHandler(
             BaleLinkRepository baleLinkRepository,
@@ -47,7 +47,8 @@ class BaleUpdateHandler {
             IamFacade iamFacade,
             SchoolFacade schoolFacade,
             FinanceFacade financeFacade,
-            BotContextLoader botContextLoader
+            BotContextLoader botContextLoader,
+            SubjectResolver subjectResolver
     ) {
         this.baleLinkRepository = baleLinkRepository;
         this.baleClient = baleClient;
@@ -55,6 +56,7 @@ class BaleUpdateHandler {
         this.schoolFacade = schoolFacade;
         this.financeFacade = financeFacade;
         this.botContextLoader = botContextLoader;
+        this.subjectResolver = subjectResolver;
     }
 
     @Transactional
@@ -156,18 +158,18 @@ class BaleUpdateHandler {
         if (!ctx.hasRole("PARENT")) {
             return BotTexts.NOT_A_PARENT;
         }
-        if (ctx.wards().isEmpty()) {
+        // INVOICES = فقط فرزندان (هدف‌ها از داده‌ی سرور، نه از ورودی کاربر)
+        List<BotTarget> wards = subjectResolver.targets(ctx, BotIntent.INVOICES);
+        if (wards.isEmpty()) {
             return BotTexts.NO_WARDS;
         }
 
         StringBuilder sb = new StringBuilder();
-        for (BotContext.Ward ward : ctx.wards()) {
-            Long schoolId = ward.schoolId();
-            String schoolName = schoolFacade.findSchool(new SchoolId(schoolId)).map(s -> s.name())
-                    .orElse(BotTexts.schoolFallback(schoolId));
+        for (BotTarget target : wards) {
+            BotTarget.Student ward = (BotTarget.Student) target;
             // همان دیدِ خانواده (سالِ جاری + «بدون سال»)، نه همه‌ی سال‌ها
-            long invoiceCount = financeFacade.listInvoicesForStudents(schoolId, List.of(ward.studentId())).size();
-            sb.append(BotTexts.wardLine(ward.fullName(), schoolName, invoiceCount));
+            long invoiceCount = financeFacade.listInvoicesForStudents(ward.schoolId(), List.of(ward.studentId())).size();
+            sb.append(BotTexts.wardLine(ward.name(), ward.schoolName(), invoiceCount));
         }
         return sb.toString().stripTrailing();
     }

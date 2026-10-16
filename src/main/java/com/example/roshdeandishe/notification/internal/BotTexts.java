@@ -76,6 +76,11 @@ final class BotTexts {
         return "مدرسه #" + schoolId;
     }
 
+    /** نام جایگزین وقتی نام دانش‌آموز پیدا نشود. */
+    static String studentFallback(Long userId) {
+        return "دانش‌آموز #" + userId;
+    }
+
     /** برچسب نقش؛ کد ناشناخته همان‌طور برمی‌گردد. */
     static String roleLabel(String roleCode) {
         return ROLE_LABELS.getOrDefault(roleCode, roleCode);
