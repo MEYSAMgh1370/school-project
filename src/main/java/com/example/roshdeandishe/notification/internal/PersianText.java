@@ -14,6 +14,22 @@ final class PersianText {
     private PersianText() {
     }
 
+    /**
+     * بله متن همه‌ی پیام‌های ارسالی را Markdown تفسیر می‌کند ({@code *پررنگ*}، {@code _کج_}،
+     * {@code [متن](آدرس)}، {@code ```نمایش آنی```})؛ بات هیچ‌جا قالب‌بندی نمی‌خواهد، پس این چهار نویسه با
+     * هم‌شکل بی‌اثرشان عوض می‌شوند تا نامی که کاربر وارد کرده (مثلاً «a_b_c») کج یا پیوند نشود. مستندات بله
+     * راه escape تعریف نکرده، پس جایگزینی تنها راه مطمئن است. null همان null می‌ماند.
+     */
+    static String withoutMarkdown(String text) {
+        if (text == null) {
+            return null;
+        }
+        return text.replace('*', '∗')   // U+2217
+                .replace('_', 'ˍ')      // U+02CD
+                .replace('[', '［')     // U+FF3B
+                .replace('`', 'ˋ');     // U+02CB
+    }
+
     /** ۱۴۰۵ به‌جای 1405؛ علامت منفی حفظ می‌شود. */
     static String digits(long n) {
         return toPersianDigits(Long.toString(n));

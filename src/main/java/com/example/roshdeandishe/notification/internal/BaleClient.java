@@ -202,11 +202,15 @@ class BaleClient {
         }
     }
 
+    /** هر sendMessage از اینجا می‌گذرد، پس متن همه‌ی پیام‌ها بدون نویسه‌ی Markdown فرستاده می‌شود. */
     private record SendMessageRequest(
             @JsonProperty("chat_id") Long chatId,
             String text,
             @JsonProperty("reply_markup") Object replyMarkup
     ) {
+        SendMessageRequest {
+            text = PersianText.withoutMarkdown(text);
+        }
     }
 
     private record ReplyKeyboardMarkup(

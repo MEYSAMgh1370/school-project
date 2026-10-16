@@ -23,4 +23,17 @@ class PersianTextTest {
     void localizeConvertsDigitsAndDecimalPoint() {
         assertThat(PersianText.localize("18.5")).isEqualTo("۱۸٫۵");
     }
+
+    @Test
+    void markdownCharactersAreReplacedWithInertLookalikes() {
+        assertThat(PersianText.withoutMarkdown("*علی* _رضا_ [پیوند](x) ```y```"))
+                .isEqualTo("∗علی∗ ˍرضاˍ ［پیوند](x) ˋˋˋyˋˋˋ");
+    }
+
+    @Test
+    void plainPersianTextIsUnchanged() {
+        String text = "حساب شما هنوز متصل نشده است. لطفاً ابتدا /start را ارسال کنید.";
+        assertThat(PersianText.withoutMarkdown(text)).isEqualTo(text);
+        assertThat(PersianText.withoutMarkdown(null)).isNull();
+    }
 }
