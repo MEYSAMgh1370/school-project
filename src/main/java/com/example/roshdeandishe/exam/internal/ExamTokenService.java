@@ -38,7 +38,12 @@ class ExamTokenService {
     private final SecretKey signingKey;
 
     ExamTokenService(@Value("${roshdeandishe.exam.token-secret}") String secret) {
-        this.signingKey = Keys.hmacShaKeyFor(Base64.getDecoder().decode(secret));
+        if (secret == null || secret.isBlank()) {
+            // dev/test: کلیدی در گیت نیست؛ برای همین اجرا کلید تصادفی
+            this.signingKey = Jwts.SIG.HS256.key().build();
+        } else {
+            this.signingKey = Keys.hmacShaKeyFor(Base64.getDecoder().decode(secret));
+        }
     }
 
     String generateToken(Long examId, Long studentId, Instant expireAt) {

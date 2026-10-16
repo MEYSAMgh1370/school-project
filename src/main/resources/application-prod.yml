@@ -144,8 +144,8 @@ roshdeandishe:
     # اختیاری (پیش‌فرض ۸)؛ ساعتِ محلیِ مدرسه برای ارسالِ یادآوریِ رویدادها، ۰ تا ۲۳ (رجوع به application.yml)
     send-hour: ${REMINDER_SEND_HOUR:8}
   jwt:
-    # کلید HMAC-SHA256 (حداقل ۲۵۶ بیت). مقدار dev در application.yml در گیت
-    # است، پس در production حتماً باید یک کلید تازه باشد.
+    # کلید HMAC-SHA256 (حداقل ۲۵۶ بیت). مقدار پیش‌فرض در application.yml خالی است (dev کلید تصادفی می‌سازد)
+    # و در production حتماً باید یک کلید تازه باشد.
     secret: ${JWT_SECRET}
   exam:
     # کلید مستقلِ توکن جلسه‌ی آزمون - عمداً همان کلید JWT موبایل نیست.
