@@ -7,5 +7,5 @@ import java.time.Instant;
 
 public record InvoiceResponse(Long id, Long schoolId, Long studentId, BigDecimal amount,
                               BigDecimal amountPaid, Instant issuedAt, Instant dueDate,
-                              InvoiceStatus status, String academicYear) {
+                              InvoiceStatus status, String academicYear, BigDecimal discountTotal) {
 }

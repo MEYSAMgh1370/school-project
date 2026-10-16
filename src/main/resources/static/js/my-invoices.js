@@ -57,6 +57,67 @@ document.addEventListener('alpine:init', () => {
                 : this.invoices.filter((invoice) => invoice.studentId === this.studentFilter);
         },
 
+        // نامِ دانش‌آموز؛ اگر سرور نام ندهد همان «دانش‌آموز #شماره» (شماره با رقم فارسی)
+        studentLabel(invoice) {
+            const name = invoice && typeof invoice.studentName === 'string' ? invoice.studentName.trim() : '';
+            return name || 'دانش‌آموز #' + Calendar.digits(invoice.studentId);
+        },
+
+        // برچسبِ فیلترِ ?student=<id>: نامِ همان دانش‌آموز اگر در فاکتورهای بارشده باشد
+        studentFilterLabel() {
+            const match = this.invoices.find((invoice) => invoice.studentId === this.studentFilter);
+            return match ? this.studentLabel(match) : 'دانش‌آموز #' + Calendar.digits(this.studentFilter);
+        },
+
+        // قابل‌پرداخت = مبلغ - تخفیف؛ مانده = قابل‌پرداخت - پرداخت‌شده (هرگز منفی نمی‌شود)
+        discount(invoice) {
+            return Number(invoice.discountTotal) || 0;
+        },
+
+        payable(invoice) {
+            return (Number(invoice.amount) || 0) - this.discount(invoice);
+        },
+
+        remaining(invoice) {
+            return Math.max(0, this.payable(invoice) - (Number(invoice.amountPaid) || 0));
+        },
+
+        // تخفیف مشروط: بخشی از discountTotal که فقط با تسویه‌ی کامل تا پایانِ
+        // روزِ مهلت می‌ماند؛ بدون مهلت چیزی برای نمایش نیست.
+        hasPendingDiscount(invoice) {
+            return (Number(invoice.pendingDiscount) || 0) > 0 && !!invoice.pendingDiscountDeadline;
+        },
+
+        installmentsOf(invoice) {
+            return Array.isArray(invoice.installments) ? invoice.installments : [];
+        },
+
+        // ردیف‌های اقساط به‌صورت پیش‌فرض بسته‌اند (روی موبایل جا نمی‌گیرند)
+        expanded: {},
+
+        toggleInstallments(invoice) {
+            this.expanded = { ...this.expanded, [invoice.id]: !this.expanded[invoice.id] };
+        },
+
+        isExpanded(invoice) {
+            return this.expanded[invoice.id] === true;
+        },
+
+        // قسطِ بدون سررسید: dueDate آن null است و هرگز دیرکرد نمی‌شود
+        isUndated(item) {
+            return item.dueDate == null || item.dueDate === '';
+        },
+
+        // «قسط بعدی»: اولین قسطِ پرداخت‌نشده‌ی کامل (به ترتیب شماره‌ی قسط)؛ قسطِ تاریخ‌دار بر بدون‌سررسید مقدم
+        // است و فقط وقتی تاریخ‌داری نمانده، اولین قسطِ بدون سررسیدِ پرداخت‌نشده برگزیده می‌شود
+        nextInstallmentId(invoice) {
+            const open = this.installmentsOf(invoice)
+                .filter((item) => item.status !== 'PAID')
+                .sort((a, b) => a.seq - b.seq);
+            const next = open.find((item) => !this.isUndated(item)) || open[0];
+            return next ? next.id : null;
+        },
+
         statusLabel(status) {
             return {
                 PAID: 'تسویه‌شده',

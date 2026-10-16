@@ -62,6 +62,10 @@ class SchoolEntity {
     @Column(name = "auto_promotion", nullable = false)
     private boolean autoPromotion;
 
+    /** اقساطِ شهریه روشن است؟ (tuition-installments.md)؛ پیش‌فرض خاموش (V28). */
+    @Column(name = "installments_enabled", nullable = false)
+    private boolean installmentsEnabled;
+
     /** کد ذخیره‌شده‌ی {@link WeekStart#code()}؛ ستون default 'SAT' دارد (V8). */
     @Column(name = "week_start_day", nullable = false, length = 3)
     private String weekStartDay = WeekStart.SATURDAY.code();

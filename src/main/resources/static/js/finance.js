@@ -45,6 +45,27 @@ document.addEventListener('alpine:init', () => {
         // قبلی، فهرست یا پنل تازه را بازنویسی نمی‌کند)
         loadSeq: 0,
         paymentsSeq: 0,
+        discountsSeq: 0,
+        installmentsSeq: 0,
+        // کلیدِ «اقساط شهریه» (مدرسه‌ای) و حالتِ بارگذاری/ذخیره‌ی آن
+        installmentsEnabled: false,
+        settingsLoaded: false,
+        settingsLoading: false,
+        settingsSaving: false,
+        // تخفیف‌ها و اقساطِ فاکتورِ باز‌شده؛ خطا و اعلانِ پنل داخل خودِ پنل نشان داده می‌شود (بالای صفحه دور از چشم است)
+        discounts: [],
+        discountsLoading: false,
+        discountForm: { amount: '', reason: '', conditional: false, deadline: '' },
+        discounting: false,
+        installments: [],
+        installmentsLoading: false,
+        planForm: { count: '', firstDue: '', interval: '1', error: '' },
+        planSaving: false,
+        // حالتِ «ویرایش مبالغ و تاریخ‌ها»: ردیف‌های اقساطِ ویرایش‌پذیر
+        editing: false,
+        editRows: [],
+        panelError: '',
+        panelNotice: '',
 
         init() {
             const saved = parseInt(localStorage.getItem('selectedSchoolId') || '', 10);
@@ -61,6 +82,9 @@ document.addEventListener('alpine:init', () => {
                 this.pupils = [];
                 this.payments = [];
                 this.expandedInvoiceId = null;
+                this.resetPanelExtras();
+                this.installmentsEnabled = false;
+                this.settingsLoaded = false;
                 this.tuitionFee = null;
                 // سالِ مدرسه‌ی قبلی برای مدرسه‌ی تازه معنا ندارد
                 this.years = [];
@@ -80,6 +104,7 @@ document.addEventListener('alpine:init', () => {
                 if (this.expandedInvoiceId !== null
                     && !this.visibleInvoices().some(invoice => invoice.id === this.expandedInvoiceId)) {
                     this.expandedInvoiceId = null;
+                    this.resetPanelExtras();
                 }
             };
             this.$watch('filterText', onFilterChange);
@@ -214,8 +239,368 @@ document.addEventListener('alpine:init', () => {
             }[method] || method;
         },
 
+        // مانده نسبت به مبلغِ قابل‌پرداخت (مبلغ - تخفیف) است، نه خودِ مبلغ
         remaining(invoice) {
-            return invoice.amount - invoice.amountPaid;
+            return FinanceLogic.remaining(invoice);
+        },
+
+        payable(invoice) {
+            return FinanceLogic.payable(invoice);
+        },
+
+        // ------------------------------------------------------------ تنظیم اقساط، تخفیف و اقساط
+
+        async jsonRequest(url, method, payload) {
+            return fetch(url, {
+                method,
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-School-ID': this.schoolId,
+                    'X-XSRF-TOKEN': this.csrfToken()
+                },
+                body: JSON.stringify(payload)
+            });
+        },
+
+        // کلیدِ «اقساط شهریه» (FINANCE_VIEW می‌خواند؛ اگر خواندن نشد سوییچ نمایش داده نمی‌شود و اقساط خاموش فرض می‌شود)
+        async loadSettings() {
+            const schoolId = this.schoolId;
+            this.settingsLoading = true;
+            try {
+                const response = await fetch(`${this.financeBase()}/settings`, { headers: { 'X-School-ID': schoolId } });
+                if (schoolId !== this.schoolId) {
+                    return;
+                }
+                if (response.ok) {
+                    this.installmentsEnabled = !!(await response.json()).installmentsEnabled;
+                    this.settingsLoaded = true;
+                }
+            } catch (e) {
+                // سوییچ اختیاری است؛ بدون آن صفحه مثل قبل کار می‌کند
+            } finally {
+                if (schoolId === this.schoolId) {
+                    this.settingsLoading = false;
+                }
+            }
+        },
+
+        async setInstallmentsEnabled(enabled, checkbox) {
+            if (this.settingsSaving) {
+                checkbox.checked = this.installmentsEnabled;
+                return;
+            }
+            const schoolId = this.schoolId;
+            this.settingsSaving = true;
+            this.error = '';
+            this.notice = '';
+            try {
+                const response = await this.jsonRequest(`${this.financeBase()}/settings/installments`, 'PUT', { enabled });
+                if (!response.ok) {
+                    const classified = await this.classifyError(response);
+                    this.error = classified.message;
+                    checkbox.checked = this.installmentsEnabled;
+                    return;
+                }
+                const body = await response.json();
+                if (schoolId !== this.schoolId) {
+                    return;
+                }
+                this.installmentsEnabled = !!body.installmentsEnabled;
+                checkbox.checked = this.installmentsEnabled;
+                this.notice = this.installmentsEnabled ? 'اقساط شهریه فعال شد.' : 'اقساط شهریه غیرفعال شد.';
+                // با خاموش شدن، فرم‌های تعریف/ویرایش بسته می‌شوند
+                this.editing = false;
+            } catch (e) {
+                this.error = 'ارتباط با سرور برقرار نشد.';
+                checkbox.checked = this.installmentsEnabled;
+            } finally {
+                this.settingsSaving = false;
+            }
+        },
+
+        invoiceUrl(invoice, suffix) {
+            return `${this.invoicesBase()}/${invoice.id}/${suffix}`;
+        },
+
+        // پنلِ فاکتور: تخفیف‌ها و اقساط با شمارنده‌ی خودشان بارگذاری می‌شوند (مثل paymentsSeq)
+        resetPanelExtras() {
+            this.discounts = [];
+            this.installments = [];
+            this.discountsLoading = false;
+            this.installmentsLoading = false;
+            this.discountForm = this.emptyDiscountForm();
+            this.planForm = this.emptyPlanForm();
+            this.editing = false;
+            this.editRows = [];
+            this.panelError = '';
+            this.panelNotice = '';
+        },
+
+        emptyDiscountForm() {
+            return { amount: '', reason: '', conditional: false, deadline: '' };
+        },
+
+        // تخفیف مشروط فقط با تاریخِ معتبر قابل ثبت است
+        discountDeadlineValid() {
+            return !this.discountForm.conditional || DateInput.parse(this.discountForm.deadline) !== null;
+        },
+
+        pendingDiscounts() {
+            return FinanceLogic.pendingDiscounts(this.discounts);
+        },
+
+        discountStatusLabel(discount) {
+            return FinanceLogic.discountStatusLabel(discount,
+                discount.deadline ? Calendar.formatDate(discount.deadline) : '');
+        },
+
+        discountStatusClass(discount) {
+            return FinanceLogic.discountStatusClass(discount);
+        },
+
+        emptyPlanForm() {
+            return { count: '', firstDue: '', interval: '1', error: '' };
+        },
+
+        async loadDiscounts(invoice) {
+            const seq = ++this.discountsSeq;
+            this.discountsLoading = true;
+            try {
+                const response = await fetch(this.invoiceUrl(invoice, 'discounts'), { headers: { 'X-School-ID': this.schoolId } });
+                if (seq !== this.discountsSeq || this.expandedInvoiceId !== invoice.id) {
+                    return;
+                }
+                if (response.ok) {
+                    this.discounts = await response.json();
+                } else {
+                    this.panelError = (await this.classifyError(response)).message;
+                }
+            } catch (e) {
+                if (seq === this.discountsSeq) {
+                    this.panelError = 'ارتباط با سرور برقرار نشد.';
+                }
+            } finally {
+                if (seq === this.discountsSeq) {
+                    this.discountsLoading = false;
+                }
+            }
+        },
+
+        async loadInstallments(invoice) {
+            const seq = ++this.installmentsSeq;
+            this.installmentsLoading = true;
+            try {
+                const response = await fetch(this.invoiceUrl(invoice, 'installments'), { headers: { 'X-School-ID': this.schoolId } });
+                if (seq !== this.installmentsSeq || this.expandedInvoiceId !== invoice.id) {
+                    return;
+                }
+                if (response.ok) {
+                    this.installments = await response.json();
+                } else {
+                    this.panelError = (await this.classifyError(response)).message;
+                }
+            } catch (e) {
+                if (seq === this.installmentsSeq) {
+                    this.panelError = 'ارتباط با سرور برقرار نشد.';
+                }
+            } finally {
+                if (seq === this.installmentsSeq) {
+                    this.installmentsLoading = false;
+                }
+            }
+        },
+
+        // فهرستِ فاکتورها بعد از تخفیف/اقساط (مبلغ قابل‌پرداخت، وضعیت و سررسید عوض می‌شود) بدون بازسازیِ نام‌ها
+        async refreshInvoices() {
+            const schoolId = this.schoolId;
+            const year = this.year;
+            try {
+                const response = await fetch(this.invoicesBase() + this.yearQuery(), { headers: { 'X-School-ID': schoolId } });
+                if (response.ok && schoolId === this.schoolId && year === this.year) {
+                    this.invoices = await response.json();
+                }
+            } catch (e) {
+                // فهرست در بارگذاری بعدی به‌روز می‌شود
+            }
+        },
+
+        async applyDiscount(invoice) {
+            if (this.discounting) {
+                return;
+            }
+            const amount = Money.normalizeAmount(this.discountForm.amount);
+            this.panelError = '';
+            this.panelNotice = '';
+            if (FinanceLogic.cents(amount) === null || FinanceLogic.cents(amount) <= 0) {
+                this.panelError = 'مبلغ تخفیف را به‌صورت عددِ مثبت بنویسید.';
+                return;
+            }
+            const body = { amount, reason: this.discountForm.reason.trim() || null };
+            if (this.discountForm.conditional) {
+                const deadline = DateInput.parse(this.discountForm.deadline);
+                if (deadline === null) {
+                    this.panelError = 'تاریخ تسویه را به شکل سال/ماه/روز بنویسید، مثل ' + this.exampleDate() + '.';
+                    return;
+                }
+                body.deadline = deadline;
+            }
+            const schoolId = this.schoolId;
+            this.discounting = true;
+            try {
+                const response = await this.jsonRequest(this.invoiceUrl(invoice, 'discounts'), 'POST', body);
+                if (!response.ok) {
+                    this.panelError = (await this.classifyError(response)).message;
+                    return;
+                }
+                if (schoolId !== this.schoolId || this.expandedInvoiceId !== invoice.id) {
+                    return;
+                }
+                this.discountForm = this.emptyDiscountForm();
+                this.panelNotice = 'تخفیف ثبت شد.';
+                // تخفیف اقساطِ پرداخت‌نشده را دوباره تقسیم می‌کند
+                await Promise.all([this.refreshInvoices(), this.loadDiscounts(invoice), this.loadInstallments(invoice)]);
+            } catch (e) {
+                this.panelError = 'ارتباط با سرور برقرار نشد.';
+            } finally {
+                this.discounting = false;
+            }
+        },
+
+        // تعریفِ اقساط و «تغییر تعداد» یک فرم و یک endpoint اند؛ سرور فقط اقساطِ پرداخت‌نشده را جایگزین می‌کند
+        async generateInstallments(invoice) {
+            if (this.planSaving) {
+                return;
+            }
+            const form = this.planForm;
+            form.error = '';
+            this.panelError = '';
+            this.panelNotice = '';
+            const count = parseInt(Digits.toAscii(form.count), 10);
+            const interval = parseInt(Digits.toAscii(form.interval), 10);
+            const firstDue = DateInput.parse(form.firstDue);
+            // شمارش ۰ فقط وقتی مجاز است که مانده‌ای برای تقسیم نباشد (سرور تصمیم می‌گیرد)
+            if (!Number.isInteger(count) || count < 0) {
+                form.error = 'تعداد اقساط را به‌صورت عدد بنویسید.';
+                return;
+            }
+            if (!Number.isInteger(interval) || interval < 1 || interval > 12) {
+                form.error = 'فاصله‌ی اقساط باید بین ۱ تا ۱۲ ماه باشد.';
+                return;
+            }
+            if (count > 0 && firstDue === null) {
+                form.error = 'تاریخ سررسید قسط اول را به شکل سال/ماه/روز بنویسید، مثل ' + this.exampleDate() + '.';
+                return;
+            }
+            const schoolId = this.schoolId;
+            this.planSaving = true;
+            try {
+                const response = await this.jsonRequest(this.invoiceUrl(invoice, 'installments/generate'), 'POST',
+                    { count, firstDueDate: firstDue, intervalMonths: interval });
+                if (!response.ok) {
+                    this.panelError = (await this.classifyError(response)).message;
+                    return;
+                }
+                if (schoolId !== this.schoolId || this.expandedInvoiceId !== invoice.id) {
+                    return;
+                }
+                this.planForm = this.emptyPlanForm();
+                this.editing = false;
+                this.panelNotice = 'اقساط ثبت شد.';
+                await Promise.all([this.refreshInvoices(), this.loadInstallments(invoice)]);
+            } catch (e) {
+                this.panelError = 'ارتباط با سرور برقرار نشد.';
+            } finally {
+                this.planSaving = false;
+            }
+        },
+
+        // تعدادِ اقساط: فقط رقمِ ASCII (ارقام فارسی/عربی تبدیل می‌شوند)
+        digitsOnly(event) {
+            const value = Digits.toAscii(event.target.value).replace(/\D/g, '');
+            event.target.value = value;
+            return value;
+        },
+
+        editRow(item) {
+            return this.editRows.find(row => row.id === item.id);
+        },
+
+        exampleDate() {
+            return DateInput.format(DateInput.today());
+        },
+
+        // ردیف‌های ویرایش‌پذیر (اقساطِ کاملاً پرداخت‌شده هرگز)
+        startEditing() {
+            this.panelError = '';
+            this.panelNotice = '';
+            this.editRows = this.installments.filter(i => FinanceLogic.isEditable(i)).map(i => ({
+                id: i.id,
+                seq: i.seq,
+                amount: String(i.amount),
+                // قسطِ بدون سررسید ورودیِ خالی دارد و خالی ماندنش مجاز است
+                undated: FinanceLogic.isUndated(i),
+                dueDate: FinanceLogic.editDueText(i, DateInput.format),
+                dateError: ''
+            }));
+            this.editing = true;
+        },
+
+        cancelEditing() {
+            this.editing = false;
+            this.editRows = [];
+            this.panelError = '';
+        },
+
+        editedSum() {
+            return FinanceLogic.editedSum(this.editRows);
+        },
+
+        expectedSum(invoice) {
+            return FinanceLogic.expectedSum(invoice, this.installments);
+        },
+
+        canSaveEdit(invoice) {
+            return FinanceLogic.sumMatches(this.editRows, this.expectedSum(invoice))
+                && this.editRows.every(row => FinanceLogic.resolveDueDate(row, DateInput.parse).ok);
+        },
+
+        async saveEditing(invoice) {
+            if (this.planSaving) {
+                return;
+            }
+            this.panelError = '';
+            this.panelNotice = '';
+            let invalid = false;
+            const items = this.editRows.map(row => {
+                const resolved = FinanceLogic.resolveDueDate(row, DateInput.parse);
+                row.dateError = resolved.ok ? '' : 'تاریخ را به شکل سال/ماه/روز بنویسید.';
+                invalid = invalid || !resolved.ok;
+                return { id: row.id, amount: Money.normalizeAmount(row.amount), dueDate: resolved.value };
+            });
+            if (invalid || !this.canSaveEdit(invoice)) {
+                this.panelError = 'مبلغ‌ها و تاریخ‌ها را کامل و درست پر کنید.';
+                return;
+            }
+            const schoolId = this.schoolId;
+            this.planSaving = true;
+            try {
+                const response = await this.jsonRequest(this.invoiceUrl(invoice, 'installments'), 'PUT', { items });
+                if (!response.ok) {
+                    this.panelError = (await this.classifyError(response)).message;
+                    return;
+                }
+                if (schoolId !== this.schoolId || this.expandedInvoiceId !== invoice.id) {
+                    return;
+                }
+                this.editing = false;
+                this.editRows = [];
+                this.panelNotice = 'اقساط ذخیره شد.';
+                await Promise.all([this.refreshInvoices(), this.loadInstallments(invoice)]);
+            } catch (e) {
+                this.panelError = 'ارتباط با سرور برقرار نشد.';
+            } finally {
+                this.planSaving = false;
+            }
         },
 
         // نوع خطای دولایه‌ی §5 را از URI فیلد type در ProblemDetail تشخیص
@@ -278,6 +663,7 @@ document.addEventListener('alpine:init', () => {
                 }
                 this.invoices = invoices;
                 this.loadUnattributed();
+                this.loadSettings();
 
                 // بهترین تلاش برای نام دانش‌آموز - studentsBase به STUDENT_VIEW
                 // نیاز دارد (نه دیگر STUDENT_ENROLL - UX_ROADMAP.md §6.4)، پس
@@ -361,6 +747,7 @@ document.addEventListener('alpine:init', () => {
             this.shown = PAGE_SIZE;
             this.expandedInvoiceId = null;
             this.payments = [];
+            this.resetPanelExtras();
             this.error = '';
             this.notice = '';
             await this.load();
@@ -438,6 +825,10 @@ document.addEventListener('alpine:init', () => {
 
         async togglePayments(invoice) {
             const seq = ++this.paymentsSeq;
+            // پاسخ‌های دیرِ تخفیف/اقساطِ پنلِ قبلی هم دور ریخته شوند
+            this.discountsSeq++;
+            this.installmentsSeq++;
+            this.resetPanelExtras();
             if (this.expandedInvoiceId === invoice.id) {
                 this.expandedInvoiceId = null;
                 this.payments = [];
@@ -448,6 +839,9 @@ document.addEventListener('alpine:init', () => {
             this.payments = [];
             this.paymentForm = { amount: '', method: 'CASH', note: '' };
             this.paymentsLoading = true;
+            // تخفیف‌ها و اقساط تنبل و موازی با پرداخت‌ها بارگذاری می‌شوند
+            this.loadDiscounts(invoice);
+            this.loadInstallments(invoice);
             try {
                 const response = await fetch(`${this.invoicesBase()}/${invoice.id}/payments`,
                     { headers: { 'X-School-ID': this.schoolId } });

@@ -78,7 +78,7 @@ file in the image:
 |---|---|
 | `DATABASE_URL` | `jdbc:postgresql://<liara-db-host>:<port>/<db>` |
 | `DATABASE_USERNAME` / `DATABASE_PASSWORD` | DB credentials |
-| `JWT_SECRET` | mobile bearer JWT signing key — the value in `application.yml` is dev-only |
+| `JWT_SECRET` | mobile bearer JWT signing key — empty in `application.yml`; dev/test generate a random key per run |
 | `EXAM_TOKEN_SECRET` | exam-take token signing key — same |
 | `APP_BASE_URL` | public URL, so invite emails link somewhere real |
 | `MAIL_HOST` / `MAIL_PORT` / `MAIL_USERNAME` / `MAIL_PASSWORD` | real SMTP; without it invite email just fails soft (`emailSent=false`) |

@@ -55,4 +55,61 @@ class FinancePageRenderTest {
         assertThat(html).contains("x-show=\"currentYear && !invoice.academicYear\"").contains(">بدون سال</span>");
         assertThat(html).contains("صدور فاکتورهای این سال برای دانش‌آموزان بدون فاکتور");
     }
+
+    @Test
+    void theInstallmentsSwitchAndItsScriptsAreOnThePage() {
+        String html = render();
+
+        assertThat(html).contains("id=\"financeInstallmentsSettingBox\"").contains("id=\"installmentsEnabled\"")
+                .contains("setInstallmentsEnabled($event.target.checked, $event.target)")
+                .contains("اقساط شهریه");
+        assertThat(html).contains("/js/finance-logic.js").contains("/js/date-input.js");
+    }
+
+    @Test
+    void theInvoicePanelLinksToThatInvoicesAuditTrail() {
+        String html = render();
+
+        assertThat(html).contains("data-invoice-audit-link")
+                .contains(":href=\"'/finance-audit?invoiceId=' + encodeURIComponent(invoice.id)\"")
+                .contains(">سابقه‌ی این فاکتور</a>");
+    }
+
+    @Test
+    void theInvoicePanelShowsTheSummaryTheDiscountFormAndTheInstallmentSections() {
+        String html = render();
+
+        // خلاصه بر پایه‌ی قابل‌پرداخت
+        assertThat(html).contains("data-invoice-summary").contains("payable(invoice)").contains("remaining(invoice)")
+                .contains("قابل پرداخت").contains("تخفیف:");
+        // تخفیف: فرم با برچسب، راهنمای تومان به حروف و فهرست سابقه
+        assertThat(html).contains("ثبت تخفیف").contains("@submit.prevent=\"applyDiscount(invoice)\"")
+                .contains("'discountAmount-' + invoice.id").contains("Money.tomanWords(discountForm.amount)")
+                .contains("x-for=\"discount in discounts\"");
+        // تخفیف مشروط: چک‌باکس، تاریخ با برچسب و راهنما، ستون وضعیت و خطِ تخفیف‌های در انتظار
+        assertThat(html).contains("تخفیف مشروط").contains("x-model=\"discountForm.conditional\"")
+                .contains("'discountDeadline-' + invoice.id").contains("در صورت تسویه‌ی کامل تا تاریخ")
+                .contains("اگر تا پایان این روز کل مبلغ قابل پرداخت تسویه نشود، تخفیف خودکار لغو می‌شود.")
+                .contains("!discountDeadlineValid()").contains("data-discount-row").contains("data-payment-row")
+                .doesNotContain("<table").doesNotContain("table-container")
+                .contains("discountStatusLabel(discount)").contains("data-pending-discount")
+                .contains("در صورت عدم تسویه‌ی کامل ساقط می‌شود").contains("در مبلغ قابل پرداخت حساب نمی‌شوند");
+        // اقساط: تعریف / تغییر تعداد / ویرایش با شاخص جمع
+        assertThat(html).contains("id=\"installmentsOffHint\"").contains("تعریف اقساط").contains("تغییر تعداد اقساط")
+                .contains("فقط اقساط پرداخت‌نشده جایگزین می‌شوند")
+                .contains("@submit.prevent=\"generateInstallments(invoice)\"")
+                .contains("ویرایش مبالغ و تاریخ‌ها").contains("جمع اقساط:").contains("باید برابر باشد با")
+                .contains("canSaveEdit(invoice)").contains("saveEditing(invoice)")
+                .contains("اقساط تعریف‌شده فقط‌خواندنی است");
+        // اقساط: فهرست انباشته (بدون جدول و اسکرول افقی)، نه جدول
+        String installments = html.substring(html.indexOf("<h4 class=\"title is-6\">اقساط</h4>"));
+        installments = installments.substring(0, installments.indexOf("@submit.prevent=\"generateInstallments(invoice)\""));
+        assertThat(installments).contains("data-installment-row").doesNotContain("<table").doesNotContain("table-container");
+        // هر ورودیِ ویرایشِ قسط برچسب دارد
+        assertThat(html).contains("'installmentAmount-' + item.id").contains("'installmentDue-' + item.id");
+        // قسطِ بدون سررسید: برچسبِ نمایش و راهنمای ورودیِ اختیاری، بدون صدا زدنِ formatDate روی null
+        assertThat(html).contains("بدون سررسید").contains("FinanceLogic.isUndated(item)")
+                .contains("اختیاری — تاریخ را بعداً هم می‌شود تعیین کرد")
+                .contains("'installmentDueHelp-' + item.id");
+    }
 }

@@ -79,6 +79,12 @@ public interface SchoolFacade {
     String formatSolarDate(java.time.LocalDate date);
 
     /**
+     * افزودنِ {@code months} ماهِ شمسی به یک تاریخِ میلادی: همان روزِ ماه در ماهِ مقصد، و اگر آن ماه آن روز را
+     * ندارد آخرین روزِ ماه (۳۱ شهریور + ۱ ماه = ۳۰ مهر). نتیجه میلادی است (اقساطِ شهریه).
+     */
+    LocalDate addSolarMonths(LocalDate gregorian, int months);
+
+    /**
      * انتخاب سال تحصیلی جاریِ مدرسه از فهرست سراسری. فقط همین یک مقدار عوض
      * می‌شود - هیچ داده‌ای حذف یا تغییر نمی‌کند، و شروع/پایانِ سال همین انتخابِ
      * مدیرِ مدرسه است (نه تاریخِ ثابت). SchoolError.AcademicYearNotFound اگر سال
@@ -99,6 +105,11 @@ public interface SchoolFacade {
     boolean isAutoPromotion(SchoolId schoolId);
 
     void setAutoPromotion(SchoolId schoolId, boolean enabled);
+
+    /** آیا اقساطِ شهریه برای مدرسه روشن است (tuition-installments.md)؛ پیش‌فرض خاموش. SchoolNotFound اگر مدرسه نباشد. */
+    boolean isInstallmentsEnabled(SchoolId schoolId);
+
+    void setInstallmentsEnabled(SchoolId schoolId, boolean enabled);
 
     /**
      * ورودی‌های تقویم مدرسه در بازه‌ی بسته‌ی [from, to] به ترتیب روز. هر دو الزامی‌اند و
