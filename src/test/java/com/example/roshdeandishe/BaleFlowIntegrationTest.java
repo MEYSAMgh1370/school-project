@@ -151,6 +151,23 @@ class BaleFlowIntegrationTest {
     }
 
     @Test
+    void sameUpdatePostedTwiceIsAnsweredOnce() throws Exception {
+        long chatId = uniqueChatId();
+        String body = updateJsonForText(chatId, "/start");
+
+        for (int i = 0; i < 2; i++) {
+            mockMvc.perform(post("/api/bale/webhook/" + WEBHOOK_SECRET)
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(body))
+                    .andExpect(status().isOk());
+        }
+
+        awaitSentMessageCount(1);
+        await().during(Duration.ofSeconds(1)).atMost(Duration.ofSeconds(5))
+                .untilAsserted(() -> assertThat(SENT_MESSAGES).hasSize(1));
+    }
+
+    @Test
     void textMessageFromUnlinkedChatGetsNotLinkedPrompt() throws Exception {
         long chatId = uniqueChatId();
 
@@ -175,9 +192,11 @@ class BaleFlowIntegrationTest {
         awaitSentMessageCount(1);
         assertThat(SENT_MESSAGES.get(0)).contains("مطابقت ندارد");
 
-        Integer linkCount = jdbcTemplate.queryForObject(
-                "select count(*) from bale.bale_links where chat_id = ?", Integer.class, chatId);
-        assertThat(linkCount).isZero();
+        await().atMost(Duration.ofSeconds(10)).untilAsserted(() -> {
+            Integer linkCount = jdbcTemplate.queryForObject(
+                    "select count(*) from bale.bale_links where chat_id = ?", Integer.class, chatId);
+            assertThat(linkCount).isZero();
+        });
     }
 
     @Test
@@ -196,10 +215,12 @@ class BaleFlowIntegrationTest {
         awaitSentMessageCount(1);
         assertThat(SENT_MESSAGES.get(0)).contains("متصل شد").contains("کاربر آزمایشی بله");
 
-        Long linkedChatId = jdbcTemplate.queryForObject(
-                "select chat_id from bale.bale_links where user_id = (select id from iam.users where email = ?)",
-                Long.class, email);
-        assertThat(linkedChatId).isEqualTo(chatId);
+        await().atMost(Duration.ofSeconds(10)).untilAsserted(() -> {
+            Long linkedChatId = jdbcTemplate.queryForObject(
+                    "select chat_id from bale.bale_links where user_id = (select id from iam.users where email = ?)",
+                    Long.class, email);
+            assertThat(linkedChatId).isEqualTo(chatId);
+        });
 
         // اشتراک‌گذاری دوباره (مثلاً از یک chat دیگر) رکورد تازه نمی‌سازد -
         // همان ردیف upsert می‌شود (BaleUpdateHandler.handleContactShared)
@@ -209,14 +230,16 @@ class BaleFlowIntegrationTest {
                         .content(contactShareUpdateJson(secondChatId, phoneNumber)))
                 .andExpect(status().isOk());
 
-        Integer rowCount = jdbcTemplate.queryForObject(
-                "select count(*) from bale.bale_links where user_id = (select id from iam.users where email = ?)",
-                Integer.class, email);
-        assertThat(rowCount).isEqualTo(1);
-        Long updatedChatId = jdbcTemplate.queryForObject(
-                "select chat_id from bale.bale_links where user_id = (select id from iam.users where email = ?)",
-                Long.class, email);
-        assertThat(updatedChatId).isEqualTo(secondChatId);
+        await().atMost(Duration.ofSeconds(10)).untilAsserted(() -> {
+            Integer rowCount = jdbcTemplate.queryForObject(
+                    "select count(*) from bale.bale_links where user_id = (select id from iam.users where email = ?)",
+                    Integer.class, email);
+            assertThat(rowCount).isEqualTo(1);
+            Long updatedChatId = jdbcTemplate.queryForObject(
+                    "select chat_id from bale.bale_links where user_id = (select id from iam.users where email = ?)",
+                    Long.class, email);
+            assertThat(updatedChatId).isEqualTo(secondChatId);
+        });
     }
 
     @Test
@@ -299,6 +322,7 @@ class BaleFlowIntegrationTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(contactShareUpdateJson(chatId, phoneNumber)))
                 .andExpect(status().isOk());
+        awaitSentMessageCount(1); // پردازش ناهمگام است؛ تا رسیدن تأییدیه صبر می‌کنیم
         SENT_MESSAGES.clear(); // پیام تأییدیه‌ی همین لینک را دور می‌ریزیم، سناریوی اصلی تست چیز دیگری‌ست
     }
 
@@ -334,13 +358,13 @@ class BaleFlowIntegrationTest {
     }
 
     private static String updateJsonForText(long chatId, String text) {
-        return "{\"update_id\":1,\"message\":{\"message_id\":1,\"chat\":{\"id\":%d},\"text\":\"%s\"}}"
-                .formatted(chatId, text);
+        return "{\"update_id\":%d,\"message\":{\"message_id\":1,\"chat\":{\"id\":%d},\"text\":\"%s\"}}"
+                .formatted(SEQ.incrementAndGet(), chatId, text);
     }
 
     private static String contactShareUpdateJson(long chatId, String phoneNumber) {
-        return "{\"update_id\":1,\"message\":{\"message_id\":1,\"chat\":{\"id\":%d},\"contact\":{\"phone_number\":\"%s\"}}}"
-                .formatted(chatId, phoneNumber);
+        return "{\"update_id\":%d,\"message\":{\"message_id\":1,\"chat\":{\"id\":%d},\"contact\":{\"phone_number\":\"%s\"}}}"
+                .formatted(SEQ.incrementAndGet(), chatId, phoneNumber);
     }
 
     private static String chatIdField(long chatId) {
