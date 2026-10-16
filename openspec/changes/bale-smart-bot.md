@@ -1,12 +1,14 @@
 # Bale smart bot (بات هوشمند بله)
 
-Status: proposed 2026-10-15, revised 2026-10-16 (classification contract with confidence, Jev as a candidate), not implemented. Designed with the product owner in a brainstorming session on 2026-10-15; every decision below marked **(PO)** was made by the product owner, items marked **assumption** were not and are listed under Unresolved questions.
+Status: proposed 2026-10-15, revised 2026-10-16 (classification contract with confidence, Jev as a candidate), stage 1 implemented 2026-10-16 (`studentview` module, callback queries and inline keyboards, `BotContext`, asynchronous de-duplicated webhook handling; current behavior is in `specs/current-system.md`); later stages not implemented. Designed with the product owner in a brainstorming session on 2026-10-15; every decision below marked **(PO)** was made by the product owner, items marked **assumption** were not and are listed under Unresolved questions.
 
 ## Goal
 
 Let linked users (parents, students, teachers) use the service from the Bale bot: first by **asking about their own data** in free Persian text or through buttons (phase 1), later by **doing things** with explicit confirmation (phase 2) **(PO)**. An LLM is used only to understand free text; the bot must stay correct, private and usable when the LLM is weak, slow or switched off.
 
 ## Current behavior (evidence)
+
+Note: written before stage 1; the synchronous handling, the missing callback support and the `web`-only student summary below were changed by stage 1 (see Status and `specs/current-system.md`).
 
 - `notification/internal/BaleUpdateHandler` is a command bot: `/start` (contact-share request), contact sharing (links a chat to the user whose profile phone matches, stored in `BaleLinkEntity`), «راهنما», «مدرسه‌های من», «فرزندان من» (ward names and invoice count). Any other text answers «دستور نامعتبر است».
 - Security model: there is no session; every query reads only the linked user's data (from `BaleLinkEntity`) or their linked wards, the same trust pattern as `/api/me` (class comment in `BaleUpdateHandler`).
@@ -46,7 +48,7 @@ MCP earns its cost only with a second consumer or a separate deployment boundary
 
 ### Components
 
-All new code lives under `notification` in a `bot` sub-package (placement to be checked against `new-module` and Modulith rules before coding).
+All new code lives under `notification` in a `bot` sub-package (placement to be checked against `new-module` and Modulith rules before coding). Stage 1 deferred the `bot` sub-package to stage 2: `BotContext` and `BotContextLoader` are package-private classes in `notification/internal`.
 
 ```
 BaleWebhookController (existing)
@@ -180,3 +182,4 @@ Out of phase 1: payments, recording attendance, submitting an excuse (first phas
 4. LLM timeout (8 s) and maximum text length (500) are assumptions.
 5. Whether daily counters may be in memory (single instance) or must be persisted.
 6. Whether the provider's data-processing terms are acceptable for pseudonymised text from minors' parents and students.
+7. Stage 1 assumptions, not confirmed by the product owner: the webhook handling pool (core 2, max 4, queue 100) and the de-duplication capacity (last 1000 `update_id`s) were chosen without load data; both should be revisited with real traffic.

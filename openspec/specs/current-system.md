@@ -255,6 +255,16 @@ The `questionbox` module (`openspec/changes/question-box.md`, migration `V27`, s
 - **Sheets** (`.../sheets`, `.../sheets/{id}/resolved`): a title, an optional header with the values of its fields, two print options (answer space under essays, answer key on a separate page) and one or more titled sections of items; an item is either a box question or a curriculum-bank question (read through `CurriculumFacade.findQuestionsVisibleToSchool`; adding one needs the school's paid `CURRICULUM` entitlement, `400 invalid-sheet` otherwise). Saving replaces the sections and renumbers positions from the list order. A question already in a sheet is not re-validated on save, so a soft-deleted question keeps printing; a bank question that disappeared, or an image-only question whose `STEM` image was removed, resolves as unavailable. Lists and `resolved` never read image bytes.
 - **Pages:** `/question-box` (list, add/edit dialog, delete confirmation), `/question-sheets` (sheets and headers tabs, a builder with a question picker for the box and the bank) and `/question-sheets/{id}/print`, which has no navbar and is styled for Chrome printing (`@media print`, A4); PDF is the browser's «Save as PDF». The two management pages are in the sidebar's «آموزش» group for teachers and school admins.
 
+## Bale bot
+
+Stage 1 of `openspec/changes/bale-smart-bot.md`, implemented 2026-10-16, changes how the inbound bot works, not what the text commands answer (`/start`, contact sharing, «راهنما», «مدرسه‌های من», «فرزندان من» and the «دستور نامعتبر است» fallback are unchanged).
+
+- **Asynchronous handling.** `POST /api/bale/webhook` parses the body on the request thread and answers `200` immediately, whatever happens. Handling runs on a private pool inside `notification` (core 2, max 4 threads, queue 100, threads named `bale-update-N`). When the pool and queue are full the update is dropped with a log line (never blocks, never `5xx`). A parse or handling failure is logged and swallowed.
+- **De-duplication.** An update whose `update_id` is among the last 1000 seen is dropped before handling (in memory, per instance, lost on restart). An update without an `update_id` is always handled.
+- **Callback queries.** `BaleUpdate` parses `callback_query`. `BaleClient` can send an inline keyboard (`callback_data` is at most 64 UTF-8 bytes, a longer value is rejected) and answer a callback query. A callback query is acknowledged first; then a chat with no Bale link gets the not-linked text and a linked chat gets the help text. No button is sent to users yet, so no callback maps to an action.
+- **Bot context.** `BotContext` (user, name, memberships, linked wards) is built by `BotContextLoader` from the Bale link and the public facades only. A linked chat whose user no longer exists is treated as not linked and gets the not-linked text.
+- **Student summary.** The read-only `studentview` module (`StudentViewFacade`: `summary`, `ownSummaries`, `todayAttendance`) is used by the dashboard; the bot does not answer from it yet.
+
 ## Current Limitations
 
 These are not bugs unless a change proposal says otherwise:
@@ -271,7 +281,8 @@ These are not bugs unless a change proposal says otherwise:
   any Rial/Toman conversion and rounding rules, is not defined;
 - slug editing, custom domains, and subdomain routing are not implemented;
 - school status changes are facade-only;
-- native Android app is read-only and local-development oriented.
+- native Android app is read-only and local-development oriented;
+- the Bale bot has no buttons, free-text questions or LLM yet (stage 1 is the groundwork only); an update queued or being handled when the application stops, or dropped because the pool is full, is not retried by the application.
 
 Attendance and calendar pages: `/calendar` (admin, `CALENDAR_MANAGE`: add and remove closed days by Jalali date), `/attendance` (teachers record their own classes, admins any class: present by default, absent with an optional «موجه» flag and note, late; past days need `ATTENDANCE_EDIT_PAST`; the entry is exception-only, so a teacher marks just the absent or late students; the one primary button lives in a sticky bottom bar with the live counts and reads «همه حاضرند - ثبت» while nothing is marked; a class of more than 8 students has a name search; the page header no longer overflows on a phone) and `/attendance/report` (admin, `ATTENDANCE_VIEW_ALL`: the day's absentees per class with the present-percent figure, and a period report by date range, class and student name). The admin پیشخوان shows a «حضور و غیاب امروز» box for the literal `SCHOOL_ADMIN` of an entitled school. `NavCatalog` links can require any one of several permission sets (`orPermissions`). `/my-attendance` («غیبت‌های من», STUDENT and PARENT): a Jalali date range (default: this month to today) listing the student's own and a parent's children's absences and lateness with excuse state; a parent sends or edits a note on an absence until an admin decides it. `/attendance/report` has a third tab «عذرخواهی‌ها» where an admin filters excuses by status and date and approves or rejects pending ones (approval marks the absence excused). The parent «فرزندان من» card has a «غیبت‌ها» link to `/my-attendance`.
 
