@@ -14,6 +14,10 @@ on:
 
   pull_request:
 
+# فقط خواندن: هیچ مرحله‌ای به نوشتن در مخزن نیاز ندارد (CodeQL: missing-workflow-permissions)
+permissions:
+  contents: read
+
 jobs:
   build:
     runs-on: ubuntu-latest
