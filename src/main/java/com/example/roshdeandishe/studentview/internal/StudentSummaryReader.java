@@ -1,4 +1,4 @@
-package com.example.roshdeandishe.web.model;
+package com.example.roshdeandishe.studentview.internal;
 
 import com.example.roshdeandishe.academic.AcademicFacade;
 import com.example.roshdeandishe.academic.AcademicFacade.GradeInfo;
@@ -12,20 +12,16 @@ import com.example.roshdeandishe.exam.ExamFacade.ExamInfo;
 import com.example.roshdeandishe.iam.AccessContext;
 import com.example.roshdeandishe.iam.IamFacade;
 import com.example.roshdeandishe.iam.IamFacade.ModuleCode;
-import com.example.roshdeandishe.iam.IamFacade.MembershipInfo;
 import com.example.roshdeandishe.iam.IamFacade.UserId;
 import com.example.roshdeandishe.school.SchoolFacade;
 import com.example.roshdeandishe.school.SchoolFacade.AcademicYearInfo;
 import com.example.roshdeandishe.school.SchoolFacade.SchoolId;
+import com.example.roshdeandishe.studentview.StudentSummary;
 import org.springframework.stereotype.Component;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
-import java.util.ArrayList;
 import java.util.Comparator;
-import java.util.LinkedHashSet;
-import java.util.Set;
-import java.util.function.Function;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -38,7 +34,7 @@ import java.util.Optional;
  * حضور و غیابش گرفته نشده نه غایب است و نه حاضر. میانگین عمداً حساب نمی‌شود (تعریفش تصمیمِ محصول است).
  */
 @Component
-public class StudentSummaryAssembler {
+class StudentSummaryReader {
 
     static final int MAX_LINES = 3;
     private static final String ATTENDANCE_MODULE = "ATTENDANCE";
@@ -51,7 +47,7 @@ public class StudentSummaryAssembler {
     private final ExamFacade examFacade;
     private final AttendanceFacade attendanceFacade;
 
-    StudentSummaryAssembler(IamFacade iamFacade, SchoolFacade schoolFacade, AcademicFacade academicFacade,
+    StudentSummaryReader(IamFacade iamFacade, SchoolFacade schoolFacade, AcademicFacade academicFacade,
                             ExamFacade examFacade, AttendanceFacade attendanceFacade) {
         this.iamFacade = iamFacade;
         this.schoolFacade = schoolFacade;
@@ -67,32 +63,13 @@ public class StudentSummaryAssembler {
                 absences(viewer, schoolId, studentId, year));
     }
 
-    /**
-     * «خلاصهٔ من» برای هر مدرسه‌ای که کاربر در آن دانش‌آموزِ فعال و ثبت‌نام‌شده است (همان دامنه‌ی
-     * {@code MyGradesController}/{@code MyExamsController}: نقشِ فعالِ STUDENT + ثبت‌نام).
-     */
-    public List<OwnSummaryRow> forOwn(UserId userId, List<MembershipInfo> memberships,
-                                      Function<Long, String> schoolName) {
-        List<OwnSummaryRow> rows = new ArrayList<>();
-        Set<Long> seen = new LinkedHashSet<>();
-        for (MembershipInfo m : memberships) {
-            if (!m.active() || !"STUDENT".equals(m.roleCode()) || !seen.add(m.schoolId())) {
-                continue;
-            }
-            academicFacade.findMyEnrollment(userId.value(), m.schoolId()).ifPresent(enrollment ->
-                    rows.add(new OwnSummaryRow(schoolName.apply(m.schoolId()),
-                            forStudent(userId, m.schoolId(), enrollment.studentId().value()))));
-        }
-        return rows;
-    }
-
     private List<StudentSummary.GradeLine> latestGrades(Long schoolId, Long studentId, Optional<AcademicYearInfo> year) {
         try {
             return academicFacade.listGradesForStudents(schoolId, List.of(studentId)).stream()
                     .filter(g -> year.isEmpty() || year.get().code().equals(g.academicYear()))
                     .sorted(Comparator.comparing(GradeInfo::recordedAt).reversed())
                     .limit(MAX_LINES)
-                    .map(StudentSummaryAssembler::gradeLine)
+                    .map(StudentSummaryReader::gradeLine)
                     .toList();
         } catch (RuntimeException e) {
             return List.of();

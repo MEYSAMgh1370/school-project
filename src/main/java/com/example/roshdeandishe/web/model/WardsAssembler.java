@@ -12,6 +12,7 @@ import com.example.roshdeandishe.iam.IamFacade.UserId;
 import com.example.roshdeandishe.iam.IamFacade.UserProfile;
 import com.example.roshdeandishe.school.SchoolFacade;
 import com.example.roshdeandishe.school.SchoolFacade.SchoolId;
+import com.example.roshdeandishe.studentview.StudentViewFacade;
 import org.springframework.stereotype.Component;
 
 import java.util.ArrayList;
@@ -40,15 +41,12 @@ public class WardsAssembler {
     private final SchoolFacade schoolFacade;
     private final AcademicFacade academicFacade;
     private final FinanceFacade financeFacade;
-    private final WardAttendanceResolver attendanceResolver;
-    private final StudentSummaryAssembler summaryAssembler;
+    private final StudentViewFacade studentView;
 
     WardsAssembler(IamFacade iamFacade, SchoolFacade schoolFacade,
                    AcademicFacade academicFacade, FinanceFacade financeFacade,
-                   WardAttendanceResolver attendanceResolver,
-                   StudentSummaryAssembler summaryAssembler) {
-        this.summaryAssembler = summaryAssembler;
-        this.attendanceResolver = attendanceResolver;
+                   StudentViewFacade studentView) {
+        this.studentView = studentView;
         this.iamFacade = iamFacade;
         this.schoolFacade = schoolFacade;
         this.academicFacade = academicFacade;
@@ -147,9 +145,9 @@ public class WardsAssembler {
                         enrollment.map(EnrollmentInfo::className).orElse(null),
                         enrollment.map(EnrollmentInfo::section).orElse(null),
                         mine.size(), overdue, open,
-                        attendanceResolver.todayFor(userId, schoolId,
+                        studentView.todayAttendance(userId, schoolId,
                                 ward.classId() == null ? null : ward.classId().value(), ward.id().value()),
-                        summaryAssembler.forStudent(userId, schoolId, ward.id().value())));
+                        studentView.summary(userId, schoolId, ward.id().value())));
             }
         }
         return List.copyOf(rows);

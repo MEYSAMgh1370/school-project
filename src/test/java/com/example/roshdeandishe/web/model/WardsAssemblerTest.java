@@ -15,6 +15,7 @@ import com.example.roshdeandishe.iam.IamFacade.UserProfile;
 import com.example.roshdeandishe.school.SchoolFacade;
 import com.example.roshdeandishe.school.SchoolFacade.SchoolId;
 import com.example.roshdeandishe.school.SchoolFacade.SchoolInfo;
+import com.example.roshdeandishe.studentview.StudentViewFacade;
 import com.example.roshdeandishe.web.model.WardRef;
 import com.example.roshdeandishe.web.model.WardRow;
 import org.junit.jupiter.api.Test;
@@ -42,8 +43,7 @@ class WardsAssemblerTest {
     private final SchoolFacade school = mock(SchoolFacade.class);
     private final AcademicFacade academic = mock(AcademicFacade.class);
     private final FinanceFacade finance = mock(FinanceFacade.class);
-    private final WardsAssembler assembler = new WardsAssembler(iam, school, academic, finance, mock(WardAttendanceResolver.class),
-            mock(StudentSummaryAssembler.class));
+    private final WardsAssembler assembler = new WardsAssembler(iam, school, academic, finance, mock(StudentViewFacade.class));
 
     private static MembershipInfo membership(Long schoolId, String role, boolean active) {
         return new MembershipInfo(1L, PARENT, "p@example.com", "والد", schoolId, role, active, true);

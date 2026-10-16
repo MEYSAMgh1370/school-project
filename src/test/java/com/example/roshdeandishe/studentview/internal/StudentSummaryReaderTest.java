@@ -1,4 +1,4 @@
-package com.example.roshdeandishe.web.model;
+package com.example.roshdeandishe.studentview.internal;
 
 import com.example.roshdeandishe.academic.AcademicFacade;
 import com.example.roshdeandishe.academic.AcademicFacade.ClassId;
@@ -23,6 +23,7 @@ import com.example.roshdeandishe.school.SchoolFacade;
 import com.example.roshdeandishe.school.SchoolFacade.AcademicYearId;
 import com.example.roshdeandishe.school.SchoolFacade.AcademicYearInfo;
 import com.example.roshdeandishe.school.SchoolFacade.SchoolId;
+import com.example.roshdeandishe.studentview.StudentSummary;
 import org.junit.jupiter.api.Test;
 
 import java.math.BigDecimal;
@@ -39,7 +40,7 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
 /** خلاصهٔ پیشخوان (نمره‌ها، آزمون‌ها، غیبت) بدونِ Spring: سقفِ ۳ ردیف، فقط سالِ جاری، و غیبتِ ثبت‌نشده شمرده نمی‌شود. */
-class StudentSummaryAssemblerTest {
+class StudentSummaryReaderTest {
 
     private static final UserId VIEWER = new UserId(10L);
     private static final Long SCHOOL = 5L;
@@ -50,8 +51,8 @@ class StudentSummaryAssemblerTest {
     private final AcademicFacade academic = mock(AcademicFacade.class);
     private final ExamFacade exam = mock(ExamFacade.class);
     private final AttendanceFacade attendance = mock(AttendanceFacade.class);
-    private final StudentSummaryAssembler assembler =
-            new StudentSummaryAssembler(iam, school, academic, exam, attendance);
+    private final StudentSummaryReader assembler =
+            new StudentSummaryReader(iam, school, academic, exam, attendance);
 
     private void givenYear() {
         when(school.findCurrentAcademicYear(new SchoolId(SCHOOL))).thenReturn(Optional.of(
