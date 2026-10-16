@@ -29,7 +29,8 @@ import java.util.concurrent.atomic.AtomicInteger;
  * نیست، پس این وابستگی مبهم را دور می‌زنیم.
  * <p>
  * پردازش Update ناهمگام است: بدنه روی thread درخواست پارس می‌شود، سپس
- * handler روی یک pool خصوصی و محدود اجرا می‌شود تا وب‌هوک بدون انتظار ۲۰۰
+ * handler روی یک pool خصوصی و محدود اجرا می‌شود (Updateهای یک چت با
+ * {@link ChatSerialExecutor} پشت سر هم، چت‌های مختلف موازی) تا وب‌هوک بدون انتظار ۲۰۰
  * بدهد (بله Updateهای کند را دوباره می‌فرستد). Updateی که {@code update_id}
  * تکراری دارد دور ریخته می‌شود؛ Update بدون {@code update_id} همیشه
  * پردازش می‌شود. عمداً pool یک Bean از نوع Executor/TaskExecutor نیست، چون
@@ -49,7 +50,9 @@ class BaleWebhookService {
 
     private final ObjectMapper objectMapper = new ObjectMapper();
     private final BaleUpdateHandler updateHandler;
-    private final Executor executor;
+    private final ChatSerialExecutor executor;
+    /** برای لاگ رد شدن: pool زیرین (Executor ساده یا ExecutorService). */
+    private final Executor pool;
     private final RecentUpdateIds recentUpdateIds;
     /** فقط وقتی pool مال خود سرویس است پر می‌شود (در تست‌ها null). */
     private final ThreadPoolExecutor ownedPool;
@@ -63,14 +66,16 @@ class BaleWebhookService {
                 new ArrayBlockingQueue<>(QUEUE_CAPACITY),
                 runnable -> new Thread(runnable, "bale-update-" + threadNumber.incrementAndGet()),
                 new ThreadPoolExecutor.AbortPolicy());
-        this.executor = ownedPool;
+        this.pool = ownedPool;
+        this.executor = new ChatSerialExecutor(ownedPool, QUEUE_CAPACITY);
         this.recentUpdateIds = new RecentUpdateIds(RECENT_IDS_CAPACITY);
     }
 
     /** برای تست: Executor و حافظه‌ی شناسه‌ها از بیرون داده می‌شوند. */
     BaleWebhookService(BaleUpdateHandler updateHandler, Executor executor, RecentUpdateIds recentUpdateIds) {
         this.updateHandler = updateHandler;
-        this.executor = executor;
+        this.pool = executor;
+        this.executor = new ChatSerialExecutor(executor, QUEUE_CAPACITY);
         this.recentUpdateIds = recentUpdateIds;
         this.ownedPool = null;
     }
@@ -91,17 +96,25 @@ class BaleWebhookService {
                 log.debug("Update تکراری از بله دور ریخته شد: {}", update.updateId());
                 return;
             }
-            executor.execute(() -> handleSafely(update));
+            executor.execute(chatIdOf(update), () -> handleSafely(update));
         } catch (RejectedExecutionException e) {
             // پردازش نشده، پس «دیده‌شده» هم نماند: اگر همین Update دوباره رسید، دور ریخته نشود
             if (updateId != null) {
                 recentUpdateIds.forget(updateId);
             }
             log.warn("Update {} از بله دور ریخته شد؛ صف پر است یا pool خاموش شده (خاموش={}).",
-                    updateId, executor instanceof ExecutorService pool && pool.isShutdown());
+                    updateId, pool instanceof ExecutorService service && service.isShutdown());
         } catch (Exception e) {
             log.warn("پردازش Update ورودی از بله شکست خورد.", e);
         }
+    }
+
+    /** کلید ترتیب: شناسه‌ی چت پیام یا پیامِ زیر دکمه‌ی کلیک‌شده؛ بدون چت null (بدون ترتیب). */
+    private static Long chatIdOf(BaleUpdate update) {
+        BaleUpdate.BaleMessage message = update.message() != null
+                ? update.message()
+                : update.callbackQuery() != null ? update.callbackQuery().message() : null;
+        return message != null && message.chat() != null ? message.chat().id() : null;
     }
 
     /** روی thread کارگر اجرا می‌شود؛ خطا فقط لاگ می‌شود، مثل قبل. */

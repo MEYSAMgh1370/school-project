@@ -81,6 +81,24 @@ class BaleWebhookServiceTest {
     }
 
     @Test
+    void updatesOfOneChatAreHandledInOrder() {
+        List<Runnable> held = new ArrayList<>();
+        List<Long> handled = new ArrayList<>();
+        org.mockito.Mockito.doAnswer(invocation -> {
+            handled.add(invocation.<BaleUpdate>getArgument(0).updateId());
+            return null;
+        }).when(handler).handle(any());
+        var service = service(held::add);
+        service.processRawUpdate("{\"update_id\":1,\"message\":{\"message_id\":1,\"chat\":{\"id\":5},\"text\":\"a\"}}");
+        service.processRawUpdate("{\"update_id\":2,\"message\":{\"message_id\":2,\"chat\":{\"id\":5},\"text\":\"b\"}}");
+
+        // یک drain job برای هر چت؛ هر دو Update پشت سر هم در همان job اجرا می‌شوند
+        assertThat(held).hasSize(1);
+        held.get(0).run();
+        assertThat(handled).containsExactly(1L, 2L);
+    }
+
+    @Test
     void anUpdateDroppedByAFullPoolIsHandledWhenItArrivesAgain() {
         AtomicBoolean full = new AtomicBoolean(true);
         Executor fullOnce = task -> {
