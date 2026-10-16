@@ -79,7 +79,7 @@ class BaleClient {
             log.warn("ارسال پیام بله به chatId={} شکست خورد (HTTP {}).", chatId, status);
             return permanent ? DeliveryResult.UNDELIVERABLE : DeliveryResult.TEMPORARY_FAILURE;
         } catch (RestClientException e) {
-            log.warn("ارسال پیام بله به chatId={} شکست خورد.", chatId, e);
+            log.warn("ارسال پیام بله به chatId={} شکست خورد ({}).", chatId, failureKind(e));
             return DeliveryResult.TEMPORARY_FAILURE;
         }
     }
@@ -107,7 +107,7 @@ class BaleClient {
                     .toBodilessEntity();
             return true;
         } catch (RestClientException e) {
-            log.warn("ارسال درخواست شماره تلفن به chatId={} شکست خورد.", chatId, e);
+            log.warn("ارسال درخواست شماره تلفن به chatId={} شکست خورد ({}).", chatId, failureKind(e));
             return false;
         }
     }
@@ -132,7 +132,7 @@ class BaleClient {
                     .toBodilessEntity();
             return true;
         } catch (RestClientException e) {
-            log.warn("ارسال پیام منو به chatId={} شکست خورد.", chatId, e);
+            log.warn("ارسال پیام منو به chatId={} شکست خورد ({}).", chatId, failureKind(e));
             return false;
         }
     }
@@ -177,7 +177,7 @@ class BaleClient {
                     .toBodilessEntity();
             return true;
         } catch (RestClientException e) {
-            log.warn("ارسال پیام کیبورددار به chatId={} شکست خورد.", chatId, e);
+            log.warn("ارسال پیام کیبورددار به chatId={} شکست خورد ({}).", chatId, failureKind(e));
             return false;
         }
     }
@@ -197,12 +197,23 @@ class BaleClient {
                     .toBodilessEntity();
             return true;
         } catch (RestClientException e) {
-            log.warn("پاسخ به callback_query شکست خورد.", e);
+            log.warn("پاسخ به callback_query شکست خورد ({}).", failureKind(e));
             return false;
         }
     }
 
     /** هر sendMessage از اینجا می‌گذرد، پس متن همه‌ی پیام‌ها بدون نویسه‌ی Markdown فرستاده می‌شود. */
+    /**
+     * شرح امنِ یک شکست برای لاگ: فقط نوع خطا و در صورت وجود وضعیت HTTP. عمداً نه خود exception و نه پیامش، چون
+     * پیام exceptionهای شبکه‌ی Spring آدرس کامل درخواست را دارد و توکن بات بخشی از آن آدرس است ({@code /bot<token>/}).
+     */
+    static String failureKind(RestClientException e) {
+        if (e instanceof RestClientResponseException response) {
+            return "HTTP " + response.getStatusCode().value();
+        }
+        return e.getClass().getSimpleName();
+    }
+
     private record SendMessageRequest(
             @JsonProperty("chat_id") Long chatId,
             String text,
