@@ -34,6 +34,11 @@ final class PersianText {
         return (negative ? "-" : "") + toPersianDigits(out.toString());
     }
 
+    /** رقم لاتین به فارسی و ممیز اعشار به «٫» (U+066B)، برای مقدارهایی مثل «18.5». */
+    static String localize(String s) {
+        return toPersianDigits(s).replace('.', '٫');
+    }
+
     private static String toPersianDigits(String s) {
         StringBuilder out = new StringBuilder();
         for (char c : s.toCharArray()) {

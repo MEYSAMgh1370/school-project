@@ -1,5 +1,7 @@
 package com.example.roshdeandishe.notification.internal;
 
+import com.example.roshdeandishe.studentview.TodayAttendance;
+
 import java.util.Map;
 
 /**
@@ -94,5 +96,106 @@ final class BotTexts {
     /** یک خط از فهرست فرزندان (با newline پایانی). */
     static String wardLine(String studentName, String schoolName, long invoiceCount) {
         return "- " + studentName + " (" + schoolName + "): " + invoiceCount + " فاکتور صادرشده\n";
+    }
+
+    // ---- پاسخ‌ها ----
+
+    static final String ATTENDANCE_UNAVAILABLE = "اطلاعات حضور و غیاب در دسترس نیست.";
+    static final String ATTENDANCE_PENDING = "حضور و غیاب امروز هنوز ثبت نشده است.";
+    static final String NOT_SCHOOL_DAY = "امروز روز درسی نیست.";
+    static final String ATTENDANCE_SUMMARY_NOTE = " (امسال، فقط روزهای ثبت‌شده)";
+    static final String GRADES_EMPTY = "هنوز نمره‌ای ثبت نشده است.";
+    static final String GRADES_UNAVAILABLE = "نمره‌ها در دسترس نیست.";
+    static final String EXAMS_EMPTY = "امتحان پیش‌رویی ندارد.";
+    static final String EXAMS_UNAVAILABLE = "امتحان‌ها در دسترس نیست.";
+    static final String HOLIDAY_TODAY = "امروز تعطیل است.";
+    static final String TIMETABLE_EMPTY = "امروز کلاسی ثبت نشده است.";
+    static final String TIMETABLE_NO_CLASS = "کلاسی برای این دانش‌آموز ثبت نشده است.";
+    static final String TIMETABLE_UNAVAILABLE = "برنامه‌ی امروز در دسترس نیست.";
+    static final String INVOICES_NONE = "فاکتور بازی ندارد.";
+    static final String INVOICES_UNAVAILABLE = "اطلاعات شهریه در دسترس نیست.";
+    static final String ROLL_ALL_DONE = "حضور و غیاب همه‌ی کلاس‌های امروز ثبت شده است.";
+    static final String ROLL_UNAVAILABLE = "وضعیت حضور و غیاب کلاس‌ها در دسترس نیست.";
+    static final String EVENTS_NONE = "رویداد نزدیکی نیست.";
+    static final String EVENTS_UNAVAILABLE = "رویدادهای مدرسه در دسترس نیست.";
+    private static final String DASH = " — ";
+
+    /** خط اولِ پاسخ دانش‌آموز: «نام — مدرسه». */
+    static String studentHeader(String studentName, String schoolName) {
+        return "«" + studentName + DASH + schoolName + "»";
+    }
+
+    /** خط اولِ پاسخ مدرسه‌محور: «مدرسه». */
+    static String schoolHeader(String schoolName) {
+        return "«" + schoolName + "»";
+    }
+
+    /** پاسخ وضعیت حضور امروز؛ {@code own} یعنی ثبت‌نام خودِ کاربر (دوم‌شخص مفرد). */
+    static String attendanceToday(TodayAttendance state, boolean own) {
+        return switch (state) {
+            case PRESENT -> own ? "امروز حاضر بودی." : "امروز حاضر بود.";
+            case LATE -> own ? "امروز با تأخیر آمدی." : "امروز با تأخیر آمد.";
+            case ABSENT -> own ? "امروز غایب بودی." : "امروز غایب بود.";
+            case ABSENT_EXCUSED -> own ? "امروز غایب بودی (موجه)." : "امروز غایب بود (موجه).";
+            case PENDING -> ATTENDANCE_PENDING;
+            case NOT_SCHOOL_DAY -> NOT_SCHOOL_DAY;
+            default -> ATTENDANCE_UNAVAILABLE;
+        };
+    }
+
+    /** خلاصه‌ی غیبت‌ها. */
+    static String attendanceSummary(int absent, int excused, int late) {
+        return "غیبت بدون عذر: " + PersianText.digits(absent) + DASH + "موجه: " + PersianText.digits(excused)
+                + DASH + "تأخیر: " + PersianText.digits(late) + ATTENDANCE_SUMMARY_NOTE;
+    }
+
+    /** یک خط نمره: «ریاضی — نوبت اول: ۱۸٫۵» (نوبت خالی حذف می‌شود). */
+    static String gradeLine(String subject, String term, String value) {
+        String head = term == null || term.isBlank() ? subject : subject + DASH + term;
+        return head + ": " + PersianText.localize(value);
+    }
+
+    /** یک خط امتحان: «آزمون هفتگی — ۱۴ مهر ۱۴۰۵». */
+    static String examLine(String title, String when) {
+        return title + DASH + when;
+    }
+
+    /** ساعت به‌صورت «۸:۰۰». */
+    static String clock(java.time.LocalTime time) {
+        return PersianText.digits(time.getHour()) + ":" + PersianText.digits(time.getMinute() / 10)
+                + PersianText.digits(time.getMinute() % 10);
+    }
+
+    /** یک خط برنامه: «زنگ ۱ (۸:۰۰ تا ۸:۴۵): ریاضی» و برای معلم «… — کلاس». */
+    static String timetableLine(int position, java.time.LocalTime start, java.time.LocalTime end,
+                                String subject, String className) {
+        String line = "زنگ " + PersianText.digits(position) + " (" + clock(start) + " تا " + clock(end) + "): " + subject;
+        return className == null || className.isBlank() ? line : line + DASH + className;
+    }
+
+    /** «مانده‌ی کل: X». */
+    static String invoiceTotal(String amount) {
+        return "مانده‌ی کل: " + amount;
+    }
+
+    /** «سررسید گذشته: N فاکتور». */
+    static String invoicesOverdue(long count) {
+        return "سررسید گذشته: " + PersianText.digits(count) + " فاکتور";
+    }
+
+    /** «قسط بعدی: Y تا ۲۰ آبان ۱۴۰۵». */
+    static String nextInstallment(String amount, String date) {
+        return "قسط بعدی: " + amount + " تا " + date;
+    }
+
+    /** «حضور و غیاب این کلاس‌ها هنوز ثبت نشده: …». */
+    static String rollPending(java.util.List<String> classNames) {
+        return "حضور و غیاب این کلاس‌ها هنوز ثبت نشده: " + String.join("، ", classNames);
+    }
+
+    /** یک خط رویداد: «جشن شروع سال — ۱ مهر ۱۴۰۵ (۳ روز دیگر)». */
+    static String eventLine(String title, String date, long daysLeft) {
+        String when = daysLeft <= 0 ? "امروز" : daysLeft == 1 ? "فردا" : PersianText.digits(daysLeft) + " روز دیگر";
+        return title + DASH + date + " (" + when + ")";
     }
 }

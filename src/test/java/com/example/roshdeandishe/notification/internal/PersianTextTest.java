@@ -18,4 +18,9 @@ class PersianTextTest {
     void amountsAreGroupedWithPersianSeparator() {
         assertThat(PersianText.grouped(new BigDecimal("45000000.00"))).isEqualTo("۴۵٬۰۰۰٬۰۰۰");
     }
+
+    @Test
+    void localizeConvertsDigitsAndDecimalPoint() {
+        assertThat(PersianText.localize("18.5")).isEqualTo("۱۸٫۵");
+    }
 }
