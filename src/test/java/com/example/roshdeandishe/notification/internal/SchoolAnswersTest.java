@@ -56,11 +56,16 @@ class SchoolAnswersTest {
         finance = mock(FinanceFacade.class);
         attendance = mock(AttendanceFacade.class);
         school = mock(SchoolFacade.class);
-        answers = new SchoolAnswers(finance, attendance, school,
-                Clock.fixed(Instant.parse("2026-10-17T06:00:00Z"), ZoneOffset.UTC));
+        // UTC هنوز جمعه ۱۶ام است ولی تهران ساعت ۰۰:۳۰ شنبه ۱۷ام
+        answers = answersAt("2026-10-16T21:00:00Z");
         when(school.findSchool(SCHOOL_ID)).thenReturn(Optional.of(
-                new SchoolInfo(SCHOOL_ID, "مدرسه‌ی نمونه", null, "Asia/Tehran", null, null, null, null)));
+                new SchoolInfo(SCHOOL_ID, "مدرسه‌ی نمونه", null, "Asia/Tehran", null, null, null,
+                        SchoolFacade.WeekStart.SATURDAY)));
         when(school.formatSolarDate(any())).thenAnswer(i -> "تاریخ:" + i.getArgument(0));
+    }
+
+    private SchoolAnswers answersAt(String instant) {
+        return new SchoolAnswers(finance, attendance, school, Clock.fixed(Instant.parse(instant), ZoneOffset.UTC));
     }
 
     private static InvoiceInfo invoice(long id, String amount, String discount, String paid, InvoiceStatus status) {
@@ -180,10 +185,21 @@ class SchoolAnswersTest {
     }
 
     @Test
-    void teacherRollOnClosedDay() {
-        when(attendance.listRecordableClasses(5L, 7L, false, TODAY)).thenReturn(List.of());
+    void teacherRollOnClosedDayIgnoresTheList() {
+        when(attendance.listRecordableClasses(5L, 7L, false, TODAY)).thenReturn(List.of(
+                new RecordableClass(1L, "هفتم", "الف", 7, false)));
         when(school.isClosedDay(SCHOOL_ID, TODAY)).thenReturn(true);
-        assertThat(answers.answer(BotIntent.TEACHER_ROLL, ctx, target)).contains("امروز روز درسی نیست.");
+        assertThat(answers.answer(BotIntent.TEACHER_ROLL, ctx, target)).contains("امروز تعطیل است.")
+                .doesNotContain("هفتم");
+    }
+
+    @Test
+    void teacherRollOnWeeklyDayOffIgnoresTheList() {
+        SchoolAnswers thursday = answersAt("2026-10-22T06:00:00Z");
+        when(attendance.listRecordableClasses(any(), any(), org.mockito.ArgumentMatchers.anyBoolean(), any()))
+                .thenReturn(List.of(new RecordableClass(1L, "هفتم", "الف", 7, false)));
+        assertThat(thursday.answer(BotIntent.TEACHER_ROLL, ctx, target)).contains("امروز روز درسی نیست.")
+                .doesNotContain("هفتم");
     }
 
     @Test

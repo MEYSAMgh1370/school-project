@@ -12,7 +12,6 @@ import com.example.roshdeandishe.finance.shared.FinanceException;
 import com.example.roshdeandishe.school.SchoolFacade;
 import com.example.roshdeandishe.school.SchoolFacade.ReminderEvent;
 import com.example.roshdeandishe.school.SchoolFacade.SchoolId;
-import com.example.roshdeandishe.school.SchoolFacade.SchoolInfo;
 import com.example.roshdeandishe.school.shared.SchoolException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -95,11 +94,6 @@ class SchoolAnswers {
         }
     }
 
-    private LocalDate today(SchoolId school) {
-        return LocalDate.now(clock.withZone(schoolFacade.findSchool(school)
-                .map(SchoolInfo::zoneId).orElse(SchoolInfo.DEFAULT_ZONE)));
-    }
-
     private static BigDecimal remaining(InvoiceInfo invoice) {
         BigDecimal discount = invoice.discountTotal() == null ? BigDecimal.ZERO : invoice.discountTotal();
         BigDecimal paid = invoice.amountPaid() == null ? BigDecimal.ZERO : invoice.amountPaid();
@@ -135,17 +129,19 @@ class SchoolAnswers {
     }
 
     private String teacherRoll(BotContext ctx, Long schoolId) {
-        SchoolId school = new SchoolId(schoolId);
-        LocalDate today = today(school);
+        SchoolToday today = SchoolToday.of(schoolFacade, clock, new SchoolId(schoolId));
+        if (today.closed()) {
+            return BotTexts.HOLIDAY_TODAY;
+        }
+        if (today.weeklyOff()) {
+            return BotTexts.NOT_SCHOOL_DAY;
+        }
         List<String> pending = attendanceFacade
-                .listRecordableClasses(schoolId, ctx.userId().value(), false, today).stream()
+                .listRecordableClasses(schoolId, ctx.userId().value(), false, today.date()).stream()
                 .filter(c -> !c.taken())
                 .map(SchoolAnswers::className)
                 .toList();
-        if (!pending.isEmpty()) {
-            return BotTexts.rollPending(pending);
-        }
-        return schoolFacade.isClosedDay(school, today) ? BotTexts.NOT_SCHOOL_DAY : BotTexts.ROLL_ALL_DONE;
+        return pending.isEmpty() ? BotTexts.ROLL_ALL_DONE : BotTexts.rollPending(pending);
     }
 
     private static String className(RecordableClass c) {
@@ -159,7 +155,7 @@ class SchoolAnswers {
         if (selected.isPresent() && ctx.rolesIn(schoolId).stream().noneMatch(selected.get()::contains)) {
             return BotTexts.EVENTS_NONE;
         }
-        LocalDate today = today(school);
+        LocalDate today = SchoolToday.of(schoolFacade, clock, school).date();
         List<ReminderEvent> events = schoolFacade.dueReminderEvents(school, today);
         if (events.isEmpty()) {
             return BotTexts.EVENTS_NONE;

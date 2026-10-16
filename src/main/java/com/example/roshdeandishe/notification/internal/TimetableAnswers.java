@@ -8,7 +8,6 @@ import com.example.roshdeandishe.academic.shared.AcademicException;
 import com.example.roshdeandishe.school.SchoolFacade;
 import com.example.roshdeandishe.school.SchoolFacade.AcademicYearInfo;
 import com.example.roshdeandishe.school.SchoolFacade.SchoolId;
-import com.example.roshdeandishe.school.SchoolFacade.SchoolInfo;
 import com.example.roshdeandishe.school.shared.SchoolException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -16,7 +15,6 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
 import java.time.Clock;
-import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashMap;
@@ -75,10 +73,12 @@ class TimetableAnswers {
 
     private String body(boolean teacher, BotContext ctx, Long schoolId, Long classId) {
         SchoolId school = new SchoolId(schoolId);
-        LocalDate today = LocalDate.now(clock.withZone(schoolFacade.findSchool(school)
-                .map(SchoolInfo::zoneId).orElse(SchoolInfo.DEFAULT_ZONE)));
-        if (schoolFacade.isClosedDay(school, today)) {
+        SchoolToday today = SchoolToday.of(schoolFacade, clock, school);
+        if (today.closed()) {
             return BotTexts.HOLIDAY_TODAY;
+        }
+        if (today.weeklyOff()) {
+            return BotTexts.NOT_SCHOOL_DAY;
         }
         if (!teacher && classId == null) {
             return BotTexts.TIMETABLE_NO_CLASS;
@@ -93,7 +93,7 @@ class TimetableAnswers {
         List<EntryInfo> entries = teacher
                 ? timetableFacade.listEntriesForTeacher(schoolId, yearCode, ctx.userId().value())
                 : timetableFacade.listEntriesForClass(schoolId, classId, yearCode);
-        TimetableDay day = TimetableDay.of(today.getDayOfWeek());
+        TimetableDay day = TimetableDay.of(today.date().getDayOfWeek());
         List<EntryInfo> todays = entries.stream()
                 .filter(e -> e.weekday() == day && periods.containsKey(e.periodId()))
                 .sorted(Comparator.comparingInt(e -> periods.get(e.periodId()).position()))
@@ -105,7 +105,7 @@ class TimetableAnswers {
         for (EntryInfo e : todays) {
             PeriodInfo p = periods.get(e.periodId());
             String subject = e.courseName() != null ? e.courseName()
-                    : e.activityName() != null ? e.activityName() : "—";
+                    : e.activityName() != null ? e.activityName() : BotTexts.NO_SUBJECT;
             lines.add(BotTexts.timetableLine(p.position(), p.startTime(), p.endTime(), subject,
                     teacher ? e.className() : null));
         }

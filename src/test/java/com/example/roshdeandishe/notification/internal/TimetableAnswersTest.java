@@ -46,10 +46,10 @@ class TimetableAnswersTest {
     void setUp() {
         timetable = mock(TimetableFacade.class);
         school = mock(SchoolFacade.class);
-        // ساعتِ UTC عمداً نزدیکِ نیمه‌شب: امروزِ مدرسه از منطقه‌ی خودش می‌آید
-        answers = new TimetableAnswers(timetable, school,
-                Clock.fixed(Instant.parse("2026-10-17T06:00:00Z"), ZoneOffset.UTC));
-        SchoolInfo info = new SchoolInfo(new SchoolId(5L), "مدرسه‌ی نمونه", null, "Asia/Tehran", null, null, null, null);
+        // UTC هنوز جمعه ۱۶ام است ولی تهران ساعت ۰۰:۳۰ شنبه ۱۷ام: «امروز» باید تاریخ تهران باشد
+        answers = answersAt("2026-10-16T21:00:00Z");
+        SchoolInfo info = new SchoolInfo(new SchoolId(5L), "مدرسه‌ی نمونه", null, "Asia/Tehran", null, null, null,
+                SchoolFacade.WeekStart.SATURDAY);
         when(school.findSchool(new SchoolId(5L))).thenReturn(Optional.of(info));
         when(school.findCurrentAcademicYear(new SchoolId(5L))).thenReturn(Optional.of(
                 new AcademicYearInfo(new AcademicYearId(1L), "1405-1406", 1405, TODAY, TODAY)));
@@ -57,6 +57,10 @@ class TimetableAnswersTest {
         when(timetable.listPeriods(5L, "1405-1406")).thenReturn(List.of(
                 new PeriodInfo(100L, 5L, "1405-1406", 1, "زنگ ۱", LocalTime.of(8, 0), LocalTime.of(8, 45)),
                 new PeriodInfo(101L, 5L, "1405-1406", 2, "زنگ ۲", LocalTime.of(9, 0), LocalTime.of(9, 45))));
+    }
+
+    private TimetableAnswers answersAt(String instant) {
+        return new TimetableAnswers(timetable, school, Clock.fixed(Instant.parse(instant), ZoneOffset.UTC));
     }
 
     private static EntryInfo entry(Long periodId, TimetableDay day, String course, String activity, String className) {
@@ -116,5 +120,24 @@ class TimetableAnswersTest {
         when(timetable.listEntriesForClass(eq(5L), eq(3L), any())).thenThrow(
                 new AcademicException(new AcademicError.ClassNotFound(3L)));
         assertThat(answers.answer(BotIntent.TIMETABLE_TODAY, ctx, ward)).contains("برنامه‌ی امروز در دسترس نیست.");
+    }
+
+    @Test
+    void tehranDateIsUsedWhenUtcIsStillYesterday() {
+        when(timetable.listEntriesForClass(5L, 3L, "1405-1406")).thenReturn(List.of(
+                entry(100L, TimetableDay.FRI, "فیزیک", null, "هفتم"),
+                entry(100L, TimetableDay.SAT, "ریاضی", null, "هفتم")));
+        assertThat(answers.answer(BotIntent.TIMETABLE_TODAY, ctx, ward)).contains("ریاضی").doesNotContain("فیزیک");
+    }
+
+    @Test
+    void weeklyDayOffSaysNotSchoolDay() {
+        // پنجشنبه ۲۲ام؛ شنبه‌محور: پنجشنبه و جمعه تعطیل هفتگی
+        TimetableAnswers thursday = answersAt("2026-10-22T06:00:00Z");
+        when(timetable.listEntriesForClass(5L, 3L, "1405-1406")).thenReturn(List.of(
+                entry(100L, TimetableDay.THU, "ریاضی", null, "هفتم")));
+        assertThat(thursday.answer(BotIntent.TIMETABLE_TODAY, ctx, ward)).contains("امروز روز درسی نیست.")
+                .doesNotContain("ریاضی");
+        assertThat(thursday.answer(BotIntent.TEACHER_TODAY, ctx, teacherSchool)).contains("امروز روز درسی نیست.");
     }
 }

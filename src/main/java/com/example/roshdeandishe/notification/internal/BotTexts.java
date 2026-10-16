@@ -118,6 +118,7 @@ final class BotTexts {
     static final String ROLL_UNAVAILABLE = "وضعیت حضور و غیاب کلاس‌ها در دسترس نیست.";
     static final String EVENTS_NONE = "رویداد نزدیکی نیست.";
     static final String EVENTS_UNAVAILABLE = "رویدادهای مدرسه در دسترس نیست.";
+    static final String NO_SUBJECT = "—";
     private static final String DASH = " — ";
 
     /** خط اولِ پاسخ دانش‌آموز: «نام — مدرسه». */
