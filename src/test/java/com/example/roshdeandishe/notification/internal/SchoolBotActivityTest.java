@@ -5,15 +5,13 @@ import org.junit.jupiter.api.Test;
 import java.time.Clock;
 import java.time.Instant;
 import java.time.ZoneOffset;
-import java.util.Optional;
 
-import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
-import static org.mockito.Mockito.when;
 
 class SchoolBotActivityTest {
 
@@ -42,15 +40,8 @@ class SchoolBotActivityTest {
     private final MutableClock clock = new MutableClock();
     private final SchoolBotActivity activity = new SchoolBotActivity(bots, clock);
 
-    private SchoolBotEntity entity() {
-        SchoolBotEntity e = new SchoolBotEntity();
-        when(bots.findById(3L)).thenReturn(Optional.of(e));
-        return e;
-    }
-
     @Test
     void writesAtMostOncePerMinutePerBot() {
-        SchoolBotEntity e = entity();
         BotRef bot = BotRef.school(3, 7);
 
         activity.touch(bot);
@@ -59,26 +50,22 @@ class SchoolBotActivityTest {
         clock.now = T0.plusSeconds(59);
         activity.touch(bot);
 
-        verify(bots, times(1)).save(e);
-        assertThat(e.getLastUpdateAt()).isEqualTo(T0);
+        verify(bots, times(1)).touchLastUpdate(3L, T0);
 
         clock.now = T0.plusSeconds(61);
         activity.touch(bot);
 
-        verify(bots, times(2)).save(e);
-        assertThat(e.getLastUpdateAt()).isEqualTo(T0.plusSeconds(61));
+        verify(bots, times(1)).touchLastUpdate(3L, T0.plusSeconds(61));
+        verify(bots, times(2)).touchLastUpdate(eq(3L), any());
     }
 
     @Test
     void botsAreThrottledIndependently() {
-        entity();
-        SchoolBotEntity other = new SchoolBotEntity();
-        when(bots.findById(4L)).thenReturn(Optional.of(other));
-
         activity.touch(BotRef.school(3, 7));
         activity.touch(BotRef.school(4, 8));
 
-        verify(bots).save(other);
+        verify(bots).touchLastUpdate(3L, T0);
+        verify(bots).touchLastUpdate(4L, T0);
     }
 
     @Test
@@ -86,14 +73,5 @@ class SchoolBotActivityTest {
         activity.touch(BotRef.SHARED);
 
         verifyNoInteractions(bots);
-    }
-
-    @Test
-    void missingBotRowWritesNothing() {
-        when(bots.findById(3L)).thenReturn(Optional.empty());
-
-        activity.touch(BotRef.school(3, 7));
-
-        verify(bots, never()).save(org.mockito.ArgumentMatchers.any());
     }
 }

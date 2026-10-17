@@ -54,10 +54,7 @@ class SchoolBotActivity {
             return;
         }
         try {
-            bots.findById(bot.botId()).ifPresent(entity -> {
-                entity.setLastUpdateAt(now);
-                bots.save(entity);
-            });
+            bots.touchLastUpdate(bot.botId(), now);
         } catch (RuntimeException e) {
             lastWritten.remove(bot.botId());
             log.warn("نوشتن last_update_at ربات {} شکست خورد: {}", bot.botId(), e.getClass().getSimpleName());
