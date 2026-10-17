@@ -39,7 +39,7 @@
                     <%-- ------------------------------------------------ بدون بات --%>
                     <div class="box" id="baleBotNone" x-cloak x-show="loaded && state === 'none'">
                         <h2 class="title is-5">بات اختصاصی مدرسه را راه بیندازید</h2>
-                        <p class="has-text-grey mb-3">تا وقتی بات ثبت نکنید، مدرسه از بات کلیِ سرویس استفاده می‌کند و همه‌چیز مثل قبل کار می‌کند.</p>
+                        <p class="has-text-grey mb-3">تا وقتی بات ثبت نکنید، مدرسه از بات کلیِ سرویس استفاده می‌کند.</p>
                         <ol class="mb-2">
                             <li>در بله با <span dir="ltr">@botfather</span> گفتگو کنید و با نام و تصویر مدرسه یک بات بسازید.</li>
                             <li>توکنی را که BotFather می‌دهد کپی کنید.</li>
@@ -50,6 +50,9 @@
                     <%-- ------------------------------------------------ غیرفعال --%>
                     <div class="notification is-warning" role="alert" id="baleBotDisabled" x-cloak x-show="loaded && state === 'disabled'">
                         <span class="app-notice">@template.layout.icon(name = "alert", size = 20)<span>توکن بات نامعتبر شده است؛ تا اصلاح آن، اولیا از بات کلی سرویس می‌گیرند. توکن تازه را از BotFather بگیرید و در کادر زیر وارد کنید.</span></span>
+                    </div>
+                    <div class="buttons" x-cloak x-show="loaded && state === 'disabled'">
+                        <button class="button is-light" type="button" id="baleBotDeleteDisabled" @click="askRemove()">حذف بات</button>
                     </div>
 
                     <%-- ------------------------------------------------ فعال --%>
@@ -64,6 +67,7 @@
                                     <div class="py-1">
                                         <dt class="has-text-grey">لینک بات</dt>
                                         <dd><a dir="ltr" target="_blank" rel="noopener noreferrer" :href="bot.link" x-text="bot.link.replace('https://', '')"></a></dd>
+                                        <dd class="help">این لینک را برای اولیا بفرستید.</dd>
                                     </div>
                                     <div class="py-1">
                                         <dt class="has-text-grey">اعضای متصل به بات</dt>
@@ -84,6 +88,12 @@
 
                     <%-- ------------------------------------------------ فرم توکن (بدون بات، غیرفعال یا تعویض) --%>
                     <form class="box" id="baleBotForm" novalidate autocomplete="off" x-cloak x-show="showForm" @submit.prevent="submit()">
+                        <div class="notification is-warning" role="alert" id="baleBotRelinkWarning" x-show="state === 'none'">
+                            <span class="app-notice">@template.layout.icon(name = "alert", size = 20)<span>بعد از ثبت بات، اعضا باید بات جدید را در بله باز کنند و شماره‌ی خود را به اشتراک بگذارند. تا آن زمان هیچ پیامی از این مدرسه (غیبت، فاکتور، یادآوری) دریافت نمی‌کنند.</span></span>
+                        </div>
+                        <div class="notification is-warning" role="alert" id="baleBotReplaceWarning" x-show="replacing">
+                            <span class="app-notice">@template.layout.icon(name = "alert", size = 20)<span>اگر توکنِ همین بات را دوباره ثبت کنید، اتصال اعضا می‌ماند. اگر بات دیگری ثبت کنید، اتصال اعضا پاک می‌شود: آن‌ها باید بات جدید را در بله باز کنند و شماره‌ی خود را به اشتراک بگذارند، و تا آن زمان هیچ پیامی از این مدرسه (غیبت، فاکتور، یادآوری) دریافت نمی‌کنند.</span></span>
+                        </div>
                         <div class="field">
                             <label class="label" for="baleBotToken">توکن بات</label>
                             <div class="control">
@@ -115,8 +125,8 @@
                             <div class="notification is-danger" role="alert" x-show="confirmError"><span class="app-notice">@template.layout.icon(name = "alert", size = 20)<span x-text="confirmError"></span></span></div>
                             <p class="has-text-weight-semibold">آیا از حذف بات مدرسه مطمئن هستید؟</p>
                             <ul class="mt-2">
-                                <li>از این به بعد اولیا و کارکنان پیام‌ها را از بات کلی سرویس می‌گیرند.</li>
-                                <li>بات مدرسه، تا وقتی توکنش کار کند، به اعضای متصل خبر می‌دهد که به بات کلی بروند.</li>
+                                <li>اتصال اعضا به بات مدرسه پاک می‌شود و مدرسه دوباره با بات کلی سرویس پیام می‌گیرد.</li>
+                                <li>اعضایی که قبلاً به بات کلی هم وصل شده‌اند بدون تغییر پیام می‌گیرند. اعضایی که فقط از بات مدرسه استفاده می‌کردند باید خودشان بات کلی را در بله باز کنند و شماره‌ی خود را به اشتراک بگذارند.</li>
                                 <li>توکن از سرویس پاک می‌شود؛ برای ثبت دوباره باید توکن را دوباره وارد کنید.</li>
                             </ul>
                         </section>

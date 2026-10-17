@@ -45,7 +45,7 @@ class BaleWebhookService {
     private static final int CORE_THREADS = 2;
     private static final int MAX_THREADS = 4;
     private static final int QUEUE_CAPACITY = 100;
-    /** سهم هر ربات از کارهای منتظر، تا یک ربات شلوغ جای بقیه را نگیرد. */
+    /** سهم هر رباتِ مدرسه از کارهای منتظر، تا یک ربات شلوغ جای بقیه را نگیرد؛ ربات مشترک سهمِ جدا ندارد و کلِ صف را دارد. */
     private static final int MAX_PENDING_PER_BOT = 40;
     private static final int RECENT_IDS_CAPACITY = 1000;
     private static final long SHUTDOWN_WAIT_SECONDS = 10;
@@ -71,7 +71,7 @@ class BaleWebhookService {
                 runnable -> new Thread(runnable, "bale-update-" + threadNumber.incrementAndGet()),
                 new ThreadPoolExecutor.AbortPolicy());
         this.pool = ownedPool;
-        this.executor = new ChatSerialExecutor<>(ownedPool, QUEUE_CAPACITY, MAX_PENDING_PER_BOT, ChatKey::botId);
+        this.executor = new ChatSerialExecutor<>(ownedPool, QUEUE_CAPACITY, BaleWebhookService::groupLimit, ChatKey::botId);
         this.recentUpdateIds = new RecentUpdateIds<>(RECENT_IDS_CAPACITY);
     }
 
@@ -81,9 +81,14 @@ class BaleWebhookService {
         this.updateHandler = updateHandler;
         this.botActivity = botActivity;
         this.pool = executor;
-        this.executor = new ChatSerialExecutor<>(executor, QUEUE_CAPACITY, MAX_PENDING_PER_BOT, ChatKey::botId);
+        this.executor = new ChatSerialExecutor<>(executor, QUEUE_CAPACITY, BaleWebhookService::groupLimit, ChatKey::botId);
         this.recentUpdateIds = recentUpdateIds;
         this.ownedPool = null;
+    }
+
+    /** گروهِ {@code null} ربات مشترک است (رفتارش مثل قبل از رباتِ مدرسه: کلِ صف)؛ هر رباتِ مدرسه سهم ثابت دارد. */
+    private static int groupLimit(Object botGroup) {
+        return botGroup == null ? QUEUE_CAPACITY : MAX_PENDING_PER_BOT;
     }
 
     /** کلید حذف تکراری: شناسه‌ی Update فقط در محدوده‌ی یک ربات یکتاست. */

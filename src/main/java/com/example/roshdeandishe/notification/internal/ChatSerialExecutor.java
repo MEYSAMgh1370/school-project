@@ -9,6 +9,7 @@ import java.util.Map;
 import java.util.concurrent.Executor;
 import java.util.concurrent.RejectedExecutionException;
 import java.util.function.Function;
+import java.util.function.ToIntFunction;
 
 /**
  * اجرای ترتیبی کارها به‌ازای هر کلید (مثلاً چت یک ربات) روی یک pool مشترک:
@@ -32,7 +33,7 @@ final class ChatSerialExecutor<K> {
 
     private final Executor pool;
     private final int maxPending;
-    private final int maxPendingPerGroup;
+    private final ToIntFunction<Object> groupLimit;
     private final Function<K, ?> group;
     private final Map<K, ArrayDeque<Runnable>> queues = new HashMap<>();
     /** تعداد کارهای منتظر شروع به‌ازای هر گروه (ورودی صفر حذف می‌شود)؛ زیر همان قفل {@code queues}. */
@@ -41,16 +42,21 @@ final class ChatSerialExecutor<K> {
     private int pending;
 
     ChatSerialExecutor(Executor pool, int maxPending, int maxPendingPerGroup, Function<K, ?> group) {
+        this(pool, maxPending, g -> maxPendingPerGroup, group);
+    }
+
+    /** {@code groupLimit} سقفِ کارهای منتظرِ هر گروه را از روی کلیدِ گروه می‌دهد (برای گروهِ بدون سهمِ جدا برابر {@code maxPending}). */
+    ChatSerialExecutor(Executor pool, int maxPending, ToIntFunction<Object> groupLimit, Function<K, ?> group) {
         this.pool = pool;
         this.maxPending = maxPending;
-        this.maxPendingPerGroup = maxPendingPerGroup;
+        this.groupLimit = groupLimit;
         this.group = group;
     }
 
     /**
      * کارهای هم‌کلید یکی‌یکی و به ترتیب ارسال اجرا می‌شوند؛ کلیدهای مختلف
      * ممکن است موازی بروند. {@code key == null} بدون ترتیب اجرا می‌شود.
-     * اگر {@code maxPending} کار (در مجموع همه‌ی کلیدها) یا {@code maxPendingPerGroup} کارِ
+     * اگر {@code maxPending} کار (در مجموع همه‌ی کلیدها) یا سقفِ گروه ({@code groupLimit}) کارِ
      * همان گروه منتظر شروع باشد، یا pool رد کند
      * {@link RejectedExecutionException} می‌دهد و کار رد شده هرگز اجرا نمی‌شود.
      */
@@ -61,7 +67,7 @@ final class ChatSerialExecutor<K> {
         }
         synchronized (queues) {
             Object groupKey = group.apply(key);
-            if (pending >= maxPending || pendingPerGroup.getOrDefault(groupKey, 0) >= maxPendingPerGroup) {
+            if (pending >= maxPending || pendingPerGroup.getOrDefault(groupKey, 0) >= groupLimit.applyAsInt(groupKey)) {
                 throw new RejectedExecutionException("صف کارها پر است");
             }
             ArrayDeque<Runnable> queue = queues.get(key);

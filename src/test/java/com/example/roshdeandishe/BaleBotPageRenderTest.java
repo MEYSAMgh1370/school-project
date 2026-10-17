@@ -51,10 +51,29 @@ class BaleBotPageRenderTest {
         assertThat(html).contains("@botfather");
         assertThat(html).contains("توکن بات نامعتبر شده است؛ تا اصلاح آن، اولیا از بات کلی سرویس می‌گیرند");
         assertThat(html).contains("تعویض توکن").contains("حذف بات");
-        assertThat(html).contains("id=\"baleBotDeleteTitle\"").contains("از بات کلی");
+        assertThat(html).contains("id=\"baleBotDeleteTitle\"").contains("با بات کلی سرویس پیام می‌گیرد")
+                .contains("باید خودشان بات کلی را در بله باز کنند")
+                .doesNotContain("به اعضای متصل خبر می‌دهد");
+        // «حذف بات» در حالت غیرفعال هم هست (همان تأیید)
+        assertThat(html).contains("id=\"baleBotDeleteDisabled\"");
+        assertThat(count(html, "@click=\"askRemove()\"")).isEqualTo(2);
         // کنترل بر اساس Permission پنهان یا غیرفعال نمی‌شود؛ سوییچ business در PR 1 نیست
         assertThat(html).doesNotContain(":disabled=\"!permissions").doesNotContain("business");
         assertThat(html).doesNotContain("margin-left").doesNotContain("margin-right");
+    }
+
+    @Test
+    void registrationWarnsThatMembersMustRelinkAndActiveStateShowsTheLinkToShare() {
+        String html = render();
+
+        assertThat(html).contains("id=\"baleBotRelinkWarning\"")
+                .contains("هیچ پیامی از این مدرسه (غیبت، فاکتور، یادآوری) دریافت نمی‌کنند")
+                .contains("شماره‌ی خود را به اشتراک بگذارند");
+        assertThat(html).contains("id=\"baleBotReplaceWarning\"").contains("اگر بات دیگری ثبت کنید");
+        // هشدار داخل فرمِ توکن و پیش از دکمه‌ی submit (که در هدر است) دیده می‌شود
+        assertThat(html.indexOf("id=\"baleBotRelinkWarning\"")).isGreaterThan(html.indexOf("id=\"baleBotForm\""));
+        assertThat(html).contains("این لینک را برای اولیا بفرستید");
+        assertThat(html).doesNotContain("همه‌چیز مثل قبل");
     }
 
     @Test

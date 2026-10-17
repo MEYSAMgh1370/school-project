@@ -267,6 +267,9 @@ class SchoolBotServiceTest {
         service.register(SCHOOL, "new:tok");
 
         verify(links).deleteByBotId(3L);
+        // وب‌هوکِ رباتِ قبلی با توکنِ قبلی برداشته می‌شود
+        verify(baleClient).deleteWebhook("old:token");
+        verify(baleClient, never()).deleteWebhook("new:tok");
         SchoolBotEntity e = saved();
         assertThat(e.getId()).isEqualTo(3L);
         assertThat(e.getBotUserId()).isEqualTo(2L);
@@ -287,7 +290,41 @@ class SchoolBotServiceTest {
         service.register(SCHOOL, "123:abc");
 
         verify(links, never()).deleteByBotId(anyLong());
+        verify(baleClient, never()).deleteWebhook(anyString());
         assertThat(saved().getWebhookSecretHash()).isNotEqualTo("oldhash");
+    }
+
+    @Test
+    void newRegistrationNeverCallsDeleteWebhook() {
+        service.register(SCHOOL, "123:abc");
+
+        verify(baleClient, never()).deleteWebhook(anyString());
+    }
+
+    @Test
+    void failedSetWebhookOnDifferentBotDoesNotRemoveTheOldWebhook() {
+        when(bots.findBySchoolId(SCHOOL)).thenReturn(Optional.of(existing(3L, 1L, "oldhash")));
+        when(baleClient.getMe("new:tok"))
+                .thenReturn(new BaleClient.BotInfoResult.Found(new BaleClient.BotInfo(2L, "new_bot")));
+        when(baleClient.setWebhook(eq("new:tok"), anyString())).thenReturn(false);
+
+        assertThatThrownBy(() -> service.register(SCHOOL, "new:tok")).isInstanceOf(NotificationException.class);
+
+        verify(baleClient, never()).deleteWebhook(anyString());
+    }
+
+    @Test
+    void oldWebhookRemovalFailureIsIgnoredOnDifferentBotReplace() {
+        SchoolBotEntity old = existing(3L, 1L, "oldhash");
+        when(bots.findBySchoolId(SCHOOL)).thenReturn(Optional.of(old));
+        when(baleClient.getMe("new:tok"))
+                .thenReturn(new BaleClient.BotInfoResult.Found(new BaleClient.BotInfo(2L, "new_bot")));
+        when(baleClient.deleteWebhook("old:token")).thenThrow(new IllegalStateException("boom"));
+
+        SchoolBotInfo info = service.register(SCHOOL, "new:tok");
+
+        assertThat(info.username()).isEqualTo("new_bot");
+        verify(baleClient).deleteWebhook("old:token");
     }
 
     @Test

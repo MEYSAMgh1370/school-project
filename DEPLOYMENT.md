@@ -95,7 +95,7 @@ This is intentional. An application that boots with a public signing key or a
 | `DATABASE_URL` | Full JDBC URL, e.g. `jdbc:postgresql://<host>:<port>/<db>` |
 | `DATABASE_USERNAME` | Database user |
 | `DATABASE_PASSWORD` | Database password |
-| `APP_BASE_URL` | Public base URL, e.g. `https://roshdeandishe.liara.run` — no trailing slash. Used to build account-activation links |
+| `APP_BASE_URL` | Public base URL, e.g. `https://roshdeandishe.liara.run` — no trailing slash. Used to build account-activation links and the per-school Bale bot webhook URLs (`<APP_BASE_URL>/api/bale/webhook/<secret>`); it must be a public HTTPS URL on port 443 or 88 (a Bale requirement for webhooks) |
 | `JWT_SECRET` | Mobile bearer-token signing key (§3) |
 | `EXAM_TOKEN_SECRET` | Exam-session token signing key (§3) |
 

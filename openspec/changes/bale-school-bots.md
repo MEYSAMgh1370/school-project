@@ -88,7 +88,7 @@ Rules:
 3. **Queue keys:**
    - de-duplication by `(bot, update_id)`;
    - per-chat ordering by `(bot, chat.id)`.
-4. **Per-bot queue share:** at most 40 of the 100 queued updates may belong to one bot, whether a school bot or the shared bot. Past that, the update is dropped with a log line and its id is not kept as seen. This is the same rule as for a full queue.
+4. **Per-bot queue share:** at most 40 of the 100 queued updates may belong to one school bot. The shared bot has no separate share and may use the whole queue of 100, so its behaviour is the same as before school bots existed. Past a limit, the update is dropped with a log line and its id is not kept as seen. This is the same rule as for a full queue.
 5. **Scope filter.** Applied to memberships before anything else, when `BotContext` is built:
    - **school bot:** keep only memberships of that school;
    - **shared bot:** drop memberships of schools that have an `ACTIVE` bot.
@@ -173,7 +173,7 @@ Both pages follow `.agents/skills/design-page/SKILL.md` at implementation time.
 8. A `401` sets the bot `DISABLED`, and the shared bot serves that school again.
 9. Deleting the bot removes its links, and the school's users are served by the shared bot without a new contact share.
 10. The migration message is sent once per user per bot, only to active members of that school who are linked to the shared bot.
-11. One bot cannot hold more than 40 queued updates.
+11. One school bot cannot hold more than 40 queued updates; the shared bot can queue up to the global 100, and shared traffic does not lower a school bot's 40 while the global 100 is not reached.
 12. Neither the token nor the webhook secret appears in any log, response or page.
 
 ## Tests

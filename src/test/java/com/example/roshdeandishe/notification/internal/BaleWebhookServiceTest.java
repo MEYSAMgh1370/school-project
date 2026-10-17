@@ -156,6 +156,36 @@ class BaleWebhookServiceTest {
         verify(handler, times(42)).handle(any(), any());
     }
 
+    @Test
+    void sharedBotKeepsTheWholeQueueOfOneHundred() {
+        List<Runnable> held = new ArrayList<>();
+        var service = service(held::add);
+        for (int i = 1; i <= 101; i++) {
+            service.processRawUpdate(BotRef.SHARED, update(i, i));
+        }
+
+        // ربات مشترک سهمِ جدا ندارد: ۱۰۰ چت پذیرفته و چتِ ۱۰۱ام با سقفِ کل رد می‌شود
+        assertThat(held).hasSize(100);
+    }
+
+    @Test
+    void schoolBotCapIsNotReducedBySharedTrafficBelowTheGlobalLimit() {
+        List<Runnable> held = new ArrayList<>();
+        var service = service(held::add);
+        for (int i = 1; i <= 60; i++) {
+            service.processRawUpdate(BotRef.SHARED, update(i, i));
+        }
+        for (int i = 1; i <= 41; i++) {
+            service.processRawUpdate(BOT, update(1000 + i, 1000 + i));
+        }
+
+        // ۶۰ مشترک + ۴۰ رباتِ مدرسه = ۱۰۰؛ چتِ ۴۱ام مدرسه به سقفِ خودش (و سقفِ کل) می‌خورد
+        assertThat(held).hasSize(100);
+        // سقفِ کل پر است: ربات مدرسه‌ی دیگر هم پذیرفته نمی‌شود
+        service.processRawUpdate(BotRef.school(4, 8), update(2000, 2000));
+        assertThat(held).hasSize(100);
+    }
+
     private static String update(long updateId, long chatId) {
         return "{\"update_id\":" + updateId + ",\"message\":{\"message_id\":1,\"chat\":{\"id\":" + chatId + "},\"text\":\"x\"}}";
     }

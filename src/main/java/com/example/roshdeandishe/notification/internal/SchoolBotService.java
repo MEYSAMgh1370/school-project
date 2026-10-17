@@ -134,6 +134,8 @@ class SchoolBotService implements SchoolBotFacade {
         if (reservation.botChanged()) {
             // ربات تازه هنوز لینکی ندارد؛ همه‌ی لینک‌های ردیف متعلق به رباتِ قبلی‌اند
             tx.executeWithoutResult(status -> links.deleteByBotId(reservation.rowId()));
+            // رباتِ قبلی دیگر برای این مدرسه نیست؛ وب‌هوکش را (بیرون از تراکنش و بی‌خطا) برمی‌داریم
+            removeWebhookBestEffort(schoolId, reservation.previous().ciphertext(), reservation.previous().keyVersion());
         }
         log.info("school bot registered: school={}, bot=@{}, by user={}", schoolId, bot.username(), actor);
         return tx.execute(status -> bots.findById(reservation.rowId()).map(this::toInfo).orElseThrow());

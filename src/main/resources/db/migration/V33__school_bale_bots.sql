@@ -24,8 +24,33 @@ create table bale.school_bots (
 );
 
 alter table bale.bale_links add column bot_id bigint references bale.school_bots(id) on delete cascade;
-alter table bale.bale_links drop constraint if exists bale_links_chat_id_key;
-alter table bale.bale_links drop constraint if exists bale_links_user_id_key;
+
+-- unique(chat_id) و unique(user_id) قبلی باید بروند: یک والد که به ربات مشترک وصل است باید بتواند با همان
+-- chat_id/user_id به رباتِ مدرسه هم وصل شود. نامِ constraint در دیتابیس‌هایی که از قبل با ddl-auto=update
+-- ساخته شده‌اند (baseline-on-migrate، V1 رد می‌شود) نامِ تولیدیِ Hibernate (UK...) است و با نامِ V1
+-- (bale_links_chat_id_key / bale_links_user_id_key) فرق دارد، پس از روی ستون‌هایش پیدا می‌شود (همان الگوی V5)
+do $$
+declare
+    existing record;
+begin
+    for existing in
+        select con.conname
+        from pg_constraint con
+                 join pg_class rel on rel.oid = con.conrelid
+                 join pg_namespace ns on ns.oid = rel.relnamespace
+        where ns.nspname = 'bale'
+          and rel.relname = 'bale_links'
+          and con.contype = 'u'
+          and (select array_agg(att.attname::text order by att.attname)
+               from unnest(con.conkey) as key (attnum)
+                        join pg_attribute att on att.attrelid = rel.oid and att.attnum = key.attnum)
+              in (array ['chat_id'], array ['user_id'])
+        loop
+            execute format('alter table bale.bale_links drop constraint %I', existing.conname);
+        end loop;
+end
+$$;
+
 create unique index ux_bale_links_shared_chat on bale.bale_links (chat_id) where bot_id is null;
 create unique index ux_bale_links_shared_user on bale.bale_links (user_id) where bot_id is null;
 create unique index ux_bale_links_bot_chat on bale.bale_links (bot_id, chat_id) where bot_id is not null;
