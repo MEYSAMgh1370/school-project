@@ -112,7 +112,7 @@ class BaleUpdateHandler {
 
         BotContext ctx = context.get();
         switch (text) {
-            case BotTexts.BTN_HELP -> baleClient.sendMenu(botTokens.tokenFor(bot), chatId, BotTexts.HELP_TEXT, botRouter.menu(ctx));
+            case BotTexts.BTN_HELP -> baleClient.sendMenu(botTokens.tokenFor(bot), chatId, botRouter.help(ctx), botRouter.menu(ctx));
             case BotTexts.CMD_MY_SCHOOLS -> baleClient.sendMessage(botTokens.tokenFor(bot), chatId, describeMemberships(ctx));
             case BotTexts.CMD_MY_WARDS -> baleClient.sendMessage(botTokens.tokenFor(bot), chatId, describeWards(ctx));
             default -> {

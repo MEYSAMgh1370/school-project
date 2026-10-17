@@ -24,6 +24,7 @@ import java.util.Optional;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
+import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
@@ -148,7 +149,9 @@ class BaleUpdateHandlerTest {
 
         handler.handle(BotRef.SHARED, textUpdate(42L, "راهنما"));
 
-        verify(client).sendMenu("tok", 42L, BotTexts.HELP_TEXT, List.of(List.of(BotTexts.BTN_HELP)));
+        verify(client).sendMenu(eq("tok"), eq(42L), argThat(text -> text.startsWith(BotTexts.HELP_NOTHING_AVAILABLE)
+                && !text.contains(BotTexts.BTN_INVOICES) && !text.contains(BotTexts.CMD_MY_WARDS)),
+                eq(List.of(List.of(BotTexts.BTN_HELP))));
     }
 
     @Test

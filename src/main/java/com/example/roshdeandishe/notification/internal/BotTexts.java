@@ -2,6 +2,7 @@ package com.example.roshdeandishe.notification.internal;
 
 import com.example.roshdeandishe.studentview.TodayAttendance;
 
+import java.util.List;
 import java.util.Map;
 
 /**
@@ -40,14 +41,28 @@ final class BotTexts {
 
     static final String NOT_LINKED_TEXT = "حساب شما هنوز متصل نشده است. لطفاً ابتدا /start را ارسال کنید.";
 
-    static final String HELP_TEXT = """
-            از دکمه‌های پایین انتخاب کنید؛ فقط مواردی که برای شما در دسترس است نمایش داده می‌شود:
-            «حضور امروز»، «غیبت‌ها»، «نمره‌ها»، «امتحان‌ها» و «برنامه‌ی امروز» - وضعیت دانش‌آموز
-            «شهریه» - وضعیت مالی فرزندان (فقط برای والد)
-            «کلاس‌های امروز من» و «حضور و غیاب مانده» - ویژه‌ی معلم
-            «رویدادهای نزدیک» - رویدادهای مدرسه
-            «مدرسه‌های من» - فهرست مدرسه‌ها و نقش‌های شما
-            «فرزندان من» - فهرست فرزندان لینک‌شده و وضعیت مالی هرکدام""";
+    /** راهنما فقط مواردی را می‌گوید که منوی همین کاربر دارد (رجوع به BotRouter.help). */
+    static final String HELP_HEADER = "از دکمه‌های پایین انتخاب کنید:";
+    static final String HELP_NOTHING_AVAILABLE = "فعلاً پرسشی برای شما در دسترس نیست.";
+    static final String HELP_COMMANDS_HEADER = "این عبارت‌ها را هم می‌توانید بنویسید:";
+    static final String HELP_STUDENT = "وضعیت دانش‌آموز";
+    static final String HELP_INVOICES = "وضعیت مالی فرزندان";
+    static final String HELP_TEACHER = "ویژه‌ی معلم";
+    static final String HELP_EVENTS = "رویدادهای مدرسه";
+    static final String HELP_MY_SCHOOLS = "فهرست مدرسه‌ها و نقش‌های شما";
+    static final String HELP_MY_WARDS = "فهرست فرزندان لینک‌شده و وضعیت مالی هرکدام";
+
+    /** یک سطرِ راهنما: «الف»، «ب» و «ج» - توضیح. */
+    static String helpLine(List<String> labels, String description) {
+        StringBuilder sb = new StringBuilder();
+        for (int i = 0; i < labels.size(); i++) {
+            if (i > 0) {
+                sb.append(i == labels.size() - 1 ? " و " : "، ");
+            }
+            sb.append('«').append(labels.get(i)).append('»');
+        }
+        return sb.append(" - ").append(description).toString();
+    }
 
     /** برچسب دکمه‌ی انتخابِ دانش‌آموز وقتی چند گزینه هست: «نام — مدرسه». */
     static String studentChoice(String name, String schoolName) {

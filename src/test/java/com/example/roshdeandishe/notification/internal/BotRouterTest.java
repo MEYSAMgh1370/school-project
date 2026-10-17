@@ -73,6 +73,45 @@ class BotRouterTest {
     }
 
     @Test
+    void helpForStudentDescribesOnlyTheirButtons() {
+        when(resolver.hasAny(ctx, BotIntent.TargetKind.STUDENT_TARGET)).thenReturn(true);
+        when(resolver.hasAny(ctx, BotIntent.TargetKind.MEMBER_SCHOOL)).thenReturn(true);
+
+        String help = router.help(ctx);
+
+        assertThat(help).startsWith(BotTexts.HELP_HEADER)
+                .contains(BotTexts.helpLine(List.of(BotTexts.BTN_ATTENDANCE_TODAY, BotTexts.BTN_ATTENDANCE_SUMMARY,
+                        BotTexts.BTN_GRADES, BotTexts.BTN_EXAMS, BotTexts.BTN_TIMETABLE_TODAY), BotTexts.HELP_STUDENT))
+                .contains(BotTexts.helpLine(List.of(BotTexts.BTN_EVENTS), BotTexts.HELP_EVENTS))
+                .contains(BotTexts.CMD_MY_SCHOOLS)
+                .doesNotContain(BotTexts.BTN_INVOICES, BotTexts.BTN_TEACHER_TODAY, BotTexts.CMD_MY_WARDS);
+    }
+
+    @Test
+    void helpForParentListsInvoicesAndWards() {
+        BotContext parent = new BotContext(42L, new UserId(7L), "علی",
+                List.of(new com.example.roshdeandishe.iam.IamFacade.MembershipInfo(1L, new UserId(7L), "a@b.c", "علی", 10L, "PARENT", true, true)));
+        when(resolver.hasAny(parent, BotIntent.TargetKind.STUDENT_TARGET)).thenReturn(true);
+        when(resolver.hasAny(parent, BotIntent.TargetKind.WARD_TARGET)).thenReturn(true);
+
+        assertThat(router.help(parent))
+                .contains(BotTexts.helpLine(List.of(BotTexts.BTN_INVOICES), BotTexts.HELP_INVOICES))
+                .contains(BotTexts.helpLine(List.of(BotTexts.CMD_MY_WARDS), BotTexts.HELP_MY_WARDS));
+    }
+
+    @Test
+    void helpWithNothingAvailableSaysSo() {
+        assertThat(router.help(ctx)).startsWith(BotTexts.HELP_NOTHING_AVAILABLE)
+                .doesNotContain(BotTexts.HELP_HEADER);
+    }
+
+    @Test
+    void helpLineJoinsLabelsInPersian() {
+        assertThat(BotTexts.helpLine(List.of("الف", "ب", "ج"), "توضیح")).isEqualTo("«الف»، «ب» و «ج» - توضیح");
+        assertThat(BotTexts.helpLine(List.of("الف"), "توضیح")).isEqualTo("«الف» - توضیح");
+    }
+
+    @Test
     void singleTargetAnswersDirectly() {
         BotTarget own = student(100L, "علی", "مدرسه", false);
         when(resolver.targets(ctx, BotIntent.GRADES)).thenReturn(List.of(own));
