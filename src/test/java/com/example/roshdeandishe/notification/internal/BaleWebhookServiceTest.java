@@ -25,7 +25,7 @@ class BaleWebhookServiceTest {
     private final Executor direct = Runnable::run;
 
     private BaleWebhookService service(Executor executor) {
-        return new BaleWebhookService(handler, executor, new RecentUpdateIds(100));
+        return new BaleWebhookService(handler, executor, new RecentUpdateIds<>(100));
     }
 
     @Test

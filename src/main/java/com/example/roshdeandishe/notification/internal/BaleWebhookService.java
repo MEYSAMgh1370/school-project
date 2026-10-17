@@ -50,10 +50,10 @@ class BaleWebhookService {
 
     private final ObjectMapper objectMapper = new ObjectMapper();
     private final BaleUpdateHandler updateHandler;
-    private final ChatSerialExecutor executor;
+    private final ChatSerialExecutor<Long> executor;
     /** برای لاگ رد شدن: pool زیرین (Executor ساده یا ExecutorService). */
     private final Executor pool;
-    private final RecentUpdateIds recentUpdateIds;
+    private final RecentUpdateIds<Long> recentUpdateIds;
     /** فقط وقتی pool مال خود سرویس است پر می‌شود (در تست‌ها null). */
     private final ThreadPoolExecutor ownedPool;
 
@@ -67,15 +67,15 @@ class BaleWebhookService {
                 runnable -> new Thread(runnable, "bale-update-" + threadNumber.incrementAndGet()),
                 new ThreadPoolExecutor.AbortPolicy());
         this.pool = ownedPool;
-        this.executor = new ChatSerialExecutor(ownedPool, QUEUE_CAPACITY);
-        this.recentUpdateIds = new RecentUpdateIds(RECENT_IDS_CAPACITY);
+        this.executor = new ChatSerialExecutor<>(ownedPool, QUEUE_CAPACITY, QUEUE_CAPACITY, k -> null);
+        this.recentUpdateIds = new RecentUpdateIds<>(RECENT_IDS_CAPACITY);
     }
 
     /** برای تست: Executor و حافظه‌ی شناسه‌ها از بیرون داده می‌شوند. */
-    BaleWebhookService(BaleUpdateHandler updateHandler, Executor executor, RecentUpdateIds recentUpdateIds) {
+    BaleWebhookService(BaleUpdateHandler updateHandler, Executor executor, RecentUpdateIds<Long> recentUpdateIds) {
         this.updateHandler = updateHandler;
         this.pool = executor;
-        this.executor = new ChatSerialExecutor(executor, QUEUE_CAPACITY);
+        this.executor = new ChatSerialExecutor<>(executor, QUEUE_CAPACITY, QUEUE_CAPACITY, k -> null);
         this.recentUpdateIds = recentUpdateIds;
         this.ownedPool = null;
     }
