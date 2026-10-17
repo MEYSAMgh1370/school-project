@@ -1,6 +1,6 @@
 # Per-school Bale bots (بات اختصاصی مدرسه)
 
-Status: design approved by the product owner on 2026-10-16. Not implemented yet.
+Status: design approved by the product owner on 2026-10-16. PR 1 implemented (data model, encryption, per-bot tokens, inbound routing and scope, membership check, school bot page and API, outbound routing, `401` handling; current behavior is in `specs/current-system.md`). The platform administrator test link, planned for PR 2, shipped in PR 1. PR 2 still to do: business API with fallback, migration messages, platform status page.
 
 ## Goal
 
@@ -204,7 +204,7 @@ Both pages follow `.agents/skills/design-page/SKILL.md` at implementation time.
    - business API with fallback;
    - migration messages;
    - platform status page;
-   - platform administrator test link.
+   - platform administrator test link (shipped in PR 1).
 
 ## Compatibility
 
