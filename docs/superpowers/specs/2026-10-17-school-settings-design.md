@@ -66,7 +66,7 @@ List rows are **students**, not invoices.
 - Scope filter: **همه** (default), **فقط امسال**, **سال‌های پیش**, with a count on each.
   - all: a student with a current-year invoice or any prior-year debt;
   - current: a student with a current-year invoice;
-  - previous: a student with any prior-year invoice (paid or not), including graduated and left students (status shown); the previous-debt column counts only the unpaid remainder.
+  - previous: only students with an **unpaid remainder on a prior-year invoice** (debtors), including graduated and left students (status shown); a student whose prior-year invoices are all settled is not listed.
 - Status chips (owing, overdue, settled) combine with the scope.
 - Expanding a row lists the invoices of the scope, one per year, each with the existing payments, discounts and instalments panel (unchanged).
 - Search by **first name** and **last name** (separate inputs) plus a general text box. Because only `iam.users.full_name` exists, "first name" matches the first word and "last name" the remaining words; double-barrelled names may not split exactly. The search is a list of declared fields so national id, class or guardian phone can be added later without restructuring.
@@ -103,7 +103,7 @@ API: `GET /api/admin/schools/{id}/finance/students?scope=all|current|previous&fi
 2. `bot_enabled` defaults to on: **yes**.
 3. Old columns `school.schools.installments_enabled` (V28) and `school.schools.auto_promotion` (V11) are dropped in a **later** migration, after the new code has run; this change only copies them. (Owner asked where they are dropped from: the `school.schools` table.)
 4. `/academic-year` **redirects** to `/settings`.
-5. A student whose prior-year invoices are fully paid **may be shown** under "previous years" (so the scope is "has a prior-year invoice", not only "has prior debt"); the previous-debt column still counts only the unpaid remainder.
+5. «سال‌های پیش» shows **only debtors** (a student with an unpaid remainder on a prior-year invoice); students whose prior-year invoices are fully settled are not listed. (Revised 2026-10-17: an earlier answer allowed showing settled students; the product owner corrected it.)
 6. Auto-promotion on year change keeps its current behavior (assumed, not objected to).
 
 ## Open questions
