@@ -6,8 +6,14 @@ import org.junit.jupiter.api.Test;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
 /**
  * مسیریابی پیام از NotificationFacade به کانال‌ها، بدون Spring و Docker.
@@ -33,7 +39,7 @@ class NotificationFacadeImplTest {
 
     private static NotificationFacadeImpl facade(NotificationChannel... channels) {
         // webhookService در مسیر sendMessageToUser استفاده نمی‌شود
-        return new NotificationFacadeImpl(List.of(channels), null);
+        return new NotificationFacadeImpl(List.of(channels), null, null);
     }
 
     @Test
@@ -141,5 +147,31 @@ class NotificationFacadeImplTest {
                 .sendMessageToUser(7L, "x")).isFalse();
         assertThat(facade(new ResultChannel(NotificationFacade.DeliveryResult.SENT))
                 .sendMessageToUser(7L, "x")).isTrue();
+    }
+
+    @Test
+    void unknownSecretIsRejectedWithoutParsing() {
+        BotResolver resolver = mock(BotResolver.class);
+        BaleWebhookService webhookService = mock(BaleWebhookService.class);
+        when(resolver.resolve("nope")).thenReturn(Optional.empty());
+
+        boolean accepted = new NotificationFacadeImpl(List.of(), webhookService, resolver)
+                .processIncomingUpdate("nope", "{}");
+
+        assertThat(accepted).isFalse();
+        verify(webhookService, never()).processRawUpdate(any(), any());
+    }
+
+    @Test
+    void knownSecretHandsTheBodyToTheWebhookServiceWithItsBot() {
+        BotResolver resolver = mock(BotResolver.class);
+        BaleWebhookService webhookService = mock(BaleWebhookService.class);
+        when(resolver.resolve("ok")).thenReturn(Optional.of(BotRef.SHARED));
+
+        boolean accepted = new NotificationFacadeImpl(List.of(), webhookService, resolver)
+                .processIncomingUpdate("ok", "{}");
+
+        assertThat(accepted).isTrue();
+        verify(webhookService).processRawUpdate(BotRef.SHARED, "{}");
     }
 }

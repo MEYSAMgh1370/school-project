@@ -44,6 +44,9 @@ public interface NotificationFacade {
      * (BaleUpdate) کاملاً داخلی همین ماژول است تا BaleWebhookController
      * (که طبق قرارداد پروژه در ریشه‌ی ماژول است، نه internal/) هرگز نیازی
      * به وارد کردن یک نوع internal نداشته باشد.
+     * <p>
+     * {@code secret} بخش مخفی مسیر وب‌هوک است و ربات مقصد از روی آن تشخیص داده می‌شود. false یعنی راز به
+     * هیچ رباتی نمی‌خورد و بدنه اصلاً پارس نشده (کنترلر ۴۰۴ می‌دهد)؛ true یعنی Update پذیرفته شد.
      */
-    void processIncomingUpdate(String rawJson);
+    boolean processIncomingUpdate(String secret, String rawJson);
 }

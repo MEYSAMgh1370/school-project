@@ -4,16 +4,19 @@ import com.example.roshdeandishe.notification.NotificationFacade;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
+import java.util.Optional;
 
 @Service
 class NotificationFacadeImpl implements NotificationFacade {
 
     private final List<NotificationChannel> channels;
     private final BaleWebhookService webhookService;
+    private final BotResolver botResolver;
 
-    NotificationFacadeImpl(List<NotificationChannel> channels, BaleWebhookService webhookService) {
+    NotificationFacadeImpl(List<NotificationChannel> channels, BaleWebhookService webhookService, BotResolver botResolver) {
         this.channels = channels;
         this.webhookService = webhookService;
+        this.botResolver = botResolver;
     }
 
     /**
@@ -50,7 +53,12 @@ class NotificationFacadeImpl implements NotificationFacade {
     }
 
     @Override
-    public void processIncomingUpdate(String rawJson) {
-        webhookService.processRawUpdate(rawJson);
+    public boolean processIncomingUpdate(String secret, String rawJson) {
+        Optional<BotRef> bot = botResolver.resolve(secret);
+        if (bot.isEmpty()) {
+            return false;
+        }
+        webhookService.processRawUpdate(bot.get(), rawJson);
+        return true;
     }
 }

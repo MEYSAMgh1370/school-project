@@ -45,15 +45,17 @@ class BaleWebhookService {
     private static final int CORE_THREADS = 2;
     private static final int MAX_THREADS = 4;
     private static final int QUEUE_CAPACITY = 100;
+    /** سهم هر ربات از کارهای منتظر، تا یک ربات شلوغ جای بقیه را نگیرد. */
+    private static final int MAX_PENDING_PER_BOT = 40;
     private static final int RECENT_IDS_CAPACITY = 1000;
     private static final long SHUTDOWN_WAIT_SECONDS = 10;
 
     private final ObjectMapper objectMapper = new ObjectMapper();
     private final BaleUpdateHandler updateHandler;
-    private final ChatSerialExecutor<Long> executor;
+    private final ChatSerialExecutor<ChatKey> executor;
     /** برای لاگ رد شدن: pool زیرین (Executor ساده یا ExecutorService). */
     private final Executor pool;
-    private final RecentUpdateIds<Long> recentUpdateIds;
+    private final RecentUpdateIds<UpdateKey> recentUpdateIds;
     /** فقط وقتی pool مال خود سرویس است پر می‌شود (در تست‌ها null). */
     private final ThreadPoolExecutor ownedPool;
 
@@ -67,17 +69,25 @@ class BaleWebhookService {
                 runnable -> new Thread(runnable, "bale-update-" + threadNumber.incrementAndGet()),
                 new ThreadPoolExecutor.AbortPolicy());
         this.pool = ownedPool;
-        this.executor = new ChatSerialExecutor<>(ownedPool, QUEUE_CAPACITY, QUEUE_CAPACITY, k -> null);
+        this.executor = new ChatSerialExecutor<>(ownedPool, QUEUE_CAPACITY, MAX_PENDING_PER_BOT, ChatKey::botId);
         this.recentUpdateIds = new RecentUpdateIds<>(RECENT_IDS_CAPACITY);
     }
 
     /** برای تست: Executor و حافظه‌ی شناسه‌ها از بیرون داده می‌شوند. */
-    BaleWebhookService(BaleUpdateHandler updateHandler, Executor executor, RecentUpdateIds<Long> recentUpdateIds) {
+    BaleWebhookService(BaleUpdateHandler updateHandler, Executor executor, RecentUpdateIds<UpdateKey> recentUpdateIds) {
         this.updateHandler = updateHandler;
         this.pool = executor;
-        this.executor = new ChatSerialExecutor<>(executor, QUEUE_CAPACITY, QUEUE_CAPACITY, k -> null);
+        this.executor = new ChatSerialExecutor<>(executor, QUEUE_CAPACITY, MAX_PENDING_PER_BOT, ChatKey::botId);
         this.recentUpdateIds = recentUpdateIds;
         this.ownedPool = null;
+    }
+
+    /** کلید حذف تکراری: شناسه‌ی Update فقط در محدوده‌ی یک ربات یکتاست. */
+    record UpdateKey(Long botId, long updateId) {
+    }
+
+    /** کلید ترتیب: چت‌ها در محدوده‌ی یک ربات؛ گروه سهمیه همان botId است. */
+    record ChatKey(Long botId, Long chatId) {
     }
 
     /**
@@ -87,20 +97,21 @@ class BaleWebhookService {
      * را retry کند، که مشکل اصلی را حل نمی‌کند و فقط لاگ را شلوغ می‌کند.
      * اگر pool پر باشد Update با یک لاگ دور ریخته می‌شود (هرگز بلاک نمی‌شود).
      */
-    void processRawUpdate(String rawBody) {
+    void processRawUpdate(BotRef bot, String rawBody) {
         Long updateId = null;
         try {
             BaleUpdate update = objectMapper.readValue(rawBody, BaleUpdate.class);
             updateId = update.updateId();
-            if (update.updateId() != null && !recentUpdateIds.markSeen(update.updateId())) {
+            if (update.updateId() != null && !recentUpdateIds.markSeen(new UpdateKey(bot.botId(), update.updateId()))) {
                 log.debug("Update تکراری از بله دور ریخته شد: {}", update.updateId());
                 return;
             }
-            executor.execute(chatIdOf(update), () -> handleSafely(update));
+            Long chatId = chatIdOf(update);
+            executor.execute(chatId == null ? null : new ChatKey(bot.botId(), chatId), () -> handleSafely(bot, update));
         } catch (RejectedExecutionException e) {
             // پردازش نشده، پس «دیده‌شده» هم نماند: اگر همین Update دوباره رسید، دور ریخته نشود
             if (updateId != null) {
-                recentUpdateIds.forget(updateId);
+                recentUpdateIds.forget(new UpdateKey(bot.botId(), updateId));
             }
             log.warn("Update {} از بله دور ریخته شد؛ صف پر است یا pool خاموش شده (خاموش={}).",
                     updateId, pool instanceof ExecutorService service && service.isShutdown());
@@ -118,9 +129,9 @@ class BaleWebhookService {
     }
 
     /** روی thread کارگر اجرا می‌شود؛ خطا فقط لاگ می‌شود، مثل قبل. */
-    private void handleSafely(BaleUpdate update) {
+    private void handleSafely(BotRef bot, BaleUpdate update) {
         try {
-            updateHandler.handle(update);
+            updateHandler.handle(bot, update);
         } catch (Exception e) {
             log.warn("پردازش Update ورودی از بله شکست خورد.", e);
         }

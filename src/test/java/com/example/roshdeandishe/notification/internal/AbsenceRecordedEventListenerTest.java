@@ -90,7 +90,7 @@ class AbsenceRecordedEventListenerTest {
             }
             return false;
         };
-        NotificationFacade notifications = new NotificationFacadeImpl(List.of(bale), null);
+        NotificationFacade notifications = new NotificationFacadeImpl(List.of(bale), null, null);
 
         new AbsenceRecordedEventListener(academic, iam, school, notifications).onAbsenceRecorded(event());
 

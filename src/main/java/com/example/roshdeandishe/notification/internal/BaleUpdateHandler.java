@@ -77,7 +77,7 @@ class BaleUpdateHandler {
     }
 
     @Transactional
-    void handle(BaleUpdate update) {
+    void handle(BotRef bot, BaleUpdate update) {
         BaleCallbackQuery callback = update.callbackQuery();
         if (callback != null) {
             handleCallback(callback);
