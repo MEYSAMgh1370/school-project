@@ -103,6 +103,27 @@ class NotificationFacadeImplTest {
     }
 
     @Test
+    void theSchoolIsPassedToTheChannelAndTwoArgumentCallsRouteWithoutSchool() {
+        List<String> seen = new ArrayList<>();
+        NotificationChannel channel = new NotificationChannel() {
+            @Override
+            public boolean send(Long userId, String text) {
+                return false;
+            }
+
+            @Override
+            public NotificationFacade.DeliveryResult deliver(Long userId, Long schoolId, String text) {
+                seen.add(userId + ":" + schoolId + ":" + text);
+                return NotificationFacade.DeliveryResult.SENT;
+            }
+        };
+
+        assertThat(facade(channel).sendMessageToUser(7L, 5L, "x")).isTrue();
+        assertThat(facade(channel).deliverMessageToUser(7L, "y")).isEqualTo(NotificationFacade.DeliveryResult.SENT);
+        assertThat(seen).containsExactly("7:5:x", "7:null:y");
+    }
+
+    @Test
     void deliverStopsAtTheFirstSentChannel() {
         ResultChannel first = new ResultChannel(NotificationFacade.DeliveryResult.SENT);
         ResultChannel second = new ResultChannel(NotificationFacade.DeliveryResult.SENT);

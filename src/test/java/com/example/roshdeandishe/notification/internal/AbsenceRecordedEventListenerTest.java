@@ -26,6 +26,7 @@ import java.util.List;
 import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
@@ -103,12 +104,23 @@ class AbsenceRecordedEventListenerTest {
     void aFailingSendDoesNotStopTheOtherParentsAndNeverEscapesTheListener() {
         when(academic.listGuardians(SCHOOL, STUDENT)).thenReturn(List.of(500L, 501L));
         NotificationFacade notifications = mock(NotificationFacade.class);
-        when(notifications.sendMessageToUser(eq(500L), anyString())).thenThrow(new IllegalStateException("bale down"));
+        when(notifications.sendMessageToUser(eq(500L), eq(SCHOOL), anyString())).thenThrow(new IllegalStateException("bale down"));
 
         new AbsenceRecordedEventListener(academic, iam, school, notifications).onAbsenceRecorded(event());
 
-        verify(notifications).sendMessageToUser(eq(501L), anyString());
+        verify(notifications).sendMessageToUser(eq(501L), eq(SCHOOL), anyString());
         assertThat(TenantContext.isSet()).isFalse();
+    }
+
+    @Test
+    void absenceNotificationCarriesTheSchool() {
+        when(academic.listGuardians(SCHOOL, STUDENT)).thenReturn(List.of(500L));
+        NotificationFacade notifications = mock(NotificationFacade.class);
+
+        new AbsenceRecordedEventListener(academic, iam, school, notifications).onAbsenceRecorded(event());
+
+        verify(notifications).sendMessageToUser(500L, SCHOOL, AbsenceRecordedEventListener
+                .buildMessage("علی رضایی", "دبستان رشد", SOLAR));
     }
 
     @Test
@@ -122,7 +134,7 @@ class AbsenceRecordedEventListenerTest {
         when(academic.findStudentInfo(STUDENT)).thenReturn(Optional.empty());
         listener.onAbsenceRecorded(event());
 
-        verify(notifications, never()).sendMessageToUser(anyLong(), anyString());
+        verify(notifications, never()).sendMessageToUser(anyLong(), any(), anyString());
         assertThat(TenantContext.isSet()).isFalse();
     }
 }

@@ -6,10 +6,6 @@ import java.util.Optional;
 
 interface BaleLinkRepository extends JpaRepository<BaleLinkEntity, Long> {
 
-    Optional<BaleLinkEntity> findByUserId(Long userId);
-
-    Optional<BaleLinkEntity> findByChatId(Long chatId);
-
     Optional<BaleLinkEntity> findByBotIdIsNullAndChatId(Long chatId);
 
     Optional<BaleLinkEntity> findByBotIdIsNullAndUserId(Long userId);

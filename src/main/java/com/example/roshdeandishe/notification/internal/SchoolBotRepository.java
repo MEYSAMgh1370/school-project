@@ -28,4 +28,11 @@ interface SchoolBotRepository extends JpaRepository<SchoolBotEntity, Long> {
     @Transactional
     @Query("update SchoolBotEntity b set b.lastUpdateAt = :now where b.id = :id")
     int touchLastUpdate(@Param("id") Long id, @Param("now") Instant now);
+
+    /** فقط status و خطای آخر را می‌نویسد (نه کل موجودیت)، تا تغییر هم‌زمانِ مدیر روی فیلدهای دیگر برنگردد. */
+    @Modifying
+    @Transactional
+    @Query("update SchoolBotEntity b set b.status = :status, b.lastError = :error, b.lastErrorAt = :at where b.id = :id")
+    int markStatus(@Param("id") Long id, @Param("status") SchoolBotStatus status, @Param("error") String error,
+                   @Param("at") Instant at);
 }

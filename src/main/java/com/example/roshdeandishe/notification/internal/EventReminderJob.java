@@ -142,7 +142,7 @@ class EventReminderJob {
                     if (ledger.claim(event.id(), userId) == 0) {
                         continue;
                     }
-                    DeliveryResult result = notificationFacade.deliverMessageToUser(userId, text);
+                    DeliveryResult result = notificationFacade.deliverMessageToUser(userId, schoolId.value(), text);
                     if (result == DeliveryResult.TEMPORARY_FAILURE) {
                         // خطای موقت (قطعی/تایم‌اوت/5xx/429): ادعا را آزاد کن تا اجرای ساعت بعد دوباره تلاش کند
                         ledger.release(event.id(), userId);

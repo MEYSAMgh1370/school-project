@@ -28,7 +28,12 @@ class NotificationFacadeImpl implements NotificationFacade {
      */
     @Override
     public boolean sendMessageToUser(Long userId, String text) {
-        return deliverMessageToUser(userId, text) == DeliveryResult.SENT;
+        return sendMessageToUser(userId, null, text);
+    }
+
+    @Override
+    public boolean sendMessageToUser(Long userId, Long schoolId, String text) {
+        return deliverMessageToUser(userId, schoolId, text) == DeliveryResult.SENT;
     }
 
     /**
@@ -38,9 +43,14 @@ class NotificationFacadeImpl implements NotificationFacade {
      */
     @Override
     public DeliveryResult deliverMessageToUser(Long userId, String text) {
+        return deliverMessageToUser(userId, null, text);
+    }
+
+    @Override
+    public DeliveryResult deliverMessageToUser(Long userId, Long schoolId, String text) {
         DeliveryResult worst = DeliveryResult.NOT_LINKED;
         for (NotificationChannel channel : channels) {
-            DeliveryResult result = channel.deliver(userId, text);
+            DeliveryResult result = channel.deliver(userId, schoolId, text);
             if (result == DeliveryResult.SENT) {
                 return result;
             }
