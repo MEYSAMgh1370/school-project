@@ -517,7 +517,8 @@
                 <div class="field has-addons">
                     <div class="control is-expanded">
                         <input class="input" id="dashboardPhone" type="tel" dir="ltr" x-model="phoneNumber"
-                               autocomplete="tel" inputmode="tel" placeholder="۰۹۱۲۳۴۵۶۷۸۹" required>
+                               autocomplete="tel" inputmode="tel" placeholder="۰۹۱۲۳۴۵۶۷۸۹"
+                               aria-describedby="dashboardPhoneHelp" required>
                     </div>
                     <div class="control">
                         <button class="button is-link" type="submit" :class="{ 'is-loading': submitting }">
@@ -525,6 +526,7 @@
                         </button>
                     </div>
                 </div>
+                <p class="help" id="dashboardPhoneHelp">شماره‌ی موبایلی که با آن در بله هستید، مثلاً ۰۹۱۲۳۴۵۶۷۸۹</p>
             </form>
             <div class="notification is-danger mt-3" role="alert"
                  x-cloak x-show="errorMessage"><span class="app-notice">@template.layout.icon(name = "alert", size = 20)<span x-text="errorMessage"></span></span></div>

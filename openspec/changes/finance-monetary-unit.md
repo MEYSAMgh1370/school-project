@@ -8,7 +8,9 @@ Toman as proposed below. Under each money input the same amount is written in
 Persian words in Toman (for example `2000000` → «دویست هزار تومان»), computed by
 `Money.tomanWords` (PR #111). The canonical unit, whole Rial, stands. Still open:
 the read-only display unit in tables, and printed and notification wording
-(Toman or Rial, labelled). The list below is the original 2026-08-17 proposal,
+(Toman or Rial, labelled). **Decided 2026-10-16 (by the user):** Bale bot messages
+show amounts in Rial, labelled «ریال»; the web read-only display unit is still
+open. The list below is the original 2026-08-17 proposal,
 kept as history; where it says Toman for form entry, the 2026-10-08 decision
 above applies.
 

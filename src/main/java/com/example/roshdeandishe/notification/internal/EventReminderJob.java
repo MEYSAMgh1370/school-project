@@ -200,18 +200,10 @@ class EventReminderJob {
         String when = switch (daysLeft) {
             case 0 -> "امروز";
             case 1 -> "فردا";
-            default -> persianDigits(daysLeft) + " روز دیگر";
+            default -> PersianText.digits(daysLeft) + " روز دیگر";
         };
         return "یادآوری: رویداد «" + title + "» " + when + " (" + solarDate + ") در " + schoolName
                 + " برگزار می‌شود.";
-    }
-
-    private static String persianDigits(int n) {
-        StringBuilder out = new StringBuilder();
-        for (char c : Integer.toString(n).toCharArray()) {
-            out.append(c >= '0' && c <= '9' ? (char) ('۰' + (c - '0')) : c);
-        }
-        return out.toString();
     }
 
     /** وضعیتِ یک دور اجرا بین همه‌ی مدرسه‌ها: شمارنده‌ی خطای موقتِ پیاپی و توقفِ دور. */

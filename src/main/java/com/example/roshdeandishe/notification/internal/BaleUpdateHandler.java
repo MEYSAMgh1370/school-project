@@ -10,10 +10,13 @@ import com.example.roshdeandishe.school.SchoolFacade;
 import com.example.roshdeandishe.school.SchoolFacade.SchoolId;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.time.Instant;
 import java.util.List;
-import java.util.Map;
 import java.util.Optional;
 
 /**
@@ -34,29 +37,7 @@ import java.util.Optional;
 @Component
 class BaleUpdateHandler {
 
-    private static final Map<String, String> ROLE_LABELS = Map.of(
-            "STUDENT", "دانش‌آموز",
-            "TEACHER", "معلم",
-            "PARENT", "والد",
-            "SCHOOL_ADMIN", "مدیر مدرسه",
-            "FINANCE_ADMIN", "مدیر مالی"
-    );
-
-    private static final String WELCOME_TEXT = """
-            به ربات رشد اندیشه خوش آمدید!
-
-            برای اتصال حساب کاربری‌تان، لطفاً شماره تلفنی که در پروفایل حساب \
-            کاربری‌تان (در سایت) ثبت کرده‌اید را با دکمه‌ی زیر به اشتراک بگذارید.""";
-
-    private static final String NOT_LINKED_TEXT = "حساب شما هنوز متصل نشده است. لطفاً ابتدا /start را ارسال کنید.";
-
-    private static final String UNKNOWN_COMMAND_TEXT =
-            "دستور نامعتبر است. برای راهنما، «راهنما» را ارسال کنید.";
-
-    private static final String HELP_TEXT = """
-            دستورهای قابل استفاده:
-            «مدرسه‌های من» - فهرست مدرسه‌ها و نقش‌های شما
-            «فرزندان من» - فهرست فرزندان لینک‌شده و وضعیت مالی هرکدام""";
+    private static final Logger log = LoggerFactory.getLogger(BaleUpdateHandler.class);
 
     private final BaleLinkRepository baleLinkRepository;
     private final BotContextLoader botContextLoader;
@@ -64,6 +45,8 @@ class BaleUpdateHandler {
     private final IamFacade iamFacade;
     private final SchoolFacade schoolFacade;
     private final FinanceFacade financeFacade;
+    private final SubjectResolver subjectResolver;
+    private final BotRouter botRouter;
 
     BaleUpdateHandler(
             BaleLinkRepository baleLinkRepository,
@@ -71,7 +54,9 @@ class BaleUpdateHandler {
             IamFacade iamFacade,
             SchoolFacade schoolFacade,
             FinanceFacade financeFacade,
-            BotContextLoader botContextLoader
+            BotContextLoader botContextLoader,
+            SubjectResolver subjectResolver,
+            BotRouter botRouter
     ) {
         this.baleLinkRepository = baleLinkRepository;
         this.baleClient = baleClient;
@@ -79,6 +64,8 @@ class BaleUpdateHandler {
         this.schoolFacade = schoolFacade;
         this.financeFacade = financeFacade;
         this.botContextLoader = botContextLoader;
+        this.subjectResolver = subjectResolver;
+        this.botRouter = botRouter;
     }
 
     @Transactional
@@ -96,36 +83,57 @@ class BaleUpdateHandler {
 
         Long chatId = message.chat().id();
 
+        // فقط گفتگوی خصوصی: در گروه/کانال (یا نوع نامشخص) نه داده‌ای داده می‌شود نه لینکی ساخته می‌شود
+        if (!isPrivate(message)) {
+            baleClient.sendMessage(chatId, BotTexts.PRIVATE_CHAT_ONLY);
+            return;
+        }
+
         if (message.contact() != null) {
-            handleContactShared(chatId, message.contact().phoneNumber());
+            handleContactShared(chatId, message);
             return;
         }
 
         String text = message.text() == null ? "" : message.text().trim();
         if ("/start".equals(text)) {
-            baleClient.sendContactRequest(chatId, WELCOME_TEXT);
+            baleClient.sendContactRequest(chatId, BotTexts.WELCOME_TEXT);
             return;
         }
 
         Optional<BotContext> context = botContextLoader.load(chatId);
         if (context.isEmpty()) {
-            baleClient.sendMessage(chatId, NOT_LINKED_TEXT);
+            baleClient.sendMessage(chatId, BotTexts.NOT_LINKED_TEXT);
             return;
         }
 
         BotContext ctx = context.get();
         switch (text) {
-            case "راهنما" -> baleClient.sendMessage(chatId, HELP_TEXT);
-            case "مدرسه‌های من" -> baleClient.sendMessage(chatId, describeMemberships(ctx));
-            case "فرزندان من" -> baleClient.sendMessage(chatId, describeWards(ctx));
-            default -> baleClient.sendMessage(chatId, UNKNOWN_COMMAND_TEXT);
+            case BotTexts.BTN_HELP -> baleClient.sendMenu(chatId, BotTexts.HELP_TEXT, botRouter.menu(ctx));
+            case BotTexts.CMD_MY_SCHOOLS -> baleClient.sendMessage(chatId, describeMemberships(ctx));
+            case BotTexts.CMD_MY_WARDS -> baleClient.sendMessage(chatId, describeWards(ctx));
+            default -> {
+                BotRouter.Reply reply = botRouter.onText(ctx, text);
+                if (reply == null) {
+                    baleClient.sendMenu(chatId, BotTexts.UNKNOWN_TEXT, botRouter.menu(ctx));
+                } else {
+                    send(chatId, reply);
+                }
+            }
+        }
+    }
+
+    private void send(Long chatId, BotRouter.Reply reply) {
+        if (reply.choices().isEmpty()) {
+            baleClient.sendMessage(chatId, reply.text());
+        } else {
+            baleClient.sendMessage(chatId, reply.text(), reply.choices());
         }
     }
 
     /**
-     * کلیک روی دکمه‌ی اینلاین: اول همیشه تأیید می‌شود (وگرنه بله برای
-     * همیشه spinner نشان می‌دهد)، بعد مثل پیامی از همان chat رفتار می‌شود.
-     * فعلاً intent مبتنی بر callback نداریم، پس کاربرِ لینک‌شده راهنما می‌گیرد.
+     * کلیک روی دکمه‌ی اینلاین: اول همیشه تأیید می‌شود (وگرنه بله برای همیشه spinner نشان می‌دهد)، بعد
+     * پاسخ از {@link BotRouter#onCallback}؛ userId فقط از لینکِ chat می‌آید و شناسه‌ی callback فقط یک
+     * انتخاب است که با هدف‌های همان کاربر سنجیده می‌شود.
      */
     private void handleCallback(BaleCallbackQuery callback) {
         baleClient.answerCallbackQuery(callback.id());
@@ -133,19 +141,37 @@ class BaleUpdateHandler {
             return;
         }
         Long chatId = callback.message().chat().id();
-        if (botContextLoader.load(chatId).isEmpty()) {
-            baleClient.sendMessage(chatId, NOT_LINKED_TEXT);
+        if (!isPrivate(callback.message())) {
+            baleClient.sendMessage(chatId, BotTexts.PRIVATE_CHAT_ONLY);
             return;
         }
-        baleClient.sendMessage(chatId, HELP_TEXT);
+        Optional<BotContext> context = botContextLoader.load(chatId);
+        if (context.isEmpty()) {
+            baleClient.sendMessage(chatId, BotTexts.NOT_LINKED_TEXT);
+            return;
+        }
+        send(chatId, botRouter.onCallback(context.get(), callback.data()));
     }
 
-    private void handleContactShared(Long chatId, String phoneNumber) {
-        Optional<UserProfile> matchedUser = iamFacade.findUserByPhoneNumber(phoneNumber);
+    private static boolean isPrivate(BaleMessage message) {
+        return "private".equals(message.chat().type());
+    }
+
+    /**
+     * لینک فقط وقتی ساخته می‌شود که مخاطب، شماره‌ی خودِ فرستنده باشد (contact.user_id == from.id)؛ بله
+     * اجازه می‌دهد هر مخاطبِ دفترچه‌تلفن فرستاده شود. این بررسی پیش از جست‌وجوی شماره است تا مخاطب
+     * بیگانه هرگز معلوم نکند شماره‌ای ثبت شده یا نه؛ نبودنِ user_id هم رد می‌شود (fail closed).
+     */
+    private void handleContactShared(Long chatId, BaleMessage message) {
+        Long contactUserId = message.contact().userId();
+        if (contactUserId == null || message.from() == null || !contactUserId.equals(message.from().id())) {
+            baleClient.sendMessage(chatId, BotTexts.CONTACT_NOT_OWN);
+            return;
+        }
+
+        Optional<UserProfile> matchedUser = iamFacade.findUserByPhoneNumber(message.contact().phoneNumber());
         if (matchedUser.isEmpty()) {
-            baleClient.sendMessage(chatId,
-                    "شماره‌ی به‌اشتراک‌گذاشته‌شده با هیچ حسابی در سامانه مطابقت ندارد. " +
-                    "ابتدا از طریق پروفایل حساب کاربری‌تان در سایت، همین شماره را ثبت کنید.");
+            baleClient.sendMessage(chatId, BotTexts.CONTACT_NOT_MATCHED);
             return;
         }
 
@@ -158,45 +184,72 @@ class BaleUpdateHandler {
         link.setUserId(userId);
         baleLinkRepository.save(link);
 
-        baleClient.sendMessage(chatId,
-                matchedUser.get().fullName() + " عزیز، حساب شما با موفقیت متصل شد. برای راهنما «راهنما» را ارسال کنید.");
+        String confirmation = BotTexts.linkSuccess(matchedUser.get().fullName());
+        sendAfterCommit(() -> sendLinkConfirmation(chatId, confirmation));
+    }
+
+    /** تأییدیه فقط پس از commitِ لینک فرستاده می‌شود (خطای منو نباید تراکنش را rollback-only کند). */
+    private static void sendAfterCommit(Runnable action) {
+        if (TransactionSynchronizationManager.isSynchronizationActive()) {
+            TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+                @Override
+                public void afterCommit() {
+                    action.run();
+                }
+            });
+        } else {
+            action.run();
+        }
+    }
+
+    private void sendLinkConfirmation(Long chatId, String confirmation) {
+        List<List<String>> menu = List.of();
+        try {
+            menu = botContextLoader.load(chatId).map(botRouter::menu).orElse(List.of());
+        } catch (RuntimeException e) {
+            log.warn("Building the menu after linking failed: chatId={} error={}",
+                    chatId, e.getClass().getSimpleName());
+        }
+        if (menu.isEmpty()) {
+            baleClient.sendMessage(chatId, confirmation);
+        } else {
+            baleClient.sendMenu(chatId, confirmation, menu);
+        }
     }
 
     private String describeMemberships(BotContext ctx) {
         List<MembershipInfo> memberships = ctx.memberships();
 
         if (memberships.isEmpty()) {
-            return "شما در حال حاضر عضو هیچ مدرسه‌ای نیستید.";
+            return BotTexts.NO_MEMBERSHIPS;
         }
 
-        StringBuilder sb = new StringBuilder("مدرسه‌ها و نقش‌های شما:\n");
+        StringBuilder sb = new StringBuilder(BotTexts.MEMBERSHIPS_HEADER);
         for (MembershipInfo m : memberships) {
             String schoolName = schoolFacade.findSchool(new SchoolId(m.schoolId()))
                     .map(s -> s.name())
-                    .orElse("مدرسه #" + m.schoolId());
-            sb.append("- ").append(schoolName).append(" (")
-                    .append(ROLE_LABELS.getOrDefault(m.roleCode(), m.roleCode())).append(")\n");
+                    .orElse(BotTexts.schoolFallback(m.schoolId()));
+            sb.append(BotTexts.membershipLine(schoolName, m.roleCode()));
         }
         return sb.toString().stripTrailing();
     }
 
     private String describeWards(BotContext ctx) {
         if (!ctx.hasRole("PARENT")) {
-            return "شما در هیچ مدرسه‌ای نقش والد ندارید.";
+            return BotTexts.NOT_A_PARENT;
         }
-        if (ctx.wards().isEmpty()) {
-            return "هیچ دانش‌آموزی به شما لینک نشده است.";
+        // INVOICES = فقط فرزندان (هدف‌ها از داده‌ی سرور، نه از ورودی کاربر)
+        List<BotTarget> wards = subjectResolver.targets(ctx, BotIntent.INVOICES);
+        if (wards.isEmpty()) {
+            return BotTexts.NO_WARDS;
         }
 
         StringBuilder sb = new StringBuilder();
-        for (BotContext.Ward ward : ctx.wards()) {
-            Long schoolId = ward.schoolId();
-            String schoolName = schoolFacade.findSchool(new SchoolId(schoolId)).map(s -> s.name())
-                    .orElse("مدرسه #" + schoolId);
+        for (BotTarget target : wards) {
+            BotTarget.Student ward = (BotTarget.Student) target;
             // همان دیدِ خانواده (سالِ جاری + «بدون سال»)، نه همه‌ی سال‌ها
-            long invoiceCount = financeFacade.listInvoicesForStudents(schoolId, List.of(ward.studentId())).size();
-            sb.append("- ").append(ward.fullName()).append(" (").append(schoolName).append("): ")
-                    .append(invoiceCount).append(" فاکتور صادرشده\n");
+            long invoiceCount = financeFacade.listInvoicesForStudents(ward.schoolId(), List.of(ward.studentId())).size();
+            sb.append(BotTexts.wardLine(ward.name(), ward.schoolName(), invoiceCount));
         }
         return sb.toString().stripTrailing();
     }

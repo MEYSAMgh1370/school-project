@@ -318,8 +318,8 @@ Fixed in PR #153 after the review: an update dropped by a full pool is no longer
 
 Scheduled for later stages — the list and reasons live in `openspec/changes/bale-smart-bot.md` under "Carried forward from the stage 1 review", and the stage 2 plan must start from it:
 
-- [ ] Stage 2: serialize update handling per `chat.id` (must do before any new intent).
-- [ ] Stage 2: load `BotContext` wards lazily.
-- [ ] Stage 2: use or remove the unused groundwork API.
+- [x] Stage 2: serialize update handling per `chat.id` (must do before any new intent) (done 2026-10-16).
+- [x] Stage 2: load `BotContext` wards lazily (done 2026-10-16).
+- [x] Stage 2: use or remove the unused groundwork API (done 2026-10-16).
 - [ ] Separate small PR: one "today" zone fallback (`SchoolInfo.zoneId()`).
 - [ ] With real traffic: revisit in-memory de-duplication scope.

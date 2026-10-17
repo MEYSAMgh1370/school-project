@@ -33,7 +33,7 @@ class BaleWebhookServiceTest {
         service(direct).processRawUpdate(WITH_ID_9);
 
         verify(handler).handle(new BaleUpdate(9L,
-                new BaleUpdate.BaleMessage(1L, new BaleUpdate.BaleChat(5L), "x", null), null));
+                new BaleUpdate.BaleMessage(1L, null, new BaleUpdate.BaleChat(5L, null), "x", null), null));
     }
 
     @Test
@@ -78,6 +78,24 @@ class BaleWebhookServiceTest {
         };
         assertThatCode(() -> service(rejecting).processRawUpdate(WITH_ID_9)).doesNotThrowAnyException();
         verify(handler, never()).handle(any());
+    }
+
+    @Test
+    void updatesOfOneChatAreHandledInOrder() {
+        List<Runnable> held = new ArrayList<>();
+        List<Long> handled = new ArrayList<>();
+        org.mockito.Mockito.doAnswer(invocation -> {
+            handled.add(invocation.<BaleUpdate>getArgument(0).updateId());
+            return null;
+        }).when(handler).handle(any());
+        var service = service(held::add);
+        service.processRawUpdate("{\"update_id\":1,\"message\":{\"message_id\":1,\"chat\":{\"id\":5},\"text\":\"a\"}}");
+        service.processRawUpdate("{\"update_id\":2,\"message\":{\"message_id\":2,\"chat\":{\"id\":5},\"text\":\"b\"}}");
+
+        // یک drain job برای هر چت؛ هر دو Update پشت سر هم در همان job اجرا می‌شوند
+        assertThat(held).hasSize(1);
+        held.get(0).run();
+        assertThat(handled).containsExactly(1L, 2L);
     }
 
     @Test

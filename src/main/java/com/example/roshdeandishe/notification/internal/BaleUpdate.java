@@ -21,21 +21,33 @@ record BaleUpdate(
     @JsonIgnoreProperties(ignoreUnknown = true)
     record BaleMessage(
             @JsonProperty("message_id") Long messageId,
+            BaleUser from,
             BaleChat chat,
             String text,
             BaleContact contact
     ) {
     }
 
+    /** فرستنده‌ی پیام (در پست کانال خالی است)؛ id تا ۵۲ بیت است، پس Long. */
     @JsonIgnoreProperties(ignoreUnknown = true)
-    record BaleChat(
+    record BaleUser(
             Long id
     ) {
     }
 
+    /** type یکی از private / group / channel است. */
+    @JsonIgnoreProperties(ignoreUnknown = true)
+    record BaleChat(
+            Long id,
+            String type
+    ) {
+    }
+
+    /** userId (اختیاری) شناسه‌ی کاربر بله‌ی صاحب مخاطب است؛ برای تطبیق با فرستنده. */
     @JsonIgnoreProperties(ignoreUnknown = true)
     record BaleContact(
-            @JsonProperty("phone_number") String phoneNumber
+            @JsonProperty("phone_number") String phoneNumber,
+            @JsonProperty("user_id") Long userId
     ) {
     }
 
