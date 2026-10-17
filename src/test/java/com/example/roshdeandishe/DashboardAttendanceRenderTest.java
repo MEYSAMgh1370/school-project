@@ -56,7 +56,7 @@ class DashboardAttendanceRenderTest {
     void isShownOnlyForTheSelectedAdminRoleAndSchool() {
         String html = render(List.of(), List.of(row(true, 0, 100, 1, 1)));
 
-        assertThat(html).contains("$store.nav.selectedRole === 'SCHOOL_ADMIN'")
+        assertThat(html).contains("$store.nav.permissions.includes('ATTENDANCE_VIEW_ALL')")
                 .contains("$store.nav.selectedSchoolId === 7");
         assertThat(html).containsPattern("<section[^>]*dashboard-attendance-title-7[^>]* x-data[ >\\n]");
     }

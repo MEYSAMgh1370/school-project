@@ -933,4 +933,42 @@ class TimetableFlowIntegrationTest {
         assertThat(jdbc.queryForObject("select count(*) from academic.grades where course_id = ?",
                 Integer.class, course)).isEqualTo(1);
     }
+
+    @Test
+    void slotTeacherEligibilityFollowsTimetableAssignableNotTheRoleCode() throws Exception {
+        // finance-view-all-permission.md: معلمِ خانه = دارنده‌ی TIMETABLE_ASSIGNABLE، نه کدِ نقشِ TEACHER
+        MockHttpSession admin = loginAsAdmin();
+        long classA = createClass(admin, "پایه پنجم - نقش سفارشی", 5);
+        long period = createPeriod(admin, "زنگ سفارشی", "13:00", "13:45");
+        long math = insertCourse(5, "ریاضی سفارشی", true);
+
+        String suffix = Long.toString(System.nanoTime());
+        createRole(admin, "COACH_" + suffix, "مربی", "\"TIMETABLE_ASSIGNABLE\"");
+        createRole(admin, "HELPER_" + suffix, "کمک‌مربی", "\"CLASS_VIEW\"");
+        long coach = membership(admin, unique("tt.coach") + "@roshdeandishe.test", "مربی ورزش", "COACH_" + suffix);
+        long helper = membership(admin, unique("tt.helper") + "@roshdeandishe.test", "کمک مربی", "HELPER_" + suffix);
+
+        mockMvc.perform(get("/api/admin/schools/1/timetable/teachers").header("X-School-ID", "1").session(admin))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[?(@.userId == " + coach + ")]").exists())
+                .andExpect(jsonPath("$[?(@.userId == " + helper + ")]").doesNotExist());
+
+        setEntry(admin, classA, period, "TUE", math, null, coach)
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.teacherUserId").value(coach));
+        setEntry(admin, classA, period, "WED", math, null, helper)
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.type").value(endsWith("teacher-not-eligible")));
+    }
+
+    private void createRole(MockHttpSession admin, String code, String displayName, String permissionCodes)
+            throws Exception {
+        mockMvc.perform(post("/api/admin/schools/1/roles")
+                        .with(csrf()).header("X-School-ID", "1").session(admin)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"code\":\"" + code + "\",\"displayName\":\"" + displayName
+                                + "\",\"permissionCodes\":[" + permissionCodes + "]}"))
+                .andExpect(status().is2xxSuccessful());
+    }
+
 }

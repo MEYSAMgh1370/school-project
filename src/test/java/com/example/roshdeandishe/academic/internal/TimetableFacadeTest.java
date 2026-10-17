@@ -7,8 +7,9 @@ import com.example.roshdeandishe.academic.TimetableFacade.EntryInfo;
 import com.example.roshdeandishe.academic.TimetableFacade.PeriodInfo;
 import com.example.roshdeandishe.academic.shared.AcademicError;
 import com.example.roshdeandishe.academic.shared.AcademicException;
+import com.example.roshdeandishe.iam.AccessContext;
+import com.example.roshdeandishe.iam.AccessDecision;
 import com.example.roshdeandishe.iam.IamFacade;
-import com.example.roshdeandishe.iam.IamFacade.MembershipInfo;
 import com.example.roshdeandishe.iam.IamFacade.UserId;
 import com.example.roshdeandishe.school.SchoolFacade;
 import com.example.roshdeandishe.school.SchoolFacade.AcademicYearId;
@@ -134,9 +135,11 @@ class TimetableFacadeTest {
         return a;
     }
 
+    // «فعال» = TIMETABLE_ASSIGNABLE در همین مدرسه (چند نقش/مدرسه را خودِ PermissionDecisionService می‌سنجد)
     private void teacherIsActive(boolean active) {
-        when(iam.findMembershipsByUser(new UserId(TEACHER))).thenReturn(List.of(
-                new MembershipInfo(1L, new UserId(TEACHER), "t@x", "معلم", SCHOOL, "TEACHER", active, true)));
+        when(iam.checkPermission(new UserId(TEACHER), new IamFacade.PermissionCode("TIMETABLE_ASSIGNABLE"),
+                new AccessContext.SchoolContext(SCHOOL)))
+                .thenReturn(active ? new AccessDecision.Granted("t") : new AccessDecision.Denied("t"));
     }
 
     private static void rejectedWith(Runnable call, AcademicError expected) {
@@ -573,12 +576,6 @@ class TimetableFacadeTest {
     void theTeacherMustBeAnActiveTeacherOfThisSchool() {
         when(courses.findById(30L)).thenReturn(Optional.of(course(30L, GRADE_LEVEL, true)));
         teacherIsActive(false);
-        rejectedWith(() -> facade.setEntry(SCHOOL, CLASS_ID, PERIOD, TimetableDay.SAT, 30L, null, TEACHER),
-                new AcademicError.TeacherNotEligible(TEACHER, SCHOOL));
-
-        when(iam.findMembershipsByUser(new UserId(TEACHER))).thenReturn(List.of(
-                new MembershipInfo(1L, new UserId(TEACHER), "t@x", "والد", SCHOOL, "PARENT", true, true),
-                new MembershipInfo(2L, new UserId(TEACHER), "t@x", "معلم", OTHER_SCHOOL, "TEACHER", true, true)));
         rejectedWith(() -> facade.setEntry(SCHOOL, CLASS_ID, PERIOD, TimetableDay.SAT, 30L, null, TEACHER),
                 new AcademicError.TeacherNotEligible(TEACHER, SCHOOL));
         verify(entries, never()).saveAndFlush(any());

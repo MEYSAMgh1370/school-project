@@ -148,7 +148,8 @@
             </section>
         @endif
 
-        <%-- «راه‌اندازی مدرسه» (school-admin-onboarding.md، بسته‌ی ۲): فقط برای مدیرِ مدرسه و فقط تا وقتی
+        <%-- «راه‌اندازی مدرسه» (school-admin-onboarding.md، بسته‌ی ۲): فقط برای دارنده‌ی MEMBERSHIP_MANAGE و
+             CLASS_MANAGE (کنترلر) و فقط تا وقتی
              گامی انجام‌نشده مانده؛ گام‌ها از SetupChecklistAssembler می‌آیند. «پنهان کردن» فقط در
              localStorageِ همین مرورگر می‌ماند (setup-checklist.js). --%>
         @for(var checklist : model.setupChecklists())
@@ -235,14 +236,14 @@
             @endfor
         </section>
 
-        <%-- «وضعیت شهریه»: فقط برای مدیرِ مدرسه (چکِ literal SCHOOL_ADMIN در کنترلر) و فقط
-             وقتی نقشِ انتخاب‌شده «مدیر» و مدرسه‌ی انتخاب‌شده همین مدرسه است (نمایشی، مثل
+        <%-- «وضعیت شهریه»: فقط برای دارنده‌ی FINANCE_VIEW_ALL در این مدرسه (کنترلر) و فقط وقتی
+             نقشِ انتخاب‌شده همین Permission را دارد و مدرسه‌ی انتخاب‌شده همین مدرسه است (نمایشی، مثل
              بقیه‌ی بخش‌ها). فقط درصدِ پرداخت به صورت‌حساب است، نه مبلغ (واحد پولی
              تصمیم‌نگرفته). --%>
         @for(var row : model.tuition())
           @if(row.hasInvoices() || !model.setupIncomplete(row.schoolId()))
             <section class="mb-5" aria-labelledby="dashboard-tuition-title-${row.schoolId()}" x-data
-                     x-cloak x-show="$store.nav.selectedRole === 'SCHOOL_ADMIN' && $store.nav.selectedSchoolId === ${row.schoolId()}">
+                     x-cloak x-show="$store.nav.permissions.includes('FINANCE_VIEW_ALL') && $store.nav.selectedSchoolId === ${row.schoolId()}">
                 <div class="box">
                     <h2 class="title is-5 mb-1" id="dashboard-tuition-title-${row.schoolId()}">وضعیت شهریه</h2>
                     <p class="is-size-7 has-text-grey mb-3">${row.schoolName()}</p>
@@ -262,14 +263,14 @@
           @endif
         @endfor
 
-        <%-- «حضور و غیاب امروز»: کنارِ «وضعیت شهریه»، با همان الگو: فقط برای مدیرِ مدرسه (چکِ literal
-             SCHOOL_ADMIN در کنترلر) و فقط مدرسه‌ای که ماژول حضور و غیاب را دارد (AttendanceTodayAssembler)؛
+        <%-- «حضور و غیاب امروز»: کنارِ «وضعیت شهریه»، با همان الگو: فقط برای دارنده‌ی ATTENDANCE_VIEW_ALL
+             (کنترلر) و فقط مدرسه‌ای که ماژول حضور و غیاب را دارد (AttendanceTodayAssembler)؛
              نمایشِ سمتِ کلاینت هم به نقشِ انتخاب‌شده و مدرسه‌ی انتخاب‌شده وابسته است. فقط رقم‌های خلاصه
              (غایب، درصدِ حضور، کلاسِ بدونِ ثبت)، نه نامِ دانش‌آموزان؛ نام‌ها در /attendance/report می‌مانند. --%>
         @for(var attendance : model.attendanceToday())
           @if(attendance.hasRoll() || !model.setupIncomplete(attendance.schoolId()))
             <section class="mb-5" aria-labelledby="dashboard-attendance-title-${attendance.schoolId()}" x-data
-                     x-cloak x-show="$store.nav.selectedRole === 'SCHOOL_ADMIN' && $store.nav.selectedSchoolId === ${attendance.schoolId()}">
+                     x-cloak x-show="$store.nav.permissions.includes('ATTENDANCE_VIEW_ALL') && $store.nav.selectedSchoolId === ${attendance.schoolId()}">
                 <div class="box">
                     <h2 class="title is-5 mb-1" id="dashboard-attendance-title-${attendance.schoolId()}">حضور و غیاب امروز</h2>
                     <p class="is-size-7 has-text-grey mb-3">${attendance.schoolName()}</p>
