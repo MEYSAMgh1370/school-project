@@ -255,7 +255,8 @@ public interface IamFacade {
      * بله: کاربری که قبلاً شماره‌اش را (وقتی با سشن معتبر وارد بود) ثبت
      * کرده، دفعه‌ی بعد فقط با اشتراک‌گذاری مخاطب در بله شناسایی می‌شود.
      * ارقام فارسی/عربی و فاصله‌ی ابتدا/انتها در مرز IAM به فرم canonical
-     * ASCII تبدیل می‌شوند؛ همان قاعده‌ی {@link #setPhoneNumber}.
+     * ASCII تبدیل می‌شوند و موبایلِ ایرانی (مثلاً 989… که بله می‌فرستد) به
+     * 09XXXXXXXXX؛ همان قاعده‌ی {@link #setPhoneNumber}.
      */
     Optional<UserProfile> findUserByPhoneNumber(String phoneNumber);
 
@@ -266,7 +267,9 @@ public interface IamFacade {
      * صرفاً یک کانال ارتباطی اضافه به همان حساب است، نه یک راه جدید برای
      * اثبات هویت. Idempotent برای همان کاربر است. قبل از اعتبارسنجی، بررسی
      * یکتایی و ذخیره، ارقام فارسی/عربی به ASCII تبدیل و فاصله‌ی دو سر حذف
-     * می‌شود؛ داده‌ی قدیمی نیز با Flyway V3 به همین فرم منتقل می‌شود.
+     * می‌شود، و هر شکلِ موبایلِ ایرانی (09…، 9…، 989…، +989…، 00989…) به
+     * 09XXXXXXXXX درمی‌آید؛ داده‌ی قدیمی با Flyway V3، V4 و V32 به همین فرم
+     * منتقل شده است.
      *
      * @throws com.example.roshdeandishe.iam.shared.exception.IamException با
      * IamError.InvalidPhoneNumber اگر فرمت شماره نامعتبر باشد، یا

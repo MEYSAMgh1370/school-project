@@ -34,7 +34,8 @@ looking them up:
 
 - boundary whitespace matching Java `Character.isWhitespace` or `Character.isSpaceChar` is stripped;
 - Persian and Arabic-Indic digits are translated to ASCII digits;
-- punctuation, separators, and country-code formatting are otherwise preserved.
+- Iranian mobile numbers are rewritten to `09XXXXXXXXX`: after removing spaces, `-`, `(`, `)` and `.`, the forms `09XXXXXXXXX`, `9XXXXXXXXX`, `989XXXXXXXXX`, `+989XXXXXXXXX` and `00989XXXXXXXXX` all map to `0` + the 10 digits starting with `9` (product decision 2026-10-17; migration `V32` rewrote existing rows and refuses collisions);
+- any other number (landline, foreign) keeps its punctuation, separators, and country-code formatting.
 
 Flyway migrations canonicalize existing `iam.users.phone_number` rows and refuse
 to guess ownership when multiple rows would collapse to the same canonical phone
