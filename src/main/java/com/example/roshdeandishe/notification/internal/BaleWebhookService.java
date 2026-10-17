@@ -58,10 +58,12 @@ class BaleWebhookService {
     private final RecentUpdateIds<UpdateKey> recentUpdateIds;
     /** فقط وقتی pool مال خود سرویس است پر می‌شود (در تست‌ها null). */
     private final ThreadPoolExecutor ownedPool;
+    private final SchoolBotActivity botActivity;
 
     @Autowired
-    BaleWebhookService(BaleUpdateHandler updateHandler) {
+    BaleWebhookService(BaleUpdateHandler updateHandler, SchoolBotActivity botActivity) {
         this.updateHandler = updateHandler;
+        this.botActivity = botActivity;
         AtomicInteger threadNumber = new AtomicInteger();
         this.ownedPool = new ThreadPoolExecutor(
                 CORE_THREADS, MAX_THREADS, 60, TimeUnit.SECONDS,
@@ -74,8 +76,10 @@ class BaleWebhookService {
     }
 
     /** برای تست: Executor و حافظه‌ی شناسه‌ها از بیرون داده می‌شوند. */
-    BaleWebhookService(BaleUpdateHandler updateHandler, Executor executor, RecentUpdateIds<UpdateKey> recentUpdateIds) {
+    BaleWebhookService(BaleUpdateHandler updateHandler, Executor executor, RecentUpdateIds<UpdateKey> recentUpdateIds,
+                       SchoolBotActivity botActivity) {
         this.updateHandler = updateHandler;
+        this.botActivity = botActivity;
         this.pool = executor;
         this.executor = new ChatSerialExecutor<>(executor, QUEUE_CAPACITY, MAX_PENDING_PER_BOT, ChatKey::botId);
         this.recentUpdateIds = recentUpdateIds;
@@ -108,6 +112,7 @@ class BaleWebhookService {
             }
             Long chatId = chatIdOf(update);
             executor.execute(chatId == null ? null : new ChatKey(bot.botId(), chatId), () -> handleSafely(bot, update));
+            touchSafely(bot);
         } catch (RejectedExecutionException e) {
             // پردازش نشده، پس «دیده‌شده» هم نماند: اگر همین Update دوباره رسید، دور ریخته نشود
             if (updateId != null) {
@@ -117,6 +122,15 @@ class BaleWebhookService {
                     updateId, pool instanceof ExecutorService service && service.isShutdown());
         } catch (Exception e) {
             log.warn("پردازش Update ورودی از بله شکست خورد.", e);
+        }
+    }
+
+    /** ثبت زمان آخرین Update؛ خطای آن هرگز نباید پردازش یا پاسخ وب‌هوک را خراب کند. */
+    private void touchSafely(BotRef bot) {
+        try {
+            botActivity.touch(bot);
+        } catch (RuntimeException e) {
+            log.warn("ثبت آخرین فعالیت ربات {} شکست خورد: {}", bot.botId(), e.getClass().getSimpleName());
         }
     }
 

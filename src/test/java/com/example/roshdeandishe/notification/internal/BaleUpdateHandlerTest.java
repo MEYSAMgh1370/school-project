@@ -24,6 +24,7 @@ import java.util.Optional;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -43,6 +44,7 @@ class BaleUpdateHandlerTest {
     private StudentAnswers studentAnswers;
     private SchoolAnswers schoolAnswers;
     private BaleUpdateHandler handler;
+    private BotTokens tokens;
 
     @BeforeEach
     void setUp() {
@@ -56,9 +58,10 @@ class BaleUpdateHandlerTest {
         studentAnswers = mock(StudentAnswers.class);
         schoolAnswers = mock(SchoolAnswers.class);
         BotRouter router = new BotRouter(resolver, studentAnswers, mock(TimetableAnswers.class), schoolAnswers);
+        tokens = mock(BotTokens.class);
+        when(tokens.tokenFor(any())).thenReturn("tok");
         handler = new BaleUpdateHandler(links, client, iam, school, finance,
-                new BotContextLoader(links, iam), resolver, router,
-                new BotTokens("tok", mock(SchoolBotRepository.class), mock(TokenCipher.class)));
+                new BotContextLoader(links, iam, mock(SchoolBotRepository.class)), resolver, router, tokens);
         when(academic.listWards(any(), any())).thenReturn(List.of());
         when(academic.findMyEnrollment(any(), any())).thenReturn(Optional.empty());
     }
@@ -87,14 +90,14 @@ class BaleUpdateHandlerTest {
     }
 
     private void link(Long chatId, Long userId) {
-        when(links.findByChatId(chatId)).thenReturn(Optional.of(new BaleLinkEntity(null, userId, chatId, Instant.now())));
+        when(links.findByChat(BotRef.SHARED, chatId)).thenReturn(Optional.of(new BaleLinkEntity(null, userId, chatId, Instant.now())));
         when(iam.findUser(new UserId(userId)))
                 .thenReturn(Optional.of(new UserProfile(new UserId(userId), "a@b.c", "والد", "0912")));
     }
 
     @Test
     void callbackFromUnlinkedChatIsAnsweredAndGetsNotLinkedText() {
-        when(links.findByChatId(42L)).thenReturn(Optional.empty());
+        when(links.findByChat(BotRef.SHARED, 42L)).thenReturn(Optional.empty());
 
         handler.handle(BotRef.SHARED, callbackUpdate("cb1", 42L, "X"));
 
@@ -152,7 +155,7 @@ class BaleUpdateHandlerTest {
     void linkingSendsTheMenu() {
         when(iam.findUserByPhoneNumber("0912"))
                 .thenReturn(Optional.of(new UserProfile(new UserId(7L), "a@b.c", "والد", "0912")));
-        when(links.findByUserId(7L)).thenReturn(Optional.empty());
+        when(links.findByUser(BotRef.SHARED, 7L)).thenReturn(Optional.empty());
         link(42L, 7L);
         when(iam.findMembershipsByUser(new UserId(7L))).thenReturn(List.of());
 
@@ -165,7 +168,7 @@ class BaleUpdateHandlerTest {
     void ownContactInPrivateChatLinks() {
         when(iam.findUserByPhoneNumber("0912"))
                 .thenReturn(Optional.of(new UserProfile(new UserId(7L), "a@b.c", "والد", "0912")));
-        when(links.findByUserId(7L)).thenReturn(Optional.empty());
+        when(links.findByUser(BotRef.SHARED, 7L)).thenReturn(Optional.empty());
         link(42L, 7L);
         when(iam.findMembershipsByUser(new UserId(7L))).thenReturn(List.of());
 
@@ -204,7 +207,7 @@ class BaleUpdateHandlerTest {
     @Test
     void existingLinkOfThePhoneOwnerIsNotMovedByAForeignContact() {
         BaleLinkEntity existing = new BaleLinkEntity(null, 7L, 100L, Instant.now());
-        when(links.findByUserId(7L)).thenReturn(Optional.of(existing));
+        when(links.findByUser(BotRef.SHARED, 7L)).thenReturn(Optional.of(existing));
         when(iam.findUserByPhoneNumber("0912"))
                 .thenReturn(Optional.of(new UserProfile(new UserId(7L), "a@b.c", "والد", "0912")));
 
@@ -212,7 +215,7 @@ class BaleUpdateHandlerTest {
 
         assertThat(existing.getChatId()).isEqualTo(100L);
         verify(links, never()).save(any());
-        verify(links, never()).findByUserId(anyLong());
+        verify(links, never()).findByUser(any(), anyLong());
         verify(client).sendMessage("tok", 42L, BotTexts.CONTACT_NOT_OWN);
     }
 
@@ -308,7 +311,7 @@ class BaleUpdateHandlerTest {
     void linkConfirmationFallsBackToPlainTextWhenMenuFails() {
         when(iam.findUserByPhoneNumber("0912"))
                 .thenReturn(Optional.of(new UserProfile(new UserId(7L), "a@b.c", "والد", "0912")));
-        when(links.findByUserId(7L)).thenReturn(Optional.empty());
+        when(links.findByUser(BotRef.SHARED, 7L)).thenReturn(Optional.empty());
         link(42L, 7L);
         when(iam.findMembershipsByUser(new UserId(7L))).thenThrow(new IllegalStateException("boom"));
 
@@ -336,5 +339,119 @@ class BaleUpdateHandlerTest {
                 .contains(BotTexts.BTN_GRADES).doesNotContain(BotTexts.BTN_INVOICES);
         verify(client).sendMessage("tok", 42L, BotTexts.NOT_AVAILABLE);
         verifyNoInteractions(schoolAnswers);
+    }
+
+    private static final BotRef SCHOOL_BOT = BotRef.school(3, 7);
+
+    private static MembershipInfo membershipIn(Long userId, Long schoolId, boolean active) {
+        return new MembershipInfo(1L, new UserId(userId), "a@b.c", "والد", schoolId, "PARENT", active, true);
+    }
+
+    private void phoneOf7() {
+        when(iam.findUserByPhoneNumber("0912"))
+                .thenReturn(Optional.of(new UserProfile(new UserId(7L), "a@b.c", "والد", "0912")));
+    }
+
+    @Test
+    void schoolBotRepliesWithItsOwnToken() {
+        when(tokens.tokenFor(SCHOOL_BOT)).thenReturn("school-token");
+        when(links.findByChat(SCHOOL_BOT, 42L)).thenReturn(Optional.empty());
+
+        handler.handle(SCHOOL_BOT, textUpdate(42L, "سلام"));
+
+        verify(client).sendMessage("school-token", 42L, NOT_LINKED);
+        verify(client, never()).sendMessage(eq("tok"), anyLong(), any());
+    }
+
+    @Test
+    void nonMemberContactInSchoolBotIsRefused() {
+        phoneOf7();
+        when(iam.findMembershipsByUser(new UserId(7L))).thenReturn(List.of(membershipIn(7L, 8L, true)));
+        when(iam.isPlatformAdmin(new UserId(7L))).thenReturn(false);
+
+        handler.handle(SCHOOL_BOT, contactUpdate(42L, "private", 555L, "0912", 555L));
+
+        verify(client).sendMessage("tok", 42L, BotTexts.NOT_A_MEMBER);
+        verify(links, never()).save(any());
+    }
+
+    @Test
+    void endedMembershipDoesNotAllowLinkingInSchoolBot() {
+        phoneOf7();
+        when(iam.findMembershipsByUser(new UserId(7L))).thenReturn(List.of(membershipIn(7L, 7L, false)));
+
+        handler.handle(SCHOOL_BOT, contactUpdate(42L, "private", 555L, "0912", 555L));
+
+        verify(client).sendMessage("tok", 42L, BotTexts.NOT_A_MEMBER);
+        verify(links, never()).save(any());
+    }
+
+    @Test
+    void memberContactInSchoolBotLinksWithBotId() {
+        phoneOf7();
+        when(iam.findMembershipsByUser(new UserId(7L))).thenReturn(List.of(membershipIn(7L, 7L, true)));
+        when(links.findByUser(SCHOOL_BOT, 7L)).thenReturn(Optional.empty());
+
+        handler.handle(SCHOOL_BOT, contactUpdate(42L, "private", 555L, "0912", 555L));
+
+        org.mockito.ArgumentCaptor<BaleLinkEntity> saved = org.mockito.ArgumentCaptor.forClass(BaleLinkEntity.class);
+        verify(links).save(saved.capture());
+        assertThat(saved.getValue().getBotId()).isEqualTo(3L);
+        assertThat(saved.getValue().getUserId()).isEqualTo(7L);
+        assertThat(saved.getValue().getChatId()).isEqualTo(42L);
+    }
+
+    @Test
+    void platformAdminMayLinkToAnySchoolBot() {
+        phoneOf7();
+        when(iam.findMembershipsByUser(new UserId(7L))).thenReturn(List.of());
+        when(iam.isPlatformAdmin(new UserId(7L))).thenReturn(true);
+        when(links.findByUser(SCHOOL_BOT, 7L)).thenReturn(Optional.empty());
+
+        handler.handle(SCHOOL_BOT, contactUpdate(42L, "private", 555L, "0912", 555L));
+
+        org.mockito.ArgumentCaptor<BaleLinkEntity> saved = org.mockito.ArgumentCaptor.forClass(BaleLinkEntity.class);
+        verify(links).save(saved.capture());
+        assertThat(saved.getValue().getBotId()).isEqualTo(3L);
+    }
+
+    @Test
+    void sameChatIdIsLinkedSeparatelyPerBot() {
+        BaleLinkEntity sharedLink = new BaleLinkEntity(null, 7L, 42L, Instant.now());
+        when(links.findByUser(BotRef.SHARED, 7L)).thenReturn(Optional.of(sharedLink));
+        when(links.findByUser(SCHOOL_BOT, 7L)).thenReturn(Optional.empty());
+        phoneOf7();
+        when(iam.findMembershipsByUser(new UserId(7L))).thenReturn(List.of(membershipIn(7L, 7L, true)));
+
+        handler.handle(SCHOOL_BOT, contactUpdate(42L, "private", 555L, "0912", 555L));
+
+        org.mockito.ArgumentCaptor<BaleLinkEntity> saved = org.mockito.ArgumentCaptor.forClass(BaleLinkEntity.class);
+        verify(links).save(saved.capture());
+        assertThat(saved.getValue()).isNotSameAs(sharedLink);
+        assertThat(saved.getValue().getBotId()).isEqualTo(3L);
+        assertThat(sharedLink.getBotId()).isNull();
+        assertThat(sharedLink.getChatId()).isEqualTo(42L);
+    }
+
+    @Test
+    void ownershipIsStillCheckedBeforeMembership() {
+        handler.handle(SCHOOL_BOT, contactUpdate(42L, "private", 555L, "0912", 556L));
+
+        verify(client).sendMessage("tok", 42L, BotTexts.CONTACT_NOT_OWN);
+        verify(links, never()).save(any());
+        verifyNoInteractions(iam);
+    }
+
+    @Test
+    void sharedBotLinkingNeedsNoMembership() {
+        phoneOf7();
+        when(links.findByUser(BotRef.SHARED, 7L)).thenReturn(Optional.empty());
+        link(42L, 7L);
+        when(iam.findMembershipsByUser(new UserId(7L))).thenReturn(List.of());
+
+        handler.handle(BotRef.SHARED, contactUpdate(42L, "private", 555L, "0912", 555L));
+
+        verify(links).save(any(BaleLinkEntity.class));
+        verify(iam, never()).isPlatformAdmin(any());
     }
 }

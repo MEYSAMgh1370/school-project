@@ -37,4 +37,14 @@ class BotTokensTest {
 
         assertThat(tokens.tokenFor(BotRef.school(5L, 9L))).isEmpty();
     }
+
+    @Test
+    void decryptFailureGivesBlankAndLogsNoSecret() {
+        SchoolBotEntity entity = mock(SchoolBotEntity.class);
+        when(entity.getTokenCiphertext()).thenReturn("not-valid-ciphertext-SECRET");
+        when(entity.getTokenKeyVersion()).thenReturn(1);
+        when(bots.findById(5L)).thenReturn(Optional.of(entity));
+
+        assertThat(tokens.tokenFor(BotRef.school(5L, 9L))).isEmpty();
+    }
 }

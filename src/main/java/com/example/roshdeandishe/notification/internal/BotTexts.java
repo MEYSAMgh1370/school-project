@@ -62,6 +62,8 @@ final class BotTexts {
     static final String CONTACT_NOT_OWN =
             "لطفاً شماره‌ی خودتان را با دکمه‌ی «اشتراک‌گذاری شماره تلفن» بفرستید؛ " +
             "شماره‌ی شخص دیگری پذیرفته نمی‌شود.";
+    /** لینک‌کردن در ربات یک مدرسه، برای کسی که عضو فعال آن مدرسه نیست. */
+    static final String NOT_A_MEMBER = "شما عضو این مدرسه نیستید.";
     static final String PRIVATE_CHAT_ONLY = "این بات فقط در گفتگوی خصوصی کار می‌کند.";
 
     static final String NO_MEMBERSHIPS = "شما در حال حاضر عضو هیچ مدرسه‌ای نیستید.";

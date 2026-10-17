@@ -26,9 +26,10 @@ class BaleWebhookServiceTest {
 
     private final BaleUpdateHandler handler = mock(BaleUpdateHandler.class);
     private final Executor direct = Runnable::run;
+    private final SchoolBotActivity activity = mock(SchoolBotActivity.class);
 
     private BaleWebhookService service(Executor executor) {
-        return new BaleWebhookService(handler, executor, new RecentUpdateIds<>(100));
+        return new BaleWebhookService(handler, executor, new RecentUpdateIds<>(100), activity);
     }
 
     @Test
@@ -157,5 +158,18 @@ class BaleWebhookServiceTest {
 
     private static String update(long updateId, long chatId) {
         return "{\"update_id\":" + updateId + ",\"message\":{\"message_id\":1,\"chat\":{\"id\":" + chatId + "},\"text\":\"x\"}}";
+    }
+
+    @Test
+    void touchesTheBotAfterASuccessfulEnqueueOnly() {
+        service(direct).processRawUpdate(BOT, WITH_ID_9);
+        verify(activity).touch(BOT);
+
+        Executor rejecting = task -> {
+            throw new RejectedExecutionException("full");
+        };
+        service(rejecting).processRawUpdate(BOT, NO_ID);
+        service(direct).processRawUpdate(BOT, "{not json");
+        verify(activity, times(1)).touch(any());
     }
 }
