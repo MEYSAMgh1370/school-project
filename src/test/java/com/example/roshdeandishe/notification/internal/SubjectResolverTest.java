@@ -1,0 +1,202 @@
+package com.example.roshdeandishe.notification.internal;
+
+import com.example.roshdeandishe.academic.AcademicFacade;
+import com.example.roshdeandishe.academic.AcademicFacade.ClassId;
+import com.example.roshdeandishe.academic.AcademicFacade.EnrollmentInfo;
+import com.example.roshdeandishe.academic.AcademicFacade.StudentId;
+import com.example.roshdeandishe.academic.AcademicFacade.StudentInfo;
+import com.example.roshdeandishe.iam.IamFacade;
+import com.example.roshdeandishe.iam.IamFacade.MembershipInfo;
+import com.example.roshdeandishe.iam.IamFacade.UserId;
+import com.example.roshdeandishe.iam.IamFacade.UserProfile;
+import com.example.roshdeandishe.school.SchoolFacade;
+import com.example.roshdeandishe.school.SchoolFacade.SchoolInfo;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+
+import java.util.List;
+import java.util.Optional;
+
+import static com.example.roshdeandishe.notification.internal.BotIntent.EVENTS;
+import static com.example.roshdeandishe.notification.internal.BotIntent.GRADES;
+import static com.example.roshdeandishe.notification.internal.BotIntent.INVOICES;
+import static com.example.roshdeandishe.notification.internal.BotIntent.TEACHER_TODAY;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
+
+class SubjectResolverTest {
+
+    private static final Long USER = 7L;
+
+    private AcademicFacade academic;
+    private SchoolFacade school;
+    private IamFacade iam;
+    private SubjectResolver resolver;
+
+    @BeforeEach
+    void setUp() {
+        academic = mock(AcademicFacade.class);
+        school = mock(SchoolFacade.class);
+        iam = mock(IamFacade.class);
+        resolver = new SubjectResolver(academic, school, iam);
+        when(school.findSchool(any())).thenReturn(Optional.empty());
+        when(iam.findUser(any())).thenReturn(Optional.empty());
+        when(academic.listWards(any(), any())).thenReturn(List.of());
+        when(academic.findMyEnrollment(any(), any())).thenReturn(Optional.empty());
+    }
+
+    private static MembershipInfo m(Long schoolId, String role, boolean active) {
+        return new MembershipInfo(1L, new UserId(USER), "a@b.c", "علی", schoolId, role, active, true);
+    }
+
+    private static SchoolInfo schoolInfo(Long id, String name) {
+        return new SchoolInfo(new com.example.roshdeandishe.school.SchoolFacade.SchoolId(id), name, null,
+                "Asia/Tehran", null, null, null, null);
+    }
+
+    private static BotContext ctx(MembershipInfo... memberships) {
+        List<MembershipInfo> active = java.util.Arrays.stream(memberships).filter(MembershipInfo::active).toList();
+        return new BotContext(42L, new UserId(USER), "علی رضایی", active);
+    }
+
+    @Test
+    void studentSeesOwnEnrolment() {
+        when(academic.findMyEnrollment(USER, 10L)).thenReturn(Optional.of(
+                new EnrollmentInfo(new StudentId(100L), 10L, new ClassId(5L), "اول", "الف")));
+
+        List<BotTarget> targets = resolver.targets(ctx(m(10L, "STUDENT", true)), GRADES);
+
+        assertThat(targets).containsExactly(
+                new BotTarget.Student(10L, 100L, USER, 5L, "علی رضایی", "مدرسه #10", false));
+        assertThat(targets.get(0).id()).isEqualTo(100L);
+    }
+
+    @Test
+    void parentWhoIsAlsoAStudentGetsBoth() {
+        when(academic.listWards(USER, 10L)).thenReturn(List.of(
+                new StudentInfo(new StudentId(200L), 2000L, 10L, null)));
+        when(iam.findUser(new UserId(2000L)))
+                .thenReturn(Optional.of(new UserProfile(new UserId(2000L), "s@b.c", "سارا", null)));
+        when(academic.findMyEnrollment(USER, 10L)).thenReturn(Optional.of(
+                new EnrollmentInfo(new StudentId(100L), 10L, null, null, null)));
+
+        List<BotTarget> targets = resolver.targets(ctx(m(10L, "PARENT", true), m(10L, "STUDENT", true)), GRADES);
+
+        assertThat(targets).containsExactlyInAnyOrder(
+                new BotTarget.Student(10L, 200L, 2000L, null, "سارا", "مدرسه #10", true),
+                new BotTarget.Student(10L, 100L, USER, null, "علی رضایی", "مدرسه #10", false));
+    }
+
+    @Test
+    void invoicesNeverTargetTheUsersOwnEnrolment() {
+        when(academic.findMyEnrollment(USER, 10L)).thenReturn(Optional.of(
+                new EnrollmentInfo(new StudentId(100L), 10L, null, null, null)));
+
+        assertThat(resolver.targets(ctx(m(10L, "STUDENT", true)), INVOICES)).isEmpty();
+    }
+
+    @Test
+    void invoicesTargetWardsOnly() {
+        when(academic.listWards(USER, 10L)).thenReturn(List.of(
+                new StudentInfo(new StudentId(200L), 2000L, 10L, null)));
+        when(academic.findMyEnrollment(USER, 10L)).thenReturn(Optional.of(
+                new EnrollmentInfo(new StudentId(100L), 10L, null, null, null)));
+
+        List<BotTarget> targets = resolver.targets(ctx(m(10L, "PARENT", true), m(10L, "STUDENT", true)), INVOICES);
+
+        assertThat(targets).extracting(BotTarget::id).containsExactly(200L);
+        assertThat(targets.get(0)).isInstanceOfSatisfying(BotTarget.Student.class,
+                s -> assertThat(s.name()).isEqualTo("دانش‌آموز #2000"));
+    }
+
+    @Test
+    void inactiveMembershipsGiveNoTargets() {
+        // BotContext keeps only active memberships; the resolver must not look at inactive ones either
+        BotContext c = new BotContext(42L, new UserId(USER), "علی",
+                List.of(m(10L, "PARENT", false), m(10L, "STUDENT", false), m(10L, "TEACHER", false)));
+
+        for (BotIntent intent : BotIntent.values()) {
+            assertThat(resolver.targets(c, intent)).as(intent.name()).isEmpty();
+        }
+    }
+
+    @Test
+    void teacherSchoolsComeFromActiveTeacherMemberships() {
+        when(school.findSchool(any())).thenAnswer(inv -> Optional.empty());
+
+        List<BotTarget> teacher = resolver.targets(
+                ctx(m(20L, "TEACHER", true), m(10L, "TEACHER", true), m(30L, "PARENT", true)), TEACHER_TODAY);
+        List<BotTarget> member = resolver.targets(
+                ctx(m(20L, "TEACHER", true), m(10L, "PARENT", true), m(10L, "STUDENT", true)), EVENTS);
+
+        assertThat(teacher).containsExactly(new BotTarget.School(10L, "مدرسه #10"), new BotTarget.School(20L, "مدرسه #20"));
+        assertThat(member).containsExactly(new BotTarget.School(10L, "مدرسه #10"), new BotTarget.School(20L, "مدرسه #20"));
+    }
+
+    @Test
+    void parentInTwoSchoolsGetsWardsInSchoolThenFacadeOrderWithOwnSchoolNames() {
+        when(school.findSchool(new com.example.roshdeandishe.school.SchoolFacade.SchoolId(10L)))
+                .thenReturn(Optional.of(schoolInfo(10L, "مدرسه‌ی ده")));
+        when(school.findSchool(new com.example.roshdeandishe.school.SchoolFacade.SchoolId(20L)))
+                .thenReturn(Optional.of(schoolInfo(20L, "مدرسه‌ی بیست")));
+        when(academic.listWards(USER, 10L)).thenReturn(List.of(
+                new StudentInfo(new StudentId(101L), 1001L, 10L, null),
+                new StudentInfo(new StudentId(100L), 1000L, 10L, null)));
+        when(academic.listWards(USER, 20L)).thenReturn(List.of(
+                new StudentInfo(new StudentId(200L), 2000L, 20L, null)));
+        when(iam.findUser(any())).thenAnswer(inv -> {
+            UserId id = inv.getArgument(0);
+            return Optional.of(new UserProfile(id, "s@b.c", "نام " + id.value(), null));
+        });
+
+        // ترتیبِ عضویت‌ها عمداً برعکس است؛ خروجی باید بر اساس schoolId مرتب باشد
+        List<BotTarget> targets = resolver.targets(ctx(m(20L, "PARENT", true), m(10L, "PARENT", true)), GRADES);
+
+        assertThat(targets).containsExactly(
+                new BotTarget.Student(10L, 101L, 1001L, null, "نام 1001", "مدرسه‌ی ده", true),
+                new BotTarget.Student(10L, 100L, 1000L, null, "نام 1000", "مدرسه‌ی ده", true),
+                new BotTarget.Student(20L, 200L, 2000L, null, "نام 2000", "مدرسه‌ی بیست", true));
+    }
+
+    @Test
+    void schoolTargetsNeverTouchTheAcademicFacade() {
+        BotContext teacher = ctx(m(10L, "TEACHER", true));
+
+        resolver.targets(teacher, TEACHER_TODAY);
+        resolver.targets(teacher, EVENTS);
+
+        org.mockito.Mockito.verifyNoInteractions(academic);
+    }
+
+    @Test
+    void menuCheckForMultiChildParentIsCheap() {
+        when(academic.listWards(USER, 10L)).thenReturn(List.of(
+                new StudentInfo(new StudentId(100L), 1000L, 10L, null),
+                new StudentInfo(new StudentId(101L), 1001L, 10L, null),
+                new StudentInfo(new StudentId(102L), 1002L, 10L, null)));
+        BotContext parent = ctx(m(10L, "PARENT", true), m(10L, "TEACHER", true));
+
+        for (BotIntent.TargetKind kind : BotIntent.TargetKind.values()) {
+            resolver.hasAny(parent, kind);
+        }
+
+        org.mockito.Mockito.verify(academic, org.mockito.Mockito.times(2)).listWards(USER, 10L); // STUDENT_TARGET و WARD_TARGET
+        org.mockito.Mockito.verify(iam, org.mockito.Mockito.never()).findUser(any());
+        org.mockito.Mockito.verify(school, org.mockito.Mockito.never()).findSchool(any());
+    }
+
+    @Test
+    void hasAnyAgreesWithTargets() {
+        assertThat(resolver.hasAny(ctx(m(10L, "STUDENT", true)), BotIntent.TargetKind.WARD_TARGET)).isFalse();
+        assertThat(resolver.hasAny(ctx(m(10L, "STUDENT", true)), BotIntent.TargetKind.STUDENT_TARGET)).isFalse();
+        when(academic.findMyEnrollment(USER, 10L)).thenReturn(Optional.of(
+                new EnrollmentInfo(new StudentId(100L), 10L, null, null, null)));
+        assertThat(resolver.hasAny(ctx(m(10L, "STUDENT", true)), BotIntent.TargetKind.STUDENT_TARGET)).isTrue();
+        assertThat(resolver.hasAny(ctx(m(10L, "STUDENT", true)), BotIntent.TargetKind.WARD_TARGET)).isFalse();
+        assertThat(resolver.hasAny(ctx(m(10L, "STUDENT", true)), BotIntent.TargetKind.TEACHER_SCHOOL)).isFalse();
+        assertThat(resolver.hasAny(ctx(m(10L, "STUDENT", true)), BotIntent.TargetKind.MEMBER_SCHOOL)).isTrue();
+        assertThat(resolver.hasAny(ctx(), BotIntent.TargetKind.MEMBER_SCHOOL)).isFalse();
+    }
+}

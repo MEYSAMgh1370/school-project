@@ -8,7 +8,9 @@ import org.junit.jupiter.api.Test;
 
 import java.io.IOException;
 import java.net.InetSocketAddress;
+import java.nio.charset.StandardCharsets;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicReference;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -22,13 +24,14 @@ class BaleClientDeliverTest {
     private HttpServer server;
     private final AtomicInteger status = new AtomicInteger(200);
     private final AtomicInteger requests = new AtomicInteger();
+    private final AtomicReference<String> lastBody = new AtomicReference<>();
 
     @BeforeEach
     void startServer() throws IOException {
         server = HttpServer.create(new InetSocketAddress("127.0.0.1", 0), 0);
         server.createContext("/", exchange -> {
             requests.incrementAndGet();
-            exchange.getRequestBody().readAllBytes();
+            lastBody.set(new String(exchange.getRequestBody().readAllBytes(), StandardCharsets.UTF_8));
             byte[] body = "{}".getBytes();
             exchange.getResponseHeaders().add("Content-Type", "application/json");
             exchange.sendResponseHeaders(status.get(), body.length);
@@ -86,5 +89,12 @@ class BaleClientDeliverTest {
         assertThat(client("").deliver(1L, "سلام")).isEqualTo(DeliveryResult.UNDELIVERABLE);
         assertThat(client("   ").deliver(1L, "سلام")).isEqualTo(DeliveryResult.UNDELIVERABLE);
         assertThat(requests.get()).isZero();
+    }
+
+    @Test
+    void sentTextCarriesNoMarkdownCharacters() {
+        client("token").deliver(1L, "یادآوری: جلسه‌ی _اولیا_ و *مربیان*");
+
+        assertThat(lastBody.get()).contains("\"text\":\"یادآوری: جلسه‌ی ˍاولیاˍ و ∗مربیان∗\"");
     }
 }
