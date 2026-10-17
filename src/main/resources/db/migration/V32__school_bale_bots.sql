@@ -11,7 +11,7 @@ create table bale.school_bots (
     bot_username        varchar(64)  not null,
     token_ciphertext    text         not null,
     token_key_version   int          not null,
-    webhook_secret_hash char(64)     not null unique,
+    webhook_secret_hash varchar(64)  not null unique,
     business_enabled    boolean      not null default false,
     status              varchar(16)  not null,
     last_update_at      timestamptz,
