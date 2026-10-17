@@ -41,7 +41,9 @@ public final class NavCatalog {
                     new Link("/promotion", "ارتقای پایه", "ارتقای دانش‌آموزان به سال جدید و جا دادن در کلاس‌ها",
                             List.of(ADMIN), List.of()).withPermissions("ACADEMIC_YEAR_MANAGE").withIcon("class"),
                     new Link("/calendar", "تقویم مدرسه", "روزهای تعطیل مدرسه؛ در این روزها حضور و غیاب گرفته نمی‌شود",
-                            List.of(ADMIN), List.of(ADMIN)).withPermissions("CALENDAR_MANAGE").withIcon("calendar"))),
+                            List.of(ADMIN), List.of(ADMIN)).withPermissions("CALENDAR_MANAGE").withIcon("calendar"),
+                    new Link("/bale-bot", "بات بله‌ی مدرسه", "بات اختصاصی مدرسه در بله؛ ثبت، تعویض توکن و حذف",
+                            List.of(ADMIN), List.of()).withPermissions("BALE_BOT_MANAGE").withIcon("share"))),
             new Group("education", "آموزش", List.of(
                     new Link("/classes", "کلاس‌ها", "کلاس‌ها و ثبت‌نام دانش‌آموزان",
                             List.of(ADMIN, TEACHER), List.of(ADMIN, TEACHER)).withPermissions("CLASS_VIEW").withIcon("class"),
