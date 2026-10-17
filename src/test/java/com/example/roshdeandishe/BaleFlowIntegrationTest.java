@@ -265,6 +265,31 @@ class BaleFlowIntegrationTest {
     }
 
     @Test
+    void internationalContactShareLinksUserStoredInNationalForm() throws Exception {
+        // بله شماره را به شکل بین‌المللی (989…) می‌فرستد، ولی والد روی سایت
+        // 09… وارد کرده است - PhoneNumberCanonicalizer هر دو را 09… می‌کند.
+        String email = "bale-intl-" + System.nanoTime() + "@roshdeandishe.test";
+        String nationalDigits = "%07d".formatted(SEQ.incrementAndGet() % 10_000_000);
+        MockHttpSession session = registerAndLogin(email, "والد بین‌المللی");
+        setPhoneNumber(session, "0912" + nationalDigits);
+        long chatId = uniqueChatId();
+
+        mockMvc.perform(post("/api/bale/webhook/" + WEBHOOK_SECRET)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(contactShareUpdateJson(chatId, "98912" + nationalDigits)))
+                .andExpect(status().isOk());
+
+        awaitSentMessageCount(1);
+        assertThat(SENT_MESSAGES.get(0)).contains("متصل شد").contains("والد بین‌المللی");
+        await().atMost(Duration.ofSeconds(10)).untilAsserted(() -> {
+            Long linkedChatId = jdbcTemplate.queryForObject(
+                    "select chat_id from bale.bale_links where user_id = (select id from iam.users where email = ?)",
+                    Long.class, email);
+            assertThat(linkedChatId).isEqualTo(chatId);
+        });
+    }
+
+    @Test
     void linkedParentCanQuerySchoolsAndWardsThroughTextCommands() throws Exception {
         // academicFacade.createClass اکنون schoolId را در برابر یک SchoolEntity
         // واقعی اعتبارسنجی می‌کند (CLAUDE.md §4) - uniqueSchoolId ساختگی دیگر کافی نیست.
