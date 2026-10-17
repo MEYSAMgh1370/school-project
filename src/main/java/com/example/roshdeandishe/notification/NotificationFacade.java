@@ -22,11 +22,21 @@ public interface NotificationFacade {
     boolean sendMessageToUser(Long userId, String text);
 
     /**
+     * مثل {@link #sendMessageToUser(Long, String)} ولی با مدرسه‌ی مقصد: اگر مدرسه رباتِ فعالِ اختصاصی داشته باشد
+     * پیام فقط از همان ربات می‌رود (بدون بازگشت به ربات مشترک)؛ وگرنه مثل قبل از ربات مشترک. {@code schoolId}
+     * می‌تواند null باشد (ربات مشترک).
+     */
+    boolean sendMessageToUser(Long userId, Long schoolId, String text);
+
+    /**
      * مثل {@link #sendMessageToUser} ولی نتیجه را دقیق می‌گوید تا فراخوان‌کننده‌ای که می‌تواند دوباره تلاش کند
      * (مثلاً job یادآوریِ رویدادها) «کاربر لینک نشده» را از «ارسال موقتاً شکست خورد» جدا کند. مثل
      * {@code sendMessageToUser} هرگز exception دامنه‌ای پرتاب نمی‌کند.
      */
     DeliveryResult deliverMessageToUser(Long userId, String text);
+
+    /** نسخه‌ی مدرسه‌آگاهِ {@link #deliverMessageToUser(Long, String)} با همان قواعد مسیریابی {@code sendMessageToUser(userId, schoolId, text)}. */
+    DeliveryResult deliverMessageToUser(Long userId, Long schoolId, String text);
 
     /**
      * {@code SENT}: پیام رسید. {@code NOT_LINKED}: کاربر روی هیچ کانالی حساب لینک‌شده ندارد (تلاش دوباره بی‌فایده است
@@ -44,6 +54,9 @@ public interface NotificationFacade {
      * (BaleUpdate) کاملاً داخلی همین ماژول است تا BaleWebhookController
      * (که طبق قرارداد پروژه در ریشه‌ی ماژول است، نه internal/) هرگز نیازی
      * به وارد کردن یک نوع internal نداشته باشد.
+     * <p>
+     * {@code secret} بخش مخفی مسیر وب‌هوک است و ربات مقصد از روی آن تشخیص داده می‌شود. false یعنی راز به
+     * هیچ رباتی نمی‌خورد و بدنه اصلاً پارس نشده (کنترلر ۴۰۴ می‌دهد)؛ true یعنی Update پذیرفته شد.
      */
-    void processIncomingUpdate(String rawJson);
+    boolean processIncomingUpdate(String secret, String rawJson);
 }

@@ -24,6 +24,9 @@ final class BotTexts {
     static final String BTN_EVENTS = "رویدادهای نزدیک";
     static final String BTN_HELP = "راهنما";
 
+    /** lastError ربات مدرسه وقتی بله توکن را رد کرد (HTTP 401). */
+    static final String BOT_TOKEN_INVALID = "توکن بات نامعتبر شده است";
+
     static final String UNKNOWN_TEXT = "متوجه نشدم. لطفاً از دکمه‌های پایین انتخاب کنید.";
     static final String NOT_AVAILABLE = "این مورد برای شما در دسترس نیست.";
     static final String CHOOSE_STUDENT = "برای کدام دانش‌آموز؟";
@@ -62,6 +65,8 @@ final class BotTexts {
     static final String CONTACT_NOT_OWN =
             "لطفاً شماره‌ی خودتان را با دکمه‌ی «اشتراک‌گذاری شماره تلفن» بفرستید؛ " +
             "شماره‌ی شخص دیگری پذیرفته نمی‌شود.";
+    /** لینک‌کردن در ربات یک مدرسه، برای کسی که عضو فعال آن مدرسه نیست. */
+    static final String NOT_A_MEMBER = "شما عضو این مدرسه نیستید.";
     static final String PRIVATE_CHAT_ONLY = "این بات فقط در گفتگوی خصوصی کار می‌کند.";
 
     static final String NO_MEMBERSHIPS = "شما در حال حاضر عضو هیچ مدرسه‌ای نیستید.";

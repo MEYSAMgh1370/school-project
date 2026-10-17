@@ -156,6 +156,10 @@ roshdeandishe:
     # یعنی وب‌هوک همیشه 404 می‌دهد (fail closed) - رجوع به application.yml.
     bot-token: ${BALE_BOT_TOKEN:}
     webhook-secret: ${BALE_WEBHOOK_SECRET:}
+    # کلید رمزنگاریِ توکنِ ربات‌های مدرسه (Base64، ۲۵۶ بیت)؛ خالی = ثبت ربات مدرسه رد می‌شود.
+    token-encryption-key: ${BALE_TOKEN_ENCRYPTION_KEY:}
+    # نشانیِ عمومیِ برنامه برای وب‌هوکِ ربات‌های مدرسه؛ در production اجباری است.
+    webhook-base-url: ${APP_BASE_URL}
   sms:
     # ست کردن SMS_API_KEY ورود با پیامک را فعال نمی‌کند: اتصال به ارائه‌دهنده
     # در SmsDriver نوشته نشده و هر مقدار غیرخالی شکست برمی‌گرداند. با

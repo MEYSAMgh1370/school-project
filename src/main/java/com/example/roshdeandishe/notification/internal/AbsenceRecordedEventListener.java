@@ -67,7 +67,7 @@ class AbsenceRecordedEventListener {
 
             for (Long parentUserId : parents) {
                 try {
-                    notificationFacade.sendMessageToUser(parentUserId, text);
+                    notificationFacade.sendMessageToUser(parentUserId, event.schoolId(), text);
                 } catch (RuntimeException e) {
                     log.warn("ارسال اطلاع‌رسانی غیبت به ولیِ {} شکست خورد", parentUserId, e);
                 }

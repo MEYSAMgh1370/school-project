@@ -27,16 +27,21 @@ class BaleLinkEntity {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(name = "user_id", nullable = false, unique = true)
+    /** خالی = پیوندِ ربات مشترک؛ در غیر این صورت شناسه‌ی school_bots (یکتایی به‌ازای هر ربات). */
+    @Column(name = "bot_id")
+    private Long botId;
+
+    @Column(name = "user_id", nullable = false)
     private Long userId;
 
-    @Column(name = "chat_id", nullable = false, unique = true)
+    @Column(name = "chat_id", nullable = false)
     private Long chatId;
 
     @Column(name = "linked_at", nullable = false)
     private Instant linkedAt;
 
-    BaleLinkEntity(Long userId, Long chatId, Instant linkedAt) {
+    BaleLinkEntity(Long botId, Long userId, Long chatId, Instant linkedAt) {
+        this.botId = botId;
         this.userId = userId;
         this.chatId = chatId;
         this.linkedAt = linkedAt;

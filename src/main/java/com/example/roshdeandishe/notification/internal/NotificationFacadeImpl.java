@@ -4,16 +4,19 @@ import com.example.roshdeandishe.notification.NotificationFacade;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
+import java.util.Optional;
 
 @Service
 class NotificationFacadeImpl implements NotificationFacade {
 
     private final List<NotificationChannel> channels;
     private final BaleWebhookService webhookService;
+    private final BotResolver botResolver;
 
-    NotificationFacadeImpl(List<NotificationChannel> channels, BaleWebhookService webhookService) {
+    NotificationFacadeImpl(List<NotificationChannel> channels, BaleWebhookService webhookService, BotResolver botResolver) {
         this.channels = channels;
         this.webhookService = webhookService;
+        this.botResolver = botResolver;
     }
 
     /**
@@ -25,7 +28,12 @@ class NotificationFacadeImpl implements NotificationFacade {
      */
     @Override
     public boolean sendMessageToUser(Long userId, String text) {
-        return deliverMessageToUser(userId, text) == DeliveryResult.SENT;
+        return sendMessageToUser(userId, null, text);
+    }
+
+    @Override
+    public boolean sendMessageToUser(Long userId, Long schoolId, String text) {
+        return deliverMessageToUser(userId, schoolId, text) == DeliveryResult.SENT;
     }
 
     /**
@@ -35,9 +43,14 @@ class NotificationFacadeImpl implements NotificationFacade {
      */
     @Override
     public DeliveryResult deliverMessageToUser(Long userId, String text) {
+        return deliverMessageToUser(userId, null, text);
+    }
+
+    @Override
+    public DeliveryResult deliverMessageToUser(Long userId, Long schoolId, String text) {
         DeliveryResult worst = DeliveryResult.NOT_LINKED;
         for (NotificationChannel channel : channels) {
-            DeliveryResult result = channel.deliver(userId, text);
+            DeliveryResult result = channel.deliver(userId, schoolId, text);
             if (result == DeliveryResult.SENT) {
                 return result;
             }
@@ -50,7 +63,12 @@ class NotificationFacadeImpl implements NotificationFacade {
     }
 
     @Override
-    public void processIncomingUpdate(String rawJson) {
-        webhookService.processRawUpdate(rawJson);
+    public boolean processIncomingUpdate(String secret, String rawJson) {
+        Optional<BotRef> bot = botResolver.resolve(secret);
+        if (bot.isEmpty()) {
+            return false;
+        }
+        webhookService.processRawUpdate(bot.get(), rawJson);
+        return true;
     }
 }

@@ -29,7 +29,7 @@ class ChatSerialExecutorTest {
 
     @Test
     void sameKeyRunsInSubmissionOrder() throws Exception {
-        var executor = new ChatSerialExecutor(pool, 100);
+        var executor = new ChatSerialExecutor<Long>(pool, 100, 100, k -> null);
         List<Integer> order = Collections.synchronizedList(new ArrayList<>());
         CountDownLatch done = new CountDownLatch(50);
         for (int i = 0; i < 50; i++) {
@@ -50,7 +50,7 @@ class ChatSerialExecutorTest {
 
     @Test
     void differentKeysRunInParallel() throws Exception {
-        var executor = new ChatSerialExecutor(pool, 100);
+        var executor = new ChatSerialExecutor<Long>(pool, 100, 100, k -> null);
         CountDownLatch release = new CountDownLatch(1);
         CountDownLatch otherDone = new CountDownLatch(1);
         executor.execute(1L, () -> await(release));
@@ -62,7 +62,7 @@ class ChatSerialExecutorTest {
 
     @Test
     void nullKeyRunsWithoutOrdering() throws Exception {
-        var executor = new ChatSerialExecutor(pool, 100);
+        var executor = new ChatSerialExecutor<Long>(pool, 100, 100, k -> null);
         CountDownLatch release = new CountDownLatch(1);
         CountDownLatch bothRan = new CountDownLatch(2);
         executor.execute(null, () -> {
@@ -77,7 +77,7 @@ class ChatSerialExecutorTest {
 
     @Test
     void overMaxPendingIsRejected() throws Exception {
-        var executor = new ChatSerialExecutor(pool, 2);
+        var executor = new ChatSerialExecutor<Long>(pool, 2, 2, k -> null);
         CountDownLatch started = new CountDownLatch(1);
         CountDownLatch release = new CountDownLatch(1);
         executor.execute(1L, () -> {
@@ -95,7 +95,7 @@ class ChatSerialExecutorTest {
 
     @Test
     void aFailingTaskDoesNotStallTheChat() throws Exception {
-        var executor = new ChatSerialExecutor(pool, 100);
+        var executor = new ChatSerialExecutor<Long>(pool, 100, 100, k -> null);
         CountDownLatch secondRan = new CountDownLatch(1);
         executor.execute(1L, () -> {
             throw new IllegalStateException("boom");
@@ -107,7 +107,7 @@ class ChatSerialExecutorTest {
 
     @Test
     void maxPendingIsGlobalAcrossKeysAndARejectedTaskNeverRuns() throws Exception {
-        var executor = new ChatSerialExecutor(pool, 2);
+        var executor = new ChatSerialExecutor<Long>(pool, 2, 2, k -> null);
         CountDownLatch started = new CountDownLatch(2);
         CountDownLatch release = new CountDownLatch(1);
         for (long key : new long[] {1L, 2L}) {
@@ -138,7 +138,7 @@ class ChatSerialExecutorTest {
 
     @Test
     void anErrorFromATaskDoesNotStallTheChat() throws Exception {
-        var executor = new ChatSerialExecutor(pool, 100);
+        var executor = new ChatSerialExecutor<Long>(pool, 100, 100, k -> null);
         CountDownLatch secondRan = new CountDownLatch(1);
         executor.execute(1L, () -> {
             throw new AssertionError("boom");
@@ -151,17 +151,80 @@ class ChatSerialExecutorTest {
     @Test
     void anErrorFromThePoolLeavesTheKeyUsable() throws Exception {
         AtomicBoolean fail = new AtomicBoolean(true);
-        var executor = new ChatSerialExecutor(task -> {
+        var executor = new ChatSerialExecutor<Long>(task -> {
             if (fail.getAndSet(false)) {
                 throw new NoClassDefFoundError("boom");
             }
             pool.execute(task);
-        }, 1);
+        }, 1, 1, k -> null);
         assertThatThrownBy(() -> executor.execute(1L, () -> { })).isInstanceOf(NoClassDefFoundError.class);
 
         CountDownLatch ran = new CountDownLatch(1);
         executor.execute(1L, ran::countDown);
         assertThat(ran.await(WAIT_SECONDS, TimeUnit.SECONDS)).isTrue();
+    }
+
+    @Test
+    void oneGroupCannotExceedItsShare() throws Exception {
+        var executor = new ChatSerialExecutor<Key>(pool, 100, 40, Key::bot);
+        CountDownLatch started = new CountDownLatch(1);
+        CountDownLatch release = new CountDownLatch(1);
+        executor.execute(new Key(1L, 1L), () -> {
+            started.countDown();
+            await(release);
+        });
+        assertThat(started.await(WAIT_SECONDS, TimeUnit.SECONDS)).isTrue();
+        // یک کار در حال اجراست و دیگر منتظر شمرده نمی‌شود؛ ۴۰ کار منتظر سهم کامل گروه است
+        for (int i = 0; i < 40; i++) {
+            executor.execute(new Key(1L, 1L), () -> { });
+        }
+
+        AtomicBoolean rejectedRan = new AtomicBoolean();
+        assertThatThrownBy(() -> executor.execute(new Key(1L, 2L), () -> rejectedRan.set(true)))
+                .isInstanceOf(RejectedExecutionException.class);
+        CountDownLatch otherRan = new CountDownLatch(1);
+        executor.execute(new Key(2L, 1L), otherRan::countDown);
+        release.countDown();
+        assertThat(otherRan.await(WAIT_SECONDS, TimeUnit.SECONDS)).isTrue();
+        assertThat(rejectedRan).isFalse();
+    }
+
+    @Test
+    void groupCountIsReleasedWhenTasksRun() throws Exception {
+        var executor = new ChatSerialExecutor<Key>(pool, 100, 2, Key::bot);
+        CountDownLatch started = new CountDownLatch(1);
+        CountDownLatch release = new CountDownLatch(1);
+        executor.execute(new Key(1L, 1L), () -> {
+            started.countDown();
+            await(release);
+        });
+        assertThat(started.await(WAIT_SECONDS, TimeUnit.SECONDS)).isTrue();
+        CountDownLatch queuedRan = new CountDownLatch(2);
+        executor.execute(new Key(1L, 1L), queuedRan::countDown);
+        executor.execute(new Key(1L, 1L), queuedRan::countDown);
+        assertThatThrownBy(() -> executor.execute(new Key(1L, 1L), () -> { }))
+                .isInstanceOf(RejectedExecutionException.class);
+        release.countDown();
+        assertThat(queuedRan.await(WAIT_SECONDS, TimeUnit.SECONDS)).isTrue();
+
+        CountDownLatch after = new CountDownLatch(1);
+        executor.execute(new Key(1L, 1L), after::countDown);
+        assertThat(after.await(WAIT_SECONDS, TimeUnit.SECONDS)).isTrue();
+    }
+
+    @Test
+    void sameChatInTwoGroupsRunsIndependently() throws Exception {
+        var executor = new ChatSerialExecutor<Key>(pool, 100, 100, Key::bot);
+        CountDownLatch release = new CountDownLatch(1);
+        CountDownLatch otherDone = new CountDownLatch(1);
+        executor.execute(new Key(1L, 5L), () -> await(release));
+        executor.execute(new Key(2L, 5L), otherDone::countDown);
+
+        assertThat(otherDone.await(WAIT_SECONDS, TimeUnit.SECONDS)).isTrue();
+        release.countDown();
+    }
+
+    private record Key(Long bot, Long chat) {
     }
 
     private static void await(CountDownLatch latch) {

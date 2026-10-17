@@ -5,6 +5,7 @@ import com.example.roshdeandishe.notification.internal.BaleUpdate.BaleMessage;
 import com.example.roshdeandishe.finance.FinanceFacade;
 import com.example.roshdeandishe.iam.IamFacade;
 import com.example.roshdeandishe.iam.IamFacade.MembershipInfo;
+import com.example.roshdeandishe.iam.IamFacade.UserId;
 import com.example.roshdeandishe.iam.IamFacade.UserProfile;
 import com.example.roshdeandishe.school.SchoolFacade;
 import com.example.roshdeandishe.school.SchoolFacade.SchoolId;
@@ -47,6 +48,7 @@ class BaleUpdateHandler {
     private final FinanceFacade financeFacade;
     private final SubjectResolver subjectResolver;
     private final BotRouter botRouter;
+    private final BotTokens botTokens;
 
     BaleUpdateHandler(
             BaleLinkRepository baleLinkRepository,
@@ -56,7 +58,8 @@ class BaleUpdateHandler {
             FinanceFacade financeFacade,
             BotContextLoader botContextLoader,
             SubjectResolver subjectResolver,
-            BotRouter botRouter
+            BotRouter botRouter,
+            BotTokens botTokens
     ) {
         this.baleLinkRepository = baleLinkRepository;
         this.baleClient = baleClient;
@@ -66,13 +69,14 @@ class BaleUpdateHandler {
         this.botContextLoader = botContextLoader;
         this.subjectResolver = subjectResolver;
         this.botRouter = botRouter;
+        this.botTokens = botTokens;
     }
 
     @Transactional
-    void handle(BaleUpdate update) {
+    void handle(BotRef bot, BaleUpdate update) {
         BaleCallbackQuery callback = update.callbackQuery();
         if (callback != null) {
-            handleCallback(callback);
+            handleCallback(bot, callback);
             return;
         }
 
@@ -85,48 +89,48 @@ class BaleUpdateHandler {
 
         // فقط گفتگوی خصوصی: در گروه/کانال (یا نوع نامشخص) نه داده‌ای داده می‌شود نه لینکی ساخته می‌شود
         if (!isPrivate(message)) {
-            baleClient.sendMessage(chatId, BotTexts.PRIVATE_CHAT_ONLY);
+            baleClient.sendMessage(botTokens.tokenFor(bot), chatId, BotTexts.PRIVATE_CHAT_ONLY);
             return;
         }
 
         if (message.contact() != null) {
-            handleContactShared(chatId, message);
+            handleContactShared(bot, chatId, message);
             return;
         }
 
         String text = message.text() == null ? "" : message.text().trim();
         if ("/start".equals(text)) {
-            baleClient.sendContactRequest(chatId, BotTexts.WELCOME_TEXT);
+            baleClient.sendContactRequest(botTokens.tokenFor(bot), chatId, BotTexts.WELCOME_TEXT);
             return;
         }
 
-        Optional<BotContext> context = botContextLoader.load(chatId);
+        Optional<BotContext> context = botContextLoader.load(bot, chatId);
         if (context.isEmpty()) {
-            baleClient.sendMessage(chatId, BotTexts.NOT_LINKED_TEXT);
+            baleClient.sendMessage(botTokens.tokenFor(bot), chatId, BotTexts.NOT_LINKED_TEXT);
             return;
         }
 
         BotContext ctx = context.get();
         switch (text) {
-            case BotTexts.BTN_HELP -> baleClient.sendMenu(chatId, BotTexts.HELP_TEXT, botRouter.menu(ctx));
-            case BotTexts.CMD_MY_SCHOOLS -> baleClient.sendMessage(chatId, describeMemberships(ctx));
-            case BotTexts.CMD_MY_WARDS -> baleClient.sendMessage(chatId, describeWards(ctx));
+            case BotTexts.BTN_HELP -> baleClient.sendMenu(botTokens.tokenFor(bot), chatId, BotTexts.HELP_TEXT, botRouter.menu(ctx));
+            case BotTexts.CMD_MY_SCHOOLS -> baleClient.sendMessage(botTokens.tokenFor(bot), chatId, describeMemberships(ctx));
+            case BotTexts.CMD_MY_WARDS -> baleClient.sendMessage(botTokens.tokenFor(bot), chatId, describeWards(ctx));
             default -> {
                 BotRouter.Reply reply = botRouter.onText(ctx, text);
                 if (reply == null) {
-                    baleClient.sendMenu(chatId, BotTexts.UNKNOWN_TEXT, botRouter.menu(ctx));
+                    baleClient.sendMenu(botTokens.tokenFor(bot), chatId, BotTexts.UNKNOWN_TEXT, botRouter.menu(ctx));
                 } else {
-                    send(chatId, reply);
+                    send(bot, chatId, reply);
                 }
             }
         }
     }
 
-    private void send(Long chatId, BotRouter.Reply reply) {
+    private void send(BotRef bot, Long chatId, BotRouter.Reply reply) {
         if (reply.choices().isEmpty()) {
-            baleClient.sendMessage(chatId, reply.text());
+            baleClient.sendMessage(botTokens.tokenFor(bot), chatId, reply.text());
         } else {
-            baleClient.sendMessage(chatId, reply.text(), reply.choices());
+            baleClient.sendMessage(botTokens.tokenFor(bot), chatId, reply.text(), reply.choices());
         }
     }
 
@@ -135,22 +139,22 @@ class BaleUpdateHandler {
      * پاسخ از {@link BotRouter#onCallback}؛ userId فقط از لینکِ chat می‌آید و شناسه‌ی callback فقط یک
      * انتخاب است که با هدف‌های همان کاربر سنجیده می‌شود.
      */
-    private void handleCallback(BaleCallbackQuery callback) {
-        baleClient.answerCallbackQuery(callback.id());
+    private void handleCallback(BotRef bot, BaleCallbackQuery callback) {
+        baleClient.answerCallbackQuery(botTokens.tokenFor(bot), callback.id());
         if (callback.message() == null || callback.message().chat() == null) {
             return;
         }
         Long chatId = callback.message().chat().id();
         if (!isPrivate(callback.message())) {
-            baleClient.sendMessage(chatId, BotTexts.PRIVATE_CHAT_ONLY);
+            baleClient.sendMessage(botTokens.tokenFor(bot), chatId, BotTexts.PRIVATE_CHAT_ONLY);
             return;
         }
-        Optional<BotContext> context = botContextLoader.load(chatId);
+        Optional<BotContext> context = botContextLoader.load(bot, chatId);
         if (context.isEmpty()) {
-            baleClient.sendMessage(chatId, BotTexts.NOT_LINKED_TEXT);
+            baleClient.sendMessage(botTokens.tokenFor(bot), chatId, BotTexts.NOT_LINKED_TEXT);
             return;
         }
-        send(chatId, botRouter.onCallback(context.get(), callback.data()));
+        send(bot, chatId, botRouter.onCallback(context.get(), callback.data()));
     }
 
     private static boolean isPrivate(BaleMessage message) {
@@ -162,30 +166,44 @@ class BaleUpdateHandler {
      * اجازه می‌دهد هر مخاطبِ دفترچه‌تلفن فرستاده شود. این بررسی پیش از جست‌وجوی شماره است تا مخاطب
      * بیگانه هرگز معلوم نکند شماره‌ای ثبت شده یا نه؛ نبودنِ user_id هم رد می‌شود (fail closed).
      */
-    private void handleContactShared(Long chatId, BaleMessage message) {
+    private void handleContactShared(BotRef bot, Long chatId, BaleMessage message) {
         Long contactUserId = message.contact().userId();
         if (contactUserId == null || message.from() == null || !contactUserId.equals(message.from().id())) {
-            baleClient.sendMessage(chatId, BotTexts.CONTACT_NOT_OWN);
+            baleClient.sendMessage(botTokens.tokenFor(bot), chatId, BotTexts.CONTACT_NOT_OWN);
             return;
         }
 
         Optional<UserProfile> matchedUser = iamFacade.findUserByPhoneNumber(message.contact().phoneNumber());
         if (matchedUser.isEmpty()) {
-            baleClient.sendMessage(chatId, BotTexts.CONTACT_NOT_MATCHED);
+            baleClient.sendMessage(botTokens.tokenFor(bot), chatId, BotTexts.CONTACT_NOT_MATCHED);
             return;
         }
 
-        Long userId = matchedUser.get().id().value();
-        // upsert بر اساس userId - اگر همین کاربر قبلاً از یک chat دیگر لینک
-        // شده بود، آن لینک قدیمی جای‌گزین می‌شود (idempotent روی هر دو طرف)
-        BaleLinkEntity link = baleLinkRepository.findByUserId(userId)
-                .orElseGet(() -> new BaleLinkEntity(userId, chatId, Instant.now()));
+        UserId id = matchedUser.get().id();
+        Long userId = id.value();
+
+        // ربات مدرسه فقط عضو فعالِ همان مدرسه (یا مدیر پلتفرم) را لینک می‌کند؛ ربات مشترک بدون این شرط
+        if (!bot.isShared() && !mayLinkToSchoolBot(bot, id)) {
+            baleClient.sendMessage(botTokens.tokenFor(bot), chatId, BotTexts.NOT_A_MEMBER);
+            return;
+        }
+
+        // upsert بر اساس (ربات، userId) - اگر همین کاربر قبلاً در همین ربات از یک chat دیگر لینک
+        // شده بود، آن لینک قدیمی جای‌گزین می‌شود؛ لینک ربات‌های دیگر دست‌نخورده می‌ماند
+        BaleLinkEntity link = baleLinkRepository.findByUser(bot, userId)
+                .orElseGet(() -> new BaleLinkEntity(bot.botId(), userId, chatId, Instant.now()));
         link.setChatId(chatId);
         link.setUserId(userId);
         baleLinkRepository.save(link);
 
         String confirmation = BotTexts.linkSuccess(matchedUser.get().fullName());
-        sendAfterCommit(() -> sendLinkConfirmation(chatId, confirmation));
+        sendAfterCommit(() -> sendLinkConfirmation(bot, chatId, confirmation));
+    }
+
+    private boolean mayLinkToSchoolBot(BotRef bot, UserId id) {
+        boolean member = iamFacade.findMembershipsByUser(id).stream()
+                .anyMatch(m -> m.active() && bot.schoolId().equals(m.schoolId()));
+        return member || iamFacade.isPlatformAdmin(id);
     }
 
     /** تأییدیه فقط پس از commitِ لینک فرستاده می‌شود (خطای منو نباید تراکنش را rollback-only کند). */
@@ -202,18 +220,18 @@ class BaleUpdateHandler {
         }
     }
 
-    private void sendLinkConfirmation(Long chatId, String confirmation) {
+    private void sendLinkConfirmation(BotRef bot, Long chatId, String confirmation) {
         List<List<String>> menu = List.of();
         try {
-            menu = botContextLoader.load(chatId).map(botRouter::menu).orElse(List.of());
+            menu = botContextLoader.load(bot, chatId).map(botRouter::menu).orElse(List.of());
         } catch (RuntimeException e) {
             log.warn("Building the menu after linking failed: chatId={} error={}",
                     chatId, e.getClass().getSimpleName());
         }
         if (menu.isEmpty()) {
-            baleClient.sendMessage(chatId, confirmation);
+            baleClient.sendMessage(botTokens.tokenFor(bot), chatId, confirmation);
         } else {
-            baleClient.sendMenu(chatId, confirmation, menu);
+            baleClient.sendMenu(botTokens.tokenFor(bot), chatId, confirmation, menu);
         }
     }
 

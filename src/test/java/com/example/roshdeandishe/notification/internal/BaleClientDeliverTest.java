@@ -46,19 +46,19 @@ class BaleClientDeliverTest {
         server.stop(0);
     }
 
-    private BaleClient client(String token) {
-        return new BaleClient("http://127.0.0.1:" + server.getAddress().getPort(), token);
+    private BaleClient client() {
+        return new BaleClient("http://127.0.0.1:" + server.getAddress().getPort());
     }
 
     private DeliveryResult deliverWith(int httpStatus) {
         status.set(httpStatus);
-        return client("token").deliver(1L, "سلام");
+        return client().deliver("token", 1L, "سلام");
     }
 
     @Test
     void aSuccessfulSendIsSent() {
         assertThat(deliverWith(200)).isEqualTo(DeliveryResult.SENT);
-        assertThat(client("token").sendMessage(1L, "سلام")).isTrue();
+        assertThat(client().sendMessage("token", 1L, "سلام")).isTrue();
     }
 
     @Test
@@ -66,7 +66,7 @@ class BaleClientDeliverTest {
         for (int code : new int[]{400, 401, 403, 404}) {
             assertThat(deliverWith(code)).as("HTTP " + code).isEqualTo(DeliveryResult.UNDELIVERABLE);
         }
-        assertThat(client("token").sendMessage(1L, "سلام")).isFalse();
+        assertThat(client().sendMessage("token", 1L, "سلام")).isFalse();
     }
 
     @Test
@@ -78,22 +78,22 @@ class BaleClientDeliverTest {
 
     @Test
     void anUnreachableServerIsTemporary() {
-        BaleClient client = client("token");
+        BaleClient client = client();
         server.stop(0);
 
-        assertThat(client.deliver(1L, "سلام")).isEqualTo(DeliveryResult.TEMPORARY_FAILURE);
+        assertThat(client.deliver("token", 1L, "سلام")).isEqualTo(DeliveryResult.TEMPORARY_FAILURE);
     }
 
     @Test
     void aMissingTokenIsFinalAndNeverCallsTheServer() {
-        assertThat(client("").deliver(1L, "سلام")).isEqualTo(DeliveryResult.UNDELIVERABLE);
-        assertThat(client("   ").deliver(1L, "سلام")).isEqualTo(DeliveryResult.UNDELIVERABLE);
+        assertThat(client().deliver("", 1L, "سلام")).isEqualTo(DeliveryResult.UNDELIVERABLE);
+        assertThat(client().deliver("   ", 1L, "سلام")).isEqualTo(DeliveryResult.UNDELIVERABLE);
         assertThat(requests.get()).isZero();
     }
 
     @Test
     void sentTextCarriesNoMarkdownCharacters() {
-        client("token").deliver(1L, "یادآوری: جلسه‌ی _اولیا_ و *مربیان*");
+        client().deliver("token", 1L, "یادآوری: جلسه‌ی _اولیا_ و *مربیان*");
 
         assertThat(lastBody.get()).contains("\"text\":\"یادآوری: جلسه‌ی ˍاولیاˍ و ∗مربیان∗\"");
     }
