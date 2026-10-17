@@ -21,7 +21,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 class PhoneNumberCanonicalizationMigrationTest {
 
     private static final String[] SCHEMAS = {
-            "iam", "school", "academic", "finance", "bale", "curriculum", "studyplan", "exam", "attendance"
+            "iam", "school", "academic", "finance", "bale", "curriculum", "studyplan", "exam", "attendance", "questionbox"
     };
 
     @Container
@@ -99,6 +99,50 @@ class PhoneNumberCanonicalizationMigrationTest {
                 .hasMessageContaining("visually equivalent phone numbers belong to multiple users");
 
         assertThat(phoneNumbers()).containsExactlyInAnyOrder("09129991234", "\u00a009129991234\u202f");
+    }
+
+    @Test
+    void v32RewritesIranianMobileFormsAndLeavesOtherNumbersAlone() throws Exception {
+        flyway("31").migrate();
+        execute("""
+                insert into iam.users (email, full_name, status, phone_number)
+                values
+                    ('a@example.test', 'A', 'ACTIVE', '989335551287'),
+                    ('b@example.test', 'B', 'ACTIVE', '+98 912 555 0123'),
+                    ('c@example.test', 'C', 'ACTIVE', '00989121112233'),
+                    ('d@example.test', 'D', 'ACTIVE', '9351234567'),
+                    ('e@example.test', 'E', 'ACTIVE', '021-88776655'),
+                    ('f@example.test', 'F', 'ACTIVE', '+1 (555) 123-4567')
+                """);
+
+        flyway(null).migrate();
+
+        assertThat(phoneNumbers()).containsExactly(
+                "09335551287", "09125550123", "09121112233", "09351234567",
+                "021-88776655", "+1 (555) 123-4567");
+        assertThatThrownBy(() -> execute("""
+                insert into iam.users (email, full_name, status, phone_number)
+                values ('late@example.test', 'Late', 'ACTIVE', '+989339998877')
+                """))
+                .isInstanceOf(SQLException.class)
+                .hasMessageContaining("ck_users_phone_number_iranian_mobile_canonical");
+    }
+
+    @Test
+    void v32RefusesToGuessOwnershipForMobileCollisions() throws Exception {
+        flyway("31").migrate();
+        execute("""
+                insert into iam.users (email, full_name, status, phone_number)
+                values
+                    ('national@example.test', 'National', 'ACTIVE', '09335551287'),
+                    ('bale@example.test', 'Bale', 'ACTIVE', '989335551287')
+                """);
+
+        assertThatThrownBy(() -> flyway(null).migrate())
+                .isInstanceOf(FlywayException.class)
+                .hasMessageContaining("the same Iranian mobile number belongs to multiple users");
+
+        assertThat(phoneNumbers()).containsExactly("989335551287", "09335551287");
     }
 
     private Flyway flyway(String target) {
