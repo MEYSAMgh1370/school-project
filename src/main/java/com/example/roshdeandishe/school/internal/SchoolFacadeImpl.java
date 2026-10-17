@@ -217,7 +217,7 @@ class SchoolFacadeImpl implements SchoolFacade {
         Set<String> wanted = new java.util.HashSet<>();
         if (roles != null) {
             for (String code : roles) {
-                if (code == null || code.isBlank()) {
+                if (code == null || code.isBlank() || code.trim().length() > 64) {
                     throw new SchoolException(new SchoolError.InvalidSetting("کد نقش نامعتبر است."));
                 }
                 wanted.add(code.trim());

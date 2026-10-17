@@ -4,6 +4,8 @@ import com.example.roshdeandishe.school.SchoolFacade;
 import com.example.roshdeandishe.school.SchoolFacade.BotSettings;
 import com.example.roshdeandishe.school.SchoolFacade.SchoolId;
 import com.example.roshdeandishe.school.SchoolFacade.SchoolLevel;
+import com.example.roshdeandishe.school.shared.SchoolError;
+import com.example.roshdeandishe.school.shared.SchoolException;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -18,6 +20,7 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 /**
  * تنظیماتِ مدرسه (school_settings / bot_roles): ساختِ تنبلِ ردیف از ستون‌های قدیمیِ schools،
@@ -79,6 +82,21 @@ class SchoolSettingsFlowIntegrationTest {
         schoolFacade.setBotSettings(id, false, Set.of());
         assertThat(schoolFacade.isBotAllowed(id, Set.of("PARENT"))).isFalse();
         assertThat(schoolFacade.isBotAllowed(id, Set.of("TEACHER"))).isFalse();
+    }
+
+    @Test
+    void setBotSettingsRejectsOverlongRoleCode() {
+        SchoolId id = schoolWithoutSettingsRow(false, false);
+
+        assertThatThrownBy(() -> schoolFacade.setBotSettings(id, false, Set.of("R".repeat(65))))
+                .isInstanceOf(SchoolException.class)
+                .extracting(e -> ((SchoolException) e).error())
+                .isInstanceOf(SchoolError.InvalidSetting.class);
+
+        // چیزی نوشته نشده: نه نقشی و نه تغییر در روشن بودنِ ربات
+        assertThat(jdbcTemplate.queryForObject(
+                "select count(*) from school.bot_roles where school_id = ?", Integer.class, id.value())).isZero();
+        assertThat(schoolFacade.getBotSettings(id)).isEqualTo(new BotSettings(true, Set.of()));
     }
 
     @Test
