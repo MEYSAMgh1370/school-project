@@ -86,7 +86,7 @@ class BaleUpdateHandlerTest {
     }
 
     private void link(Long chatId, Long userId) {
-        when(links.findByChatId(chatId)).thenReturn(Optional.of(new BaleLinkEntity(userId, chatId, Instant.now())));
+        when(links.findByChatId(chatId)).thenReturn(Optional.of(new BaleLinkEntity(null, userId, chatId, Instant.now())));
         when(iam.findUser(new UserId(userId)))
                 .thenReturn(Optional.of(new UserProfile(new UserId(userId), "a@b.c", "والد", "0912")));
     }
@@ -202,7 +202,7 @@ class BaleUpdateHandlerTest {
 
     @Test
     void existingLinkOfThePhoneOwnerIsNotMovedByAForeignContact() {
-        BaleLinkEntity existing = new BaleLinkEntity(7L, 100L, Instant.now());
+        BaleLinkEntity existing = new BaleLinkEntity(null, 7L, 100L, Instant.now());
         when(links.findByUserId(7L)).thenReturn(Optional.of(existing));
         when(iam.findUserByPhoneNumber("0912"))
                 .thenReturn(Optional.of(new UserProfile(new UserId(7L), "a@b.c", "والد", "0912")));

@@ -49,7 +49,7 @@ class BaleChannelTest {
 
     @Test
     void linkedUserGetsTheMessageOnTheirLinkedChat() {
-        when(links.findByUserId(7L)).thenReturn(Optional.of(new BaleLinkEntity(7L, 555L, Instant.now())));
+        when(links.findByUserId(7L)).thenReturn(Optional.of(new BaleLinkEntity(null, 7L, 555L, Instant.now())));
         RecordingClient client = new RecordingClient(DeliveryResult.SENT);
 
         assertThat(new BaleChannel(links, client).send(7L, "سلام")).isTrue();
@@ -59,7 +59,7 @@ class BaleChannelTest {
 
     @Test
     void aFailedSendIsReportedAsNotDelivered() {
-        when(links.findByUserId(7L)).thenReturn(Optional.of(new BaleLinkEntity(7L, 555L, Instant.now())));
+        when(links.findByUserId(7L)).thenReturn(Optional.of(new BaleLinkEntity(null, 7L, 555L, Instant.now())));
 
         assertThat(new BaleChannel(links, new RecordingClient(DeliveryResult.TEMPORARY_FAILURE)).send(7L, "سلام")).isFalse();
     }
@@ -70,7 +70,7 @@ class BaleChannelTest {
         assertThat(new BaleChannel(links, new RecordingClient(DeliveryResult.SENT)).deliver(7L, "سلام"))
                 .isEqualTo(DeliveryResult.NOT_LINKED);
 
-        when(links.findByUserId(8L)).thenReturn(Optional.of(new BaleLinkEntity(8L, 556L, Instant.now())));
+        when(links.findByUserId(8L)).thenReturn(Optional.of(new BaleLinkEntity(null, 8L, 556L, Instant.now())));
         assertThat(new BaleChannel(links, new RecordingClient(DeliveryResult.TEMPORARY_FAILURE)).deliver(8L, "سلام"))
                 .isEqualTo(DeliveryResult.TEMPORARY_FAILURE);
         assertThat(new BaleChannel(links, new RecordingClient(DeliveryResult.UNDELIVERABLE)).deliver(8L, "سلام"))

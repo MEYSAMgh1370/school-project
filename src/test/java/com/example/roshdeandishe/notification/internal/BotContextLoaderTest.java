@@ -32,7 +32,7 @@ class BotContextLoaderTest {
     }
 
     private void linked() {
-        when(links.findByChatId(CHAT)).thenReturn(Optional.of(new BaleLinkEntity(USER, CHAT, Instant.now())));
+        when(links.findByChatId(CHAT)).thenReturn(Optional.of(new BaleLinkEntity(null, USER, CHAT, Instant.now())));
         when(iam.findUser(new UserId(USER)))
                 .thenReturn(Optional.of(new UserProfile(new UserId(USER), "a@b.c", "علی رضایی", "0912")));
     }
@@ -50,7 +50,7 @@ class BotContextLoaderTest {
 
     @Test
     void linkedUserThatNoLongerExistsHasNoContext() {
-        when(links.findByChatId(CHAT)).thenReturn(Optional.of(new BaleLinkEntity(USER, CHAT, Instant.now())));
+        when(links.findByChatId(CHAT)).thenReturn(Optional.of(new BaleLinkEntity(null, USER, CHAT, Instant.now())));
         when(iam.findUser(new UserId(USER))).thenReturn(Optional.empty());
 
         assertThat(loader.load(CHAT)).isEmpty();

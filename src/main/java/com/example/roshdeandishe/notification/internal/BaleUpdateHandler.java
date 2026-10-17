@@ -179,7 +179,7 @@ class BaleUpdateHandler {
         // upsert بر اساس userId - اگر همین کاربر قبلاً از یک chat دیگر لینک
         // شده بود، آن لینک قدیمی جای‌گزین می‌شود (idempotent روی هر دو طرف)
         BaleLinkEntity link = baleLinkRepository.findByUserId(userId)
-                .orElseGet(() -> new BaleLinkEntity(userId, chatId, Instant.now()));
+                .orElseGet(() -> new BaleLinkEntity(null, userId, chatId, Instant.now()));
         link.setChatId(chatId);
         link.setUserId(userId);
         baleLinkRepository.save(link);
