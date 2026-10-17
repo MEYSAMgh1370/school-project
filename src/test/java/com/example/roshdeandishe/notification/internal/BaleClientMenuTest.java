@@ -43,13 +43,13 @@ class BaleClientMenuTest {
         server.stop(0);
     }
 
-    private BaleClient client(String token) {
-        return new BaleClient("http://127.0.0.1:" + server.getAddress().getPort(), token);
+    private BaleClient client() {
+        return new BaleClient("http://127.0.0.1:" + server.getAddress().getPort());
     }
 
     @Test
     void sendsPersistentReplyKeyboard() {
-        boolean sent = client("token").sendMenu(1L, "x", List.of(List.of("حضور امروز")));
+        boolean sent = client().sendMenu("token", 1L, "x", List.of(List.of("حضور امروز")));
 
         assertThat(sent).isTrue();
         assertThat(path.get()).isEqualTo("/bottoken/sendMessage");
@@ -61,7 +61,7 @@ class BaleClientMenuTest {
 
     @Test
     void menuWithBlankTokenSendsNothing() {
-        assertThat(client("").sendMenu(1L, "x", List.of(List.of("حضور امروز")))).isFalse();
+        assertThat(client().sendMenu("", 1L, "x", List.of(List.of("حضور امروز")))).isFalse();
         assertThat(requests.get()).isZero();
     }
 }

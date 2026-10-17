@@ -25,18 +25,21 @@ class BaleClientTokenLoggingTest {
         HttpServer server = HttpServer.create(new InetSocketAddress("127.0.0.1", 0), 0);
         int port = server.getAddress().getPort();
         server.stop(0);
-        return new BaleClient("http://127.0.0.1:" + port, TOKEN);
+        return new BaleClient("http://127.0.0.1:" + port);
     }
 
     @Test
     void failedSendsNeverLogTheToken(CapturedOutput output) throws IOException {
         BaleClient client = clientToUnreachableServer();
 
-        client.deliver(1L, "سلام");
-        client.sendContactRequest(1L, "سلام");
-        client.sendMenu(1L, "سلام", List.of(List.of("راهنما")));
-        client.sendMessage(1L, "سلام", List.of(List.of(new BaleClient.InlineButton("الف", "a:1"))));
-        client.answerCallbackQuery("cb1");
+        client.deliver(TOKEN, 1L, "سلام");
+        client.sendContactRequest(TOKEN, 1L, "سلام");
+        client.sendMenu(TOKEN, 1L, "سلام", List.of(List.of("راهنما")));
+        client.sendMessage(TOKEN, 1L, "سلام", List.of(List.of(new BaleClient.InlineButton("الف", "a:1"))));
+        client.answerCallbackQuery(TOKEN, "cb1");
+        client.getMe(TOKEN);
+        client.setWebhook(TOKEN, "https://x/api/bale/webhook/s");
+        client.deleteWebhook(TOKEN);
 
         assertThat(output.getAll()).contains("شکست خورد").doesNotContain(TOKEN);
     }

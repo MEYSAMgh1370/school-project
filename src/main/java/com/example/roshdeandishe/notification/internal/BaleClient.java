@@ -1,6 +1,8 @@
 package com.example.roshdeandishe.notification.internal;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.example.roshdeandishe.notification.NotificationFacade.DeliveryResult;
 import org.springframework.http.client.JdkClientHttpRequestFactory;
 import org.springframework.web.client.RestClientResponseException;
@@ -37,22 +39,18 @@ class BaleClient {
     private static final Duration READ_TIMEOUT = Duration.ofSeconds(10);
 
     private final RestClient restClient;
-    private final String botToken;
+    private final ObjectMapper json = new ObjectMapper();
 
-    BaleClient(
-            @Value("${roshdeandishe.bale.api-base-url}") String apiBaseUrl,
-            @Value("${roshdeandishe.bale.bot-token}") String botToken
-    ) {
+    BaleClient(@Value("${roshdeandishe.bale.api-base-url}") String apiBaseUrl) {
         // بدون timeout یک قطعیِ بله می‌توانست thread زمان‌بندی را بی‌نهایت نگه دارد
         JdkClientHttpRequestFactory requestFactory = new JdkClientHttpRequestFactory(
                 HttpClient.newBuilder().connectTimeout(CONNECT_TIMEOUT).build());
         requestFactory.setReadTimeout(READ_TIMEOUT);
         this.restClient = RestClient.builder().baseUrl(apiBaseUrl).requestFactory(requestFactory).build();
-        this.botToken = botToken;
     }
 
-    boolean sendMessage(Long chatId, String text) {
-        return deliver(chatId, text) == DeliveryResult.SENT;
+    boolean sendMessage(String token, Long chatId, String text) {
+        return deliver(token, chatId, text) == DeliveryResult.SENT;
     }
 
     /**
@@ -60,27 +58,114 @@ class BaleClient {
      * کاربر ربات را بسته)، و 5xx، 429 یا خطای شبکه/تایم‌اوت = TEMPORARY_FAILURE. متن پیام فقط در حالت
      * «توکن پیکربندی نشده» لاگ می‌شود (رفتار قبلی)؛ برای خطاها فقط وضعیت HTTP.
      */
-    DeliveryResult deliver(Long chatId, String text) {
-        if (botToken == null || botToken.isBlank()) {
+    DeliveryResult deliver(String token, Long chatId, String text) {
+        return deliverDetailed(token, chatId, text).result();
+    }
+
+    /** نتیجه‌ی ارسال به‌همراه کد HTTP ({@code httpStatus} صفر یعنی پاسخی دریافت نشد). */
+    record SendResult(DeliveryResult result, int httpStatus) {
+    }
+
+    /** همان {@link #deliver} با کد HTTP؛ کد برای ثبت وضعیتِ ربات (مثلاً توکن باطل‌شده) لازم است. */
+    SendResult deliverDetailed(String token, Long chatId, String text) {
+        if (token == null || token.isBlank()) {
             log.warn("roshdeandishe.bale.bot-token پیکربندی نشده - پیام به chatId={} ارسال نشد: {}", chatId, text);
-            return DeliveryResult.UNDELIVERABLE;
+            return new SendResult(DeliveryResult.UNDELIVERABLE, 0);
         }
 
         try {
             restClient.post()
-                    .uri("/bot{token}/sendMessage", botToken)
+                    .uri("/bot{token}/sendMessage", token)
                     .body(new SendMessageRequest(chatId, text, null))
                     .retrieve()
                     .toBodilessEntity();
-            return DeliveryResult.SENT;
+            return new SendResult(DeliveryResult.SENT, 200);
         } catch (RestClientResponseException e) {
             int status = e.getStatusCode().value();
             boolean permanent = status >= 400 && status < 500 && status != 429;
             log.warn("ارسال پیام بله به chatId={} شکست خورد (HTTP {}).", chatId, status);
-            return permanent ? DeliveryResult.UNDELIVERABLE : DeliveryResult.TEMPORARY_FAILURE;
+            return new SendResult(permanent ? DeliveryResult.UNDELIVERABLE : DeliveryResult.TEMPORARY_FAILURE, status);
         } catch (RestClientException e) {
             log.warn("ارسال پیام بله به chatId={} شکست خورد ({}).", chatId, failureKind(e));
-            return DeliveryResult.TEMPORARY_FAILURE;
+            return new SendResult(DeliveryResult.TEMPORARY_FAILURE, 0);
+        }
+    }
+
+    record BotInfo(long id, String username) {
+    }
+
+    /** نتیجه‌ی {@link #getMe}: ربات پیدا شد، توکن نامعتبر است، یا بله در دسترس نیست (تلاش دوباره منطقی است). */
+    sealed interface BotInfoResult {
+        record Found(BotInfo bot) implements BotInfoResult {
+        }
+
+        record InvalidToken() implements BotInfoResult {
+        }
+
+        record Unreachable() implements BotInfoResult {
+        }
+    }
+
+    /** اعتبارسنجی توکن و دریافت هویت ربات. 401/404 یا ok:false = توکن نامعتبر؛ خطای شبکه، 5xx و 429 = در دسترس نیست. */
+    BotInfoResult getMe(String token) {
+        if (token == null || token.isBlank()) {
+            return new BotInfoResult.InvalidToken();
+        }
+        try {
+            String body = restClient.get().uri("/bot{token}/getMe", token).retrieve().body(String.class);
+            JsonNode root = json.readTree(body);
+            JsonNode result = root == null ? null : root.get("result");
+            if (root == null || !root.path("ok").asBoolean(false) || result == null || !result.hasNonNull("id")) {
+                return new BotInfoResult.InvalidToken();
+            }
+            return new BotInfoResult.Found(new BotInfo(result.get("id").asLong(), result.path("username").asText("")));
+        } catch (RestClientResponseException e) {
+            int status = e.getStatusCode().value();
+            log.warn("getMe بله شکست خورد (HTTP {}).", status);
+            boolean temporary = status >= 500 || status == 429;
+            return temporary ? new BotInfoResult.Unreachable() : new BotInfoResult.InvalidToken();
+        } catch (RestClientException e) {
+            log.warn("getMe بله شکست خورد ({}).", failureKind(e));
+            return new BotInfoResult.Unreachable();
+        } catch (java.io.IOException e) {
+            log.warn("پاسخ getMe بله قابل خواندن نبود ({}).", e.getClass().getSimpleName());
+            return new BotInfoResult.Unreachable();
+        }
+    }
+
+    /** ثبت وب‌هوک؛ فقط با HTTP 200 و ok:true مقدار true برمی‌گردد. */
+    boolean setWebhook(String token, String url) {
+        if (token == null || token.isBlank()) {
+            log.warn("setWebhook بله بدون توکن فراخوانی شد.");
+            return false;
+        }
+        return postForOk(token, "setWebhook", new SetWebhookRequest(url));
+    }
+
+    /** حذف وب‌هوک (best-effort)؛ true فقط با HTTP 200 و ok:true. */
+    boolean deleteWebhook(String token) {
+        if (token == null || token.isBlank()) {
+            log.warn("deleteWebhook بله بدون توکن فراخوانی شد.");
+            return false;
+        }
+        return postForOk(token, "deleteWebhook", java.util.Map.of());
+    }
+
+    private boolean postForOk(String token, String method, Object body) {
+        try {
+            String response = restClient.post()
+                    .uri("/bot{token}/{method}", token, method)
+                    .body(body)
+                    .retrieve()
+                    .body(String.class);
+            JsonNode root = json.readTree(response);
+            return root != null && root.path("ok").asBoolean(false);
+        } catch (RestClientException e) {
+            log.warn("{} بله شکست خورد ({}).", method, failureKind(e));
+            return false;
+        } catch (java.io.IOException e) {
+            log.warn("پاسخ {} بله قابل خواندن نبود ({}).", method, e.getClass().getSimpleName());
+            return false;
         }
     }
 
@@ -88,8 +173,8 @@ class BaleClient {
      * پیام همراه با یک دکمه‌ی «اشتراک‌گذاری شماره تلفن» (request_contact) -
      * قدم اول لینک کردن یک chat جدید به یک User موجود.
      */
-    boolean sendContactRequest(Long chatId, String text) {
-        if (botToken == null || botToken.isBlank()) {
+    boolean sendContactRequest(String token, Long chatId, String text) {
+        if (token == null || token.isBlank()) {
             log.warn("roshdeandishe.bale.bot-token پیکربندی نشده - درخواست شماره تلفن به chatId={} ارسال نشد.", chatId);
             return false;
         }
@@ -101,7 +186,7 @@ class BaleClient {
 
         try {
             restClient.post()
-                    .uri("/bot{token}/sendMessage", botToken)
+                    .uri("/bot{token}/sendMessage", token)
                     .body(new SendMessageRequest(chatId, text, keyboard))
                     .retrieve()
                     .toBodilessEntity();
@@ -116,8 +201,8 @@ class BaleClient {
      * پیام همراه با کیبورد پاسخِ پایدار (منوی همیشه‌نمایان): resize_keyboard=true و one_time_keyboard=false؛ هر
      * عنصر rows یک ردیف از متن دکمه‌هاست. بدون توکن هیچ تماسی برقرار نمی‌شود.
      */
-    boolean sendMenu(Long chatId, String text, List<List<String>> rows) {
-        if (botToken == null || botToken.isBlank()) {
+    boolean sendMenu(String token, Long chatId, String text, List<List<String>> rows) {
+        if (token == null || token.isBlank()) {
             log.warn("roshdeandishe.bale.bot-token پیکربندی نشده - پیام منو به chatId={} ارسال نشد.", chatId);
             return false;
         }
@@ -126,7 +211,7 @@ class BaleClient {
 
         try {
             restClient.post()
-                    .uri("/bot{token}/sendMessage", botToken)
+                    .uri("/bot{token}/sendMessage", token)
                     .body(new SendMessageRequest(chatId, text, markup))
                     .retrieve()
                     .toBodilessEntity();
@@ -149,7 +234,7 @@ class BaleClient {
      * می‌پذیرد، پس callbackData خالی، تهی یا بلندتر قبل از هر تماس HTTP با IllegalArgumentException (خطای
      * برنامه‌نویس) رد می‌شود.
      */
-    boolean sendMessage(Long chatId, String text, List<List<InlineButton>> inlineKeyboard) {
+    boolean sendMessage(String token, Long chatId, String text, List<List<InlineButton>> inlineKeyboard) {
         for (List<InlineButton> row : inlineKeyboard) {
             for (InlineButton button : row) {
                 String data = button.callbackData();
@@ -160,7 +245,7 @@ class BaleClient {
                 }
             }
         }
-        if (botToken == null || botToken.isBlank()) {
+        if (token == null || token.isBlank()) {
             log.warn("roshdeandishe.bale.bot-token پیکربندی نشده - پیام کیبورددار به chatId={} ارسال نشد.", chatId);
             return false;
         }
@@ -171,7 +256,7 @@ class BaleClient {
 
         try {
             restClient.post()
-                    .uri("/bot{token}/sendMessage", botToken)
+                    .uri("/bot{token}/sendMessage", token)
                     .body(new SendMessageRequest(chatId, text, markup))
                     .retrieve()
                     .toBodilessEntity();
@@ -183,15 +268,15 @@ class BaleClient {
     }
 
     /** پاسخ به callback_query تا spinner دکمه در کلاینت بله قطع شود. */
-    boolean answerCallbackQuery(String callbackQueryId) {
-        if (botToken == null || botToken.isBlank()) {
+    boolean answerCallbackQuery(String token, String callbackQueryId) {
+        if (token == null || token.isBlank()) {
             log.warn("roshdeandishe.bale.bot-token پیکربندی نشده - پاسخ callback_query ارسال نشد.");
             return false;
         }
 
         try {
             restClient.post()
-                    .uri("/bot{token}/answerCallbackQuery", botToken)
+                    .uri("/bot{token}/answerCallbackQuery", token)
                     .body(new AnswerCallbackQueryRequest(callbackQueryId))
                     .retrieve()
                     .toBodilessEntity();
@@ -222,6 +307,9 @@ class BaleClient {
         SendMessageRequest {
             text = PersianText.withoutMarkdown(text);
         }
+    }
+
+    private record SetWebhookRequest(String url) {
     }
 
     private record ReplyKeyboardMarkup(

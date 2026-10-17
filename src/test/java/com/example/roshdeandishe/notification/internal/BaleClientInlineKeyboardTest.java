@@ -47,13 +47,13 @@ class BaleClientInlineKeyboardTest {
         server.stop(0);
     }
 
-    private BaleClient client(String token) {
-        return new BaleClient("http://127.0.0.1:" + server.getAddress().getPort(), token);
+    private BaleClient client() {
+        return new BaleClient("http://127.0.0.1:" + server.getAddress().getPort());
     }
 
     @Test
     void sendsInlineKeyboardAsReplyMarkup() {
-        boolean sent = client("token").sendMessage(1L, "x", List.of(List.of(new InlineButton("a", "X:1"))));
+        boolean sent = client().sendMessage("token", 1L, "x", List.of(List.of(new InlineButton("a", "X:1"))));
 
         assertThat(sent).isTrue();
         assertThat(path.get()).isEqualTo("/bottoken/sendMessage");
@@ -62,7 +62,7 @@ class BaleClientInlineKeyboardTest {
 
     @Test
     void answersCallbackQueryById() {
-        boolean answered = client("token").answerCallbackQuery("cb1");
+        boolean answered = client().answerCallbackQuery("token", "cb1");
 
         assertThat(answered).isTrue();
         assertThat(path.get()).endsWith("/answerCallbackQuery");
@@ -71,15 +71,15 @@ class BaleClientInlineKeyboardTest {
 
     @Test
     void blankTokenSendsNothing() {
-        assertThat(client("").sendMessage(1L, "x", List.of(List.of(new InlineButton("a", "X:1"))))).isFalse();
-        assertThat(client("  ").answerCallbackQuery("cb1")).isFalse();
+        assertThat(client().sendMessage("", 1L, "x", List.of(List.of(new InlineButton("a", "X:1"))))).isFalse();
+        assertThat(client().answerCallbackQuery("  ", "cb1")).isFalse();
         assertThat(requests.get()).isZero();
     }
 
     @Test
     void rejectsCallbackDataOver64Bytes() {
         String data = "ف".repeat(33); // 66 بایت در UTF-8
-        assertThatThrownBy(() -> client("token").sendMessage(1L, "x", List.of(List.of(new InlineButton("a", data)))))
+        assertThatThrownBy(() -> client().sendMessage("token", 1L, "x", List.of(List.of(new InlineButton("a", data)))))
                 .isInstanceOf(IllegalArgumentException.class);
         assertThat(requests.get()).isZero();
     }
@@ -87,13 +87,13 @@ class BaleClientInlineKeyboardTest {
     @Test
     void acceptsCallbackDataOfExactly64Bytes() {
         String data = "ف".repeat(32); // 64 بایت در UTF-8
-        assertThat(client("token").sendMessage(1L, "x", List.of(List.of(new InlineButton("a", data))))).isTrue();
+        assertThat(client().sendMessage("token", 1L, "x", List.of(List.of(new InlineButton("a", data))))).isTrue();
     }
 
     @Test
     void rejectsEmptyOrMissingCallbackData() {
         for (String data : new String[] {"", null}) {
-            assertThatThrownBy(() -> client("token").sendMessage(1L, "x", List.of(List.of(new InlineButton("a", data)))))
+            assertThatThrownBy(() -> client().sendMessage("token", 1L, "x", List.of(List.of(new InlineButton("a", data)))))
                     .isInstanceOf(IllegalArgumentException.class);
         }
         assertThat(requests.get()).isZero();

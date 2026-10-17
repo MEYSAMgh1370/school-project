@@ -47,6 +47,7 @@ class BaleUpdateHandler {
     private final FinanceFacade financeFacade;
     private final SubjectResolver subjectResolver;
     private final BotRouter botRouter;
+    private final BotTokens botTokens;
 
     BaleUpdateHandler(
             BaleLinkRepository baleLinkRepository,
@@ -56,7 +57,8 @@ class BaleUpdateHandler {
             FinanceFacade financeFacade,
             BotContextLoader botContextLoader,
             SubjectResolver subjectResolver,
-            BotRouter botRouter
+            BotRouter botRouter,
+            BotTokens botTokens
     ) {
         this.baleLinkRepository = baleLinkRepository;
         this.baleClient = baleClient;
@@ -66,6 +68,12 @@ class BaleUpdateHandler {
         this.botContextLoader = botContextLoader;
         this.subjectResolver = subjectResolver;
         this.botRouter = botRouter;
+        this.botTokens = botTokens;
+    }
+
+    /** موقتاً همه‌ی تماس‌ها با ربات مشترک است. */
+    private String token() {
+        return botTokens.tokenFor(BotRef.SHARED);
     }
 
     @Transactional
@@ -85,7 +93,7 @@ class BaleUpdateHandler {
 
         // فقط گفتگوی خصوصی: در گروه/کانال (یا نوع نامشخص) نه داده‌ای داده می‌شود نه لینکی ساخته می‌شود
         if (!isPrivate(message)) {
-            baleClient.sendMessage(chatId, BotTexts.PRIVATE_CHAT_ONLY);
+            baleClient.sendMessage(token(), chatId, BotTexts.PRIVATE_CHAT_ONLY);
             return;
         }
 
@@ -96,25 +104,25 @@ class BaleUpdateHandler {
 
         String text = message.text() == null ? "" : message.text().trim();
         if ("/start".equals(text)) {
-            baleClient.sendContactRequest(chatId, BotTexts.WELCOME_TEXT);
+            baleClient.sendContactRequest(token(), chatId, BotTexts.WELCOME_TEXT);
             return;
         }
 
         Optional<BotContext> context = botContextLoader.load(chatId);
         if (context.isEmpty()) {
-            baleClient.sendMessage(chatId, BotTexts.NOT_LINKED_TEXT);
+            baleClient.sendMessage(token(), chatId, BotTexts.NOT_LINKED_TEXT);
             return;
         }
 
         BotContext ctx = context.get();
         switch (text) {
-            case BotTexts.BTN_HELP -> baleClient.sendMenu(chatId, BotTexts.HELP_TEXT, botRouter.menu(ctx));
-            case BotTexts.CMD_MY_SCHOOLS -> baleClient.sendMessage(chatId, describeMemberships(ctx));
-            case BotTexts.CMD_MY_WARDS -> baleClient.sendMessage(chatId, describeWards(ctx));
+            case BotTexts.BTN_HELP -> baleClient.sendMenu(token(), chatId, BotTexts.HELP_TEXT, botRouter.menu(ctx));
+            case BotTexts.CMD_MY_SCHOOLS -> baleClient.sendMessage(token(), chatId, describeMemberships(ctx));
+            case BotTexts.CMD_MY_WARDS -> baleClient.sendMessage(token(), chatId, describeWards(ctx));
             default -> {
                 BotRouter.Reply reply = botRouter.onText(ctx, text);
                 if (reply == null) {
-                    baleClient.sendMenu(chatId, BotTexts.UNKNOWN_TEXT, botRouter.menu(ctx));
+                    baleClient.sendMenu(token(), chatId, BotTexts.UNKNOWN_TEXT, botRouter.menu(ctx));
                 } else {
                     send(chatId, reply);
                 }
@@ -124,9 +132,9 @@ class BaleUpdateHandler {
 
     private void send(Long chatId, BotRouter.Reply reply) {
         if (reply.choices().isEmpty()) {
-            baleClient.sendMessage(chatId, reply.text());
+            baleClient.sendMessage(token(), chatId, reply.text());
         } else {
-            baleClient.sendMessage(chatId, reply.text(), reply.choices());
+            baleClient.sendMessage(token(), chatId, reply.text(), reply.choices());
         }
     }
 
@@ -136,18 +144,18 @@ class BaleUpdateHandler {
      * انتخاب است که با هدف‌های همان کاربر سنجیده می‌شود.
      */
     private void handleCallback(BaleCallbackQuery callback) {
-        baleClient.answerCallbackQuery(callback.id());
+        baleClient.answerCallbackQuery(token(), callback.id());
         if (callback.message() == null || callback.message().chat() == null) {
             return;
         }
         Long chatId = callback.message().chat().id();
         if (!isPrivate(callback.message())) {
-            baleClient.sendMessage(chatId, BotTexts.PRIVATE_CHAT_ONLY);
+            baleClient.sendMessage(token(), chatId, BotTexts.PRIVATE_CHAT_ONLY);
             return;
         }
         Optional<BotContext> context = botContextLoader.load(chatId);
         if (context.isEmpty()) {
-            baleClient.sendMessage(chatId, BotTexts.NOT_LINKED_TEXT);
+            baleClient.sendMessage(token(), chatId, BotTexts.NOT_LINKED_TEXT);
             return;
         }
         send(chatId, botRouter.onCallback(context.get(), callback.data()));
@@ -165,13 +173,13 @@ class BaleUpdateHandler {
     private void handleContactShared(Long chatId, BaleMessage message) {
         Long contactUserId = message.contact().userId();
         if (contactUserId == null || message.from() == null || !contactUserId.equals(message.from().id())) {
-            baleClient.sendMessage(chatId, BotTexts.CONTACT_NOT_OWN);
+            baleClient.sendMessage(token(), chatId, BotTexts.CONTACT_NOT_OWN);
             return;
         }
 
         Optional<UserProfile> matchedUser = iamFacade.findUserByPhoneNumber(message.contact().phoneNumber());
         if (matchedUser.isEmpty()) {
-            baleClient.sendMessage(chatId, BotTexts.CONTACT_NOT_MATCHED);
+            baleClient.sendMessage(token(), chatId, BotTexts.CONTACT_NOT_MATCHED);
             return;
         }
 
@@ -211,9 +219,9 @@ class BaleUpdateHandler {
                     chatId, e.getClass().getSimpleName());
         }
         if (menu.isEmpty()) {
-            baleClient.sendMessage(chatId, confirmation);
+            baleClient.sendMessage(token(), chatId, confirmation);
         } else {
-            baleClient.sendMenu(chatId, confirmation, menu);
+            baleClient.sendMenu(token(), chatId, confirmation, menu);
         }
     }
 

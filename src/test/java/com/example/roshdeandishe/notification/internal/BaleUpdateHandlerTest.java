@@ -57,7 +57,8 @@ class BaleUpdateHandlerTest {
         schoolAnswers = mock(SchoolAnswers.class);
         BotRouter router = new BotRouter(resolver, studentAnswers, mock(TimetableAnswers.class), schoolAnswers);
         handler = new BaleUpdateHandler(links, client, iam, school, finance,
-                new BotContextLoader(links, iam), resolver, router);
+                new BotContextLoader(links, iam), resolver, router,
+                new BotTokens("tok", mock(SchoolBotRepository.class), mock(TokenCipher.class)));
         when(academic.listWards(any(), any())).thenReturn(List.of());
         when(academic.findMyEnrollment(any(), any())).thenReturn(Optional.empty());
     }
@@ -97,8 +98,8 @@ class BaleUpdateHandlerTest {
 
         handler.handle(callbackUpdate("cb1", 42L, "X"));
 
-        verify(client).answerCallbackQuery("cb1");
-        verify(client).sendMessage(42L, NOT_LINKED);
+        verify(client).answerCallbackQuery("tok", "cb1");
+        verify(client).sendMessage("tok", 42L, NOT_LINKED);
     }
 
     @Test
@@ -108,8 +109,8 @@ class BaleUpdateHandlerTest {
 
         handler.handle(callbackUpdate("cb2", 42L, "X"));
 
-        verify(client).answerCallbackQuery("cb2");
-        verify(client).sendMessage(42L, BotTexts.NOT_AVAILABLE);
+        verify(client).answerCallbackQuery("tok", "cb2");
+        verify(client).sendMessage("tok", 42L, BotTexts.NOT_AVAILABLE);
     }
 
     @Test
@@ -123,7 +124,7 @@ class BaleUpdateHandlerTest {
 
         handler.handle(callbackUpdate("cb3", 42L, "g:999"));
 
-        verify(client).sendMessage(42L, BotTexts.NOT_AVAILABLE);
+        verify(client).sendMessage("tok", 42L, BotTexts.NOT_AVAILABLE);
         verifyNoInteractions(studentAnswers);
     }
 
@@ -134,7 +135,7 @@ class BaleUpdateHandlerTest {
 
         handler.handle(textUpdate(42L, "سلام"));
 
-        verify(client).sendMenu(42L, BotTexts.UNKNOWN_TEXT, List.of(List.of(BotTexts.BTN_HELP)));
+        verify(client).sendMenu("tok", 42L, BotTexts.UNKNOWN_TEXT, List.of(List.of(BotTexts.BTN_HELP)));
     }
 
     @Test
@@ -144,7 +145,7 @@ class BaleUpdateHandlerTest {
 
         handler.handle(textUpdate(42L, "راهنما"));
 
-        verify(client).sendMenu(42L, BotTexts.HELP_TEXT, List.of(List.of(BotTexts.BTN_HELP)));
+        verify(client).sendMenu("tok", 42L, BotTexts.HELP_TEXT, List.of(List.of(BotTexts.BTN_HELP)));
     }
 
     @Test
@@ -157,7 +158,7 @@ class BaleUpdateHandlerTest {
 
         handler.handle(contactUpdate(42L, "private", 42L, "0912", 42L));
 
-        verify(client).sendMenu(42L, BotTexts.linkSuccess("والد"), List.of(List.of(BotTexts.BTN_HELP)));
+        verify(client).sendMenu("tok", 42L, BotTexts.linkSuccess("والد"), List.of(List.of(BotTexts.BTN_HELP)));
     }
 
     @Test
@@ -171,14 +172,14 @@ class BaleUpdateHandlerTest {
         handler.handle(contactUpdate(42L, "private", 555L, "0912", 555L));
 
         verify(links).save(any(BaleLinkEntity.class));
-        verify(client).sendMenu(42L, BotTexts.linkSuccess("والد"), List.of(List.of(BotTexts.BTN_HELP)));
+        verify(client).sendMenu("tok", 42L, BotTexts.linkSuccess("والد"), List.of(List.of(BotTexts.BTN_HELP)));
     }
 
     @Test
     void someoneElsesContactIsRejectedAndLinksNothing() {
         handler.handle(contactUpdate(42L, "private", 555L, "0912", 556L));
 
-        verify(client).sendMessage(42L, BotTexts.CONTACT_NOT_OWN);
+        verify(client).sendMessage("tok", 42L, BotTexts.CONTACT_NOT_OWN);
         verify(links, never()).save(any());
         verifyNoInteractions(iam);
     }
@@ -187,7 +188,7 @@ class BaleUpdateHandlerTest {
     void contactWithoutUserIdIsRejected() {
         handler.handle(contactUpdate(42L, "private", 555L, "0912", null));
 
-        verify(client).sendMessage(42L, BotTexts.CONTACT_NOT_OWN);
+        verify(client).sendMessage("tok", 42L, BotTexts.CONTACT_NOT_OWN);
         verify(links, never()).save(any());
         verifyNoInteractions(iam);
     }
@@ -196,7 +197,7 @@ class BaleUpdateHandlerTest {
     void contactWithoutSenderIsRejected() {
         handler.handle(contactUpdate(42L, "private", null, "0912", 555L));
 
-        verify(client).sendMessage(42L, BotTexts.CONTACT_NOT_OWN);
+        verify(client).sendMessage("tok", 42L, BotTexts.CONTACT_NOT_OWN);
         verify(links, never()).save(any());
     }
 
@@ -212,7 +213,7 @@ class BaleUpdateHandlerTest {
         assertThat(existing.getChatId()).isEqualTo(100L);
         verify(links, never()).save(any());
         verify(links, never()).findByUserId(anyLong());
-        verify(client).sendMessage(42L, BotTexts.CONTACT_NOT_OWN);
+        verify(client).sendMessage("tok", 42L, BotTexts.CONTACT_NOT_OWN);
     }
 
     @Test
@@ -221,25 +222,25 @@ class BaleUpdateHandlerTest {
 
         handler.handle(textUpdate(42L, "group", "فرزندان من"));
 
-        verify(client).sendMessage(42L, BotTexts.PRIVATE_CHAT_ONLY);
+        verify(client).sendMessage("tok", 42L, BotTexts.PRIVATE_CHAT_ONLY);
         verifyNoInteractions(finance, academic, school);
-        verify(client, never()).sendMenu(any(), any(), any());
-        verify(client, never()).sendContactRequest(any(), any());
+        verify(client, never()).sendMenu(any(), any(), any(), any());
+        verify(client, never()).sendContactRequest(any(), any(), any());
     }
 
     @Test
     void startInGroupGetsPrivateOnlyWithoutContactKeyboard() {
         handler.handle(textUpdate(42L, "group", "/start"));
 
-        verify(client).sendMessage(42L, BotTexts.PRIVATE_CHAT_ONLY);
-        verify(client, never()).sendContactRequest(any(), any());
+        verify(client).sendMessage("tok", 42L, BotTexts.PRIVATE_CHAT_ONLY);
+        verify(client, never()).sendContactRequest(any(), any(), any());
     }
 
     @Test
     void contactInGroupLinksNothing() {
         handler.handle(contactUpdate(42L, "group", 555L, "0912", 555L));
 
-        verify(client).sendMessage(42L, BotTexts.PRIVATE_CHAT_ONLY);
+        verify(client).sendMessage("tok", 42L, BotTexts.PRIVATE_CHAT_ONLY);
         verify(links, never()).save(any());
         verifyNoInteractions(iam);
     }
@@ -251,8 +252,8 @@ class BaleUpdateHandlerTest {
         handler.handle(callbackUpdate("cbg", 42L, "group", "g:100"));
 
         org.mockito.InOrder order = org.mockito.Mockito.inOrder(client);
-        order.verify(client).answerCallbackQuery("cbg");
-        order.verify(client).sendMessage(42L, BotTexts.PRIVATE_CHAT_ONLY);
+        order.verify(client).answerCallbackQuery("tok", "cbg");
+        order.verify(client).sendMessage("tok", 42L, BotTexts.PRIVATE_CHAT_ONLY);
         verifyNoInteractions(studentAnswers, schoolAnswers, academic, finance);
     }
 
@@ -262,7 +263,7 @@ class BaleUpdateHandlerTest {
 
         handler.handle(textUpdate(42L, null, "فرزندان من"));
 
-        verify(client).sendMessage(42L, BotTexts.PRIVATE_CHAT_ONLY);
+        verify(client).sendMessage("tok", 42L, BotTexts.PRIVATE_CHAT_ONLY);
         verifyNoInteractions(finance, academic);
     }
 
@@ -278,7 +279,7 @@ class BaleUpdateHandlerTest {
 
         handler.handle(textUpdate(42L, BotTexts.BTN_GRADES));
 
-        verify(client).sendMessage(org.mockito.ArgumentMatchers.eq(42L),
+        verify(client).sendMessage(org.mockito.ArgumentMatchers.eq("tok"), org.mockito.ArgumentMatchers.eq(42L),
                 org.mockito.ArgumentMatchers.eq(BotTexts.CHOOSE_STUDENT),
                 org.mockito.ArgumentMatchers.<List<List<BaleClient.InlineButton>>>any());
     }
@@ -299,7 +300,7 @@ class BaleUpdateHandlerTest {
 
         handler.handle(textUpdate(42L, "فرزندان من"));
 
-        verify(client).sendMessage(42L,
+        verify(client).sendMessage("tok", 42L,
                 "- سارا (مدرسه #10): 0 فاکتور صادرشده\n- دانش‌آموز #2000 (مدرسه #10): 0 فاکتور صادرشده");
     }
 
@@ -313,8 +314,8 @@ class BaleUpdateHandlerTest {
 
         handler.handle(contactUpdate(42L, "private", 42L, "0912", 42L));
 
-        verify(client).sendMessage(42L, BotTexts.linkSuccess("والد"));
-        org.mockito.Mockito.verify(client, org.mockito.Mockito.never()).sendMenu(any(), any(), any());
+        verify(client).sendMessage("tok", 42L, BotTexts.linkSuccess("والد"));
+        org.mockito.Mockito.verify(client, never()).sendMenu(any(), any(), any(), any());
     }
 
     @Test
@@ -329,11 +330,11 @@ class BaleUpdateHandlerTest {
         handler.handle(callbackUpdate("cb9", 42L, "i:100"));
 
         org.mockito.ArgumentCaptor<List<List<String>>> menu = org.mockito.ArgumentCaptor.forClass(List.class);
-        verify(client).sendMenu(org.mockito.ArgumentMatchers.eq(42L),
+        verify(client).sendMenu(org.mockito.ArgumentMatchers.eq("tok"), org.mockito.ArgumentMatchers.eq(42L),
                 org.mockito.ArgumentMatchers.eq(BotTexts.UNKNOWN_TEXT), menu.capture());
         assertThat(menu.getValue().stream().flatMap(List::stream).toList())
                 .contains(BotTexts.BTN_GRADES).doesNotContain(BotTexts.BTN_INVOICES);
-        verify(client).sendMessage(42L, BotTexts.NOT_AVAILABLE);
+        verify(client).sendMessage("tok", 42L, BotTexts.NOT_AVAILABLE);
         verifyNoInteractions(schoolAnswers);
     }
 }

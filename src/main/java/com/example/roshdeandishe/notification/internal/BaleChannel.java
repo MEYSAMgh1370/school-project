@@ -13,10 +13,12 @@ class BaleChannel implements NotificationChannel {
 
     private final BaleLinkRepository baleLinkRepository;
     private final BaleClient baleClient;
+    private final BotTokens botTokens;
 
-    BaleChannel(BaleLinkRepository baleLinkRepository, BaleClient baleClient) {
+    BaleChannel(BaleLinkRepository baleLinkRepository, BaleClient baleClient, BotTokens botTokens) {
         this.baleLinkRepository = baleLinkRepository;
         this.baleClient = baleClient;
+        this.botTokens = botTokens;
     }
 
     @Override
@@ -27,7 +29,7 @@ class BaleChannel implements NotificationChannel {
     @Override
     public DeliveryResult deliver(Long userId, String text) {
         return baleLinkRepository.findByUserId(userId)
-                .map(link -> baleClient.deliver(link.getChatId(), text))
+                .map(link -> baleClient.deliver(botTokens.tokenFor(BotRef.SHARED), link.getChatId(), text))
                 .orElse(DeliveryResult.NOT_LINKED);
     }
 }
