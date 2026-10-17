@@ -1,6 +1,7 @@
 package com.example.roshdeandishe.web.controller;
 
 import com.example.roshdeandishe.finance.FinanceFacade;
+import com.example.roshdeandishe.iam.AccessContext;
 import com.example.roshdeandishe.iam.IamFacade;
 import com.example.roshdeandishe.iam.IamFacade.MembershipInfo;
 import com.example.roshdeandishe.iam.IamFacade.UserId;
@@ -115,11 +116,11 @@ public class DashboardPageController {
         NavbarModel navbar = navbarModelAssembler.assemble(profile, memberships);
         model.addAttribute("model", new DashboardModel(profile.fullName(), profile.email(), profile.phoneNumber(),
                 rows, schoolEntries(memberships, schools), WardsAssembler.isParent(memberships),
-                wardsAssembler.forParent(userId, memberships), tuitionRows(memberships, schools),
+                wardsAssembler.forParent(userId, memberships), tuitionRows(userId, memberships, schools),
                 attendanceTodayRows(userId, memberships, schools),
                 teacherClasses(userId, memberships, schools), rolesSummary(memberships, navbar, schools),
                 ownSummaries(userId, memberships, schools),
-                setupChecklists(memberships, schools)));
+                setupChecklists(userId, memberships, schools)));
         model.addAttribute("navbar", navbar);
         return "dashboard";
     }
@@ -154,17 +155,17 @@ public class DashboardPageController {
     }
 
     /**
-     * درصدِ پرداختِ شهریه‌ی سالِ جاری برای مدرسه‌هایی که کاربر در آن‌ها مدیرِ فعال است (همان چکِ literal
-     * {@code SCHOOL_ADMIN} و همان دامنه‌ی {@link #schoolEntries}؛ مدیرِ مالی/نقش‌های سفارشی چیزی نمی‌گیرند).
+     * درصدِ پرداختِ شهریه‌ی سالِ جاری برای مدرسه‌هایی که کاربر در آن‌ها {@code FINANCE_VIEW_ALL} دارد
+     * (مدیر مدرسه، مدیر مالی و نقشِ سفارشیِ دارای آن؛ openspec/changes/finance-view-all-permission.md).
      * فقط نسبتِ پرداخت به صورت‌حساب است، نه مبلغ (واحد پولی هنوز تصمیم‌نگرفته).
      */
-    private List<TuitionRow> tuitionRows(List<MembershipInfo> memberships,
+    private List<TuitionRow> tuitionRows(UserId userId, List<MembershipInfo> memberships,
                                          Map<Long, Optional<SchoolInfo>> schools) {
         List<TuitionRow> rows = new ArrayList<>();
         Set<Long> seen = new LinkedHashSet<>();
         for (MembershipInfo membership : memberships) {
-            if (!membership.active() || !SCHOOL_ADMIN_ROLE.equals(membership.roleCode())
-                    || !seen.add(membership.schoolId())) {
+            if (!membership.active() || !seen.add(membership.schoolId())
+                    || !holds(userId, membership.schoolId(), "FINANCE_VIEW_ALL")) {
                 continue;
             }
             FinanceFacade.TuitionSummary summary = financeFacade.tuitionSummary(membership.schoolId(), null);
@@ -176,17 +177,17 @@ public class DashboardPageController {
     }
 
     /**
-     * «حضور و غیاب امروز» برای مدرسه‌هایی که کاربر در آن‌ها مدیرِ فعال است (همان چکِ literal
-     * {@code SCHOOL_ADMIN} و همان دامنه‌ی {@link #tuitionRows}). مدرسه‌ای که ماژول حضور و غیاب را ندارد
-     * ردیفی نمی‌گیرد؛ جزئیاتِ آن در {@link AttendanceTodayAssembler}.
+     * «حضور و غیاب امروز» برای مدرسه‌هایی که کاربر در آن‌ها {@code ATTENDANCE_VIEW_ALL} دارد
+     * (finance-view-all-permission.md). مدرسه‌ای که ماژول حضور و غیاب را ندارد ردیفی نمی‌گیرد؛ جزئیاتِ آن
+     * در {@link AttendanceTodayAssembler}.
      */
     private List<AttendanceTodayRow> attendanceTodayRows(UserId userId, List<MembershipInfo> memberships,
                                                          Map<Long, Optional<SchoolInfo>> schools) {
         List<AttendanceTodayRow> rows = new ArrayList<>();
         Set<Long> seen = new LinkedHashSet<>();
         for (MembershipInfo membership : memberships) {
-            if (!membership.active() || !SCHOOL_ADMIN_ROLE.equals(membership.roleCode())
-                    || !seen.add(membership.schoolId())) {
+            if (!membership.active() || !seen.add(membership.schoolId())
+                    || !holds(userId, membership.schoolId(), "ATTENDANCE_VIEW_ALL")) {
                 continue;
             }
             Optional<SchoolInfo> school = schools.getOrDefault(membership.schoolId(), Optional.empty());
@@ -195,6 +196,12 @@ public class DashboardPageController {
                     .ifPresent(rows::add);
         }
         return rows;
+    }
+
+    /** هر عضویتِ فعالِ کاربر در این مدرسه که این Permission را داشته باشد کافی است (checkPermission). */
+    private boolean holds(UserId userId, Long schoolId, String permission) {
+        return iamFacade.checkPermission(userId, new IamFacade.PermissionCode(permission),
+                new AccessContext.SchoolContext(schoolId)).isGranted();
     }
 
     private List<OwnSummaryRow> ownSummaries(UserId userId, List<MembershipInfo> memberships,
@@ -227,17 +234,19 @@ public class DashboardPageController {
     }
 
     /**
-     * چک‌لیستِ «راه‌اندازی مدرسه» برای مدرسه‌هایی که کاربر در آن‌ها مدیرِ فعال است (همان چکِ literal
-     * {@code SCHOOL_ADMIN} و همان دامنه‌ی {@link #tuitionRows}). مدرسه‌ای که همه‌ی گام‌هایش انجام شده ردیف
-     * نمی‌گیرد، پس کارتش دیگر نمایش داده نمی‌شود.
+     * چک‌لیستِ «راه‌اندازی مدرسه» برای مدرسه‌هایی که کاربر در آن‌ها هم {@code MEMBERSHIP_MANAGE} و هم
+     * {@code CLASS_MANAGE} دارد، یعنی خودش می‌تواند گام‌ها (معلم، کلاس) را انجام دهد
+     * (finance-view-all-permission.md). مدرسه‌ای که همه‌ی گام‌هایش انجام شده ردیف نمی‌گیرد، پس کارتش دیگر
+     * نمایش داده نمی‌شود.
      */
-    private List<SetupChecklistRow> setupChecklists(List<MembershipInfo> memberships,
+    private List<SetupChecklistRow> setupChecklists(UserId userId, List<MembershipInfo> memberships,
                                                     Map<Long, Optional<SchoolInfo>> schools) {
         List<SetupChecklistRow> rows = new ArrayList<>();
         Set<Long> seen = new LinkedHashSet<>();
         for (MembershipInfo membership : memberships) {
-            if (!membership.active() || !SCHOOL_ADMIN_ROLE.equals(membership.roleCode())
-                    || !seen.add(membership.schoolId())) {
+            if (!membership.active() || !seen.add(membership.schoolId())
+                    || !holds(userId, membership.schoolId(), "MEMBERSHIP_MANAGE")
+                    || !holds(userId, membership.schoolId(), "CLASS_MANAGE")) {
                 continue;
             }
             SetupChecklistRow row = setupChecklistAssembler.forAdminSchool(membership.schoolId(),

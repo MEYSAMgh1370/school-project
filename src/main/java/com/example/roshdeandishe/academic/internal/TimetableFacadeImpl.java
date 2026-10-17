@@ -8,6 +8,7 @@ import com.example.roshdeandishe.academic.TimetableDay;
 import com.example.roshdeandishe.academic.TimetableFacade;
 import com.example.roshdeandishe.academic.shared.AcademicError;
 import com.example.roshdeandishe.academic.shared.AcademicException;
+import com.example.roshdeandishe.iam.AccessContext;
 import com.example.roshdeandishe.iam.IamFacade;
 import com.example.roshdeandishe.school.SchoolFacade;
 import org.springframework.dao.DataIntegrityViolationException;
@@ -26,6 +27,7 @@ import java.util.stream.Collectors;
 @Service
 class TimetableFacadeImpl implements TimetableFacade {
 
+    private static final IamFacade.PermissionCode ASSIGNABLE = new IamFacade.PermissionCode("TIMETABLE_ASSIGNABLE");
     private static final int MAX_LABEL_LENGTH = 64;
     private static final int MAX_NAME_LENGTH = 128;
     private static final int PERIOD_LOCK_NAMESPACE = 7401;
@@ -492,11 +494,11 @@ class TimetableFacadeImpl implements TimetableFacade {
         return activity;
     }
 
-    // همان بررسیِ academic.requireActiveParentMembership: findMembershipsByUser چون
-    // یک کاربر ممکن است هم‌زمان چند نقش در یک مدرسه داشته باشد
+    // معلمِ خانه = دارنده‌ی TIMETABLE_ASSIGNABLE در این مدرسه (TEACHER، یا نقشِ سفارشیِ دارای آن؛
+    // finance-view-all-permission.md). checkPermission همه‌ی عضویت‌های فعالِ کاربر در مدرسه را می‌سنجد
     private void requireActiveTeacher(Long schoolId, Long teacherUserId) {
-        boolean eligible = iamFacade.findMembershipsByUser(new IamFacade.UserId(teacherUserId)).stream()
-                .anyMatch(m -> m.schoolId().equals(schoolId) && "TEACHER".equals(m.roleCode()) && m.active());
+        boolean eligible = iamFacade.checkPermission(new IamFacade.UserId(teacherUserId), ASSIGNABLE,
+                new AccessContext.SchoolContext(schoolId)).isGranted();
         if (!eligible) {
             throw new AcademicException(new AcademicError.TeacherNotEligible(teacherUserId, schoolId));
         }

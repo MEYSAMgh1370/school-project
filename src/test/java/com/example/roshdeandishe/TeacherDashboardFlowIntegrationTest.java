@@ -76,6 +76,24 @@ class TeacherDashboardFlowIntegrationTest {
     }
 
     @Test
+    void aFinanceAdminGetsTheTuitionBoxByPermissionButNotTheAdminOnlyBoxes() throws Exception {
+        // finance-view-all-permission.md: «وضعیت شهریه» با FINANCE_VIEW_ALL است، نه کدِ SCHOOL_ADMIN؛
+        // چک‌لیست (MEMBERSHIP_MANAGE + CLASS_MANAGE) و «حضور و غیاب امروز» (ATTENDANCE_VIEW_ALL) را مدیر مالی ندارد
+        String email = "finance-dash-" + System.nanoTime() + "@example.test";
+        MockHttpSession financeAdmin = registerAndLogin(email, "مدیر مالی داشبورد");
+        MockHttpSession admin = login("admin@roshdeandishe.test", "password");
+        postAsAdmin(admin, "/api/admin/schools/1/memberships",
+                "{\"email\":\"" + email + "\",\"fullName\":\"مدیر مالی داشبورد\",\"roleCode\":\"FINANCE_ADMIN\"}");
+
+        mockMvc.perform(get("/dashboard").session(financeAdmin))
+                .andExpect(status().isOk())
+                .andExpect(content().string(containsString("dashboard-tuition-title-1")))
+                .andExpect(content().string(containsString("$store.nav.permissions.includes('FINANCE_VIEW_ALL')")))
+                .andExpect(content().string(not(containsString("dashboard-setup-title-1"))))
+                .andExpect(content().string(not(containsString("dashboard-attendance-title-1"))));
+    }
+
+    @Test
     void theClassesPageHidesTheCreateFormUnlessTheRoleCanManageClasses() throws Exception {
         MockHttpSession admin = login("admin@roshdeandishe.test", "password");
 
