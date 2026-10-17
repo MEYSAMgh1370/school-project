@@ -40,7 +40,7 @@ class DashboardTuitionRenderTest {
         String html = render(List.of(new TuitionRow(7L, "دبستان مهر", 3, 72)));
 
         assertThat(html).contains("وضعیت شهریه", "Calendar.digits('72')", "value=\"72\"");
-        assertThat(html).contains("$store.nav.selectedRole === 'SCHOOL_ADMIN'")
+        assertThat(html).contains("$store.nav.permissions.includes('FINANCE_VIEW_ALL')")
                 .contains("$store.nav.selectedSchoolId === 7");
     }
 

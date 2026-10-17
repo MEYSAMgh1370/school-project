@@ -94,7 +94,7 @@ class AttendancePagesFlowIntegrationTest {
         iamFacade.setSchoolEntitlement(1L, attendance, true);
         String entitled = HtmlUtils.htmlUnescape(page(admin, "/dashboard"));
         assertThat(entitled).contains("حضور و غیاب امروز", "href=\"/attendance/report\">غایبین امروز</a>");
-        assertThat(entitled).contains("$store.nav.selectedRole === 'SCHOOL_ADMIN' && $store.nav.selectedSchoolId === 1");
+        assertThat(entitled).contains("$store.nav.permissions.includes('ATTENDANCE_VIEW_ALL') && $store.nav.selectedSchoolId === 1");
 
         try {
             iamFacade.setSchoolEntitlement(1L, attendance, false);

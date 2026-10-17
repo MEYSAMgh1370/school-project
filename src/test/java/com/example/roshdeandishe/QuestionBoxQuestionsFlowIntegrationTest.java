@@ -147,4 +147,44 @@ class QuestionBoxQuestionsFlowIntegrationTest extends QuestionBoxTestSupport {
         send(f.student(), f.school(), get(f.base() + "/questions"), null).andExpect(status().isForbidden());
         send(f.student(), f.school(), post(f.base() + "/questions"), essay("x")).andExpect(status().isForbidden());
     }
+
+    @Test
+    void editingOthersFollowsManageAnyAndOrphanFollowsManage() throws Exception {
+        // finance-view-all-permission.md: «ویرایشِ همه» = QUESTION_BOX_MANAGE_ANY و «بی‌صاحب» = سازنده دیگر
+        // QUESTION_BOX_MANAGE ندارد، نه کدِ نقش
+        Fixture f = fixture();
+        String rolesPath = "/api/admin/schools/" + f.school() + "/roles";
+        send(f.admin(), f.school(), post(rolesPath), "{\"code\":\"HEAD_OF_DEPT\",\"displayName\":\"سرگروه\","
+                + "\"permissionCodes\":[\"QUESTION_BOX_MANAGE\",\"QUESTION_BOX_MANAGE_ANY\"]}")
+                .andExpect(status().is2xxSuccessful());
+        send(f.admin(), f.school(), post(rolesPath), "{\"code\":\"AUTHOR\",\"displayName\":\"مؤلف\","
+                + "\"permissionCodes\":[\"QUESTION_BOX_MANAGE\"]}")
+                .andExpect(status().is2xxSuccessful());
+        org.springframework.mock.web.MockHttpSession head = member(f, "qb.head", "سرگروه تست", "HEAD_OF_DEPT");
+        org.springframework.mock.web.MockHttpSession author = member(f, "qb.author", "مؤلف تست", "AUTHOR");
+
+        long teacherQuestion = create(f, f.teacher1(), essay("سؤال معلم برای سرگروه"));
+        send(author, f.school(), put(f.base() + "/questions/" + teacherQuestion), essay("مؤلف"))
+                .andExpect(status().isForbidden());
+        send(head, f.school(), put(f.base() + "/questions/" + teacherQuestion), essay("ویرایش سرگروه"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.text").value("ویرایش سرگروه"));
+
+        // سازنده‌ای با نقشِ سفارشیِ دارای QUESTION_BOX_MANAGE بی‌صاحب نیست (پیش‌تر چون TEACHER نبود، بود)
+        long authorQuestion = create(f, author, essay("سؤال مؤلف"));
+        send(f.teacher2(), f.school(), put(f.base() + "/questions/" + authorQuestion), essay("تصاحب"))
+                .andExpect(status().isForbidden());
+        send(head, f.school(), delete(f.base() + "/questions/" + authorQuestion), null)
+                .andExpect(status().isNoContent());
+    }
+
+    private org.springframework.mock.web.MockHttpSession member(Fixture f, String prefix, String fullName,
+                                                                String roleCode) throws Exception {
+        String email = unique(prefix);
+        org.springframework.mock.web.MockHttpSession session = registerAndLogin(email, fullName);
+        send(f.admin(), f.school(), post("/api/admin/schools/" + f.school() + "/memberships"),
+                "{\"email\":\"" + email + "\",\"fullName\":\"" + fullName + "\",\"roleCode\":\"" + roleCode + "\"}")
+                .andExpect(status().isOk());
+        return session;
+    }
 }

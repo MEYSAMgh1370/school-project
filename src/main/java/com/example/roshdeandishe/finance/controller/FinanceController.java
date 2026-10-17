@@ -25,6 +25,7 @@ import com.example.roshdeandishe.finance.dto.request.SetTuitionFeeRequest;
 import com.example.roshdeandishe.finance.dto.response.TuitionFeeResponse;
 import com.example.roshdeandishe.finance.shared.FinanceError;
 import com.example.roshdeandishe.finance.shared.FinanceException;
+import com.example.roshdeandishe.iam.AccessContext;
 import com.example.roshdeandishe.iam.IamFacade;
 import com.example.roshdeandishe.iam.shared.RequiresModule;
 import com.example.roshdeandishe.iam.shared.RequiresPermission;
@@ -47,6 +48,8 @@ import java.util.List;
 @RequestMapping("/api/admin/schools/{schoolId}")
 @RequiresModule("FINANCE")
 public class FinanceController {
+
+    private static final IamFacade.PermissionCode VIEW_ALL = new IamFacade.PermissionCode("FINANCE_VIEW_ALL");
 
     private final FinanceFacade financeFacade;
     private final IamFacade iamFacade;
@@ -102,20 +105,15 @@ public class FinanceController {
     }
 
     /**
-     * تصمیم صریح (CLAUDE.md §10، حل‌شده): این endpoint دیگر برای هر
-     * دارنده‌ی FINANCE_VIEW بدون قید و شرط همه‌ی فاکتورهای مدرسه را
-     * برنمی‌گرداند - PARENT (که FINANCE_VIEW دارد، §4) فقط فاکتورهای
-     * فرزندانِ واقعاً لینک‌شده‌اش (StudentGuardianEntity) را می‌بیند.
-     * SCHOOL_ADMIN و FINANCE_ADMIN همچنان دید کامل مدرسه را دارند - تنها
-     * نقش‌هایی که اصلاً FINANCE_VIEW می‌گیرند (§4's Permission table)
-     * SCHOOL_ADMIN، FINANCE_ADMIN و PARENT هستند، پس بررسیِ این دو نقش
-     * کافی است تا PARENT را از بقیه جدا کند - حتی برای کاربری که هم‌زمان
-     * PARENT و SCHOOL_ADMIN است (دید کامل، چون نقش ادمین را هم دارد).
+     * تصمیم صریح (CLAUDE.md §10، حل‌شده): دارنده‌ی FINANCE_VIEW بدون قید همه‌ی فاکتورهای مدرسه را
+     * نمی‌بیند - PARENT (که FINANCE_VIEW دارد) فقط فاکتورهای فرزندانِ واقعاً لینک‌شده‌اش را. دیدِ کلِ
+     * مدرسه با Permissionِ FINANCE_VIEW_ALL است، نه کدِ نقش، تا نقشِ سفارشیِ مالی (مثلاً «حسابدار») هم
+     * کار کند (openspec/changes/finance-view-all-permission.md). checkPermission همه‌ی عضویت‌های فعال را
+     * می‌سنجد، پس کاربری که هم PARENT است و هم نقشی با FINANCE_VIEW_ALL دارد دیدِ کامل می‌گیرد.
      */
     private boolean hasSchoolWideFinanceVisibility(Long schoolId) {
-        return iamFacade.findMembershipsByUser(iamFacade.currentUserId()).stream()
-                .anyMatch(m -> m.active() && m.schoolId().equals(schoolId)
-                        && (m.roleCode().equals("SCHOOL_ADMIN") || m.roleCode().equals("FINANCE_ADMIN")));
+        return iamFacade.checkPermission(iamFacade.currentUserId(), VIEW_ALL,
+                new AccessContext.SchoolContext(schoolId)).isGranted();
     }
 
     private List<Long> guardianWardStudentIds(Long schoolId) {

@@ -87,7 +87,9 @@ public final class NavCatalog {
                             List.of(STUDENT, PARENT), List.of(STUDENT, PARENT)).withIcon("grades"))),
             new Group("finance", "مالی", List.of(
                     new Link("/finance", "امور مالی", "شهریه، پرداخت‌ها و فاکتورها",
-                            List.of(ADMIN, FINANCE), List.of(ADMIN, FINANCE)).withPermissions("FINANCE_MANAGE", "FINANCE_VIEW").withIcon("finance"),
+                            List.of(ADMIN, FINANCE), List.of(ADMIN, FINANCE)).withPermissions("FINANCE_MANAGE", "FINANCE_VIEW")
+                            // نقشِ سفارشیِ فقط‌خواندنی (finance-view-all-permission.md)
+                            .orPermissions("FINANCE_VIEW", "FINANCE_VIEW_ALL").withIcon("finance"),
                     // فقط‌خواندنی؛ API آن FINANCE_MANAGE می‌خواهد. بدون کارتِ «دسترسی سریع»
                     new Link("/finance-audit", "سابقه‌ی تغییرات مالی", "چه کسی، کی و چه چیزی را در امور مالی تغییر داده است",
                             List.of(ADMIN, FINANCE), List.of()).withPermissions("FINANCE_MANAGE").withIcon("finance"),

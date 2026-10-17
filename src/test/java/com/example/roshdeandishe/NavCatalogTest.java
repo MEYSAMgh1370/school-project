@@ -84,6 +84,9 @@ class NavCatalogTest {
         assertThat(finance.shortcutVisibleWhen("role", "perms")).isEqualTo(
                 "['SCHOOL_ADMIN', 'FINANCE_ADMIN'].includes(role) || ['FINANCE_MANAGE', 'FINANCE_VIEW']"
                         + ".every(p => (!['SCHOOL_ADMIN', 'TEACHER', 'STUDENT', 'PARENT', 'FINANCE_ADMIN']"
+                        + ".includes(role) ? perms : []).includes(p))"
+                        + " || ['FINANCE_VIEW', 'FINANCE_VIEW_ALL']"
+                        + ".every(p => (!['SCHOOL_ADMIN', 'TEACHER', 'STUDENT', 'PARENT', 'FINANCE_ADMIN']"
                         + ".includes(role) ? perms : []).includes(p))");
         // کارت‌های «من» Permission ندارند: همان شرطِ نقش
         assertThat(mine.shortcutVisibleWhen("role", "perms")).isEqualTo(mine.shortcutVisibleWhen("role"));
@@ -212,7 +215,8 @@ class NavCatalogTest {
         NavCatalog.Link finance = allLinks().stream().filter(l -> l.href().equals("/finance")).findFirst().orElseThrow();
         assertThat(finance.visibleWhen("role", "perms")).isEqualTo(
                 "['SCHOOL_ADMIN', 'FINANCE_ADMIN'].includes(role) "
-                        + "|| ['FINANCE_MANAGE', 'FINANCE_VIEW'].every(p => perms.includes(p))");
+                        + "|| ['FINANCE_MANAGE', 'FINANCE_VIEW'].every(p => perms.includes(p))"
+                        + " || ['FINANCE_VIEW', 'FINANCE_VIEW_ALL'].every(p => perms.includes(p))");
         // لینکِ «من» حتی با عبارتِ Permission همان شرطِ نقش را می‌دهد
         assertThat(mine.visibleWhen("role", "perms")).isEqualTo(mine.visibleWhen("role"));
     }
@@ -227,4 +231,16 @@ class NavCatalogTest {
                         "['ROLE_MANAGE'].every(", "['ACADEMIC_YEAR_MANAGE'].every(")
                 .endsWith(".every(p => perms.includes(p))");
     }
+
+    @Test
+    void financeLinkAlsoShowsForAViewOnlyCustomRoleWithFinanceViewAll() {
+        Link finance = linkOf("/finance");
+
+        // finance-view-all-permission.md: نقشِ سفارشیِ فقط‌خواندنی (FINANCE_VIEW + FINANCE_VIEW_ALL) هم لینک را می‌بیند
+        assertThat(finance.permissionSets()).containsExactly(
+                List.of("FINANCE_MANAGE", "FINANCE_VIEW"), List.of("FINANCE_VIEW", "FINANCE_VIEW_ALL"));
+        assertThat(finance.visibleWhen("role", "perms")).contains(
+                "['FINANCE_VIEW', 'FINANCE_VIEW_ALL'].every(p => perms.includes(p))");
+    }
+
 }
