@@ -269,7 +269,7 @@ class SchoolBotFlowIntegrationTest {
         School schoolB = createSchool("ب");   // ربات ندارد
         Bot botA = registerBot(schoolA);
         Parent parent = createParent("چندمدرسه‌ای", schoolA, schoolB);
-        long chatId = uniqueId(); // همان chat در هر دو ربات، پس یکتاییِ V32 (به‌ازای هر ربات) راستی‌آزمایی می‌شود
+        long chatId = uniqueId(); // همان chat در هر دو ربات، پس یکتاییِ V33 (به‌ازای هر ربات) راستی‌آزمایی می‌شود
 
         linkChat(SHARED_SECRET, SHARED_TOKEN, chatId, parent, null);
         linkChat(botA.secret(), botA.token(), chatId, parent, botA.rowId());

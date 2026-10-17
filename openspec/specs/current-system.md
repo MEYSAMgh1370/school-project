@@ -284,7 +284,7 @@ Stages 1 and 2 of `openspec/changes/bale-smart-bot.md`, implemented 2026-10-16, 
 - **Text and money.** All copy is in `BotTexts` (to be tuned after user testing or A/B); `PersianText` writes Persian digits and `MoneyText` formats amounts in whole Rial with `٬` grouping and the label «ریال», fractional rial rounded half-up for display. `MoneyText.currencyOf` returns Rial for every school until a per-school currency exists.
 
 
-### School bots (PR 1 of `openspec/changes/bale-school-bots.md`, migration `V32`)
+### School bots (PR 1 of `openspec/changes/bale-school-bots.md`, migration `V33`)
 
 A school can register its own Bale bot. It is optional and free (no module, no entitlement); a school without one is served by the shared bot exactly as before.
 
