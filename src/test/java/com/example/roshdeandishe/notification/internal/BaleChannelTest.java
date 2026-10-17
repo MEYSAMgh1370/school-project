@@ -4,9 +4,7 @@ import com.example.roshdeandishe.notification.NotificationFacade.DeliveryResult;
 
 import org.junit.jupiter.api.Test;
 
-import java.time.Clock;
 import java.time.Instant;
-import java.time.ZoneOffset;
 import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -55,15 +53,15 @@ class BaleChannelTest {
 
     private static final long SCHOOL = 5L;
     private static final long BOT = 3L;
-    private static final Instant NOW = Instant.parse("2026-10-16T10:00:00Z");
 
     private final BaleLinkRepository links = mock(BaleLinkRepository.class);
     private final SchoolBotRepository bots = mock(SchoolBotRepository.class);
     private final TokenCipher cipher = mock(TokenCipher.class);
+    private final SchoolBotService schoolBotService = mock(SchoolBotService.class);
 
     private BaleChannel channel(BaleClient client) {
         return new BaleChannel(links, client, new BotTokens("shared-token", bots, cipher), bots,
-                Clock.fixed(NOW, ZoneOffset.UTC));
+                schoolBotService);
     }
 
     private SchoolBotEntity activeBot() {
@@ -190,7 +188,7 @@ class BaleChannelTest {
         RecordingClient client = new RecordingClient(DeliveryResult.UNDELIVERABLE, 401);
 
         assertThat(channel(client).deliver(7L, SCHOOL, "سلام")).isEqualTo(DeliveryResult.UNDELIVERABLE);
-        verify(bots).markStatus(BOT, SchoolBotStatus.DISABLED, BotTexts.BOT_TOKEN_INVALID, NOW);
+        verify(schoolBotService).markDisabled(BOT, BotTexts.BOT_TOKEN_INVALID);
     }
 
     @Test
@@ -201,6 +199,6 @@ class BaleChannelTest {
 
         assertThat(channel(new RecordingClient(DeliveryResult.UNDELIVERABLE, 403)).deliver(7L, SCHOOL, "سلام"))
                 .isEqualTo(DeliveryResult.UNDELIVERABLE);
-        verify(bots, never()).markStatus(any(), any(), anyString(), any());
+        verify(schoolBotService, never()).markDisabled(any(), anyString());
     }
 }

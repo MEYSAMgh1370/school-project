@@ -55,8 +55,8 @@ class BaleClient {
 
     /**
      * ارسال با نتیجه‌ی دقیق: بدون توکن یا پاسخ 4xx (غیر از 429) = UNDELIVERABLE (تلاش دوباره فایده ندارد، مثلاً
-     * کاربر ربات را بسته)، و 5xx، 429 یا خطای شبکه/تایم‌اوت = TEMPORARY_FAILURE. متن پیام فقط در حالت
-     * «توکن پیکربندی نشده» لاگ می‌شود (رفتار قبلی)؛ برای خطاها فقط وضعیت HTTP.
+     * کاربر ربات را بسته)، و 5xx، 429 یا خطای شبکه/تایم‌اوت = TEMPORARY_FAILURE. متن پیام هرگز
+     * لاگ نمی‌شود؛ برای خطاها فقط وضعیت HTTP.
      */
     DeliveryResult deliver(String token, Long chatId, String text) {
         return deliverDetailed(token, chatId, text).result();
@@ -69,7 +69,7 @@ class BaleClient {
     /** همان {@link #deliver} با کد HTTP؛ کد برای ثبت وضعیتِ ربات (مثلاً توکن باطل‌شده) لازم است. */
     SendResult deliverDetailed(String token, Long chatId, String text) {
         if (token == null || token.isBlank()) {
-            log.warn("roshdeandishe.bale.bot-token پیکربندی نشده - پیام به chatId={} ارسال نشد: {}", chatId, text);
+            log.warn("توکن این بات در دسترس نیست - ارسال انجام نشد (chatId={}).", chatId);
             return new SendResult(DeliveryResult.UNDELIVERABLE, 0);
         }
 
@@ -175,7 +175,7 @@ class BaleClient {
      */
     boolean sendContactRequest(String token, Long chatId, String text) {
         if (token == null || token.isBlank()) {
-            log.warn("roshdeandishe.bale.bot-token پیکربندی نشده - درخواست شماره تلفن به chatId={} ارسال نشد.", chatId);
+            log.warn("توکن این بات در دسترس نیست - درخواست شماره تلفن به chatId={} ارسال نشد.", chatId);
             return false;
         }
 
@@ -203,7 +203,7 @@ class BaleClient {
      */
     boolean sendMenu(String token, Long chatId, String text, List<List<String>> rows) {
         if (token == null || token.isBlank()) {
-            log.warn("roshdeandishe.bale.bot-token پیکربندی نشده - پیام منو به chatId={} ارسال نشد.", chatId);
+            log.warn("توکن این بات در دسترس نیست - پیام منو به chatId={} ارسال نشد.", chatId);
             return false;
         }
 
@@ -246,7 +246,7 @@ class BaleClient {
             }
         }
         if (token == null || token.isBlank()) {
-            log.warn("roshdeandishe.bale.bot-token پیکربندی نشده - پیام کیبورددار به chatId={} ارسال نشد.", chatId);
+            log.warn("توکن این بات در دسترس نیست - پیام کیبورددار به chatId={} ارسال نشد.", chatId);
             return false;
         }
 
@@ -270,7 +270,7 @@ class BaleClient {
     /** پاسخ به callback_query تا spinner دکمه در کلاینت بله قطع شود. */
     boolean answerCallbackQuery(String token, String callbackQueryId) {
         if (token == null || token.isBlank()) {
-            log.warn("roshdeandishe.bale.bot-token پیکربندی نشده - پاسخ callback_query ارسال نشد.");
+            log.warn("توکن این بات در دسترس نیست - پاسخ callback_query ارسال نشد.");
             return false;
         }
 

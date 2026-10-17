@@ -1,0 +1,272 @@
+package com.example.roshdeandishe.notification.internal;
+
+import com.example.roshdeandishe.iam.IamFacade;
+import com.example.roshdeandishe.iam.IamFacade.UserId;
+import com.example.roshdeandishe.notification.SchoolBotFacade.SchoolBotInfo;
+import com.example.roshdeandishe.notification.SchoolBotFacade.SchoolBotState;
+import com.example.roshdeandishe.notification.shared.NotificationError;
+import com.example.roshdeandishe.notification.shared.NotificationException;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.mockito.ArgumentCaptor;
+
+import java.security.SecureRandom;
+import java.time.Clock;
+import java.time.Instant;
+import java.time.ZoneOffset;
+import java.util.Base64;
+import java.util.Optional;
+
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyLong;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
+import static org.mockito.Mockito.when;
+
+class SchoolBotServiceTest {
+
+    private static final Instant NOW = Instant.parse("2026-10-16T10:00:00Z");
+    private static final long SCHOOL = 5L;
+
+    private final BaleClient baleClient = mock(BaleClient.class);
+    private final SchoolBotRepository bots = mock(SchoolBotRepository.class);
+    private final BaleLinkRepository links = mock(BaleLinkRepository.class);
+    private final IamFacade iam = mock(IamFacade.class);
+    private final TokenCipher cipher = new TokenCipher(randomKey());
+    private final Clock clock = Clock.fixed(NOW, ZoneOffset.UTC);
+
+    private SchoolBotService service;
+
+    private static String randomKey() {
+        byte[] k = new byte[32];
+        new SecureRandom().nextBytes(k);
+        return Base64.getEncoder().encodeToString(k);
+    }
+
+    private SchoolBotService build(TokenCipher c) {
+        return new SchoolBotService(bots, links, baleClient, c, iam, new RegistrationAttempts(clock),
+                "https://app.example/", clock);
+    }
+
+    @BeforeEach
+    void setUp() {
+        service = build(cipher);
+        when(iam.currentUserId()).thenReturn(new UserId(42L));
+        when(bots.findBySchoolId(SCHOOL)).thenReturn(Optional.empty());
+        when(bots.findByBotUserId(anyLong())).thenReturn(Optional.empty());
+        when(bots.save(any(SchoolBotEntity.class))).thenAnswer(inv -> inv.getArgument(0));
+        when(baleClient.getMe(anyString()))
+                .thenReturn(new BaleClient.BotInfoResult.Found(new BaleClient.BotInfo(1L, "school_bot")));
+        when(baleClient.setWebhook(anyString(), anyString())).thenReturn(true);
+    }
+
+    private SchoolBotEntity saved() {
+        ArgumentCaptor<SchoolBotEntity> captor = ArgumentCaptor.forClass(SchoolBotEntity.class);
+        verify(bots).save(captor.capture());
+        return captor.getValue();
+    }
+
+    private String webhookUrl(String token) {
+        ArgumentCaptor<String> url = ArgumentCaptor.forClass(String.class);
+        verify(baleClient).setWebhook(eq(token), url.capture());
+        return url.getValue();
+    }
+
+    private static NotificationError errorOf(Runnable action) {
+        try {
+            action.run();
+        } catch (NotificationException e) {
+            return e.error();
+        }
+        throw new AssertionError("expected NotificationException");
+    }
+
+    private SchoolBotEntity existing(long id, long botUserId, String hash) {
+        SchoolBotEntity e = new SchoolBotEntity();
+        e.setId(id);
+        e.setSchoolId(SCHOOL);
+        e.setBotUserId(botUserId);
+        e.setBotUsername("old_bot");
+        e.setWebhookSecretHash(hash);
+        e.setStatus(SchoolBotStatus.DISABLED);
+        e.setLastError("x");
+        e.setLastErrorAt(NOW);
+        TokenCipher.Encrypted enc = cipher.encrypt("old:token");
+        e.setTokenCiphertext(enc.ciphertext());
+        e.setTokenKeyVersion(enc.keyVersion());
+        e.setCreatedAt(NOW.minusSeconds(100));
+        e.setCreatedBy(7L);
+        e.setUpdatedAt(NOW.minusSeconds(100));
+        return e;
+    }
+
+    @Test
+    void registersAndStoresOnlyEncryptedTokenAndSecretHash() {
+        SchoolBotInfo info = service.register(SCHOOL, "123:abc");
+
+        SchoolBotEntity e = saved();
+        String url = webhookUrl("123:abc");
+        String secret = url.substring(url.lastIndexOf('/') + 1);
+        assertThat(e.getTokenCiphertext()).isNotEqualTo("123:abc");
+        assertThat(cipher.decrypt(e.getTokenCiphertext(), e.getTokenKeyVersion())).isEqualTo("123:abc");
+        assertThat(e.getWebhookSecretHash()).isEqualTo(WebhookSecrets.hash(secret));
+        assertThat(e.getStatus()).isEqualTo(SchoolBotStatus.ACTIVE);
+        assertThat(e.getSchoolId()).isEqualTo(SCHOOL);
+        assertThat(e.getBotUserId()).isEqualTo(1L);
+        assertThat(e.getBotUsername()).isEqualTo("school_bot");
+        assertThat(e.getCreatedBy()).isEqualTo(42L);
+        assertThat(e.getUpdatedBy()).isEqualTo(42L);
+        assertThat(info.username()).isEqualTo("school_bot");
+        assertThat(info.status()).isEqualTo(SchoolBotState.ACTIVE);
+    }
+
+    @Test
+    void webhookUrlUsesBaseUrlAndSecret() {
+        service.register(SCHOOL, "123:abc");
+
+        assertThat(webhookUrl("123:abc")).startsWith("https://app.example/api/bale/webhook/");
+    }
+
+    @Test
+    void tokenIsTrimmedAndBlankIsInvalidWithoutCallingBale() {
+        service.register(SCHOOL, "  123:abc \n");
+        verify(baleClient).getMe("123:abc");
+
+        BaleClient fresh = mock(BaleClient.class);
+        SchoolBotService other = new SchoolBotService(bots, links, fresh, cipher, iam,
+                new RegistrationAttempts(clock), "https://app.example", clock);
+        assertThat(errorOf(() -> other.register(SCHOOL, "   "))).isInstanceOf(NotificationError.BotTokenInvalid.class);
+        assertThat(errorOf(() -> other.register(SCHOOL, null))).isInstanceOf(NotificationError.BotTokenInvalid.class);
+        verifyNoInteractions(fresh);
+    }
+
+    @Test
+    void invalidTokenIsRefusedAndNothingSaved() {
+        when(baleClient.getMe("bad")).thenReturn(new BaleClient.BotInfoResult.InvalidToken());
+
+        assertThat(errorOf(() -> service.register(SCHOOL, "bad"))).isInstanceOf(NotificationError.BotTokenInvalid.class);
+        verify(bots, never()).save(any());
+    }
+
+    @Test
+    void unreachableBaleIsRefusedAndNothingSaved() {
+        when(baleClient.getMe("t")).thenReturn(new BaleClient.BotInfoResult.Unreachable());
+
+        assertThat(errorOf(() -> service.register(SCHOOL, "t"))).isInstanceOf(NotificationError.BaleUnavailable.class);
+        verify(bots, never()).save(any());
+    }
+
+    @Test
+    void webhookFailureIsBaleUnavailableAndNothingSaved() {
+        when(baleClient.setWebhook(anyString(), anyString())).thenReturn(false);
+
+        assertThat(errorOf(() -> service.register(SCHOOL, "t"))).isInstanceOf(NotificationError.BaleUnavailable.class);
+        verify(bots, never()).save(any());
+    }
+
+    @Test
+    void botOfAnotherSchoolIsRefused() {
+        SchoolBotEntity other = existing(9L, 1L, "h");
+        other.setSchoolId(99L);
+        when(bots.findByBotUserId(1L)).thenReturn(Optional.of(other));
+
+        assertThat(errorOf(() -> service.register(SCHOOL, "t"))).isInstanceOf(NotificationError.BotAlreadyRegistered.class);
+        verify(baleClient, never()).setWebhook(anyString(), anyString());
+        verify(bots, never()).save(any());
+    }
+
+    @Test
+    void missingEncryptionKeyIsRefusedBeforeCallingBale() {
+        SchoolBotService noKey = build(new TokenCipher(""));
+
+        assertThat(errorOf(() -> noKey.register(SCHOOL, "t"))).isInstanceOf(NotificationError.BotEncryptionUnavailable.class);
+        verifyNoInteractions(baleClient);
+    }
+
+    @Test
+    void eleventhAttemptInAnHourIsRefused() {
+        when(baleClient.getMe("bad")).thenReturn(new BaleClient.BotInfoResult.InvalidToken());
+        for (int i = 0; i < 10; i++) {
+            assertThat(errorOf(() -> service.register(SCHOOL, "bad"))).isInstanceOf(NotificationError.BotTokenInvalid.class);
+        }
+
+        assertThat(errorOf(() -> service.register(SCHOOL, "bad"))).isInstanceOf(NotificationError.TooManyAttempts.class);
+    }
+
+    @Test
+    void replacingWithDifferentBotDeletesOldLinksAndSecret() {
+        SchoolBotEntity old = existing(3L, 1L, "oldhash");
+        when(bots.findBySchoolId(SCHOOL)).thenReturn(Optional.of(old));
+        when(baleClient.getMe("new:tok"))
+                .thenReturn(new BaleClient.BotInfoResult.Found(new BaleClient.BotInfo(2L, "new_bot")));
+
+        service.register(SCHOOL, "new:tok");
+
+        verify(links).deleteByBotId(3L);
+        SchoolBotEntity e = saved();
+        assertThat(e.getId()).isEqualTo(3L);
+        assertThat(e.getBotUserId()).isEqualTo(2L);
+        assertThat(e.getWebhookSecretHash()).isNotEqualTo("oldhash");
+        assertThat(e.getStatus()).isEqualTo(SchoolBotStatus.ACTIVE);
+        assertThat(e.getLastError()).isNull();
+        assertThat(e.getLastErrorAt()).isNull();
+        assertThat(e.getCreatedBy()).isEqualTo(7L);
+        assertThat(e.getUpdatedBy()).isEqualTo(42L);
+    }
+
+    @Test
+    void replacingWithSameBotKeepsLinks() {
+        SchoolBotEntity old = existing(3L, 1L, "oldhash");
+        when(bots.findBySchoolId(SCHOOL)).thenReturn(Optional.of(old));
+        when(bots.findByBotUserId(1L)).thenReturn(Optional.of(old));
+
+        service.register(SCHOOL, "123:abc");
+
+        verify(links, never()).deleteByBotId(anyLong());
+        assertThat(saved().getWebhookSecretHash()).isNotEqualTo("oldhash");
+    }
+
+    @Test
+    void deleteCallsDeleteWebhookAndRemovesRow() {
+        SchoolBotEntity old = existing(3L, 1L, "h");
+        when(bots.findBySchoolId(SCHOOL)).thenReturn(Optional.of(old));
+        when(baleClient.deleteWebhook("old:token")).thenReturn(false);
+
+        service.delete(SCHOOL);
+
+        verify(baleClient).deleteWebhook("old:token");
+        verify(bots).delete(old);
+    }
+
+    @Test
+    void deleteWithoutBotIsNotFound() {
+        assertThat(errorOf(() -> service.delete(SCHOOL))).isInstanceOf(NotificationError.SchoolBotNotFound.class);
+    }
+
+    @Test
+    void findReportsLinkedMembers() {
+        SchoolBotEntity old = existing(3L, 1L, "h");
+        when(bots.findBySchoolId(SCHOOL)).thenReturn(Optional.of(old));
+        when(links.countByBotId(3L)).thenReturn(4L);
+
+        SchoolBotInfo info = service.find(SCHOOL).orElseThrow();
+
+        assertThat(info.linkedMembers()).isEqualTo(4L);
+        assertThat(info.status()).isEqualTo(SchoolBotState.DISABLED);
+        assertThat(info.lastError()).isEqualTo("x");
+    }
+
+    @Test
+    void markDisabledSetsStatusAndError() {
+        service.markDisabled(3L, "boom");
+
+        verify(bots).markStatus(3L, SchoolBotStatus.DISABLED, "boom", NOW);
+        verify(bots, never()).save(any());
+    }
+}

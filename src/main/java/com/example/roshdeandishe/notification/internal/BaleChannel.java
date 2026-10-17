@@ -5,7 +5,6 @@ import com.example.roshdeandishe.notification.NotificationFacade.DeliveryResult;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
-import java.time.Clock;
 import java.util.Optional;
 
 /**
@@ -21,21 +20,16 @@ class BaleChannel implements NotificationChannel {
     private final BaleClient baleClient;
     private final BotTokens botTokens;
     private final SchoolBotRepository schoolBots;
-    private final Clock clock;
+    private final SchoolBotService schoolBotService;
 
     @Autowired
     BaleChannel(BaleLinkRepository baleLinkRepository, BaleClient baleClient, BotTokens botTokens,
-                SchoolBotRepository schoolBots) {
-        this(baleLinkRepository, baleClient, botTokens, schoolBots, Clock.systemUTC());
-    }
-
-    BaleChannel(BaleLinkRepository baleLinkRepository, BaleClient baleClient, BotTokens botTokens,
-                SchoolBotRepository schoolBots, Clock clock) {
+                SchoolBotRepository schoolBots, SchoolBotService schoolBotService) {
         this.baleLinkRepository = baleLinkRepository;
         this.baleClient = baleClient;
         this.botTokens = botTokens;
         this.schoolBots = schoolBots;
-        this.clock = clock;
+        this.schoolBotService = schoolBotService;
     }
 
     @Override
@@ -69,7 +63,7 @@ class BaleChannel implements NotificationChannel {
         }
         BaleClient.SendResult sent = baleClient.deliverDetailed(botTokens.tokenFor(ref), link.get().getChatId(), text);
         if (sent.httpStatus() == HTTP_UNAUTHORIZED) {
-            schoolBots.markStatus(bot.getId(), SchoolBotStatus.DISABLED, BotTexts.BOT_TOKEN_INVALID, clock.instant());
+            schoolBotService.markDisabled(bot.getId(), BotTexts.BOT_TOKEN_INVALID);
             return DeliveryResult.UNDELIVERABLE;
         }
         return sent.result();
