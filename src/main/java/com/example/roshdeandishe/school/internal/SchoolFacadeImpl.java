@@ -48,13 +48,18 @@ class SchoolFacadeImpl implements SchoolFacade {
     private final SchoolYearRangeRepository schoolYearRangeRepository;
     private final ApplicationEventPublisher eventPublisher;
     private final ReminderRoleRepository reminderRoleRepository;
+    private final SchoolSettingsRepository schoolSettingsRepository;
+    private final BotRoleRepository botRoleRepository;
 
     SchoolFacadeImpl(SchoolRepository schoolRepository, AcademicYearRepository academicYearRepository,
                      CalendarEntryRepository calendarEntryRepository,
                      PlatformHolidayRepository platformHolidayRepository,
                      SchoolYearRangeRepository schoolYearRangeRepository, ApplicationEventPublisher eventPublisher,
-                     ReminderRoleRepository reminderRoleRepository) {
+                     ReminderRoleRepository reminderRoleRepository,
+                     SchoolSettingsRepository schoolSettingsRepository, BotRoleRepository botRoleRepository) {
         this.reminderRoleRepository = reminderRoleRepository;
+        this.schoolSettingsRepository = schoolSettingsRepository;
+        this.botRoleRepository = botRoleRepository;
         this.schoolYearRangeRepository = schoolYearRangeRepository;
         this.schoolRepository = schoolRepository;
         this.academicYearRepository = academicYearRepository;
@@ -145,16 +150,33 @@ class SchoolFacadeImpl implements SchoolFacade {
         }
     }
 
+    /**
+     * ردیفِ تنظیماتِ مدرسه؛ اگر نباشد از ستون‌های قدیمیِ schools ساخته می‌شود (insert ... on conflict do nothing،
+     * پس خواندنِ هم‌زمانِ اول فقط یک ردیف می‌سازد). SchoolNotFound اگر مدرسه نباشد.
+     */
+    private SchoolSettingsEntity loadOrCreateSettings(SchoolId schoolId) {
+        Optional<SchoolSettingsEntity> existing = schoolSettingsRepository.findById(schoolId.value());
+        if (existing.isPresent()) {
+            return existing.get();
+        }
+        schoolSettingsRepository.createIfMissing(schoolId.value());
+        return schoolSettingsRepository.findById(schoolId.value())
+                .orElseThrow(() -> new SchoolException(new SchoolError.SchoolNotFound(schoolId.value())));
+    }
+
     @Override
+    @Transactional
     public boolean isAutoPromotion(SchoolId schoolId) {
-        return schoolRepository.findById(schoolId.value())
-                .orElseThrow(() -> new SchoolException(new SchoolError.SchoolNotFound(schoolId.value())))
-                .isAutoPromotion();
+        return loadOrCreateSettings(schoolId).isAutoPromotion();
     }
 
     @Override
     @Transactional
     public void setAutoPromotion(SchoolId schoolId, boolean enabled) {
+        SchoolSettingsEntity settings = loadOrCreateSettings(schoolId);
+        settings.setAutoPromotion(enabled);
+        schoolSettingsRepository.save(settings);
+        // نوشتنِ دوگانه: ستونِ قدیمیِ schools تا migrationِ حذفِ آن
         SchoolEntity school = schoolRepository.findById(schoolId.value())
                 .orElseThrow(() -> new SchoolException(new SchoolError.SchoolNotFound(schoolId.value())));
         school.setAutoPromotion(enabled);
@@ -162,19 +184,78 @@ class SchoolFacadeImpl implements SchoolFacade {
     }
 
     @Override
+    @Transactional
     public boolean isInstallmentsEnabled(SchoolId schoolId) {
-        return schoolRepository.findById(schoolId.value())
-                .orElseThrow(() -> new SchoolException(new SchoolError.SchoolNotFound(schoolId.value())))
-                .isInstallmentsEnabled();
+        return loadOrCreateSettings(schoolId).isInstallmentsEnabled();
     }
 
     @Override
     @Transactional
     public void setInstallmentsEnabled(SchoolId schoolId, boolean enabled) {
+        SchoolSettingsEntity settings = loadOrCreateSettings(schoolId);
+        settings.setInstallmentsEnabled(enabled);
+        schoolSettingsRepository.save(settings);
+        // نوشتنِ دوگانه: ستونِ قدیمیِ schools تا migrationِ حذفِ آن
         SchoolEntity school = schoolRepository.findById(schoolId.value())
                 .orElseThrow(() -> new SchoolException(new SchoolError.SchoolNotFound(schoolId.value())));
         school.setInstallmentsEnabled(enabled);
         schoolRepository.save(school);
+    }
+
+    @Override
+    @Transactional
+    public BotSettings getBotSettings(SchoolId schoolId) {
+        SchoolSettingsEntity settings = loadOrCreateSettings(schoolId);
+        Set<String> roles = new java.util.HashSet<>();
+        botRoleRepository.findBySchoolId(schoolId.value()).forEach(role -> roles.add(role.getRoleCode()));
+        return new BotSettings(settings.isBotEnabled(), Set.copyOf(roles));
+    }
+
+    @Override
+    @Transactional
+    public void setBotSettings(SchoolId schoolId, boolean enabled, Set<String> roles) {
+        Set<String> wanted = new java.util.HashSet<>();
+        if (roles != null) {
+            for (String code : roles) {
+                if (code == null || code.isBlank()) {
+                    throw new SchoolException(new SchoolError.InvalidSetting("کد نقش نامعتبر است."));
+                }
+                wanted.add(code.trim());
+            }
+        }
+        SchoolSettingsEntity settings = loadOrCreateSettings(schoolId);
+        settings.setBotEnabled(enabled);
+        schoolSettingsRepository.save(settings);
+        List<BotRoleEntity> existing = botRoleRepository.findBySchoolId(schoolId.value());
+        Set<String> existingCodes = new java.util.HashSet<>();
+        List<BotRoleEntity> toRemove = new ArrayList<>();
+        for (BotRoleEntity role : existing) {
+            existingCodes.add(role.getRoleCode());
+            if (!wanted.contains(role.getRoleCode())) {
+                toRemove.add(role);
+            }
+        }
+        botRoleRepository.deleteAll(toRemove);
+        List<BotRoleEntity> toAdd = new ArrayList<>();
+        for (String code : wanted) {
+            if (!existingCodes.contains(code)) {
+                toAdd.add(new BotRoleEntity(schoolId.value(), code));
+            }
+        }
+        botRoleRepository.saveAll(toAdd);
+    }
+
+    @Override
+    @Transactional
+    public boolean isBotAllowed(SchoolId schoolId, Set<String> roleCodes) {
+        BotSettings settings = getBotSettings(schoolId);
+        if (!settings.enabled()) {
+            return false;
+        }
+        if (settings.roles().isEmpty()) {
+            return true;
+        }
+        return roleCodes != null && roleCodes.stream().anyMatch(settings.roles()::contains);
     }
 
     @Override

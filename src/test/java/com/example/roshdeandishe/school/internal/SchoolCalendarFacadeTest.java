@@ -36,7 +36,8 @@ class SchoolCalendarFacadeTest {
         calendar = mock(CalendarEntryRepository.class);
         facade = new SchoolFacadeImpl(schools, mock(AcademicYearRepository.class), calendar,
                 mock(PlatformHolidayRepository.class), mock(SchoolYearRangeRepository.class), mock(org.springframework.context.ApplicationEventPublisher.class),
-                mock(ReminderRoleRepository.class));
+                mock(ReminderRoleRepository.class),
+                mock(SchoolSettingsRepository.class), mock(BotRoleRepository.class));
         when(schools.existsById(5L)).thenReturn(true);
     }
 

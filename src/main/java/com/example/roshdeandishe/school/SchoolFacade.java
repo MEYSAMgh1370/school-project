@@ -111,6 +111,22 @@ public interface SchoolFacade {
 
     void setInstallmentsEnabled(SchoolId schoolId, boolean enabled);
 
+    /** تنظیمات ربات: {@code roles} خالی یعنی همه‌ی نقش‌ها. */
+    record BotSettings(boolean enabled, Set<String> roles) {
+    }
+
+    /** تنظیمات ربات مدرسه؛ پیش‌فرض روشن برای همه‌ی نقش‌ها. SchoolNotFound اگر مدرسه نباشد. */
+    BotSettings getBotSettings(SchoolId schoolId);
+
+    /**
+     * جایگزینیِ تنظیمات ربات. {@code roles} خالی/null = همه‌ی نقش‌ها؛ کدِ خالی SchoolError.InvalidSetting.
+     * اعتبارِ خودِ کدها با فراخواننده است (نقش‌ها متعلق به iam هستند). SchoolNotFound اگر مدرسه نباشد.
+     */
+    void setBotSettings(SchoolId schoolId, boolean enabled, Set<String> roles);
+
+    /** آیا ربات روشن است و (نقش‌های مجاز خالی است یا با {@code roleCodes} اشتراک دارد). */
+    boolean isBotAllowed(SchoolId schoolId, Set<String> roleCodes);
+
     /**
      * ورودی‌های تقویم مدرسه در بازه‌ی بسته‌ی [from, to] به ترتیب روز. هر دو الزامی‌اند و
      * {@code from} نباید بعد از {@code to} باشد (SchoolError.InvalidCalendarEntry).

@@ -58,7 +58,8 @@ class SchoolYearlyPlanFacadeTest {
         ranges = mock(SchoolYearRangeRepository.class);
         facade = new SchoolFacadeImpl(schools, years, calendar, holidays, ranges,
                 mock(org.springframework.context.ApplicationEventPublisher.class),
-                mock(ReminderRoleRepository.class));
+                mock(ReminderRoleRepository.class),
+                mock(SchoolSettingsRepository.class), mock(BotRoleRepository.class));
         when(schools.existsById(5L)).thenReturn(true);
         AcademicYearEntity year = new AcademicYearEntity();
         ReflectionTestUtils.setField(year, "id", 2L);
