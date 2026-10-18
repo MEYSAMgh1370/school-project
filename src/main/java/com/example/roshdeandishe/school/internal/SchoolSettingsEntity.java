@@ -9,7 +9,7 @@ import lombok.NoArgsConstructor;
 import lombok.Setter;
 
 /**
- * تنظیماتِ یک مدرسه (V33): اقساط، ارتقای خودکار و ربات. ردیف در اولین خواندن از ستون‌های قدیمیِ
+ * تنظیماتِ یک مدرسه (V34): اقساط، ارتقای خودکار و ربات. ردیف در اولین خواندن از ستون‌های قدیمیِ
  * school.schools ساخته می‌شود (SchoolSettingsRepository.createIfMissing).
  */
 @Entity

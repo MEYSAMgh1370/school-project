@@ -21,7 +21,7 @@ window.SchoolApi = (function () {
             if (type.endsWith('permission-denied')) {
                 return { blocking: true, message: messages.denied };
             }
-            return { blocking: false, message: body.detail || body.title || 'خطایی رخ داد.' };
+            return { blocking: false, type, message: body.detail || body.title || 'خطایی رخ داد.' };
         } catch (e) {
             return { blocking: false, message: 'خطایی رخ داد. (' + response.status + ')' };
         }
@@ -44,6 +44,9 @@ window.SchoolApi = (function () {
             const classified = await classifyError(response, messages);
             const error = new Error(classified.message);
             error.blocking = classified.blocking;
+            // برای صفحه‌هایی که متن را بر اساس نوعِ ProblemDetail خودشان می‌سازند (bale-bot.js)
+            error.status = response.status;
+            error.type = classified.type || '';
             throw error;
         }
         return response.status === 204 ? null : response.json();

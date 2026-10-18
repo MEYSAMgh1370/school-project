@@ -95,7 +95,7 @@ This is intentional. An application that boots with a public signing key or a
 | `DATABASE_URL` | Full JDBC URL, e.g. `jdbc:postgresql://<host>:<port>/<db>` |
 | `DATABASE_USERNAME` | Database user |
 | `DATABASE_PASSWORD` | Database password |
-| `APP_BASE_URL` | Public base URL, e.g. `https://roshdeandishe.liara.run` — no trailing slash. Used to build account-activation links |
+| `APP_BASE_URL` | Public base URL, e.g. `https://roshdeandishe.liara.run` — no trailing slash. Used to build account-activation links and the per-school Bale bot webhook URLs (`<APP_BASE_URL>/api/bale/webhook/<secret>`); it must be a public HTTPS URL on port 443 or 88 (a Bale requirement for webhooks) |
 | `JWT_SECRET` | Mobile bearer-token signing key (§3) |
 | `EXAM_TOKEN_SECRET` | Exam-session token signing key (§3) |
 
@@ -114,6 +114,7 @@ This is intentional. An application that boots with a public signing key or a
 | `MAIL_SMTP_STARTTLS` | `true` | STARTTLS on/off |
 | `BALE_BOT_TOKEN` | *(empty)* | Bale bot token. Empty = the bot logs what it would send and makes no HTTP call |
 | `BALE_WEBHOOK_SECRET` | *(empty)* | Secret path segment for the Bale webhook. Empty = the webhook always 404s (fails closed) |
+| `BALE_TOKEN_ENCRYPTION_KEY` | *(empty)* | Base64 of 32 random bytes; encrypts the tokens of per-school Bale bots (AES-256-GCM). Generate with `openssl rand -base64 32`. Empty = schools cannot register a bot (the rest of the app is unaffected); a non-empty value that is not 32 bytes of Base64 stops the app at startup. **Do not change it once any school bot is registered**: there is no re-encryption tool yet, so stored tokens would no longer decrypt and those bots would stop sending. Keep it secret and back it up |
 | `SMS_API_KEY` | *(empty)* | Placeholder for a future SMS provider key. **Setting it does not enable OTP delivery** — no provider integration is written yet, so a nonblank key makes `SmsDriver` log an error and report failure. OTP login does not work in production at any value (see below) |
 | `SWAGGER_ENABLED` | `false` | API docs are **off** in production. `/swagger-ui.html` and `/v3/api-docs` are `permitAll` in `SecurityConfig`, so enabling this publishes your whole API surface publicly |
 | `SESSION_COOKIE_SECURE` | `true` | Session cookie `Secure` flag. Leave on; only turn off if you deliberately serve plain HTTP |

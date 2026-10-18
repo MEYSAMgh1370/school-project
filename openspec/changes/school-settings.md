@@ -1,6 +1,6 @@
 # School settings page and finance overview (`/settings`)
 
-Status: proposed and implemented 2026-10-18 (migration `V33`; current behavior is in `specs/current-system.md`). The design is `docs/superpowers/specs/2026-10-17-school-settings-design.md`; the build log is under `.superpowers/sdd/2026-10-17-school-settings/`.
+Status: proposed and implemented 2026-10-18 (migration `V34`, renumbered from `V33` when master's `V33__school_bale_bots.sql` was merged; current behavior is in `specs/current-system.md`). The design is `docs/superpowers/specs/2026-10-17-school-settings-design.md`; the build log is under `.superpowers/sdd/2026-10-17-school-settings/`.
 
 ## Intent (what the product owner asked for)
 
@@ -23,7 +23,7 @@ Status: proposed and implemented 2026-10-18 (migration `V33`; current behavior i
 
 ## What was built
 
-- `V33__school_settings.sql`: `school.school_settings(school_id, installments_enabled, auto_promotion, bot_enabled)` and `school.bot_roles(school_id, role_code)`; existing schools are backfilled from `school.schools`. A missing settings row is created lazily by copying `installments_enabled` and `auto_promotion` from `school.schools` (`bot_enabled` true, no `bot_roles`; `SchoolSettingsRepository.createIfMissing`).
+- `V34__school_settings.sql`: `school.school_settings(school_id, installments_enabled, auto_promotion, bot_enabled)` and `school.bot_roles(school_id, role_code)`; existing schools are backfilled from `school.schools`. A missing settings row is created lazily by copying `installments_enabled` and `auto_promotion` from `school.schools` (`bot_enabled` true, no `bot_roles`; `SchoolSettingsRepository.createIfMissing`).
 - `SchoolFacade`: `BotSettings`, `getBotSettings`, `setBotSettings`, `isBotAllowed`; the installments and auto-promotion methods read the new table and still write the old columns.
 - `GET /api/admin/schools/{id}/settings` and `PUT .../settings/bot`; page `/settings` (four sections); `/academic-year` redirects.
 - `GET /api/admin/schools/{id}/finance/students` (and `.../students/{studentId}/invoices`), `FINANCE_MANAGE`; `/finance` lists students instead of invoices.
@@ -34,7 +34,7 @@ Status: proposed and implemented 2026-10-18 (migration `V33`; current behavior i
 Each is a decision taken during the build; the cost is what happens if the ruling turns out wrong.
 
 - **Bot-setting changes are logged at INFO, not audited.** The audit table (`finance.finance_audit`) is finance-only, so `INSTALLMENTS_SETTING_CHANGED`-style auditing was not copied. Cost if wrong: no queryable history of who switched the bot off; needs a general audit table or a new action kind.
-- **«راهنما», contact linking, push notifications and event reminders are not gated by the bot setting.** Only data answers, callbacks, «مدرسه‌های من» and wards are gated. Cost if wrong: a school that switched the bot off still sees help text and still receives event reminders and pushes in Bale.
+- **«راهنما», contact linking, push notifications and event reminders are not gated by the bot setting.** Only data answers, callbacks, «مدرسه‌های من» and wards are gated. Notifications follow the per-school bot routing of `bale-school-bots.md` (the school's own `ACTIVE` bot, else the shared bot) whatever the setting says. Cost if wrong: a school that switched the bot off still sees help text and still receives event reminders and pushes in Bale.
 - **The bot gate sits in `BotContextLoader`, per membership role.** A membership is kept only if `isBotAllowed(school, {role})`; a user left with none gets «بات برای مدرسه‌ی شما فعال نیست.». Cost if wrong: a user with a role allowed in one school and excluded in another sees only the allowed school's data (intended), but any new bot code that reads memberships outside the loader would bypass the gate.
 - **`/grades` uses the current year and shows a notice when the school has none.** The grades API requires an academic year, so the page cannot omit it. Admins lose per-page past-year views on `/classes` and `/grades`; the APIs still accept other years. Cost if wrong: an admin cannot open a past year's gradebook or class list from the UI.
 - **Navigation:** the `/settings` link is visible to `ADMIN` and `FINANCE_ADMIN` (and to a custom role holding any of `ACADEMIC_YEAR_MANAGE`, `FINANCE_MANAGE`, `YEARLY_PLAN_MANAGE`, `SCHOOL_SETTINGS_MANAGE`); the dashboard shortcut is `ADMIN` only. Cost if wrong: a finance admin has no dashboard shortcut to settings, and the «مدرسه» sidebar group now appears for `FINANCE_ADMIN` with one link.
@@ -44,6 +44,19 @@ Each is a decision taken during the build; the cost is what happens if the rulin
 - **Unresolved question for the product owner: the debt chips ignore the scope.** `owing`/`overdue`/`settled` are evaluated on the student's overall state across all years (`FinanceFacadeImpl.matchesDebt`, `toStudentRow`), so `scope=current` with `debt=overdue` lists a student whose only overdue invoice is from a prior year. Not decided; to be confirmed.
 - **Unresolved question for the product owner: the row's current-year status tag** (`currentStatus`) comes from the most recently issued current-year invoice only (`FinanceFacadeImpl.toStudentRow`; invoices arrive newest first), not an aggregate over several current-year invoices. Not decided; to be confirmed.
 - **`TenantResolverFilter` lists `/settings` as a header-exempt page path** (like the other pages), because without it `GET /settings` answers 400; the API under it still requires the tenant header.
+
+## Interplay with per-school bots (`bale-school-bots.md`, merged 2026-10-18)
+
+The per-school bots change (master PR #158, migration `V33__school_bale_bots.sql`) landed while this change was in review; this change's migration was renumbered to `V34` in the merge.
+
+- **Order in `BotContextLoader`:** first the bot-scope filter of `bale-school-bots.md` (Inbound path, step 5: a school bot keeps only its school's memberships; the shared bot drops schools with an `ACTIVE` bot), **then** this change's settings gate (`isBotAllowed(school, {role})`) on the memberships that are left. The gate therefore applies on top of whichever bot serves the school, its own or the shared one.
+- **`blockedBySchoolSettings`** is true only when the user had active memberships inside this bot's scope and the gate removed all of them. A user with no membership in the bot's scope (for example a shared-bot user whose only school has its own active bot, or a platform administrator linked to a school bot) keeps the per-school-bots behaviour (help only, «این مورد برای شما در دسترس نیست.» for intents) and does not get «بات برای مدرسه‌ی شما فعال نیست.».
+- **Two pages, two permissions.** `/settings` («تنظیمات مدرسه», «بات بله» section, `SCHOOL_SETTINGS_MANAGE`) holds the on/off switch and the allowed roles; `/bale-bot` («بات بله‌ی مدرسه», `BALE_BOT_MANAGE`) registers, replaces and deletes the school's own bot token. Both are `SCHOOL_ADMIN` permissions and both pages are separate links in the «مدرسه» sidebar group; neither page links to the other.
+- **The setting does not change routing.** Switching the bot off does not hand a school with an `ACTIVE` own bot back to the shared bot; its users are answered «بات برای مدرسه‌ی شما فعال نیست.» by the school's own bot, and notifications still go out through that bot.
+- **Unresolved questions for the product owner (not decided):**
+  - Should switching the bot off on `/settings` also stop notifications and event reminders (today neither change gates them), and should it pause a registered school bot rather than leave it answering «فعال نیست»?
+  - `bale-school-bots.md` Decision 5 says the admin registers the bot "on a school settings page", but registration lives on the separate `/bale-bot` page. Should the «بات بله» section of `/settings` link to `/bale-bot` (or absorb it), and should the section say which bot (own or shared) it applies to?
+  - PR 2 migration messages of `bale-school-bots.md` (shared bot announcing a new school bot): whether a school with the setting off, or users whose role is not allowed, should receive them.
 
 ## Behaviour changes
 

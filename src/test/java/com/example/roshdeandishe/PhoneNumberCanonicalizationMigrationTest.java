@@ -145,6 +145,34 @@ class PhoneNumberCanonicalizationMigrationTest {
         assertThat(phoneNumbers()).containsExactly("989335551287", "09335551287");
     }
 
+    @Test
+    void v33DropsHibernateNamedUniqueConstraintsOnBaleLinks() throws Exception {
+        flyway("32").migrate();
+        // دیتابیسی که با ddl-auto=update ساخته شده، constraintها را با نامِ تولیدیِ Hibernate دارد نه نامِ V1
+        execute("""
+                alter table bale.bale_links rename constraint bale_links_chat_id_key to uk_hibernate_chat;
+                alter table bale.bale_links rename constraint bale_links_user_id_key to uk_hibernate_user;
+                insert into bale.bale_links (chat_id, user_id, linked_at) values (11, 22, now())
+                """);
+
+        flyway(null).migrate();
+
+        execute("""
+                insert into bale.school_bots (school_id, bot_user_id, bot_username, token_ciphertext, token_key_version,
+                                              webhook_secret_hash, status, created_at, updated_at)
+                values (1, 100, 'b', 'c', 1, 'h', 'ACTIVE', now(), now());
+                insert into bale.bale_links (bot_id, chat_id, user_id, linked_at)
+                select id, 11, 22, now() from bale.school_bots
+                """);
+        // ربات مشترک همچنان یک پیوند به‌ازای chat_id/user_id دارد
+        assertThatThrownBy(() -> execute(
+                "insert into bale.bale_links (chat_id, user_id, linked_at) values (11, 33, now())"))
+                .isInstanceOf(SQLException.class);
+        assertThatThrownBy(() -> execute(
+                "insert into bale.bale_links (chat_id, user_id, linked_at) values (44, 22, now())"))
+                .isInstanceOf(SQLException.class);
+    }
+
     private Flyway flyway(String target) {
         var configuration = Flyway.configure()
                 .dataSource(POSTGRES.getJdbcUrl(), POSTGRES.getUsername(), POSTGRES.getPassword())

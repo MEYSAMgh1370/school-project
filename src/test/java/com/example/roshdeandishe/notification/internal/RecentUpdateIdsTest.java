@@ -16,31 +16,41 @@ class RecentUpdateIdsTest {
 
     @Test
     void firstSightingIsNewSecondIsNot() {
-        var seen = new RecentUpdateIds(3);
-        assertThat(seen.markSeen(1)).isTrue();
-        assertThat(seen.markSeen(1)).isFalse();
+        var seen = new RecentUpdateIds<Long>(3);
+        assertThat(seen.markSeen(1L)).isTrue();
+        assertThat(seen.markSeen(1L)).isFalse();
     }
 
     @Test
     void forgetsTheOldestBeyondCapacity() {
-        var seen = new RecentUpdateIds(2);
-        seen.markSeen(1);
-        seen.markSeen(2);
-        seen.markSeen(3);
-        assertThat(seen.markSeen(1)).isTrue();
+        var seen = new RecentUpdateIds<Long>(2);
+        seen.markSeen(1L);
+        seen.markSeen(2L);
+        seen.markSeen(3L);
+        assertThat(seen.markSeen(1L)).isTrue();
     }
 
     @Test
     void aForgottenIdIsNewAgain() {
-        var seen = new RecentUpdateIds(10);
-        seen.markSeen(7);
-        seen.forget(7);
-        assertThat(seen.markSeen(7)).isTrue();
+        var seen = new RecentUpdateIds<Long>(10);
+        seen.markSeen(7L);
+        seen.forget(7L);
+        assertThat(seen.markSeen(7L)).isTrue();
+    }
+
+    @Test
+    void sameUpdateIdInTwoBotsIsNotADuplicate() {
+        record Key(Long bot, long updateId) {
+        }
+        var seen = new RecentUpdateIds<Key>(10);
+        assertThat(seen.markSeen(new Key(1L, 9))).isTrue();
+        assertThat(seen.markSeen(new Key(2L, 9))).isTrue();
+        assertThat(seen.markSeen(new Key(1L, 9))).isFalse();
     }
 
     @Test
     void concurrentSameIdIsNewExactlyOnce() throws Exception {
-        var seen = new RecentUpdateIds(10);
+        var seen = new RecentUpdateIds<Long>(10);
         int threads = 16;
         ExecutorService pool = Executors.newFixedThreadPool(threads);
         try {
@@ -50,7 +60,7 @@ class RecentUpdateIdsTest {
             for (int i = 0; i < threads; i++) {
                 futures.add(pool.submit(() -> {
                     start.await();
-                    if (seen.markSeen(5)) {
+                    if (seen.markSeen(5L)) {
                         newCount.incrementAndGet();
                     }
                     return null;

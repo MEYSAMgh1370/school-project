@@ -59,7 +59,7 @@ class InvoiceIssuedEventListener {
             recipients.addAll(academicFacade.listGuardians(student.schoolId(), student.id().value()));
 
             for (Long recipientUserId : recipients) {
-                notificationFacade.sendMessageToUser(recipientUserId, text);
+                notificationFacade.sendMessageToUser(recipientUserId, event.schoolId(), text);
             }
         } finally {
             TenantContext.clear();

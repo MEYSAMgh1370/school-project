@@ -14,7 +14,7 @@
 
 - UI text is Persian and RTL; Latin data gets local `dir="ltr"`; no inline `<style>`/`style=`, no `alert()`/`confirm()`, no physical left/right CSS (`DESIGN.md`, `openspec/conventions.md`).
 - Navbar visibility is display-only; authorization is enforced on the REST layer (`@RequiresPermission`) and `TenantContext.requireMatches(schoolId)` on every admin endpoint.
-- Migration `V33__school_settings.sql` (highest on master is `V32`, so ours is V33); Flyway owns the schema (`decisions/2026-07-30-flyway-schema-ownership.md`).
+- Migration `V34__school_settings.sql` (planned as `V33` when the highest on master was `V32`; renumbered to `V34` when master's `V33__school_bale_bots.sql` was merged); Flyway owns the schema (`decisions/2026-07-30-flyway-schema-ownership.md`).
 - Old columns `school.schools.installments_enabled` (V28) and `school.schools.auto_promotion` (V11) are **kept** and dual-written; dropping them is a later migration, not this plan.
 - New permission code `SCHOOL_SETTINGS_MANAGE`, granted to `SCHOOL_ADMIN`; `bot_enabled` defaults to `true`; empty `bot_roles` = every role.
 - Week start, time zone and locale are not part of settings.
@@ -37,7 +37,7 @@
 ### Task 1: Settings storage and facade
 
 **Files:**
-- Create: `src/main/resources/db/migration/V33__school_settings.sql`
+- Create: `src/main/resources/db/migration/V34__school_settings.sql` (originally `V33`)
 - Create: `src/main/java/com/example/roshdeandishe/school/internal/SchoolSettingsEntity.java`, `SchoolSettingsRepository.java`, `BotRoleEntity.java`, `BotRoleRepository.java`
 - Modify: `school/SchoolFacade.java`, `school/internal/SchoolFacadeImpl.java` (installments/auto-promotion methods, ~lines 105-110 of the facade)
 - Test: `src/test/java/com/example/roshdeandishe/SchoolSettingsFlowIntegrationTest.java`
@@ -52,13 +52,13 @@
 - Consumes: `SchoolId`, `SchoolError.SchoolNotFound`, `SchoolError.InvalidSetting`.
 
 - [ ] **Step 1: Write failing tests** in `SchoolSettingsFlowIntegrationTest`:
-  - `migrationCopiesExistingValues`: insert a school with `installments_enabled=true, auto_promotion=true` into `school.schools` via `JdbcTemplate`, delete nothing, run the V33 copy statement logic by asserting `schoolFacade.isInstallmentsEnabled(id)` and `isAutoPromotion(id)` are `true` (settings row created lazily from the old columns when absent).
+  - `migrationCopiesExistingValues`: insert a school with `installments_enabled=true, auto_promotion=true` into `school.schools` via `JdbcTemplate`, delete nothing, run the V34 copy statement logic by asserting `schoolFacade.isInstallmentsEnabled(id)` and `isAutoPromotion(id)` are `true` (settings row created lazily from the old columns when absent).
   - `newSchoolDefaults`: `assertThat(facade.getBotSettings(id)).isEqualTo(new BotSettings(true, Set.of()))`; `isBotAllowed(id, Set.of("PARENT"))` is `true`.
   - `botRolesRestrictAccess`: after `setBotSettings(id, true, Set.of("PARENT"))` → `isBotAllowed(id, Set.of("PARENT"))` true, `isBotAllowed(id, Set.of("TEACHER"))` false; `setBotSettings(id, false, Set.of())` → false for every role.
   - `dualWrite`: after `setInstallmentsEnabled(id, true)` the old `school.schools.installments_enabled` column is `true` too.
   - `concurrentFirstReadCreatesOneRow`: two threads call `getBotSettings` for a school with no row; `select count(*) from school.school_settings where school_id = ?` is `1`.
 - [ ] **Step 2: Run** `./mvnw test -Dtest=SchoolSettingsFlowIntegrationTest` — expect FAIL (methods undefined).
-- [ ] **Step 3: Implement** `V33`: `school.school_settings(school_id bigint primary key references school.schools(id), installments_enabled boolean not null default false, auto_promotion boolean not null default false, bot_enabled boolean not null default true)` and `school.bot_roles(school_id bigint not null references school.schools(id), role_code varchar(64) not null, primary key (school_id, role_code))`, then `insert into school.school_settings select id, installments_enabled, auto_promotion, true from school.schools`. In `SchoolFacadeImpl` load-or-create the row with `insert ... on conflict do nothing` (follow `ReminderRoleEntity` for the roles table); the four existing methods and the three new ones use it; the old-column writes stay.
+- [ ] **Step 3: Implement** `V34` (originally `V33`): `school.school_settings(school_id bigint primary key references school.schools(id), installments_enabled boolean not null default false, auto_promotion boolean not null default false, bot_enabled boolean not null default true)` and `school.bot_roles(school_id bigint not null references school.schools(id), role_code varchar(64) not null, primary key (school_id, role_code))`, then `insert into school.school_settings select id, installments_enabled, auto_promotion, true from school.schools`. In `SchoolFacadeImpl` load-or-create the row with `insert ... on conflict do nothing` (follow `ReminderRoleEntity` for the roles table); the four existing methods and the three new ones use it; the old-column writes stay.
 - [ ] **Step 4: Run** the same command — expect PASS. Also run `./mvnw test -Dtest=ModularityTests,ArchitectureTests`.
 - [ ] **Step 5: Commit** `feat(school): school_settings table and facade (installments, auto-promotion, bot)`.
 

@@ -1,6 +1,6 @@
 # School settings page and finance overview (`/settings`)
 
-Status: implemented 2026-10-18 (`V33`). "Current state" below describes the code before this change (including the old `/academic-year` page); rulings and deviations from the build are in `openspec/changes/school-settings.md`.
+Status: implemented 2026-10-18 (`V34`; originally numbered `V33`, renumbered when master's `V33__school_bale_bots.sql` was merged). "Current state" below describes the code before this change (including the old `/academic-year` page); rulings and deviations from the build are in `openspec/changes/school-settings.md`.
 
 ## Intent (what the product owner asked for)
 
@@ -14,7 +14,7 @@ Status: implemented 2026-10-18 (`V33`). "Current state" below describes the code
 
 - Week start, time zone and locale are **not** in settings. They stay fixed at school creation.
 - Tuition amount (per year), promotion runs, calendar/events and invoice issuing keep their own pages.
-- A per-school bot token / own bot. The Bale bot stays one global bot (`BALE_BOT_TOKEN`).
+- A per-school bot token / own bot. The Bale bot stays one global bot (`BALE_BOT_TOKEN`). (Out of scope for this change only: per-school bots were delivered separately by `openspec/changes/bale-school-bots.md` and merged on 2026-10-18; see "Interplay with per-school bots" in `openspec/changes/school-settings.md`.)
 - Splitting `full_name` into first and last name columns (separate sub-project if wanted).
 
 ## Current state (verified in the repository)
@@ -22,7 +22,7 @@ Status: implemented 2026-10-18 (`V33`). "Current state" below describes the code
 - Current academic year per school and `auto_promotion` (`school.schools.auto_promotion`, V11), edited on `/academic-year` (`PUT .../academic-year/auto-promotion`).
 - `school.schools.installments_enabled` (V28), edited on `/finance` (`PUT .../finance/settings/installments`, `FINANCE_MANAGE`).
 - Reminder recipient roles in `school.reminder_roles` (V18), edited on `/yearly-plan` (`YEARLY_PLAN_MANAGE`).
-- The Bale bot has no per-school setting; `BaleUpdateHandler` serves any linked user.
+- The Bale bot has no per-school setting; `BaleUpdateHandler` serves any linked user. (State at design time, before per-school bots were merged.)
 - `/finance` has its own year select, an "unattributed data" banner, a per-year tuition box, an installments box, and a list of invoices (one row per invoice) with search by student name and status chips.
 - Users have a single `full_name` (`iam.users.full_name`); there are no separate first/last name columns.
 
@@ -81,7 +81,7 @@ API: `GET /api/admin/schools/{id}/finance/students?scope=all|current|previous&fi
 
 ### 6. Bot enforcement
 
-`BaleUpdateHandler`/`BotContext` check `bot_enabled` and `bot_roles` for the user's active role in the school before answering a data question; a disabled or excluded user gets a short Persian message. Contact linking itself is not blocked.
+`BaleUpdateHandler`/`BotContext` check `bot_enabled` and `bot_roles` for the user's active role in the school before answering a data question; a disabled or excluded user gets a short Persian message. Contact linking itself is not blocked. As built (and after the 2026-10-18 merge of per-school bots) the check is in `BotContextLoader`, applied after the bot-scope filter of `bale-school-bots.md`, so it acts on whichever bot serves the school; see `openspec/changes/school-settings.md`.
 
 ## Error handling
 

@@ -2,6 +2,8 @@
 
 Status: proposed 2026-10-15, revised 2026-10-16 (classification contract with confidence, Jev as a candidate), stage 1 implemented 2026-10-16 (`studentview` module, callback queries and inline keyboards, `BotContext`, asynchronous de-duplicated webhook handling; current behavior is in `specs/current-system.md`); stage 2 implemented 2026-10-16 (per-chat ordering, role-based button menu answering every phase-1 intent, rial amounts; current behavior is in `specs/current-system.md`); stages 3 and 4 not implemented. Designed with the product owner in a brainstorming session on 2026-10-15; every decision below marked **(PO)** was made by the product owner, items marked **assumption** were not and are listed under Unresolved questions.
 
+See also `openspec/changes/bale-school-bots.md`: per-school bots change how the webhook secret identifies a bot, the per-chat queue keys, `bale_links` uniqueness and the scope of `BotContext`; the stages below describe the single shared bot and apply to every bot.
+
 ## Goal
 
 Let linked users (parents, students, teachers) use the service from the Bale bot: first by **asking about their own data** in free Persian text or through buttons (phase 1), later by **doing things** with explicit confirmation (phase 2) **(PO)**. An LLM is used only to understand free text; the bot must stay correct, private and usable when the LLM is weak, slow or switched off.
