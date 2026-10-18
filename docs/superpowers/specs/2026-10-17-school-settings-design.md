@@ -5,7 +5,7 @@ Status: implemented 2026-10-18 (`V33`). "Current state" below describes the code
 ## Intent (what the product owner asked for)
 
 - One page where a school admin sets the school's **general, set-once settings**.
-- The **school's academic year is chosen by the admin on that page**; no other page lets the user pick a year.
+- The **school's academic year is chosen by the admin on that page**; no other page lets the user pick a year. (This concerns the pages that follow the school's current year; `/timetable`, `/yearly-plan`, `/promotion` and the platform-holidays page keep their year select.)
 - Settings that are not "set once" do not belong there.
 - Finance (`/finance`) stops having its own year selector. It shows every year's invoices together, with a scope filter (all / this year / previous years) and name search.
 - Chosen approach: a single `school_settings` model (approach 2), not a page that only re-hosts scattered controls.
@@ -69,10 +69,11 @@ List rows are **students**, not invoices.
   - previous: only students with an **unpaid remainder on a prior-year invoice** (debtors), including graduated and left students (status shown); a student whose prior-year invoices are all settled is not listed.
 - Status chips (owing, overdue, settled) combine with the scope.
 - Expanding a row lists the invoices of the scope, one per year, each with the existing payments, discounts and instalments panel (unchanged).
+  - Ruling after the final review: the expansion shows **all years'** invoices of the student, not only those of the scope, because a payment on any invoice changes the row's totals.
 - Search by **first name** and **last name** (separate inputs) plus a general text box. Because only `iam.users.full_name` exists, "first name" matches the first word and "last name" the remaining words; double-barrelled names may not split exactly. The search is a list of declared fields so national id, class or guardian phone can be added later without restructuring.
 - Removed from `/finance`: the year select, the "unattributed" banner and its action (moved to settings). Kept: setting the current year's tuition and "issue this year's invoices to students without one".
 
-API: `GET /api/admin/schools/{id}/finance/students?scope=all|current|previous&firstName=&lastName=&q=&status=&page=&size=` (`FINANCE_MANAGE`), totals computed server-side, paged, resolving names in one batch per page. Existing invoice, payment, discount and instalment endpoints are unchanged.
+API: `GET /api/admin/schools/{id}/finance/students?scope=all|current|previous&firstName=&lastName=&q=&debt=&page=&size=` (`FINANCE_MANAGE`), totals computed server-side, paged, resolving names in one batch per page. Existing invoice, payment, discount and instalment endpoints are unchanged.
 
 ### 5. Settings API
 

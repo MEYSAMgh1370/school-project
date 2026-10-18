@@ -23,7 +23,7 @@ Status: proposed and implemented 2026-10-18 (migration `V33`; current behavior i
 
 ## What was built
 
-- `V33__school_settings.sql`: `school.school_settings(school_id, installments_enabled, auto_promotion, bot_enabled)` and `school.bot_roles(school_id, role_code)`; existing schools are backfilled from `school.schools`. A missing settings row is created lazily with defaults.
+- `V33__school_settings.sql`: `school.school_settings(school_id, installments_enabled, auto_promotion, bot_enabled)` and `school.bot_roles(school_id, role_code)`; existing schools are backfilled from `school.schools`. A missing settings row is created lazily by copying `installments_enabled` and `auto_promotion` from `school.schools` (`bot_enabled` true, no `bot_roles`; `SchoolSettingsRepository.createIfMissing`).
 - `SchoolFacade`: `BotSettings`, `getBotSettings`, `setBotSettings`, `isBotAllowed`; the installments and auto-promotion methods read the new table and still write the old columns.
 - `GET /api/admin/schools/{id}/settings` and `PUT .../settings/bot`; page `/settings` (four sections); `/academic-year` redirects.
 - `GET /api/admin/schools/{id}/finance/students` (and `.../students/{studentId}/invoices`), `FINANCE_MANAGE`; `/finance` lists students instead of invoices.
@@ -39,7 +39,15 @@ Each is a decision taken during the build; the cost is what happens if the rulin
 - **`/grades` uses the current year and shows a notice when the school has none.** The grades API requires an academic year, so the page cannot omit it. Admins lose per-page past-year views on `/classes` and `/grades`; the APIs still accept other years. Cost if wrong: an admin cannot open a past year's gradebook or class list from the UI.
 - **Navigation:** the `/settings` link is visible to `ADMIN` and `FINANCE_ADMIN` (and to a custom role holding any of `ACADEMIC_YEAR_MANAGE`, `FINANCE_MANAGE`, `YEARLY_PLAN_MANAGE`, `SCHOOL_SETTINGS_MANAGE`); the dashboard shortcut is `ADMIN` only. Cost if wrong: a finance admin has no dashboard shortcut to settings, and the «مدرسه» sidebar group now appears for `FINANCE_ADMIN` with one link.
 - **The `/finance` students overview does per-student IAM lookups and one-by-one lookups for LEFT/GRADUATED debtors.** `IamFacade` has no batch name lookup (one `findUser` per invoiced student, before paging, because the name filter and sort need it), and `AcademicFacade.listStudents` returns only `ACTIVE`/`PENDING`, so left and graduated students with invoices are fetched with `findStudentInfo` one at a time. The whole school's invoices are aggregated in memory. Cost if wrong: slow responses for a school with thousands of invoiced students.
+- **Year selectors that stay.** `/timetable` (`ttYear`, `timetable.jte:31`), `/yearly-plan` (`yearlyPlanYear`), `/promotion` (`promotionFromYear`) and the platform-holidays page (`platformHolidaysYear`) keep their year select, because each acts on a specific year by nature. The Intent sentence "no other page lets the user pick a year" applies to the pages that follow the school's current year (`/finance`, `/classes`, `/grades`). Cost if wrong: the owner may want the timetable selector removed; a small follow-up.
+- **`/finance` row expansion lists every year's invoices of the student**, not only those of the active scope (the design said "the invoices of the scope"). Payments on any invoice change the row's totals, and one view of all years avoids hiding a debt. Cost if wrong: a small client-side filter by scope.
+- **Unresolved question for the product owner: the debt chips ignore the scope.** `owing`/`overdue`/`settled` are evaluated on the student's overall state across all years (`FinanceFacadeImpl.matchesDebt`, `toStudentRow`), so `scope=current` with `debt=overdue` lists a student whose only overdue invoice is from a prior year. Not decided; to be confirmed.
+- **Unresolved question for the product owner: the row's current-year status tag** (`currentStatus`) comes from the most recently issued current-year invoice only (`FinanceFacadeImpl.toStudentRow`; invoices arrive newest first), not an aggregate over several current-year invoices. Not decided; to be confirmed.
 - **`TenantResolverFilter` lists `/settings` as a header-exempt page path** (like the other pages), because without it `GET /settings` answers 400; the API under it still requires the tenant header.
+
+## Behaviour changes
+
+- **`FINANCE_ADMIN` can no longer attribute year-less tuition and invoices from the UI.** The action moved from `/finance` to the settings year section, which loads from `GET /academic-year` (`ACADEMIC_YEAR_MANAGE`), so a user holding only `FINANCE_MANAGE` does not see it. The endpoint itself, `POST .../finance/attribute-year`, is still `FINANCE_MANAGE` (`FinanceController.java:298-299`). Cost if wrong: finance admins need `ACADEMIC_YEAR_MANAGE` (or the section needs a finance-only data source) to attribute year-less finance data.
 
 ## Open follow-ups
 
