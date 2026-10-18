@@ -59,6 +59,7 @@ These OpenSpec documents are the curated entry point for current behavior, propo
 - [`decisions/2026-07-20-free-tier-entitlements.md`](decisions/2026-07-20-free-tier-entitlements.md) - school creation grants free Academic, Finance and (since 2026-10-05) Attendance entitlements.
 - [`decisions/2026-07-30-flyway-schema-ownership.md`](decisions/2026-07-30-flyway-schema-ownership.md) - Flyway owns schema creation and migrations.
 - [`decisions/2026-10-03-multi-market-not-migration.md`](decisions/2026-10-03-multi-market-not-migration.md) - Iranian schools remain a segment, so market-specific coupling becomes a per-tenant configurable dimension rather than something removed.
+- [`decisions/2026-10-15-llm-in-bale-bot.md`](decisions/2026-10-15-llm-in-bale-bot.md) - an LLM may route free text in the Bale bot (router only, pseudonymised, no database result sent); supersedes the legacy "no AI" rule for that one use.
 - [`archive/documentation-audit-2026-08-06.md`](archive/documentation-audit-2026-08-06.md) - inventory, conflicts, and classification from the audit that introduced OpenSpec.
 
 ## Legacy Documentation Classification
