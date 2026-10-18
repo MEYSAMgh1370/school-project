@@ -219,4 +219,72 @@ class BotRouterTest {
         assertThat(router.onText(ctx, BotTexts.BTN_TEACHER_ROLL).text()).isEqualTo("tr");
         verify(timetableAnswers).answer(BotIntent.TEACHER_TODAY, ctx, school);
     }
+
+    @Test
+    void resolveWithStudentIdAnswersThatTarget() {
+        BotTarget a = student(100L, "سارا", "مدرسه", true);
+        BotTarget b = student(200L, "رضا", "مدرسه", true);
+        when(resolver.targets(ctx, BotIntent.GRADES)).thenReturn(List.of(a, b));
+        when(studentAnswers.answer(BotIntent.GRADES, ctx, b)).thenReturn("نمره‌های رضا");
+
+        BotRouter.Reply reply = router.resolve(ctx, BotIntent.GRADES, 200L);
+
+        assertThat(reply.text()).isEqualTo("نمره‌های رضا");
+        assertThat(reply.choices()).isEmpty();
+    }
+
+    @Test
+    void resolveWithoutIdAndTwoTargetsAsksToChoose() {
+        BotTarget a = student(100L, "سارا", "مدرسه", true);
+        BotTarget b = student(200L, "رضا", "مدرسه", true);
+        when(resolver.targets(ctx, BotIntent.GRADES)).thenReturn(List.of(a, b));
+
+        BotRouter.Reply reply = router.resolve(ctx, BotIntent.GRADES, null);
+
+        assertThat(reply.text()).isEqualTo(BotTexts.CHOOSE_STUDENT);
+        assertThat(reply.choices()).hasSize(2);
+        verifyNoInteractions(studentAnswers);
+    }
+
+    @Test
+    void resolveWithoutIdAndOneTargetAnswersDirectly() {
+        BotTarget a = student(100L, "سارا", "مدرسه", true);
+        when(resolver.targets(ctx, BotIntent.GRADES)).thenReturn(List.of(a));
+        when(studentAnswers.answer(BotIntent.GRADES, ctx, a)).thenReturn("نمره‌ها");
+
+        assertThat(router.resolve(ctx, BotIntent.GRADES, null).text()).isEqualTo("نمره‌ها");
+    }
+
+    @Test
+    void resolveWithForeignIdIsNotAvailable() {
+        BotTarget a = student(100L, "سارا", "مدرسه", true);
+        when(resolver.targets(ctx, BotIntent.GRADES)).thenReturn(List.of(a));
+
+        BotRouter.Reply reply = router.resolve(ctx, BotIntent.GRADES, 999L);
+
+        assertThat(reply.text()).isEqualTo(BotTexts.NOT_AVAILABLE);
+        verifyNoInteractions(studentAnswers);
+    }
+
+    @Test
+    void resolveWithStudentIdNeverMatchesASchoolId() {
+        BotTarget school = new BotTarget.School(555L, "مدرسه");
+        when(resolver.targets(ctx, BotIntent.EVENTS)).thenReturn(List.of(school));
+
+        assertThat(router.resolve(ctx, BotIntent.EVENTS, 555L).text()).isEqualTo(BotTexts.NOT_AVAILABLE);
+        verifyNoInteractions(schoolAnswers);
+    }
+
+    @Test
+    void resolveWithNoTargetsIsNotAvailable() {
+        assertThat(router.resolve(ctx, BotIntent.GRADES, null).text()).isEqualTo(BotTexts.NOT_AVAILABLE);
+    }
+
+    @Test
+    void allowedIntentsFollowTheMenu() {
+        when(resolver.hasAny(ctx, BotIntent.TargetKind.STUDENT_TARGET)).thenReturn(true);
+
+        assertThat(router.allowedIntents(ctx)).containsExactly(BotIntent.ATTENDANCE_TODAY,
+                BotIntent.ATTENDANCE_SUMMARY, BotIntent.GRADES, BotIntent.EXAMS, BotIntent.TIMETABLE_TODAY);
+    }
 }

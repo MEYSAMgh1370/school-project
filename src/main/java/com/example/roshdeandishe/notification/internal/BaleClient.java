@@ -151,6 +151,16 @@ class BaleClient {
         return postForOk(token, "deleteWebhook", java.util.Map.of());
     }
 
+    /**
+     * نشانگرِ «در حال نوشتن…» (best-effort)؛ شکست فقط با نوعِ خطا لاگ می‌شود و جریانِ پاسخ را متوقف نمی‌کند.
+     */
+    boolean sendChatAction(String token, Long chatId, String action) {
+        if (token == null || token.isBlank()) {
+            return false;
+        }
+        return postForOk(token, "sendChatAction", new ChatActionRequest(chatId, action));
+    }
+
     private boolean postForOk(String token, String method, Object body) {
         try {
             String response = restClient.post()
@@ -310,6 +320,9 @@ class BaleClient {
     }
 
     private record SetWebhookRequest(String url) {
+    }
+
+    private record ChatActionRequest(@JsonProperty("chat_id") Long chatId, String action) {
     }
 
     private record ReplyKeyboardMarkup(

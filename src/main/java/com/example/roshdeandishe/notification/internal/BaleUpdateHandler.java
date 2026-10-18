@@ -17,14 +17,20 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.time.Instant;
+import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 
 /**
- * منطق پردازش یک Update ورودی از وب‌هوک بله. یک بات دستوری ساده است - نه
- * مکالمه‌ی آزاد و نه هیچ مدل زبانی‌ای ({@code CLAUDE_LEGACY.md} §10). لغو این قاعده برای مسیریاب
- * متن آزاد در {@code openspec/changes/bale-smart-bot.md} فقط پیشنهاد شده است؛ تا وقتی سند تصمیمش
- * (مرحله‌ی ۳) نوشته نشده، قاعده سر جایش است.
+ * منطق پردازش یک Update ورودی از وب‌هوک بله. بات دستوری است (دکمه و فرمان)، نه مکالمه‌ی آزاد. قاعده‌ی
+ * «بدون هوش مصنوعی» ({@code CLAUDE_LEGACY.md} §10) برای مسیریابِ متن آزاد با
+ * {@code openspec/decisions/2026-10-15-llm-in-bale-bot.md} کنار گذاشته شده است: مدل فقط مسیریاب است، متنِ
+ * شبه‌نام‌شده و برچسب‌ها را می‌بیند و هیچ داده‌ی پایگاه‌داده، شناسه، نام یا شماره‌ای به آن نمی‌رسد.
+ * {@link #handle} فقط {@link FreeTextRequest} را آماده می‌کند؛ فراخوانیِ مدل بیرون از تراکنش در
+ * {@link FreeTextResponder} است و پاسخ دوباره در تراکنش تازه‌ی {@link #answerFreeText} با داده‌ی سرور سنجیده می‌شود.
  * <p>
  * چون این کد در پاسخ به یک HTTP Request از سرور بله اجرا می‌شود - نه یک
  * درخواست مرورگر با سشن - هیچ‌کدام از {@code @RequiresModule}/
@@ -49,6 +55,7 @@ class BaleUpdateHandler {
     private final SubjectResolver subjectResolver;
     private final BotRouter botRouter;
     private final BotTokens botTokens;
+    private final LlmSettings llmSettings;
 
     BaleUpdateHandler(
             BaleLinkRepository baleLinkRepository,
@@ -59,7 +66,8 @@ class BaleUpdateHandler {
             BotContextLoader botContextLoader,
             SubjectResolver subjectResolver,
             BotRouter botRouter,
-            BotTokens botTokens
+            BotTokens botTokens,
+            LlmSettings llmSettings
     ) {
         this.baleLinkRepository = baleLinkRepository;
         this.baleClient = baleClient;
@@ -70,19 +78,25 @@ class BaleUpdateHandler {
         this.subjectResolver = subjectResolver;
         this.botRouter = botRouter;
         this.botTokens = botTokens;
+        this.llmSettings = llmSettings;
     }
 
+    /**
+     * پردازش یک Update. اگر متنِ کاربرِ لینک‌شده هیچ دکمه یا فرمانی نباشد و مسیریابِ متن آزاد روشن باشد، هیچ
+     * پاسخی فرستاده نمی‌شود و یک {@link FreeTextRequest} برمی‌گردد تا فراخوان پس از پایانِ این تراکنش آن را به
+     * {@link FreeTextResponder} بدهد؛ در بقیه‌ی حالت‌ها پاسخ همین‌جا فرستاده شده و نتیجه خالی است.
+     */
     @Transactional
-    void handle(BotRef bot, BaleUpdate update) {
+    Optional<FreeTextRequest> handle(BotRef bot, BaleUpdate update) {
         BaleCallbackQuery callback = update.callbackQuery();
         if (callback != null) {
             handleCallback(bot, callback);
-            return;
+            return Optional.empty();
         }
 
         BaleMessage message = update.message();
         if (message == null || message.chat() == null) {
-            return; // آپدیت‌هایی غیر از پیام معمولی (مثلاً edited_message) فعلاً نادیده گرفته می‌شوند
+            return Optional.empty(); // آپدیت‌هایی غیر از پیام معمولی (مثلاً edited_message) فعلاً نادیده گرفته می‌شوند
         }
 
         Long chatId = message.chat().id();
@@ -90,24 +104,24 @@ class BaleUpdateHandler {
         // فقط گفتگوی خصوصی: در گروه/کانال (یا نوع نامشخص) نه داده‌ای داده می‌شود نه لینکی ساخته می‌شود
         if (!isPrivate(message)) {
             baleClient.sendMessage(botTokens.tokenFor(bot), chatId, BotTexts.PRIVATE_CHAT_ONLY);
-            return;
+            return Optional.empty();
         }
 
         if (message.contact() != null) {
             handleContactShared(bot, chatId, message);
-            return;
+            return Optional.empty();
         }
 
         String text = message.text() == null ? "" : message.text().trim();
         if ("/start".equals(text)) {
             baleClient.sendContactRequest(botTokens.tokenFor(bot), chatId, BotTexts.WELCOME_TEXT);
-            return;
+            return Optional.empty();
         }
 
         Optional<BotContext> context = botContextLoader.load(bot, chatId);
         if (context.isEmpty()) {
             baleClient.sendMessage(botTokens.tokenFor(bot), chatId, BotTexts.NOT_LINKED_TEXT);
-            return;
+            return Optional.empty();
         }
 
         BotContext ctx = context.get();
@@ -117,13 +131,124 @@ class BaleUpdateHandler {
             case BotTexts.CMD_MY_WARDS -> baleClient.sendMessage(botTokens.tokenFor(bot), chatId, describeWards(ctx));
             default -> {
                 BotRouter.Reply reply = botRouter.onText(ctx, text);
-                if (reply == null) {
-                    baleClient.sendMenu(botTokens.tokenFor(bot), chatId, BotTexts.UNKNOWN_TEXT, botRouter.menu(ctx));
-                } else {
+                if (reply != null) {
                     send(bot, chatId, reply);
+                    return Optional.empty();
                 }
+                Optional<FreeTextRequest> request = prepareFreeText(bot, ctx, text);
+                if (request.isEmpty()) {
+                    baleClient.sendMenu(botTokens.tokenFor(bot), chatId, BotTexts.UNKNOWN_TEXT, botRouter.menu(ctx));
+                }
+                return request;
             }
         }
+        return Optional.empty();
+    }
+
+    /**
+     * متنِ آزاد را برای مدل آماده می‌کند؛ خالی یعنی مسیریاب خاموش است، متن خالی یا بلندتر از سقف است، یا
+     * کاربر هیچ intentی ندارد. برچسب‌ها از هدف‌های دانش‌آموزیِ همین کاربر به ترتیب SubjectResolver ساخته
+     * می‌شوند (فرزندان «[فرزند_n]»، ثبت‌نامِ خود «[خودم]»)؛ نامِ کاربر، نامِ فرزندان و نامِ مدرسه‌ها پیش از
+     * بیرون‌رفتن با برچسب جایگزین می‌شوند و رشته‌های عددیِ بلند (تلفن، کد ملی) با «[عدد]».
+     */
+    private Optional<FreeTextRequest> prepareFreeText(BotRef bot, BotContext ctx, String text) {
+        if (text.isEmpty() || !llmSettings.enabled() || text.length() > llmSettings.maxTextLength()) {
+            return Optional.empty();
+        }
+        Set<BotIntent> allowed = botRouter.allowedIntents(ctx);
+        if (allowed.isEmpty()) {
+            return Optional.empty();
+        }
+
+        List<Pseudonymizer.NamedLabel> names = new ArrayList<>();
+        names.add(new Pseudonymizer.NamedLabel(ctx.fullName(), BotTexts.LABEL_SELF));
+        Map<String, Long> labels = new LinkedHashMap<>();
+        int wards = 0;
+        int ownEnrollments = 0;
+        for (BotTarget target : subjectResolver.targets(ctx, BotIntent.ATTENDANCE_TODAY)) {
+            BotTarget.Student student = (BotTarget.Student) target;
+            if (student.ward()) {
+                String label = BotTexts.wardLabel(++wards);
+                labels.put(label, student.studentId());
+                if (student.name() != null && !student.name().equals(BotTexts.studentFallback(student.studentUserId()))) {
+                    names.add(new Pseudonymizer.NamedLabel(student.name(), label));
+                }
+            } else if (++ownEnrollments == 1) {
+                labels.put(BotTexts.LABEL_SELF, student.studentId());
+            } else {
+                // ثبت‌نامِ خود در چند مدرسه: «[خودم]» به یک شناسه نمی‌رسد، پس پیشنهاد نمی‌شود و روتر با دکمه می‌پرسد
+                labels.remove(BotTexts.LABEL_SELF);
+            }
+            addSchoolName(names, student.schoolId(), student.schoolName());
+        }
+        // نامِ مدرسه‌های معلم و هر عضو دیگر هم، نه فقط مدرسه‌ی دانش‌آموزان
+        for (BotTarget target : subjectResolver.targets(ctx, BotIntent.EVENTS)) {
+            BotTarget.School school = (BotTarget.School) target;
+            addSchoolName(names, school.schoolId(), school.schoolName());
+        }
+
+        String pseudonymized = Pseudonymizer.pseudonymize(text, names);
+        List<String> roles = ctx.memberships().stream().map(MembershipInfo::roleCode).distinct().toList();
+        return Optional.of(new FreeTextRequest(bot, ctx.chatId(), ctx.userId().value(), roles, pseudonymized,
+                allowed, labels));
+    }
+
+    private static void addSchoolName(List<Pseudonymizer.NamedLabel> names, Long schoolId, String schoolName) {
+        if (schoolName != null && !schoolName.equals(BotTexts.schoolFallback(schoolId))) {
+            names.add(new Pseudonymizer.NamedLabel(schoolName, BotTexts.LABEL_SCHOOL));
+        }
+    }
+
+    /**
+     * پاسخ به پرسشِ متن آزاد پس از دسته‌بندی، در تراکنشی تازه. کاربر دوباره از لینکِ chat بارگذاری می‌شود؛
+     * برچسبِ برگزیده فقط از نگاشتِ همین درخواست به شناسه می‌رسد و {@link BotRouter#resolve} آن را با هدف‌های
+     * تازه‌ی کاربر می‌سنجد، پس برچسبِ ساختگی یا فرزندی که در این فاصله حذف شده هرگز پاسخ نمی‌گیرد.
+     */
+    @Transactional
+    void answerFreeText(FreeTextRequest request, Optional<ClassificationValidator.Resolved> resolved) {
+        BotRef bot = request.bot();
+        Long chatId = request.chatId();
+        Optional<BotContext> context = botContextLoader.load(bot, chatId);
+        if (context.isEmpty()) {
+            baleClient.sendMessage(botTokens.tokenFor(bot), chatId, BotTexts.NOT_LINKED_TEXT);
+            return;
+        }
+        BotContext ctx = context.get();
+        // chat در این فاصله به کاربر دیگری لینک شده: برچسب‌های کاربرِ قبلی هیچ معنایی ندارند
+        if (resolved.isEmpty() || ctx.userId().value() != request.userId()) {
+            baleClient.sendMenu(botTokens.tokenFor(bot), chatId, BotTexts.UNKNOWN_TEXT, botRouter.menu(ctx));
+            return;
+        }
+        BotIntent intent = resolved.get().intent();
+        String label = resolved.get().label();
+        Long studentId = null;
+        if (label != null && isStudentIntent(intent)) {
+            studentId = request.labelToStudentId().get(label);
+            if (studentId == null) {
+                baleClient.sendMessage(botTokens.tokenFor(bot), chatId, BotTexts.NOT_AVAILABLE);
+                return;
+            }
+        }
+        send(bot, chatId, botRouter.resolve(ctx, intent, studentId));
+    }
+
+    /** برچسب فقط برای intentهای دانش‌آموزی معنا دارد؛ هدفِ intentهای مدرسه‌ای هرگز از برچسب نمی‌آید. */
+    private static boolean isStudentIntent(BotIntent intent) {
+        return intent.targetKind() == BotIntent.TargetKind.STUDENT_TARGET
+                || intent.targetKind() == BotIntent.TargetKind.WARD_TARGET;
+    }
+
+    /** سقف روزانه‌ی متن آزاد پر شده: پیامِ سقف همراه منو، در تراکنشی تازه. */
+    @Transactional
+    void answerLimitReached(FreeTextRequest request) {
+        BotRef bot = request.bot();
+        Long chatId = request.chatId();
+        Optional<BotContext> context = botContextLoader.load(bot, chatId);
+        if (context.isEmpty()) {
+            baleClient.sendMessage(botTokens.tokenFor(bot), chatId, BotTexts.NOT_LINKED_TEXT);
+            return;
+        }
+        baleClient.sendMenu(botTokens.tokenFor(bot), chatId, BotTexts.LLM_LIMIT_REACHED, botRouter.menu(context.get()));
     }
 
     private void send(BotRef bot, Long chatId, BotRouter.Reply reply) {

@@ -62,7 +62,8 @@ class BaleUpdateHandlerTest {
         tokens = mock(BotTokens.class);
         when(tokens.tokenFor(any())).thenReturn("tok");
         handler = new BaleUpdateHandler(links, client, iam, school, finance,
-                new BotContextLoader(links, iam, mock(SchoolBotRepository.class)), resolver, router, tokens);
+                new BotContextLoader(links, iam, mock(SchoolBotRepository.class)), resolver, router, tokens,
+                new LlmSettings(new org.springframework.mock.env.MockEnvironment()));
         when(academic.listWards(any(), any())).thenReturn(List.of());
         when(academic.findMyEnrollment(any(), any())).thenReturn(Optional.empty());
     }
