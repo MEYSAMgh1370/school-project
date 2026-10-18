@@ -61,4 +61,13 @@ class FailoverLlmClientTest {
         assertThatThrownBy(() -> client.classify(REQUEST))
                 .isInstanceOf(LlmException.class).hasMessage("http 503");
     }
+
+    @Test
+    void productionConstructorBuildsWithoutNetwork() {
+        LlmSettings settings = new LlmSettings(new org.springframework.mock.env.MockEnvironment()
+                .withProperty("roshdeandishe.bot.llm.base-url", "http://liara.test")
+                .withProperty("roshdeandishe.bot.llm.api-key", "k"));
+
+        assertThat(new FailoverLlmClient(settings)).isNotNull();
+    }
 }

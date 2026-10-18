@@ -25,10 +25,10 @@ class FailoverLlmClient implements LlmClient {
     private final LlmClient fallback;
 
     @Autowired
-    FailoverLlmClient(LlmSettings settings, RestClient.Builder builder) {
-        this(new DecisionModelClient(withTimeout(builder, settings.primaryTimeout()), settings.baseUrl(),
+    FailoverLlmClient(LlmSettings settings) {
+        this(new DecisionModelClient(withTimeout(settings.primaryTimeout()), settings.baseUrl(),
                         settings.apiKey(), settings.primaryModel(), settings.decisionPath()),
-                new OpenAiCompatibleClient(withTimeout(builder, settings.fallbackTimeout()), settings.baseUrl(),
+                new OpenAiCompatibleClient(withTimeout(settings.fallbackTimeout()), settings.baseUrl(),
                         settings.apiKey(), settings.fallbackModel()));
     }
 
@@ -47,10 +47,10 @@ class FailoverLlmClient implements LlmClient {
         }
     }
 
-    private static RestClient.Builder withTimeout(RestClient.Builder builder, Duration timeout) {
+    private static RestClient.Builder withTimeout(Duration timeout) {
         JdkClientHttpRequestFactory factory = new JdkClientHttpRequestFactory(
                 HttpClient.newBuilder().connectTimeout(timeout).build());
         factory.setReadTimeout(timeout);
-        return builder.clone().requestFactory(factory);
+        return RestClient.builder().requestFactory(factory);
     }
 }
