@@ -375,14 +375,28 @@ class BaleUpdateHandlerTest {
     }
 
     @Test
-    void blockedUserGetsTheDisabledTextForMySchoolsAndWardsAndHelp() {
+    void blockedUserGetsTheDisabledTextForMySchoolsAndWards() {
         parentOfDisabledSchool();
 
         handler.handle(textUpdate(42L, "مدرسه‌های من"));
         handler.handle(textUpdate(42L, "فرزندان من"));
+
+        verify(client, org.mockito.Mockito.times(2)).sendMessage(42L, BOT_OFF);
+    }
+
+    @Test
+    void helpAlwaysWorks() {
+        parentOfDisabledSchool();
+
         handler.handle(textUpdate(42L, "راهنما"));
 
-        verify(client, org.mockito.Mockito.times(3)).sendMessage(42L, BOT_OFF);
+        verify(client).sendMenu(42L, BotTexts.HELP_TEXT, List.of(List.of(BotTexts.BTN_HELP)));
+        verify(client, never()).sendMessage(42L, BOT_OFF);
+
+        // کاربر مجاز بدون تغییر
+        when(school.isBotAllowed(new SchoolId(10L), Set.of("PARENT"))).thenReturn(true);
+        handler.handle(textUpdate(42L, "راهنما"));
+        verify(client, org.mockito.Mockito.times(2)).sendMenu(eq(42L), eq(BotTexts.HELP_TEXT), any());
     }
 
     @Test

@@ -107,7 +107,8 @@ class BaleUpdateHandler {
         }
 
         BotContext ctx = context.get();
-        if (ctx.blockedBySchoolSettings()) {
+        // «راهنما» همیشه کار می‌کند: متن ثابت و منو از عضویت‌های فیلترشده، بدون داده‌ی مدرسه
+        if (ctx.blockedBySchoolSettings() && !BotTexts.BTN_HELP.equals(text)) {
             baleClient.sendMessage(chatId, BotTexts.BOT_DISABLED_FOR_SCHOOL);
             return;
         }
