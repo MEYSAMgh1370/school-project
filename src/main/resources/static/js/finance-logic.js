@@ -116,7 +116,23 @@ window.FinanceLogic = (function () {
         return { ok: value !== null && value !== undefined, value: value === undefined ? null : value };
     }
 
-    return { cents, payable, remaining, isEditable, expectedSum, editedSum, sumMatches,
+    // query stringِ GET /finance/students (بدون «?»): فیلدِ خالی حذف می‌شود، متن encodeURIComponent می‌شود،
+    // صفحه‌ی صفر و اندازه‌ی ۵۰ پیش‌فرض است. ترتیب ثابت است تا آدرس‌ها قابل‌مقایسه باشند.
+    function buildStudentsQuery(options) {
+        const o = options || {};
+        const parts = [];
+        ['scope', 'firstName', 'lastName', 'q', 'debt'].forEach((key) => {
+            const value = o[key] == null ? '' : String(o[key]).trim();
+            if (value !== '') {
+                parts.push(key + '=' + encodeURIComponent(value));
+            }
+        });
+        parts.push('page=' + (o.page == null ? 0 : o.page));
+        parts.push('size=' + (o.size == null ? 50 : o.size));
+        return parts.join('&');
+    }
+
+    return { cents, buildStudentsQuery, payable, remaining, isEditable, expectedSum, editedSum, sumMatches,
         pendingDiscounts, discountStatusLabel, discountStatusClass,
         isUndated, dueDateLabel, editDueText, resolveDueDate };
 })();

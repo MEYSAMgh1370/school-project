@@ -1,18 +1,36 @@
 document.addEventListener('alpine:init', () => {
-    // اندازه‌ی صفحه‌ی فهرست فاکتورها (DESIGN.md §6)
-    const PAGE_SIZE = 25;
+    // اندازه‌ی صفحه‌ی فهرست دانش‌آموزان (سمت سرور؛ سقفِ سرور ۱۰۰ است) و تأخیر جست‌وجو
+    const PAGE_SIZE = 50;
+    const MAX_SIZE = 100;
+    const SEARCH_DELAY = 300;
 
     Alpine.data('financePage', () => ({
         schoolId: null,
         tuitionFee: null,
-        invoices: [],
-        // جست‌وجوی نام دانش‌آموز روی فهرست فاکتورها (DESIGN.md §6)
-        filterText: '',
-        // chip وضعیت پرداخت ('all' یا یکی از وضعیت‌های فاکتور) و تعداد ردیف‌های نمایش‌داده‌شده
-        chip: 'all',
-        shown: PAGE_SIZE,
+        // فهرست دانش‌آموزان (GET /finance/students): ردیف‌ها، شمارنده‌ی دامنه‌ها (زیر همان فیلتر نام/بدهی) و کل نتیجه
         students: [],
-        pupils: [],
+        total: 0,
+        counts: { all: 0, current: 0, previous: 0 },
+        scope: 'all',
+        debt: 'any',
+        firstName: '',
+        lastName: '',
+        q: '',
+        debtChips: [
+            { key: 'any', label: 'همه‌ی وضعیت‌ها' },
+            { key: 'owing', label: 'بدهکار' },
+            { key: 'overdue', label: 'دیرکرد' },
+            { key: 'settled', label: 'تسویه‌شده' }
+        ],
+        listLoading: false,
+        listLoaded: false,
+        loadingMore: false,
+        searchTimer: null,
+        // فاکتورهای دانش‌آموزِ بازشده (همه‌ی سال‌ها، تازه‌ترین سال اول)؛ یک دانش‌آموز در هر لحظه
+        expandedStudentId: null,
+        studentInvoices: [],
+        invoicesLoading: false,
+        invoicesError: '',
         blocked: false,
         loading: false,
         submitting: false,
@@ -27,31 +45,18 @@ document.addEventListener('alpine:init', () => {
         // یک ثبتِ پرداخت در حال انجام: فرمِ دوباره‌فرستاده‌شده (Enter دوبار) همان مبلغ را دوباره ثبت می‌کرد
         recordingPayment: false,
         backfilling: false,
-        // تأییدِ صدورِ گروهیِ فاکتور: null یا { year, error }
+        // تأییدِ صدورِ گروهیِ فاکتور (همیشه برای سالِ جاریِ مدرسه): null یا { error }
         confirm: null,
-        // تأییدِ «نسبت دادن به سال»: null یا { year, invoices, tuitionFee, error }
-        attributeConfirm: null,
-        // شهریه و فاکتور به‌تفکیک سال (academic-year.md فاز ۲): سال‌های قابل‌انتخاب و سالِ انتخاب‌شده؛
-        // مدرسه‌ای که سالِ جاری ندارد فهرست خالی دارد و مثل پیش از فاز ۲ بدون سال کار می‌کند
-        years: [],
-        year: '',
-        currentYear: null,
-        // شهریه/فاکتورهایی که هنوز به سالی نسبت داده نشده‌اند (فقط ادمینِ دارای FINANCE_MANAGE می‌بیند)
-        unattributed: { tuitionFee: false, invoices: 0 },
-        attributeYear: '',
-        attributing: false,
-        yearSeq: 0,
-        // شمارنده‌ی بارگذاری و پنل پرداخت: فقط پاسخِ آخرین درخواست روی صفحه می‌نشیند (پاسخ دیرِ سالِ قبل یا فاکتورِ
-        // قبلی، فهرست یا پنل تازه را بازنویسی نمی‌کند)
+        // شمارنده‌ی بارگذاری: فقط پاسخِ آخرین درخواست روی صفحه می‌نشیند (پاسخ دیرِ مدرسه یا فیلترِ قبلی، فهرستِ
+        // تازه را بازنویسی نمی‌کند)
         loadSeq: 0,
+        listSeq: 0,
+        invoicesSeq: 0,
         paymentsSeq: 0,
         discountsSeq: 0,
         installmentsSeq: 0,
-        // کلیدِ «اقساط شهریه» (مدرسه‌ای) و حالتِ بارگذاری/ذخیره‌ی آن
+        // کلیدِ «اقساط شهریه» (مدرسه‌ای، در /settings تغییر می‌کند): این صفحه فقط می‌خواندش تا فرم‌های اقساط را باز یا بسته کند
         installmentsEnabled: false,
-        settingsLoaded: false,
-        settingsLoading: false,
-        settingsSaving: false,
         // تخفیف‌ها و اقساطِ فاکتورِ باز‌شده؛ خطا و اعلانِ پنل داخل خودِ پنل نشان داده می‌شود (بالای صفحه دور از چشم است)
         discounts: [],
         discountsLoading: false,
@@ -75,42 +80,43 @@ document.addEventListener('alpine:init', () => {
                 this.error = '';
                 this.notice = '';
                 this.confirm = null;
-                this.attributeConfirm = null;
                 // داده‌های مدرسه‌ی قبلی تا پاسخِ مدرسه‌ی تازه نمایش داده نمی‌شوند
-                this.invoices = [];
+                this.cancelSearchTimer();
                 this.students = [];
-                this.pupils = [];
+                this.total = 0;
+                this.counts = { all: 0, current: 0, previous: 0 };
+                this.listLoaded = false;
                 this.payments = [];
-                this.expandedInvoiceId = null;
-                this.resetPanelExtras();
+                this.collapseStudent();
                 this.installmentsEnabled = false;
-                this.settingsLoaded = false;
                 this.tuitionFee = null;
-                // سالِ مدرسه‌ی قبلی برای مدرسه‌ی تازه معنا ندارد
-                this.years = [];
-                this.year = '';
-                this.currentYear = null;
-                this.attributeYear = '';
-                this.unattributed = { tuitionFee: false, invoices: 0 };
-                this.filterText = '';
-                this.chip = 'all';
-                this.shown = PAGE_SIZE;
+                this.scope = 'all';
+                this.debt = 'any';
+                this.firstName = '';
+                this.lastName = '';
+                this.q = '';
                 this.load();
             });
-            // پنل پرداخت‌های یک فاکتور که جست‌وجو پنهانش کرده باز نمی‌ماند: با هیچ ردیفی قابل بستن نیست
-            // با تغییر جست‌وجو یا chip، صفحه‌بندی هم به ۲۵ ردیفِ اول برمی‌گردد
-            const onFilterChange = () => {
-                this.shown = PAGE_SIZE;
-                if (this.expandedInvoiceId !== null
-                    && !this.visibleInvoices().some(invoice => invoice.id === this.expandedInvoiceId)) {
-                    this.expandedInvoiceId = null;
-                    this.resetPanelExtras();
-                }
+            // جست‌وجوی نام سمت سرور است: با ۳۰۰ میلی‌ثانیه تأخیر (هر حرف یک درخواست نباشد) از صفحه‌ی اول
+            const onSearchChange = () => {
+                this.cancelSearchTimer();
+                this.searchTimer = setTimeout(() => {
+                    this.searchTimer = null;
+                    this.loadStudents();
+                }, SEARCH_DELAY);
             };
-            this.$watch('filterText', onFilterChange);
-            this.$watch('chip', onFilterChange);
+            this.$watch('firstName', onSearchChange);
+            this.$watch('lastName', onSearchChange);
+            this.$watch('q', onSearchChange);
             if (this.schoolId) {
                 this.load();
+            }
+        },
+
+        cancelSearchTimer() {
+            if (this.searchTimer !== null) {
+                clearTimeout(this.searchTimer);
+                this.searchTimer = null;
             }
         },
 
@@ -131,83 +137,187 @@ document.addEventListener('alpine:init', () => {
             return `/api/admin/schools/${this.schoolId}/finance`;
         },
 
-        // «?academicYear=…» برای سالِ انتخاب‌شده؛ بدون فهرست سال (مدرسه‌ای که سالِ جاری ندارد) خالی
-        yearQuery(year = this.year) {
-            return year ? `?academicYear=${encodeURIComponent(year)}` : '';
-        },
-
-        studentsBase() {
-            return `/api/admin/schools/${this.schoolId}/students`;
-        },
-
-        membershipsBase() {
-            return `/api/admin/schools/${this.schoolId}/memberships`;
-        },
-
-        // فاکتور فقط studentId (شناسه‌ی academic) دارد، نه نام - همان دلیل
-        // teacherName در classes.js: باید از academic.StudentController (id
-        // به userId) و iam.MembershipController/memberships/names (userId به
-        // نام) ترکیب شود. FINANCE_ADMIN حالا STUDENT_VIEW و MEMBER_NAMES_VIEW
-        // را دارد (UX_ROADMAP.md §6.4) پس این resolve معمولاً موفق می‌شود؛ اگر
-        // به هر دلیلی موفق نشد، صفحه نمی‌شکند، فقط شناسه‌ی خام نشان داده می‌شود.
-        // فهرستِ فیلترشده (جست‌وجو + chip وضعیت) بدون برش؛ شمارنده‌ی «نمایش بیشتر» از همین می‌آید
-        filteredInvoices() {
-            const query = this.filterText.trim();
-            const chip = this.activeChip();
-            return this.invoices.filter(invoice => (chip === 'all' || invoice.status === chip)
-                && (!query || ListSearch.matches(query, [this.studentName(invoice.studentId)])));
-        },
-
-        // ردیف‌های نمایش‌داده‌شده: ۲۵ تا و با هر «نمایش بیشتر» ۲۵ تای دیگر (DESIGN.md §6)
-        visibleInvoices() {
-            return this.filteredInvoices().slice(0, this.shown);
-        },
-
-        hasMoreInvoices() {
-            return this.filteredInvoices().length > this.shown;
-        },
-
-        // رقم فارسی بدون وابستگی به calendar.js
-        moreInvoicesLabel() {
-            return (this.filteredInvoices().length - this.shown).toLocaleString('fa-IR-u-nu-arabext');
-        },
-
-        showMoreInvoices() {
-            this.shown += PAGE_SIZE;
-        },
+        // ------------------------------------------------------------ فهرست دانش‌آموزان
 
         fa(value) {
             return window.Calendar ? window.Calendar.digits(String(value)) : String(value);
         },
 
-        // chip ها فقط برای وضعیت‌هایی‌اند که در فاکتورهای همین فهرست هست؛ برچسب‌ها همان statusLabel است
-        chips() {
-            const chips = [{ key: 'all', label: 'همه', count: this.invoices.length }];
-            ['PAID', 'PARTIAL', 'UNPAID', 'OVERDUE'].forEach(status => {
-                const count = this.invoices.filter(invoice => invoice.status === status).length;
-                if (count > 0) {
-                    chips.push({ key: status, label: this.statusLabel(status), count });
-                }
-            });
-            return chips;
+        hasFilters() {
+            return this.scope !== 'all' || this.debt !== 'any'
+                || [this.firstName, this.lastName, this.q].some(text => text.trim() !== '');
         },
 
-        // chip ی که با بارگذاری تازه دیگر وضعیتش در فهرست نیست، فهرست را خالی نمی‌کند
-        activeChip() {
-            return this.invoices.some(invoice => invoice.status === this.chip) ? this.chip : 'all';
-        },
-
-        selectChip(key) {
-            this.chip = key;
-        },
-
-        studentName(studentId) {
-            const student = this.students.find(s => s.studentId === studentId);
-            if (!student) {
-                return 'دانش‌آموز #' + studentId;
+        selectScope(key) {
+            if (this.scope !== key) {
+                this.scope = key;
+                this.cancelSearchTimer();
+                this.loadStudents();
             }
-            const pupil = this.pupils.find(p => p.userId === student.userId);
-            return pupil ? pupil.fullName : 'دانش‌آموز #' + studentId;
+        },
+
+        selectDebt(key) {
+            if (this.debt !== key) {
+                this.debt = key;
+                this.cancelSearchTimer();
+                this.loadStudents();
+            }
+        },
+
+        clearFilters() {
+            this.cancelSearchTimer();
+            this.scope = 'all';
+            this.debt = 'any';
+            this.firstName = '';
+            this.lastName = '';
+            this.q = '';
+            this.$nextTick(() => {
+                this.cancelSearchTimer();
+                this.loadStudents();
+            });
+        },
+
+        studentsQuery(page, size) {
+            return FinanceLogic.buildStudentsQuery({
+                scope: this.scope, firstName: this.firstName, lastName: this.lastName, q: this.q, debt: this.debt, page, size
+            });
+        },
+
+        // صفحه‌ی اول با فیلترهای فعلی؛ ردیف بازشده بسته می‌شود (ممکن است دیگر در فهرست نباشد)
+        async loadStudents() {
+            this.collapseStudent();
+            await this.fetchStudents(0, PAGE_SIZE, false);
+        },
+
+        // بعد از پرداخت/تخفیف/اقساط: همان تعداد ردیفِ بارگذاری‌شده (تا سقف سرور) تازه می‌شود، بدون بستن ردیف باز
+        async refreshStudents() {
+            const loaded = Math.max(this.students.length, PAGE_SIZE);
+            await this.fetchStudents(0, Math.min(MAX_SIZE, Math.ceil(loaded / PAGE_SIZE) * PAGE_SIZE), false);
+        },
+
+        hasMoreStudents() {
+            return this.students.length < this.total;
+        },
+
+        moreStudentsLabel() {
+            return this.fa(this.total - this.students.length);
+        },
+
+        async loadMoreStudents() {
+            if (this.loadingMore || this.listLoading) {
+                return;
+            }
+            // ردیف‌ها همیشه مضربی از اندازه‌ی صفحه‌اند، پس شماره‌ی صفحه‌ی بعد همین است
+            await this.fetchStudents(Math.floor(this.students.length / PAGE_SIZE), PAGE_SIZE, true);
+        },
+
+        async fetchStudents(page, size, append) {
+            const seq = ++this.listSeq;
+            const schoolId = this.schoolId;
+            if (append) {
+                this.loadingMore = true;
+            } else {
+                this.listLoading = true;
+                this.loadingMore = false;
+            }
+            try {
+                const response = await fetch(`${this.financeBase()}/students?${this.studentsQuery(page, size)}`,
+                    { headers: { 'X-School-ID': schoolId } });
+                if (seq !== this.listSeq || schoolId !== this.schoolId) {
+                    return;
+                }
+                if (!response.ok) {
+                    const classified = await this.classifyError(response);
+                    this.error = classified.message;
+                    this.blocked = classified.blocking;
+                    return;
+                }
+                const body = await response.json();
+                if (seq !== this.listSeq || schoolId !== this.schoolId) {
+                    return;
+                }
+                this.error = '';
+                this.students = append ? this.students.concat(body.items) : body.items;
+                this.total = body.total;
+                this.counts = body.counts;
+                this.listLoaded = true;
+            } catch (e) {
+                if (seq === this.listSeq) {
+                    this.error = 'ارتباط با سرور برقرار نشد.';
+                }
+            } finally {
+                if (seq === this.listSeq) {
+                    this.listLoading = false;
+                    this.loadingMore = false;
+                }
+            }
+        },
+
+        // برچسبِ وضعیتِ خودِ دانش‌آموز؛ فعال برچسب ندارد (فقط وضعیتِ غیرمعمول دیده شود)
+        studentStatusLabel(student) {
+            return {
+                PENDING: 'در انتظار جا دادن در کلاس',
+                GRADUATED: 'فارغ‌التحصیل',
+                LEFT: 'ترک تحصیل'
+            }[student.studentStatus] || '';
+        },
+
+        // ------------------------------------------------------------ فاکتورهای یک دانش‌آموز
+
+        collapseStudent() {
+            this.invoicesSeq++;
+            this.paymentsSeq++;
+            this.discountsSeq++;
+            this.installmentsSeq++;
+            this.expandedStudentId = null;
+            this.studentInvoices = [];
+            this.invoicesLoading = false;
+            this.invoicesError = '';
+            this.expandedInvoiceId = null;
+            this.payments = [];
+            this.paymentsLoading = false;
+            this.resetPanelExtras();
+        },
+
+        async toggleStudent(student) {
+            if (this.expandedStudentId === student.studentId) {
+                this.collapseStudent();
+                return;
+            }
+            this.collapseStudent();
+            this.expandedStudentId = student.studentId;
+            await this.loadStudentInvoices(student.studentId);
+            // دانش‌آموزِ دارای یک فاکتور: پنلِ همان فاکتور مستقیم باز می‌شود
+            if (this.expandedStudentId === student.studentId && this.studentInvoices.length === 1) {
+                await this.togglePayments(this.studentInvoices[0]);
+            }
+        },
+
+        async loadStudentInvoices(studentId) {
+            const seq = ++this.invoicesSeq;
+            const schoolId = this.schoolId;
+            this.invoicesLoading = true;
+            this.invoicesError = '';
+            try {
+                const response = await fetch(`${this.financeBase()}/students/${studentId}/invoices`,
+                    { headers: { 'X-School-ID': schoolId } });
+                if (seq !== this.invoicesSeq || schoolId !== this.schoolId) {
+                    return;
+                }
+                if (response.ok) {
+                    this.studentInvoices = await response.json();
+                } else {
+                    this.invoicesError = (await this.classifyError(response)).message;
+                }
+            } catch (e) {
+                if (seq === this.invoicesSeq) {
+                    this.invoicesError = 'ارتباط با سرور برقرار نشد.';
+                }
+            } finally {
+                if (seq === this.invoicesSeq) {
+                    this.invoicesLoading = false;
+                }
+            }
         },
 
         // وضعیت مشتق‌شده‌ی فاکتور (InvoiceStatus سمت سرور - هرگز persist نمی‌شود)
@@ -262,10 +372,9 @@ document.addEventListener('alpine:init', () => {
             });
         },
 
-        // کلیدِ «اقساط شهریه» (FINANCE_VIEW می‌خواند؛ اگر خواندن نشد سوییچ نمایش داده نمی‌شود و اقساط خاموش فرض می‌شود)
+        // کلیدِ «اقساط شهریه» (FINANCE_VIEW می‌خواند؛ تغییرش در /settings است). اگر خواندن نشد اقساط خاموش فرض می‌شود
         async loadSettings() {
             const schoolId = this.schoolId;
-            this.settingsLoading = true;
             try {
                 const response = await fetch(`${this.financeBase()}/settings`, { headers: { 'X-School-ID': schoolId } });
                 if (schoolId !== this.schoolId) {
@@ -273,48 +382,9 @@ document.addEventListener('alpine:init', () => {
                 }
                 if (response.ok) {
                     this.installmentsEnabled = !!(await response.json()).installmentsEnabled;
-                    this.settingsLoaded = true;
                 }
             } catch (e) {
-                // سوییچ اختیاری است؛ بدون آن صفحه مثل قبل کار می‌کند
-            } finally {
-                if (schoolId === this.schoolId) {
-                    this.settingsLoading = false;
-                }
-            }
-        },
-
-        async setInstallmentsEnabled(enabled, checkbox) {
-            if (this.settingsSaving) {
-                checkbox.checked = this.installmentsEnabled;
-                return;
-            }
-            const schoolId = this.schoolId;
-            this.settingsSaving = true;
-            this.error = '';
-            this.notice = '';
-            try {
-                const response = await this.jsonRequest(`${this.financeBase()}/settings/installments`, 'PUT', { enabled });
-                if (!response.ok) {
-                    const classified = await this.classifyError(response);
-                    this.error = classified.message;
-                    checkbox.checked = this.installmentsEnabled;
-                    return;
-                }
-                const body = await response.json();
-                if (schoolId !== this.schoolId) {
-                    return;
-                }
-                this.installmentsEnabled = !!body.installmentsEnabled;
-                checkbox.checked = this.installmentsEnabled;
-                this.notice = this.installmentsEnabled ? 'اقساط شهریه فعال شد.' : 'اقساط شهریه غیرفعال شد.';
-                // با خاموش شدن، فرم‌های تعریف/ویرایش بسته می‌شوند
-                this.editing = false;
-            } catch (e) {
-                this.error = 'ارتباط با سرور برقرار نشد.';
-                checkbox.checked = this.installmentsEnabled;
-            } finally {
-                this.settingsSaving = false;
+                // اختیاری است؛ بدون آن فرم‌های اقساط بسته می‌مانند
             }
         },
 
@@ -410,18 +480,23 @@ document.addEventListener('alpine:init', () => {
             }
         },
 
-        // فهرستِ فاکتورها بعد از تخفیف/اقساط (مبلغ قابل‌پرداخت، وضعیت و سررسید عوض می‌شود) بدون بازسازیِ نام‌ها
+        // بعد از پرداخت/تخفیف/اقساط: فاکتورهای دانش‌آموزِ بازشده (مبلغ قابل‌پرداخت، وضعیت و سررسید عوض می‌شود) و
+        // مجموع‌های ردیف‌های فهرست تازه می‌شوند؛ پنل باز می‌ماند
         async refreshInvoices() {
             const schoolId = this.schoolId;
-            const year = this.year;
+            const studentId = this.expandedStudentId;
             try {
-                const response = await fetch(this.invoicesBase() + this.yearQuery(), { headers: { 'X-School-ID': schoolId } });
-                if (response.ok && schoolId === this.schoolId && year === this.year) {
-                    this.invoices = await response.json();
+                if (studentId !== null) {
+                    const response = await fetch(`${this.financeBase()}/students/${studentId}/invoices`,
+                        { headers: { 'X-School-ID': schoolId } });
+                    if (response.ok && schoolId === this.schoolId && studentId === this.expandedStudentId) {
+                        this.studentInvoices = await response.json();
+                    }
                 }
             } catch (e) {
-                // فهرست در بارگذاری بعدی به‌روز می‌شود
+                // پنل در بازشدنِ بعدی به‌روز می‌شود
             }
+            await this.refreshStudents();
         },
 
         async applyDiscount(invoice) {
@@ -622,17 +697,14 @@ document.addEventListener('alpine:init', () => {
             }
         },
 
+        // شهریه‌ی سالِ جاری (بدون آرگومانِ سال: سرور سالِ جاریِ مدرسه را برمی‌دارد)، کلید اقساط و صفحه‌ی اولِ فهرست
         async load() {
             const seq = ++this.loadSeq;
             this.loading = true;
             this.error = '';
             this.blocked = false;
             try {
-                await this.loadYears();
-                if (seq !== this.loadSeq) {
-                    return;
-                }
-                const feeResponse = await fetch(this.tuitionFeeBase() + this.yearQuery(), { headers: { 'X-School-ID': this.schoolId } });
+                const feeResponse = await fetch(this.tuitionFeeBase(), { headers: { 'X-School-ID': this.schoolId } });
                 if (seq !== this.loadSeq) {
                     return;
                 }
@@ -646,43 +718,8 @@ document.addEventListener('alpine:init', () => {
                 } else {
                     this.tuitionFee = (await feeResponse.json()).amount;
                 }
-
-                const invoicesResponse = await fetch(this.invoicesBase() + this.yearQuery(), { headers: { 'X-School-ID': this.schoolId } });
-                if (seq !== this.loadSeq) {
-                    return;
-                }
-                if (!invoicesResponse.ok) {
-                    const classified = await this.classifyError(invoicesResponse);
-                    this.error = classified.message;
-                    this.blocked = classified.blocking;
-                    return;
-                }
-                const invoices = await invoicesResponse.json();
-                if (seq !== this.loadSeq) {
-                    return;
-                }
-                this.invoices = invoices;
-                this.loadUnattributed();
                 this.loadSettings();
-
-                // بهترین تلاش برای نام دانش‌آموز - studentsBase به STUDENT_VIEW
-                // نیاز دارد (نه دیگر STUDENT_ENROLL - UX_ROADMAP.md §6.4)، پس
-                // FINANCE_ADMIN هم آن را دارد؛ membershipsBase هم‌چنان
-                // MEMBERSHIP_MANAGE می‌خواهد که FINANCE_ADMIN ندارد - در آن حالت
-                // به مسیر محدودترِ resolveMemberNames (MEMBER_NAMES_VIEW) برمی‌گردیم.
-                const [studentsResponse, membershipsResponse] = await Promise.all([
-                    fetch(this.studentsBase(), { headers: { 'X-School-ID': this.schoolId } }),
-                    fetch(this.membershipsBase(), { headers: { 'X-School-ID': this.schoolId } })
-                ]);
-                const students = studentsResponse.ok ? await studentsResponse.json() : [];
-                const pupils = membershipsResponse.ok
-                    ? (await membershipsResponse.json()).filter(m => m.active && m.roleCode === 'STUDENT')
-                    : await window.MemberNames.resolve(this.schoolId, students.map(s => s.userId));
-                if (seq !== this.loadSeq) {
-                    return;
-                }
-                this.students = students;
-                this.pupils = pupils;
+                await this.loadStudents();
             } catch (e) {
                 if (seq === this.loadSeq) {
                     this.error = 'ارتباط با سرور برقرار نشد.';
@@ -691,135 +728,6 @@ document.addEventListener('alpine:init', () => {
                 if (seq === this.loadSeq) {
                     this.loading = false;
                 }
-            }
-        },
-
-        // سال‌های قابل‌انتخاب (FINANCE_VIEW؛ مدیر مالی ACADEMIC_YEAR_MANAGE ندارد) و سالِ جاری. سالِ جاری پیش‌فرض است
-        // و فقط وقتی پر می‌شود که سالی انتخاب نشده باشد؛ بدون فهرست، فیلد سال نمایش داده نمی‌شود.
-        async loadYears() {
-            const seq = ++this.yearSeq;
-            const schoolId = this.schoolId;
-            try {
-                const response = await fetch(`${this.financeBase()}/years`, { headers: { 'X-School-ID': schoolId } });
-                if (!response.ok || seq !== this.yearSeq || schoolId !== this.schoolId) {
-                    return;
-                }
-                const body = await response.json();
-                this.currentYear = body.currentYear;
-                // مدرسه‌ای که سالِ جاری ندارد بدون سال کار می‌کند: فهرست خالی می‌ماند
-                this.years = body.currentYear ? body.years : [];
-                if (!this.years.includes(this.year)) {
-                    // x-model روی select بعد از رندرِ گزینه‌ها مقدار را می‌گیرد
-                    this.year = '';
-                    await this.$nextTick();
-                    this.year = body.currentYear || '';
-                }
-            } catch (e) {
-                // بدون فهرستِ سال، صفحه مثل پیش از فاز ۲ کار می‌کند
-            }
-        },
-
-        // شهریه/فاکتورِ بدون سال - فقط برای ادمینِ دارای FINANCE_MANAGE (بقیه 403 می‌گیرند و هشدار نمی‌بینند)
-        async loadUnattributed() {
-            if (!this.currentYear) {
-                this.unattributed = { tuitionFee: false, invoices: 0 };
-                return;
-            }
-            const schoolId = this.schoolId;
-            try {
-                const response = await fetch(`${this.financeBase()}/unattributed`, { headers: { 'X-School-ID': schoolId } });
-                if (response.ok && schoolId === this.schoolId) {
-                    this.unattributed = await response.json();
-                    // سالِ نسبت‌دادن عمداً پیش‌فرض ندارد: مدیر باید خودش انتخاب کند (پیش‌فرضِ اشتباه، کلِ
-                    // اطلاعاتِ قبلی را با یک کلیک به سالِ غلط می‌برد)
-                }
-            } catch (e) {
-                // هشدار اختیاری است
-            }
-        },
-
-        hasUnattributed() {
-            return !!this.currentYear && (this.unattributed.tuitionFee || this.unattributed.invoices > 0);
-        },
-
-        async onYearChange() {
-            this.chip = 'all';
-            this.shown = PAGE_SIZE;
-            this.expandedInvoiceId = null;
-            this.payments = [];
-            this.resetPanelExtras();
-            this.error = '';
-            this.notice = '';
-            await this.load();
-        },
-
-        // نسبت دادنِ اطلاعاتِ مالیِ قبلی به یک سال برگشت‌پذیر نیست: اول تأیید (modal) گرفته می‌شود
-        askAttribute() {
-            if (this.attributing) {
-                return;
-            }
-            this.error = '';
-            this.notice = '';
-            if (!this.attributeYear) {
-                this.error = 'یک سال تحصیلی را انتخاب کنید.';
-                return;
-            }
-            this.attributeConfirm = {
-                year: this.attributeYear,
-                invoices: this.unattributed.invoices,
-                tuitionFee: this.unattributed.tuitionFee,
-                error: ''
-            };
-            this.$nextTick(() => window.ModalFocus.focusFirst(this.$refs.attributeModal));
-        },
-
-        closeAttributeConfirm() {
-            this.attributeConfirm = null;
-        },
-
-        // اقدامِ صریحِ ادمین: شهریه و فاکتورهای «بدون سال» را به یک سال نسبت می‌دهد
-        async attribute() {
-            const target = this.attributeConfirm;
-            if (!target || this.attributing) {
-                return;
-            }
-            this.attributing = true;
-            this.error = '';
-            this.notice = '';
-            try {
-                const response = await fetch(`${this.financeBase()}/attribute-year`, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'X-School-ID': this.schoolId,
-                        'X-XSRF-TOKEN': this.csrfToken()
-                    },
-                    body: JSON.stringify({ academicYear: target.year })
-                });
-                if (!response.ok) {
-                    const classified = await this.classifyError(response);
-                    // خطا داخل modal نشان داده می‌شود (پشتِ لایه‌ی modal دیده نمی‌شد)
-                    if (this.attributeConfirm === target) {
-                        target.error = classified.message;
-                    } else {
-                        this.error = classified.message;
-                    }
-                    return;
-                }
-                const result = await response.json();
-                this.attributeConfirm = null;
-                this.notice = `اطلاعاتِ مالیِ قبلی به سالِ ${Calendar.digits(target.year)} نسبت داده شد `
-                    + `(${Calendar.digits(String(result.invoicesAttributed))} فاکتور`
-                    + `${result.tuitionAttributed ? ' و شهریه' : ''}).`;
-                await this.load();
-            } catch (e) {
-                if (this.attributeConfirm === target) {
-                    target.error = 'ارتباط با سرور برقرار نشد.';
-                } else {
-                    this.error = 'ارتباط با سرور برقرار نشد.';
-                }
-            } finally {
-                this.attributing = false;
             }
         },
 
@@ -838,10 +746,15 @@ document.addEventListener('alpine:init', () => {
             this.expandedInvoiceId = invoice.id;
             this.payments = [];
             this.paymentForm = { amount: '', method: 'CASH', note: '' };
-            this.paymentsLoading = true;
             // تخفیف‌ها و اقساط تنبل و موازی با پرداخت‌ها بارگذاری می‌شوند
             this.loadDiscounts(invoice);
             this.loadInstallments(invoice);
+            await this.loadPayments(invoice, seq);
+        },
+
+        // پرداخت‌های فاکتورِ باز؛ خطا داخل خودِ پنل نشان داده می‌شود
+        async loadPayments(invoice, seq = ++this.paymentsSeq) {
+            this.paymentsLoading = true;
             try {
                 const response = await fetch(`${this.invoicesBase()}/${invoice.id}/payments`,
                     { headers: { 'X-School-ID': this.schoolId } });
@@ -852,12 +765,11 @@ document.addEventListener('alpine:init', () => {
                 if (response.ok) {
                     this.payments = await response.json();
                 } else {
-                    const classified = await this.classifyError(response);
-                    this.error = classified.message;
+                    this.panelError = (await this.classifyError(response)).message;
                 }
             } catch (e) {
                 if (seq === this.paymentsSeq) {
-                    this.error = 'ارتباط با سرور برقرار نشد.';
+                    this.panelError = 'ارتباط با سرور برقرار نشد.';
                 }
             } finally {
                 if (seq === this.paymentsSeq) {
@@ -873,8 +785,8 @@ document.addEventListener('alpine:init', () => {
             // مدرسه همان لحظه‌ی شروع ثابت می‌شود: تغییر مدرسه وسط درخواست، پرداخت را به مدرسه‌ی دیگر نمی‌برد
             const schoolId = this.schoolId;
             this.recordingPayment = true;
-            this.error = '';
-            this.notice = '';
+            this.panelError = '';
+            this.panelNotice = '';
             try {
                 const response = await fetch(`/api/admin/schools/${schoolId}/invoices/${invoice.id}/payments`, {
                     method: 'POST',
@@ -890,24 +802,18 @@ document.addEventListener('alpine:init', () => {
                     })
                 });
                 if (!response.ok) {
-                    const classified = await this.classifyError(response);
-                    this.error = classified.message;
+                    this.panelError = (await this.classifyError(response)).message;
                     return;
                 }
-                if (schoolId !== this.schoolId) {
-                    // مدرسه عوض شده: پرداخت ثبت شده، ولی فهرستِ مدرسه‌ی تازه را نباید با آن بازسازی کرد
+                if (schoolId !== this.schoolId || this.expandedInvoiceId !== invoice.id) {
+                    // مدرسه یا پنل عوض شده: پرداخت ثبت شده، ولی صفحه‌ی تازه را نباید با آن بازسازی کرد
                     return;
                 }
-                this.notice = 'پرداخت با موفقیت ثبت شد.';
-                await this.load();
-                // بعد از load، پنل باز را با پرداخت‌های تازه به‌روزرسانی کن
-                const refreshed = this.invoices.find(i => i.id === invoice.id);
-                this.expandedInvoiceId = null;
-                if (refreshed) {
-                    await this.togglePayments(refreshed);
-                }
+                this.paymentForm = { amount: '', method: 'CASH', note: '' };
+                this.panelNotice = 'پرداخت با موفقیت ثبت شد.';
+                await Promise.all([this.refreshInvoices(), this.loadPayments(invoice)]);
             } catch (e) {
-                this.error = 'ارتباط با سرور برقرار نشد.';
+                this.panelError = 'ارتباط با سرور برقرار نشد.';
             } finally {
                 this.recordingPayment = false;
             }
@@ -921,7 +827,7 @@ document.addEventListener('alpine:init', () => {
             }
             this.error = '';
             this.notice = '';
-            this.confirm = { year: this.year, error: '' };
+            this.confirm = { error: '' };
             this.$nextTick(() => window.ModalFocus.focusFirst(this.$refs.confirmModal));
         },
 
@@ -938,7 +844,7 @@ document.addEventListener('alpine:init', () => {
             this.error = '';
             this.notice = '';
             try {
-                const response = await fetch(`${this.invoicesBase()}/backfill${this.yearQuery(target.year)}`, {
+                const response = await fetch(`${this.invoicesBase()}/backfill`, {
                     method: 'POST',
                     headers: {
                         'X-School-ID': this.schoolId,
@@ -977,7 +883,7 @@ document.addEventListener('alpine:init', () => {
             this.error = '';
             this.notice = '';
             try {
-                const response = await fetch(this.tuitionFeeBase() + this.yearQuery(), {
+                const response = await fetch(this.tuitionFeeBase(), {
                     method: 'PUT',
                     headers: {
                         'Content-Type': 'application/json',

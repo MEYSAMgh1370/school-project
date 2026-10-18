@@ -94,3 +94,17 @@ test('resolveDueDate: empty is valid only for a row that started undated', () =>
 test('decimal rials do not break the exact comparison', () => {
     assert.equal(FinanceLogic.sumMatches([{ amount: '0.1' }, { amount: '0.2' }], 0.3), true);
 });
+
+test('buildStudentsQuery omits empty fields and defaults page 0, size 50', () => {
+    assert.equal(FinanceLogic.buildStudentsQuery({}), 'page=0&size=50');
+    assert.equal(FinanceLogic.buildStudentsQuery({ scope: 'all', firstName: '  ', lastName: '', q: null, debt: undefined }),
+        'scope=all&page=0&size=50');
+});
+
+test('buildStudentsQuery encodes Persian text and keeps the field order', () => {
+    const query = FinanceLogic.buildStudentsQuery({ scope: 'previous', firstName: 'علی', lastName: 'رضایی', q: 'م ن', debt: 'owing', page: 2, size: 25 });
+    assert.equal(query, 'scope=previous&firstName=' + encodeURIComponent('علی') + '&lastName=' + encodeURIComponent('رضایی')
+        + '&q=' + encodeURIComponent('م ن') + '&debt=owing&page=2&size=25');
+    assert.ok(!query.includes('?'));
+    assert.ok(!/[^\x00-\x7f]/.test(query));
+});
