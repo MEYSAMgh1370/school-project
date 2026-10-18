@@ -175,6 +175,26 @@ roshdeandishe:
     token-encryption-key: ${BALE_TOKEN_ENCRYPTION_KEY:}
     # نشانیِ پایه‌ی عمومیِ برنامه برای ساختن آدرس وب‌هوکِ هر ربات مدرسه (setWebhook).
     webhook-base-url: ${APP_BASE_URL:http://localhost:8080}
+  bot:
+    llm:
+      # کلید خاموش/روشنِ مسیریابِ متن آزاد؛ خاموش = همه‌ی متن‌های آزاد منو می‌گیرند
+      enabled: ${BOT_LLM_ENABLED:false}
+      # یک نشانی و یک کلید برای هر دو مدل (سرویس هوش مصنوعیِ لیارا)
+      base-url: ${BOT_LLM_BASE_URL:}
+      api-key: ${BOT_LLM_API_KEY:}
+      primary-model: ${BOT_LLM_MODEL:typesafe/jev-1.13}
+      fallback-model: ${BOT_LLM_FALLBACK_MODEL:qwen/qwen3-32b}
+      # مسیرِ API تصمیمِ TypeSafe نسبت به base-url؛ نحوه‌ی ارائه در لیارا هنوز تأیید نشده
+      decision-path: ${BOT_LLM_DECISION_PATH:/systemone}
+      primary-timeout: 3s
+      fallback-timeout: 5s
+      min-confidence: 0.7
+      max-text-length: 500
+      daily-cap-total: 0
+      daily-limit:
+        default: 30
+        TEACHER: 30
+        SCHOOL_ADMIN: 100
   sms:
     # ارسال کد تأیید پیامکی برای ورود با شماره تلفن (iam.internal.SmsDriver).
     # اتصال به ارائه‌دهنده‌ی پیامک هنوز نوشته نشده است - کد گم‌شده، نه کانفیگ
