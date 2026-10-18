@@ -5,8 +5,12 @@ day** ("catalog is read-only for now") and is implemented: migration `V5`,
 facade, API, the `/grades` course select and the `/my-grades` course column.
 The current-state statement lives in [`specs/current-system.md`](../specs/current-system.md)
 (Finance And Academic, Current Limitations). Phase 2 (platform actor and course
-administration) is not started; the initial course list is still a pending
-product input. Raised while reviewing `/my-grades`: a grade is one number
+administration) is partly done by the Moshavere import work: a platform
+administrator exists (`PLATFORM_HOLIDAY_MANAGE`), and platform-only code writes
+the catalog (`POST /api/platform/academic/courses`, upsert by grade level and
+name, and the Moshavere import); there is still no administration screen, and
+no rename or deactivation code was found (checked 2026-10-18). The initial
+course list is still a pending product input. Raised while reviewing `/my-grades`: a grade is one number
 per student, class, academic year and term, so a parent cannot see how a child
 did in each subject.
 
