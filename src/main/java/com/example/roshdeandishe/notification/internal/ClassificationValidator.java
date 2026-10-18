@@ -26,7 +26,8 @@ final class ClassificationValidator {
         } catch (IllegalArgumentException e) {
             return Optional.empty();
         }
-        if (!allowed.contains(intent) || a.intentConfidence() < minConfidence) {
+        // «!(c >= min)» نه «c < min»: اطمینانِ NaN هم رد می‌شود
+        if (!allowed.contains(intent) || !(a.intentConfidence() >= minConfidence)) {
             return Optional.empty();
         }
         String label = null;

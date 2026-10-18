@@ -47,6 +47,7 @@ class BaleUpdateHandlerFreeTextTest {
     private SchoolFacade school;
     private AcademicFacade academic;
     private StudentAnswers studentAnswers;
+    private FinanceFacade finance;
     private BaleUpdateHandler handler;
     private MockEnvironment env;
 
@@ -66,7 +67,8 @@ class BaleUpdateHandlerFreeTextTest {
                 .withProperty("roshdeandishe.bot.llm.enabled", "true")
                 .withProperty("roshdeandishe.bot.llm.base-url", "https://llm.example")
                 .withProperty("roshdeandishe.bot.llm.api-key", "k");
-        handler = new BaleUpdateHandler(links, client, iam, school, mock(FinanceFacade.class),
+        finance = mock(FinanceFacade.class);
+        handler = new BaleUpdateHandler(links, client, iam, school, finance,
                 new BotContextLoader(links, iam, mock(SchoolBotRepository.class)), resolver, router, tokens,
                 new LlmSettings(env));
         when(academic.listWards(any(), any())).thenReturn(List.of());
@@ -222,5 +224,44 @@ class BaleUpdateHandlerFreeTextTest {
         handler.answerLimitReached(request(Map.of()));
 
         verify(client).sendMenu(eq("tok"), eq(CHAT), eq(BotTexts.LLM_LIMIT_REACHED), any());
+    }
+    /** دانش‌آموزِ «علی رضایی» (studentId 555) بدون فرزند: هیچ هدفِ WARD_TARGET (مالی) ندارد. */
+    private void linkPureStudent() {
+        when(links.findByChat(BotRef.SHARED, CHAT))
+                .thenReturn(Optional.of(new BaleLinkEntity(null, WARD_USER, CHAT, Instant.now())));
+        when(iam.findUser(new UserId(WARD_USER)))
+                .thenReturn(Optional.of(new UserProfile(new UserId(WARD_USER), "w@b.c", "علی رضایی", null)));
+        when(iam.findMembershipsByUser(new UserId(WARD_USER))).thenReturn(List.of(
+                new MembershipInfo(2L, new UserId(WARD_USER), "w@b.c", "علی رضایی", SCHOOL, "STUDENT", true, true)));
+        when(academic.findMyEnrollment(WARD_USER, SCHOOL)).thenReturn(Optional.of(
+                new AcademicFacade.EnrollmentInfo(new StudentId(WARD_STUDENT), SCHOOL, null, null, null)));
+    }
+
+    /** معیارِ پذیرشِ ۳: پاسخِ INVOICES مدل به دانش‌آموز هرگز به مالی نمی‌رسد؛ منو یا «در دسترس نیست». */
+    @Test
+    void studentWhoseModelAnswersInvoicesNeverReachesFinance() {
+        linkPureStudent();
+        LlmClient llm = mock(LlmClient.class);
+        ClassificationAnswer invoices = new ClassificationAnswer("INVOICES", 0.99, null, 0, "m");
+        when(llm.classify(any())).thenReturn(invoices);
+        LlmQuota quota = mock(LlmQuota.class);
+        when(quota.tryAcquire(org.mockito.ArgumentMatchers.anyLong(), any())).thenReturn(true);
+        FreeTextResponder responder = new FreeTextResponder(handler, llm, quota, new LlmSettings(env), client,
+                mock(BotTokens.class));
+
+        Optional<FreeTextRequest> request = handler.handle(BotRef.SHARED, textUpdate("صورتحساب‌های من چقدره؟"));
+
+        assertThat(request).isPresent();
+        assertThat(request.get().allowed()).contains(BotIntent.GRADES).doesNotContain(BotIntent.INVOICES);
+        assertThat(ClassificationValidator.validate(invoices, request.get().allowed(), List.of(), 0.7)).isEmpty();
+
+        responder.respond(request.get());
+        verify(client).sendMenu(eq("tok"), eq(CHAT), eq(BotTexts.UNKNOWN_TEXT), any());
+
+        // حتی اگر اعتبارسنج دور زده شود، روتر هدفِ مالی برای دانش‌آموز نمی‌سازد
+        handler.answerFreeText(request.get(),
+                Optional.of(new ClassificationValidator.Resolved(BotIntent.INVOICES, null)));
+        verify(client).sendMessage("tok", CHAT, BotTexts.NOT_AVAILABLE);
+        verifyNoInteractions(finance, studentAnswers);
     }
 }

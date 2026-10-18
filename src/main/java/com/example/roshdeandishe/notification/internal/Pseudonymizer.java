@@ -13,7 +13,8 @@ import java.util.regex.Pattern;
  * بی‌نام‌سازی متن آزاد کاربر پیش از ارسال به مدل (مشخصات «Pseudonymizer» در openspec/changes/bale-smart-bot.md):
  * نام کاربر و فرزندان با برچسب جایگزین می‌شود و رشته‌ی رقم‌های بلند (تلفن، کد ملی) به {@code [عدد]} تبدیل می‌شود.
  *
- * <p>متن و نام‌ها هر دو نرمال می‌شوند (ي به ی، ك به ک، نیم‌فاصله به فاصله، فاصله‌های پیاپی به یکی، trim) و
+ * <p>متن و نام‌ها هر دو با یک تابع نرمال می‌شوند (ي و ى به ی، ك به ک، حذفِ کشیده و نویسه‌های نامرئیِ
+ * جهت/اتصال، نیم‌فاصله و هر فاصله‌ی یونیکدی مثل NBSP به فاصله، فاصله‌های پیاپی به یکی، trim) و
  * خروجی همان متن نرمال‌شده است. نام کامل پیش از نام کوچک و بلندترین تطابق پیش از کوتاه‌تر جایگزین می‌شود
  * («علیرضا» پیش از «علی»). هر تکه‌ی نامی که فقط به یک نام تعلق دارد (نام کوچک یا خانوادگی) با برچسب همان نام، و هر تکه‌ی مشترک میان چند نام (مثل نام
  * خانوادگی خواهر و برادر)، به {@code [نام]} تبدیل می‌شود تا هویت یک فرزند لو نرود. تطابق فقط در مرز واژه است:
@@ -28,9 +29,19 @@ final class Pseudonymizer {
     private static final String GENERIC_NAME = "[نام]";
     private static final String NUMBER = "[عدد]";
 
-    /** ≥۵ رقم (لاتین، فارسی یا عربی-هندی) با فاصله یا «-» اختیاری میان رقم‌ها. */
-    private static final Pattern DIGIT_RUN =
-            Pattern.compile("[0-9\u06F0-\u06F9\u0660-\u0669](?:[ \\-]?[0-9\u06F0-\u06F9\u0660-\u0669]){4,}");
+    /**
+     * ≥۵ رقم (لاتین، فارسی یا عربی-هندی) با حداکثر دو جداکننده‌ی فاصله، «-»، «.»، «/»، «(» یا «)» میان رقم‌ها و
+     * «(» اختیاری در آغاز، مثل «(0912) 345 6789».
+     */
+    private static final Pattern DIGIT_RUN = Pattern.compile(
+            "\\(?[0-9\u06F0-\u06F9\u0660-\u0669](?:[ \\-./()]{0,2}[0-9\u06F0-\u06F9\u0660-\u0669]){4,}");
+
+    /** هر فاصله‌ی یونیکدی (NBSP، U+202F، فاصله‌ی باریک، فاصله‌ی CJK و …) و فاصله‌ی صفرعرض. */
+    private static final Pattern WHITESPACE = Pattern.compile("[\\s\u200B]+", Pattern.UNICODE_CHARACTER_CLASS);
+
+    /** کشیده و نویسه‌های نامرئیِ اتصال/جهت که درونِ واژه می‌نشینند؛ حذف می‌شوند، نه فاصله. */
+    private static final Pattern INVISIBLE =
+            Pattern.compile("[\u0640\u200D\u200E\u200F\uFEFF\u202A-\u202E\u2066-\u2069]");
 
     private Pseudonymizer() {
     }
@@ -45,11 +56,12 @@ final class Pseudonymizer {
         if (s == null) {
             return "";
         }
-        return s.replace('ي', 'ی')
+        String letters = s.replace('ي', 'ی')
+                .replace('ى', 'ی')
                 .replace('ك', 'ک')
-                .replace('\u200C', ' ')
-                .replaceAll("\\s+", " ")
-                .trim();
+                .replace('\u200C', ' ');
+        String visible = INVISIBLE.matcher(letters).replaceAll("");
+        return WHITESPACE.matcher(visible).replaceAll(" ").trim();
     }
 
     private static String replaceNames(String text, List<NamedLabel> names) {
@@ -63,7 +75,7 @@ final class Pseudonymizer {
                 continue;
             }
             full.putIfAbsent(name, n.label());
-            String[] tokens = name.split(" ");
+            String[] tokens = WHITESPACE.split(name);
             for (String t : new LinkedHashSet<>(List.of(tokens))) {
                 tokenCount.merge(t, 1, Integer::sum);
             }

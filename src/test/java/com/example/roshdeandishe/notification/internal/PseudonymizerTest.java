@@ -48,4 +48,46 @@ class PseudonymizerTest {
                 .isEqualTo("شماره [عدد] و [عدد] و [عدد]");
         assertThat(Pseudonymizer.pseudonymize("کلاس ۱۰۲", List.of())).isEqualTo("کلاس ۱۰۲");
     }
+    @Test
+    void nbspInStoredNameStillMatches() {
+        List<Pseudonymizer.NamedLabel> names = List.of(new Pseudonymizer.NamedLabel("علی\u00A0رضایی", "[فرزند_۱]"));
+        assertThat(Pseudonymizer.pseudonymize("نمره‌های علی", names)).isEqualTo("نمره های [فرزند_۱]");
+        assertThat(Pseudonymizer.pseudonymize("نمره‌های علی\u202Fرضایی", names)).isEqualTo("نمره های [فرزند_۱]");
+        assertThat(Pseudonymizer.pseudonymize("نمره\u3000علی\u2009رضایی", KIDS)).isEqualTo("نمره [فرزند_۱]");
+    }
+
+    @Test
+    void kashidaInsideNameIsRemoved() {
+        assertThat(Pseudonymizer.pseudonymize("نمره‌های علـــی", KIDS)).isEqualTo("نمره های [فرزند_۱]");
+        List<Pseudonymizer.NamedLabel> names = List.of(new Pseudonymizer.NamedLabel("مریـم احمدی", "[فرزند_۱]"));
+        assertThat(Pseudonymizer.pseudonymize("مریم امروز رفت؟", names)).isEqualTo("[فرزند_۱] امروز رفت؟");
+    }
+
+    @Test
+    void alefMaksuraIsNormalised() {
+        assertThat(Pseudonymizer.pseudonymize("على", KIDS)).isEqualTo("[فرزند_۱]");
+        List<Pseudonymizer.NamedLabel> names = List.of(new Pseudonymizer.NamedLabel("مصطفى رضایی", "[فرزند_۱]"));
+        assertThat(Pseudonymizer.pseudonymize("مصطفی امروز رفت؟", names)).isEqualTo("[فرزند_۱] امروز رفت؟");
+    }
+
+    @Test
+    void invisibleFormatCharsInsideWordDoNotBreakMatch() {
+        for (String c : List.of("\u200D", "\u200E", "\u200F", "\uFEFF", "\u202A", "\u202B", "\u202C",
+                "\u202D", "\u202E", "\u2066", "\u2067", "\u2068", "\u2069")) {
+            assertThat(Pseudonymizer.pseudonymize("نمره‌های عل" + c + "ی", KIDS))
+                    .as("U+%04X", (int) c.charAt(0))
+                    .isEqualTo("نمره های [فرزند_۱]");
+        }
+        List<Pseudonymizer.NamedLabel> names = List.of(new Pseudonymizer.NamedLabel("\u2067علی\u200Dرضا\u2069", "[فرزند_۱]"));
+        assertThat(Pseudonymizer.pseudonymize("علیرضا", names)).isEqualTo("[فرزند_۱]");
+    }
+
+    @Test
+    void phoneSeparatorsDotSlashAndParenthesesAreDigitRuns() {
+        assertThat(Pseudonymizer.pseudonymize("شماره 0912.345.6789", List.of())).isEqualTo("شماره [عدد]");
+        assertThat(Pseudonymizer.pseudonymize("شماره (0912) 345 6789", List.of())).isEqualTo("شماره [عدد]");
+        assertThat(Pseudonymizer.pseudonymize("شماره 0912/345/6789", List.of())).isEqualTo("شماره [عدد]");
+        assertThat(Pseudonymizer.pseudonymize("شماره ۰۹۱۲-۳۴۵-۶۷۸۹", List.of())).isEqualTo("شماره [عدد]");
+        assertThat(Pseudonymizer.pseudonymize("کلاس ۱۰۲ و ساعت ۸", List.of())).isEqualTo("کلاس ۱۰۲ و ساعت ۸");
+    }
 }

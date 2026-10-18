@@ -45,4 +45,14 @@ class ClassificationValidatorTest {
         assertThat(ClassificationValidator.validate(a("GRADES", .9, "NONE", .9), ALLOWED, LABELS, .7))
                 .contains(new ClassificationValidator.Resolved(BotIntent.GRADES, null));
     }
+    @Test
+    void nanIntentConfidenceIsRejected() {
+        assertThat(ClassificationValidator.validate(a("GRADES", Double.NaN, "NONE", 1), ALLOWED, LABELS, .7)).isEmpty();
+    }
+
+    @Test
+    void nanTargetConfidenceDropsLabelButKeepsIntent() {
+        assertThat(ClassificationValidator.validate(a("GRADES", .9, "[فرزند_۱]", Double.NaN), ALLOWED, LABELS, .7))
+                .contains(new ClassificationValidator.Resolved(BotIntent.GRADES, null));
+    }
 }
