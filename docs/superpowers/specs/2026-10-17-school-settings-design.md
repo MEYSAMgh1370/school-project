@@ -1,6 +1,6 @@
 # School settings page and finance overview (`/settings`)
 
-Status: proposed 2026-10-17, awaiting review. Nothing here is implemented.
+Status: implemented 2026-10-18 (`V33`). "Current state" below describes the code before this change (including the old `/academic-year` page); rulings and deviations from the build are in `openspec/changes/school-settings.md`.
 
 ## Intent (what the product owner asked for)
 
