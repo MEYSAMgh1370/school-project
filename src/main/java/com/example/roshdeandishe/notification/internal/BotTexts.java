@@ -33,6 +33,20 @@ final class BotTexts {
     static final String CHOOSE_STUDENT = "برای کدام دانش‌آموز؟";
     static final String CHOOSE_SCHOOL = "برای کدام مدرسه؟";
 
+    // ---- متن آزاد (مسیریاب مدل زبانی) ----
+
+    /** سقف روزانه‌ی پرسش‌های متن آزاد پر شده است. */
+    static final String LLM_LIMIT_REACHED = "سقف پرسش‌های متنیِ امروز شما پر شده است؛ لطفاً از دکمه‌ها استفاده کنید.";
+    /** برچسبِ ثبت‌نامِ خودِ کاربر در متنِ شبه‌نام‌شده‌ای که به مدل می‌رود. */
+    static final String LABEL_SELF = "[خودم]";
+    /** برچسبِ نامِ مدرسه در متنِ شبه‌نام‌شده. */
+    static final String LABEL_SCHOOL = "[مدرسه]";
+
+    /** برچسبِ فرزندِ شماره‌ی n به ترتیبِ SubjectResolver، با رقم فارسی: «[فرزند_۱]». */
+    static String wardLabel(int n) {
+        return "[فرزند_" + PersianText.digits(n) + "]";
+    }
+
     static final String WELCOME_TEXT = """
             به ربات رشد اندیشه خوش آمدید!
 

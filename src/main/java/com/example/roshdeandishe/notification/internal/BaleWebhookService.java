@@ -7,6 +7,7 @@ import jakarta.annotation.PreDestroy;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
+import java.util.Optional;
 import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.Executor;
 import java.util.concurrent.ExecutorService;
@@ -52,6 +53,7 @@ class BaleWebhookService {
 
     private final ObjectMapper objectMapper = new ObjectMapper();
     private final BaleUpdateHandler updateHandler;
+    private final FreeTextResponder freeTextResponder;
     private final ChatSerialExecutor<ChatKey> executor;
     /** برای لاگ رد شدن: pool زیرین (Executor ساده یا ExecutorService). */
     private final Executor pool;
@@ -61,8 +63,10 @@ class BaleWebhookService {
     private final SchoolBotActivity botActivity;
 
     @Autowired
-    BaleWebhookService(BaleUpdateHandler updateHandler, SchoolBotActivity botActivity) {
+    BaleWebhookService(BaleUpdateHandler updateHandler, FreeTextResponder freeTextResponder,
+                       SchoolBotActivity botActivity) {
         this.updateHandler = updateHandler;
+        this.freeTextResponder = freeTextResponder;
         this.botActivity = botActivity;
         AtomicInteger threadNumber = new AtomicInteger();
         this.ownedPool = new ThreadPoolExecutor(
@@ -76,9 +80,10 @@ class BaleWebhookService {
     }
 
     /** برای تست: Executor و حافظه‌ی شناسه‌ها از بیرون داده می‌شوند. */
-    BaleWebhookService(BaleUpdateHandler updateHandler, Executor executor, RecentUpdateIds<UpdateKey> recentUpdateIds,
-                       SchoolBotActivity botActivity) {
+    BaleWebhookService(BaleUpdateHandler updateHandler, FreeTextResponder freeTextResponder, Executor executor,
+                       RecentUpdateIds<UpdateKey> recentUpdateIds, SchoolBotActivity botActivity) {
         this.updateHandler = updateHandler;
+        this.freeTextResponder = freeTextResponder;
         this.botActivity = botActivity;
         this.pool = executor;
         this.executor = new ChatSerialExecutor<>(executor, QUEUE_CAPACITY, BaleWebhookService::groupLimit, ChatKey::botId);
@@ -147,12 +152,27 @@ class BaleWebhookService {
         return message != null && message.chat() != null ? message.chat().id() : null;
     }
 
-    /** روی thread کارگر اجرا می‌شود؛ خطا فقط لاگ می‌شود، مثل قبل. */
+    /**
+     * روی thread کارگر اجرا می‌شود؛ خطا فقط لاگ می‌شود، مثل قبل. پرسشِ متن آزاد پس از بازگشتِ handler (یعنی
+     * پس از پایانِ تراکنشِ آن) به {@link FreeTextResponder} می‌رود، تا فراخوانیِ مدل هیچ تراکنشی را باز نگه
+     * ندارد؛ چون روی همین thread و همین کارِ چت اجرا می‌شود، ترتیبِ پیام‌های یک چت حفظ می‌شود.
+     */
     private void handleSafely(BotRef bot, BaleUpdate update) {
+        Optional<FreeTextRequest> request;
         try {
-            updateHandler.handle(bot, update);
+            request = updateHandler.handle(bot, update);
         } catch (Exception e) {
             log.warn("پردازش Update ورودی از بله شکست خورد.", e);
+            return;
+        }
+        if (request == null || request.isEmpty()) {
+            return;
+        }
+        try {
+            freeTextResponder.respond(request.get());
+        } catch (Exception e) {
+            // فقط نوعِ خطا: پیامِ آن ممکن است بخشی از متنِ کاربر را داشته باشد
+            log.warn("پاسخ به متن آزاد بله شکست خورد ({}).", e.getClass().getSimpleName());
         }
     }
 

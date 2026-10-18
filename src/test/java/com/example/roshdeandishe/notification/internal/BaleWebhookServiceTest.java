@@ -27,9 +27,10 @@ class BaleWebhookServiceTest {
     private final BaleUpdateHandler handler = mock(BaleUpdateHandler.class);
     private final Executor direct = Runnable::run;
     private final SchoolBotActivity activity = mock(SchoolBotActivity.class);
+    private final FreeTextResponder responder = mock(FreeTextResponder.class);
 
     private BaleWebhookService service(Executor executor) {
-        return new BaleWebhookService(handler, executor, new RecentUpdateIds<>(100), activity);
+        return new BaleWebhookService(handler, responder, executor, new RecentUpdateIds<>(100), activity);
     }
 
     @Test
@@ -201,5 +202,35 @@ class BaleWebhookServiceTest {
         service(rejecting).processRawUpdate(BOT, NO_ID);
         service(direct).processRawUpdate(BOT, "{not json");
         verify(activity, times(1)).touch(any());
+    }
+
+    @Test
+    void freeTextRequestGoesToTheResponderAfterTheHandler() {
+        FreeTextRequest request = new FreeTextRequest(BOT, 5L, 7L, List.of(), "x",
+                java.util.EnumSet.of(BotIntent.GRADES), java.util.Map.of());
+        org.mockito.Mockito.when(handler.handle(any(), any())).thenReturn(java.util.Optional.of(request));
+
+        service(direct).processRawUpdate(BOT, WITH_ID_9);
+
+        org.mockito.InOrder order = org.mockito.Mockito.inOrder(handler, responder);
+        order.verify(handler).handle(any(), any());
+        order.verify(responder).respond(request);
+    }
+
+    @Test
+    void noFreeTextRequestNeverCallsTheResponder() {
+        service(direct).processRawUpdate(BOT, WITH_ID_9);
+
+        verify(responder, never()).respond(any());
+    }
+
+    @Test
+    void responderFailureIsSwallowed() {
+        FreeTextRequest request = new FreeTextRequest(BOT, 5L, 7L, List.of(), "x",
+                java.util.EnumSet.of(BotIntent.GRADES), java.util.Map.of());
+        org.mockito.Mockito.when(handler.handle(any(), any())).thenReturn(java.util.Optional.of(request));
+        org.mockito.Mockito.doThrow(new IllegalStateException("x")).when(responder).respond(any());
+
+        assertThatCode(() -> service(direct).processRawUpdate(BOT, WITH_ID_9)).doesNotThrowAnyException();
     }
 }

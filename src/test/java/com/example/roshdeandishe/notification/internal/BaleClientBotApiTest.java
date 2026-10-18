@@ -103,6 +103,23 @@ class BaleClientBotApiTest {
     }
 
     @Test
+    void sendChatActionPostsTheAction() {
+        responseBody.set("{\"ok\":true,\"result\":true}");
+
+        assertThat(client().sendChatAction("T", 5L, "typing")).isTrue();
+        assertThat(lastPath.get()).isEqualTo("/botT/sendChatAction");
+        assertThat(lastBody.get()).contains("\"chat_id\":5", "\"action\":\"typing\"");
+    }
+
+    @Test
+    void sendChatActionFalseOnHttpErrorWithoutThrowing() {
+        status.set(500);
+
+        assertThat(client().sendChatAction("T", 5L, "typing")).isFalse();
+        assertThat(client().sendChatAction("", 5L, "typing")).isFalse();
+    }
+
+    @Test
     void setWebhookFalseWhenOkFalse() {
         responseBody.set("{\"ok\":false}");
 

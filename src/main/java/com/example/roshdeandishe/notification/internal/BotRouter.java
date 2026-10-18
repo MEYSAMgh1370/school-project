@@ -47,7 +47,7 @@ class BotRouter {
 
     /** فقط دکمه‌هایی که intentشان دست‌کم یک هدف دارد، دوتا در هر ردیف، و «راهنما» آخر. */
     List<List<String>> menu(BotContext ctx) {
-        List<String> buttons = new ArrayList<>(available(ctx).stream().map(BotIntent::button).toList());
+        List<String> buttons = new ArrayList<>(allowedIntents(ctx).stream().map(BotIntent::button).toList());
         buttons.add(BotTexts.BTN_HELP);
         List<List<String>> rows = new ArrayList<>();
         for (int i = 0; i < buttons.size(); i += 2) {
@@ -58,7 +58,7 @@ class BotRouter {
 
     /** متنِ راهنما فقط برای دکمه‌هایی که {@link #menu} به همین کاربر نشان می‌دهد؛ «فرزندان من» فقط برای والد. */
     String help(BotContext ctx) {
-        Set<BotIntent> available = available(ctx);
+        Set<BotIntent> available = allowedIntents(ctx);
         List<String> lines = new ArrayList<>();
         addHelpLine(lines, available, BotTexts.HELP_STUDENT, BotIntent.ATTENDANCE_TODAY,
                 BotIntent.ATTENDANCE_SUMMARY, BotIntent.GRADES, BotIntent.EXAMS, BotIntent.TIMETABLE_TODAY);
@@ -84,8 +84,11 @@ class BotRouter {
         }
     }
 
-    /** intentهایی که دست‌کم یک هدف دارند، به ترتیبِ {@link BotIntent}. */
-    private Set<BotIntent> available(BotContext ctx) {
+    /**
+     * intentهایی که دست‌کم یک هدف دارند، به ترتیبِ {@link BotIntent}؛ همان دکمه‌های منو و همان گزینه‌هایی که
+     * مسیریابِ متن آزاد به مدل نشان می‌دهد.
+     */
+    Set<BotIntent> allowedIntents(BotContext ctx) {
         // یک بررسیِ ارزان برای هر نوعِ هدف (نه برای هر intent)؛ بدون خواندنِ نام‌ها
         Map<BotIntent.TargetKind, Boolean> hasAny = new EnumMap<>(BotIntent.TargetKind.class);
         Set<BotIntent> available = EnumSet.noneOf(BotIntent.class);
@@ -111,6 +114,30 @@ class BotRouter {
             return answer(intent.get(), ctx, targets.get(0));
         }
         return choose(intent.get(), targets);
+    }
+
+    /**
+     * پاسخ به intentی که مسیریابِ متن آزاد برگزیده. هدف‌ها همین حالا دوباره از داده‌ی سرور ساخته می‌شوند؛
+     * {@code studentId} (از برچسبِ انتخاب‌شده) فقط با {@code studentId} یک هدفِ دانش‌آموزیِ همین فهرست پذیرفته
+     * می‌شود - هرگز با شناسه‌ی مدرسه - وگرنه {@link BotTexts#NOT_AVAILABLE}. بدون آن، تک‌هدف مستقیم پاسخ
+     * می‌گیرد و چند هدف با دکمه پرسیده می‌شود.
+     */
+    Reply resolve(BotContext ctx, BotIntent intent, Long studentId) {
+        List<BotTarget> targets = resolver.targets(ctx, intent);
+        if (targets.isEmpty()) {
+            return Reply.plain(BotTexts.NOT_AVAILABLE);
+        }
+        if (studentId != null) {
+            return targets.stream()
+                    .filter(t -> t instanceof BotTarget.Student s && studentId.equals(s.studentId()))
+                    .findFirst()
+                    .map(t -> answer(intent, ctx, t))
+                    .orElseGet(() -> Reply.plain(BotTexts.NOT_AVAILABLE));
+        }
+        if (targets.size() == 1) {
+            return answer(intent, ctx, targets.get(0));
+        }
+        return choose(intent, targets);
     }
 
     /** پاسخ به callback؛ id باید در هدف‌های همین کاربر باشد. */
