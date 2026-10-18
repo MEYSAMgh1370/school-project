@@ -68,7 +68,7 @@ List rows are **students**, not invoices.
   - current: a student with a current-year invoice;
   - previous: only students with an **unpaid remainder on a prior-year invoice** (debtors), including graduated and left students (status shown); a student whose prior-year invoices are all settled is not listed.
 - Status chips (owing, overdue, settled) combine with the scope.
-- Expanding a row lists the invoices of the scope, one per year, each with the existing payments, discounts and instalments panel (unchanged).
+- Expanding a row lists the student's invoices, one per year (all years, not only the active scope; see the ruling below), each with the existing payments, discounts and instalments panel (unchanged).
   - Ruling after the final review: the expansion shows **all years'** invoices of the student, not only those of the scope, because a payment on any invoice changes the row's totals.
 - Search by **first name** and **last name** (separate inputs) plus a general text box. Because only `iam.users.full_name` exists, "first name" matches the first word and "last name" the remaining words; double-barrelled names may not split exactly. The search is a list of declared fields so national id, class or guardian phone can be added later without restructuring.
 - Removed from `/finance`: the year select, the "unattributed" banner and its action (moved to settings). Kept: setting the current year's tuition and "issue this year's invoices to students without one".
@@ -85,7 +85,7 @@ API: `GET /api/admin/schools/{id}/finance/students?scope=all|current|previous&fi
 
 ## Error handling
 
-- Settings row missing for a school: created lazily with defaults.
+- Settings row missing for a school: created lazily by copying `installments_enabled` and `auto_promotion` from `school.schools` (`bot_enabled` true, no `bot_roles`).
 - Changing the current year with auto-promotion on: unchanged behavior (`CurrentAcademicYearChangedEvent`, promotion after commit).
 - A section save failing leaves the other sections untouched and shows the error next to that section (not in one top banner).
 

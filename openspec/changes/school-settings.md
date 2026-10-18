@@ -5,7 +5,7 @@ Status: proposed and implemented 2026-10-18 (migration `V33`; current behavior i
 ## Intent (what the product owner asked for)
 
 - One page where a school admin sets the school's **general, set-once settings**.
-- The **school year is chosen by the admin on that page**; no other page lets the user pick a year.
+- The **school year is chosen by the admin on that page**; no other page that follows the school's current year (`/finance`, `/classes`, `/grades`) lets the user pick a year. `/timetable`, `/yearly-plan`, `/promotion` and the platform-holidays page keep their own year select (see "Rulings and deviations").
 - Finance (`/finance`) shows **every year's invoices together**, with a scope filter (all / this year / previous years) and **search by student name**.
 - Bale bot settings (on/off and which roles may use it) live on the same page.
 - Chosen approach: a single `school.school_settings` model, not a page that only re-hosts scattered controls.
