@@ -1,6 +1,8 @@
 package com.example.roshdeandishe.notification.internal;
 
 import com.example.roshdeandishe.notification.NotificationFacade;
+import com.example.roshdeandishe.school.SchoolFacade;
+import com.example.roshdeandishe.school.SchoolFacade.SchoolId;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
@@ -12,8 +14,11 @@ class NotificationFacadeImpl implements NotificationFacade {
     private final List<NotificationChannel> channels;
     private final BaleWebhookService webhookService;
     private final BotResolver botResolver;
+    private final SchoolFacade schoolFacade;
 
-    NotificationFacadeImpl(List<NotificationChannel> channels, BaleWebhookService webhookService, BotResolver botResolver) {
+    NotificationFacadeImpl(List<NotificationChannel> channels, BaleWebhookService webhookService, BotResolver botResolver,
+                           SchoolFacade schoolFacade) {
+        this.schoolFacade = schoolFacade;
         this.channels = channels;
         this.webhookService = webhookService;
         this.botResolver = botResolver;
@@ -48,6 +53,12 @@ class NotificationFacadeImpl implements NotificationFacade {
 
     @Override
     public DeliveryResult deliverMessageToUser(Long userId, Long schoolId, String text) {
+        // سوئیچِ «اعلان‌ها»ی مدرسه (فقط پیام‌های خودکار از این مسیرِ مدرسه‌آگاه می‌روند؛ پاسخ به پرسش، /start و
+        // لینک‌کردن از کانال مستقیم می‌روند و گیت نمی‌شوند). UNDELIVERABLE = «قطعاً نمی‌رسد، تلاش دوباره بی‌فایده است»:
+        // کارِ یادآوری ادعای خود را نگه می‌دارد و ساعتِ بعد دوباره تلاش نمی‌کند، و هیچ کانالی صدا زده نمی‌شود.
+        if (schoolId != null && !schoolFacade.isNotificationsEnabled(new SchoolId(schoolId))) {
+            return DeliveryResult.UNDELIVERABLE;
+        }
         DeliveryResult worst = DeliveryResult.NOT_LINKED;
         for (NotificationChannel channel : channels) {
             DeliveryResult result = channel.deliver(userId, schoolId, text);

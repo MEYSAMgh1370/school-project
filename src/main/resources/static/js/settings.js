@@ -53,6 +53,7 @@ document.addEventListener('alpine:init', () => {
         reminderRoles: [],
         remindersFieldError: '',
         botEnabled: false,
+        botNotificationsEnabled: true,
         botRoles: [],
 
         init() {
@@ -157,7 +158,7 @@ document.addEventListener('alpine:init', () => {
                 financeUnattributed: { tuitionFee: false, invoices: 0 }, financeAttributeYear: '',
                 financeAttributing: false, financeConfirm: null,
                 installmentsEnabled: false, roles: [], rolesLoading: false, reminderRoles: [], remindersFieldError: '',
-                botEnabled: false, botRoles: []
+                botEnabled: false, botNotificationsEnabled: true, botRoles: []
             });
         },
 
@@ -605,9 +606,10 @@ document.addEventListener('alpine:init', () => {
             const token = this.startSave('bot');
             try {
                 const body = await this.api(token.schoolId, 'PUT', '/settings/bot',
-                    Logic.botBody(this.botEnabled, this.botRoles, this.roles));
+                    Logic.botBody(this.botEnabled, this.botRoles, this.roles, this.botNotificationsEnabled));
                 if (this.isLatest(token)) {
                     this.botEnabled = !!body.enabled;
+                    this.botNotificationsEnabled = body.notificationsEnabled !== false;
                     this.botRoles = Logic.knownSelected(body.roles || [], this.roles);
                     this.sec.bot.notice = 'تنظیمات بات بله ذخیره شد.';
                 }

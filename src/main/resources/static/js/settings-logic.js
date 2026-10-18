@@ -19,6 +19,8 @@ window.SettingsLogic = (function () {
             installmentsEnabled: !!r.installmentsEnabled,
             reminderRoles: r.reminderRoles ? [...r.reminderRoles] : [],
             botEnabled: !!(r.bot && r.bot.enabled),
+            // «اعلان‌ها» (پیام‌های خودکار) جدا از «پرسش و پاسخ»؛ نبودنِ فیلد = پیش‌فرضِ روشن
+            botNotificationsEnabled: !(r.bot && r.bot.notificationsEnabled === false),
             botRoles: r.bot && r.bot.roles ? [...r.bot.roles] : []
         };
     }
@@ -52,9 +54,14 @@ window.SettingsLogic = (function () {
     }
 
     // بات: انتخابِ خالی = همه‌ی نقش‌ها و مجاز است
-    function botBody(enabled, selected, roles) {
+    // enabled = «پرسش و پاسخ»؛ notificationsEnabled («اعلان‌ها») فقط وقتی بولی باشد می‌رود، وگرنه سرور آن را دست‌نخورده می‌گذارد
+    function botBody(enabled, selected, roles, notificationsEnabled) {
         const list = roles && roles.length > 0 ? orderedByRoles(selected, roles) : [...(selected || [])];
-        return { enabled: !!enabled, roles: list };
+        const body = { enabled: !!enabled, roles: list };
+        if (typeof notificationsEnabled === 'boolean') {
+            body.notificationsEnabled = notificationsEnabled;
+        }
+        return body;
     }
 
     // سالِ جاریِ دیده‌شده هم می‌رود تا سرور فقط وقتی بنویسد که هنوز همان است

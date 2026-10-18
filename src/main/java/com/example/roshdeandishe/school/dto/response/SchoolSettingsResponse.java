@@ -10,7 +10,10 @@ import java.util.List;
 public record SchoolSettingsResponse(AcademicYearResponse currentYear, Boolean autoPromotion,
                                      Boolean installmentsEnabled, List<String> reminderRoles, BotSection bot) {
 
-    /** {@code roles} خالی = همه‌ی نقش‌ها. */
-    public record BotSection(boolean enabled, List<String> roles) {
+    /**
+     * {@code enabled} = «پرسش و پاسخ»، {@code notificationsEnabled} = «اعلان‌ها» (پیام‌های خودکار)؛
+     * {@code roles} خالی = همه‌ی نقش‌ها.
+     */
+    public record BotSection(boolean enabled, boolean notificationsEnabled, List<String> roles) {
     }
 }

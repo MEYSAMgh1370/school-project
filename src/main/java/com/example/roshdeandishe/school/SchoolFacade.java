@@ -124,6 +124,14 @@ public interface SchoolFacade {
      */
     void setBotSettings(SchoolId schoolId, boolean enabled, Set<String> roles);
 
+    /**
+     * سوئیچِ «اعلان‌ها»: پیام‌های خودکارِ ربات (غیبت، فاکتور جدید، یادآوری رویداد)؛ مستقل از {@code BotSettings.enabled}
+     * (پرسش و پاسخ). پیش‌فرض روشن. SchoolNotFound اگر مدرسه نباشد.
+     */
+    boolean isNotificationsEnabled(SchoolId schoolId);
+
+    void setNotificationsEnabled(SchoolId schoolId, boolean enabled);
+
     /** آیا ربات روشن است و (نقش‌های مجاز خالی است یا با {@code roleCodes} اشتراک دارد). */
     boolean isBotAllowed(SchoolId schoolId, Set<String> roleCodes);
 

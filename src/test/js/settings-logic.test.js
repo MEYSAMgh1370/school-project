@@ -8,7 +8,7 @@ const L = window.SettingsLogic;
 
 const FULL = {
     currentYear: { id: 2, code: '1405-1406' }, autoPromotion: true,
-    installmentsEnabled: false, reminderRoles: ['TEACHER'], bot: { enabled: true, roles: ['STUDENT', 'TEACHER'] }
+    installmentsEnabled: false, reminderRoles: ['TEACHER'], bot: { enabled: true, notificationsEnabled: false, roles: ['STUDENT', 'TEACHER'] }
 };
 
 test('fromResponse shows a section only when its part of the response is non-null', () => {
@@ -19,6 +19,8 @@ test('fromResponse shows a section only when its part of the response is non-nul
     assert.equal(all.installmentsEnabled, false);
     assert.deepEqual(all.reminderRoles, ['TEACHER']);
     assert.equal(all.botEnabled, true);
+    // «اعلان‌ها» فیلدی جدا از «پرسش و پاسخ» است
+    assert.equal(all.botNotificationsEnabled, false);
     assert.deepEqual(all.botRoles, ['STUDENT', 'TEACHER']);
 
     const financeOnly = L.fromResponse({ currentYear: null, autoPromotion: null, installmentsEnabled: true,
@@ -44,6 +46,8 @@ test('an empty role list means every role and a missing section reads as empty',
     const state = L.fromResponse({ currentYear: null, autoPromotion: null, installmentsEnabled: null,
         reminderRoles: [], bot: { enabled: false, roles: [] } });
     assert.deepEqual(state.reminderRoles, []);
+    // پاسخِ قدیمی بدون فیلد: اعلان‌ها روشن (پیش‌فرض)
+    assert.equal(state.botNotificationsEnabled, true);
     assert.deepEqual(state.botRoles, []);
     assert.equal(state.botEnabled, false);
 });
@@ -67,6 +71,13 @@ test('bot body: an empty selection stays empty (all roles) and the order follows
     assert.deepEqual(L.botBody(false, ['STUDENT', 'TEACHER'], roles), { enabled: false, roles: ['TEACHER', 'STUDENT'] });
     // فهرست نقش‌ها بارگذاری نشده: انتخابِ فعلی دست‌نخورده می‌رود تا ذخیره آن را پاک نکند
     assert.deepEqual(L.botBody(true, ['STUDENT'], []), { enabled: true, roles: ['STUDENT'] });
+});
+
+test('bot body: notificationsEnabled is a separate field and is left out when the state does not know it', () => {
+    const roles = [{ code: 'TEACHER' }];
+    assert.deepEqual(L.botBody(true, [], roles, false), { enabled: true, notificationsEnabled: false, roles: [] });
+    assert.deepEqual(L.botBody(false, [], roles, true), { enabled: false, notificationsEnabled: true, roles: [] });
+    assert.equal('notificationsEnabled' in L.botBody(true, [], roles), false);
 });
 
 test('yearBody sends the chosen id and the current year seen for the optimistic-concurrency check', () => {

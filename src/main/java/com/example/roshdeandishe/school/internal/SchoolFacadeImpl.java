@@ -247,6 +247,20 @@ class SchoolFacadeImpl implements SchoolFacade {
 
     @Override
     @Transactional
+    public boolean isNotificationsEnabled(SchoolId schoolId) {
+        return loadOrCreateSettings(schoolId).isNotificationsEnabled();
+    }
+
+    @Override
+    @Transactional
+    public void setNotificationsEnabled(SchoolId schoolId, boolean enabled) {
+        SchoolSettingsEntity settings = loadOrCreateSettings(schoolId);
+        settings.setNotificationsEnabled(enabled);
+        schoolSettingsRepository.save(settings);
+    }
+
+    @Override
+    @Transactional
     public boolean isBotAllowed(SchoolId schoolId, Set<String> roleCodes) {
         BotSettings settings = getBotSettings(schoolId);
         if (!settings.enabled()) {

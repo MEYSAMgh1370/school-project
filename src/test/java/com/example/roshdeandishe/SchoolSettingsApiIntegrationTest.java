@@ -47,7 +47,8 @@ class SchoolSettingsApiIntegrationTest {
     void resetBotSettings() {
         // بازگشت ربات‌ی مدرسه‌ی ۱ به پیش‌فرض (روشن، همه‌ی نقش‌ها)
         jdbc.update("delete from school.bot_roles where school_id = 1");
-        jdbc.update("update school.school_settings set bot_enabled = true where school_id = 1");
+        jdbc.update("update school.school_settings set bot_enabled = true, notifications_enabled = true "
+                + "where school_id = 1");
     }
 
     private MockHttpSession login(String email, String password) throws Exception {
@@ -93,6 +94,7 @@ class SchoolSettingsApiIntegrationTest {
                 .andExpect(jsonPath("$.installmentsEnabled").isBoolean())
                 .andExpect(jsonPath("$.reminderRoles").isArray())
                 .andExpect(jsonPath("$.bot.enabled").value(true))
+                .andExpect(jsonPath("$.bot.notificationsEnabled").value(true))
                 .andExpect(jsonPath("$.bot.roles").isArray());
 
         getSettings(userWithRole("FINANCE_ADMIN"))
@@ -139,6 +141,51 @@ class SchoolSettingsApiIntegrationTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.enabled").value(true))
                 .andExpect(jsonPath("$.roles").isEmpty());
+    }
+
+    @Test
+    void notificationsSwitchIsIndependentOfTheQuestionSwitch() throws Exception {
+        MockHttpSession admin = admin();
+        SchoolId school = new SchoolId(1L);
+        assertThat(schoolFacade.isNotificationsEnabled(school)).isTrue();
+
+        // خاموش‌کردن فقط اعلان‌ها: «پرسش و پاسخ» دست‌نخورده می‌ماند
+        putBot(admin, "{\"enabled\":true,\"notificationsEnabled\":false,\"roles\":[]}")
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.enabled").value(true))
+                .andExpect(jsonPath("$.notificationsEnabled").value(false));
+        getSettings(admin)
+                .andExpect(jsonPath("$.bot.enabled").value(true))
+                .andExpect(jsonPath("$.bot.notificationsEnabled").value(false));
+        assertThat(schoolFacade.isNotificationsEnabled(school)).isFalse();
+        assertThat(jdbc.queryForObject("select notifications_enabled from school.school_settings where school_id = 1",
+                Boolean.class)).isFalse();
+        // مسیر پرسش و پاسخ فقط به سوئیچ خودش نگاه می‌کند
+        assertThat(schoolFacade.isBotAllowed(school, Set.of("PARENT"))).isTrue();
+
+        // نفرستادنِ فیلد = بدون تغییر
+        putBot(admin, "{\"enabled\":false,\"roles\":[]}")
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.enabled").value(false))
+                .andExpect(jsonPath("$.notificationsEnabled").value(false));
+        assertThat(schoolFacade.isNotificationsEnabled(school)).isFalse();
+        putBot(admin, "{\"enabled\":true,\"notificationsEnabled\":null,\"roles\":[]}").andExpect(status().isOk());
+        assertThat(schoolFacade.isNotificationsEnabled(school)).isFalse();
+
+        // خاموش‌بودنِ پرسش و پاسخ اعلان‌ها را روشن نگه می‌دارد
+        putBot(admin, "{\"enabled\":false,\"notificationsEnabled\":true,\"roles\":[]}")
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.enabled").value(false))
+                .andExpect(jsonPath("$.notificationsEnabled").value(true));
+        assertThat(schoolFacade.isNotificationsEnabled(school)).isTrue();
+        assertThat(schoolFacade.isBotAllowed(school, Set.of("PARENT"))).isFalse();
+    }
+
+    @Test
+    void notificationsSwitchRequiresPermission() throws Exception {
+        putBot(userWithRole("FINANCE_ADMIN"), "{\"enabled\":true,\"notificationsEnabled\":false,\"roles\":[]}")
+                .andExpect(status().isForbidden());
+        assertThat(schoolFacade.isNotificationsEnabled(new SchoolId(1L))).isTrue();
     }
 
     @Test

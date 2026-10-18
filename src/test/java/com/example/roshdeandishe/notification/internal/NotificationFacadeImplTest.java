@@ -37,9 +37,16 @@ class NotificationFacadeImplTest {
         }
     }
 
+    /** مدرسه‌ی ساختگی که اعلان‌هایش روشن است (پیش‌فرض)؛ سوئیچ در NotificationsSwitchTest تست می‌شود. */
+    private static com.example.roshdeandishe.school.SchoolFacade enabledSchools() {
+        com.example.roshdeandishe.school.SchoolFacade school = mock(com.example.roshdeandishe.school.SchoolFacade.class);
+        when(school.isNotificationsEnabled(any())).thenReturn(true);
+        return school;
+    }
+
     private static NotificationFacadeImpl facade(NotificationChannel... channels) {
         // webhookService در مسیر sendMessageToUser استفاده نمی‌شود
-        return new NotificationFacadeImpl(List.of(channels), null, null);
+        return new NotificationFacadeImpl(List.of(channels), null, null, enabledSchools());
     }
 
     @Test
@@ -176,7 +183,7 @@ class NotificationFacadeImplTest {
         BaleWebhookService webhookService = mock(BaleWebhookService.class);
         when(resolver.resolve("nope")).thenReturn(Optional.empty());
 
-        boolean accepted = new NotificationFacadeImpl(List.of(), webhookService, resolver)
+        boolean accepted = new NotificationFacadeImpl(List.of(), webhookService, resolver, enabledSchools())
                 .processIncomingUpdate("nope", "{}");
 
         assertThat(accepted).isFalse();
@@ -189,7 +196,7 @@ class NotificationFacadeImplTest {
         BaleWebhookService webhookService = mock(BaleWebhookService.class);
         when(resolver.resolve("ok")).thenReturn(Optional.of(BotRef.SHARED));
 
-        boolean accepted = new NotificationFacadeImpl(List.of(), webhookService, resolver)
+        boolean accepted = new NotificationFacadeImpl(List.of(), webhookService, resolver, enabledSchools())
                 .processIncomingUpdate("ok", "{}");
 
         assertThat(accepted).isTrue();

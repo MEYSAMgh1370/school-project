@@ -223,9 +223,19 @@
                             <form @submit.prevent="saveBot">
                                 <div class="field">
                                     <label class="checkbox" for="settingsBotEnabled">
-                                        <input id="settingsBotEnabled" type="checkbox" role="switch" x-model="botEnabled">
-                                        بات بله برای این مدرسه روشن باشد
+                                        <input id="settingsBotEnabled" type="checkbox" role="switch" x-model="botEnabled"
+                                               aria-describedby="settingsBotEnabledHelp">
+                                        پرسش و پاسخ
                                     </label>
+                                    <p class="help" id="settingsBotEnabledHelp">پاسخ بات به پرسش‌ها و دکمه‌ها.</p>
+                                </div>
+                                <div class="field">
+                                    <label class="checkbox" for="settingsBotNotificationsEnabled">
+                                        <input id="settingsBotNotificationsEnabled" type="checkbox" role="switch" x-model="botNotificationsEnabled"
+                                               aria-describedby="settingsBotNotificationsHelp">
+                                        اعلان‌ها
+                                    </label>
+                                    <p class="help" id="settingsBotNotificationsHelp">پیام‌های خودکار بات: یادآوری رویداد، اعلان غیبت و فاکتور جدید.</p>
                                 </div>
                                 <p class="help mb-3" role="status" x-show="rolesLoading">در حال بارگذاری فهرست نقش‌ها...</p>
                                 <fieldset class="field" x-show="roles.length > 0">

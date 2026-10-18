@@ -31,4 +31,7 @@ class SchoolSettingsEntity {
 
     @Column(name = "bot_enabled", nullable = false)
     private boolean botEnabled = true;
+
+    @Column(name = "notifications_enabled", nullable = false)
+    private boolean notificationsEnabled = true;
 }

@@ -35,7 +35,11 @@ public interface NotificationFacade {
      */
     DeliveryResult deliverMessageToUser(Long userId, String text);
 
-    /** نسخه‌ی مدرسه‌آگاهِ {@link #deliverMessageToUser(Long, String)} با همان قواعد مسیریابی {@code sendMessageToUser(userId, schoolId, text)}. */
+    /**
+     * نسخه‌ی مدرسه‌آگاهِ {@link #deliverMessageToUser(Long, String)} با همان قواعد مسیریابی {@code sendMessageToUser(userId, schoolId, text)}.
+     * اگر {@code schoolId} داده شده و سوئیچِ «اعلان‌ها»ی آن مدرسه خاموش باشد، هیچ کانالی صدا زده نمی‌شود و
+     * {@code UNDELIVERABLE} برمی‌گردد (نتیجه‌ی قطعی، بدون تلاش دوباره).
+     */
     DeliveryResult deliverMessageToUser(Long userId, Long schoolId, String text);
 
     /**

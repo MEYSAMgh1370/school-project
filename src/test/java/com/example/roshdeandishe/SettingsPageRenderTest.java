@@ -129,6 +129,20 @@ class SettingsPageRenderTest {
     }
 
     @Test
+    void theBotSectionHasASeparateNotificationsSwitchWithItsOwnLabelAndHelp() {
+        String bot = section(render(), "settingsBot");
+
+        assertThat(bot).contains("پرسش و پاسخ").contains("اعلان‌ها")
+                .contains("id=\"settingsBotNotificationsEnabled\"").contains("x-model=\"botNotificationsEnabled\"")
+                .contains("for=\"settingsBotNotificationsEnabled\"")
+                .contains("id=\"settingsBotNotificationsHelp\"").contains("aria-describedby=\"settingsBotNotificationsHelp\"")
+                .contains("یادآوری رویداد، اعلان غیبت و فاکتور جدید");
+        // دو سوئیچ، دو مدل جدا؛ سوئیچِ پرسش و پاسخ همان مدل قبلی را دارد
+        assertThat(bot).contains("x-model=\"botEnabled\"");
+        assertThat(bot.indexOf("x-model=\"botEnabled\"")).isNotEqualTo(bot.indexOf("x-model=\"botNotificationsEnabled\""));
+    }
+
+    @Test
     void hasTheAutoPromotionAndTheTwoAttributionConfirmModals() {
         String html = render();
 

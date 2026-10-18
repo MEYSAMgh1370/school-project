@@ -83,14 +83,18 @@ public class SchoolSettingsController {
                 request.roles() == null ? List.<String>of() : request.roles());
         SchoolId school = new SchoolId(schoolId);
         schoolFacade.setBotSettings(school, request.enabled(), roles);
-        // ثبت در لاگ (جدول audit فقط مالی است)؛ بدون متن کاربر
-        log.info("Bot settings changed: schoolId={}, enabled={}, roles={}", schoolId, request.enabled(), sorted(roles));
+        if (request.notificationsEnabled() != null) {
+            schoolFacade.setNotificationsEnabled(school, request.notificationsEnabled());
+        }
+        // ثبت در لاگ (جدول audit فقط مالی است)؛ بدون متن کاربر. notificationsEnabled=null یعنی بدون تغییر
+        log.info("Bot settings changed: schoolId={}, enabled={}, notificationsEnabled={}, roles={}", schoolId,
+                request.enabled(), request.notificationsEnabled(), sorted(roles));
         return botSection(school);
     }
 
     private BotSection botSection(SchoolId school) {
         BotSettings settings = schoolFacade.getBotSettings(school);
-        return new BotSection(settings.enabled(), sorted(settings.roles()));
+        return new BotSection(settings.enabled(), schoolFacade.isNotificationsEnabled(school), sorted(settings.roles()));
     }
 
     private static List<String> sorted(Set<String> codes) {
