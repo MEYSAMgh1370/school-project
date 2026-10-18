@@ -14,14 +14,21 @@ import java.util.stream.Collectors;
  * intentهای بعدی userId و نقش‌ها را فقط از همین‌جا می‌گیرند؛ فرزندان و ثبت‌نام‌ها تنبل و فقط وقتی لازم شوند
  * از {@link SubjectResolver} می‌آیند.
  *
- * @param memberships فقط عضویت‌های فعال
+ * @param memberships فقط عضویت‌های فعال که تنظیمات بات مدرسه اجازه می‌دهد
+ * @param blockedBySchoolSettings کاربر عضویت فعال داشته ولی هیچ‌کدام بات را مجاز نکرده‌اند
+ *                                (با «عضویت فعالی ندارد» فرق دارد)
  */
 record BotContext(
         Long chatId,
         UserId userId,
         String fullName,
-        List<MembershipInfo> memberships
+        List<MembershipInfo> memberships,
+        boolean blockedBySchoolSettings
 ) {
+
+    BotContext(Long chatId, UserId userId, String fullName, List<MembershipInfo> memberships) {
+        this(chatId, userId, fullName, memberships, false);
+    }
 
     /** کدِ نقش‌های فعال این کاربر در یک مدرسه. */
     Set<String> rolesIn(Long schoolId) {

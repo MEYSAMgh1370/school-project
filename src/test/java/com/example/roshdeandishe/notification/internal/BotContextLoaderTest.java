@@ -4,14 +4,18 @@ import com.example.roshdeandishe.iam.IamFacade;
 import com.example.roshdeandishe.iam.IamFacade.MembershipInfo;
 import com.example.roshdeandishe.iam.IamFacade.UserId;
 import com.example.roshdeandishe.iam.IamFacade.UserProfile;
+import com.example.roshdeandishe.school.SchoolFacade;
+import com.example.roshdeandishe.school.SchoolFacade.SchoolId;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
@@ -22,13 +26,16 @@ class BotContextLoaderTest {
 
     private BaleLinkRepository links;
     private IamFacade iam;
+    private SchoolFacade school;
     private BotContextLoader loader;
 
     @BeforeEach
     void setUp() {
         links = mock(BaleLinkRepository.class);
         iam = mock(IamFacade.class);
-        loader = new BotContextLoader(links, iam);
+        school = mock(SchoolFacade.class);
+        when(school.isBotAllowed(any(), any())).thenReturn(true);
+        loader = new BotContextLoader(links, iam, school);
     }
 
     private void linked() {
@@ -72,5 +79,67 @@ class BotContextLoaderTest {
         assertThat(ctx.rolesIn(2L)).isEmpty();
         assertThat(ctx.hasRole("TEACHER")).isTrue();
         assertThat(ctx.hasRole("PARENT")).isFalse();
+    }
+
+    @Test
+    void membershipOfASchoolWithDisabledBotIsDropped() {
+        linked();
+        when(iam.findMembershipsByUser(new UserId(USER))).thenReturn(List.of(membership(1L, "PARENT", true)));
+        when(school.isBotAllowed(new SchoolId(1L), Set.of("PARENT"))).thenReturn(false);
+
+        BotContext ctx = loader.load(CHAT).orElseThrow();
+
+        assertThat(ctx.memberships()).isEmpty();
+        assertThat(ctx.blockedBySchoolSettings()).isTrue();
+    }
+
+    @Test
+    void membershipWhoseRoleIsExcludedByBotRolesIsDropped() {
+        linked();
+        when(iam.findMembershipsByUser(new UserId(USER))).thenReturn(List.of(
+                membership(1L, "PARENT", true), membership(1L, "TEACHER", true)));
+        when(school.isBotAllowed(new SchoolId(1L), Set.of("PARENT"))).thenReturn(false);
+        when(school.isBotAllowed(new SchoolId(1L), Set.of("TEACHER"))).thenReturn(true);
+
+        BotContext ctx = loader.load(CHAT).orElseThrow();
+
+        assertThat(ctx.memberships()).extracting(MembershipInfo::roleCode).containsExactly("TEACHER");
+        assertThat(ctx.blockedBySchoolSettings()).isFalse();
+    }
+
+    @Test
+    void ofTwoSchoolsOnlyTheAllowedOneIsKept() {
+        linked();
+        when(iam.findMembershipsByUser(new UserId(USER))).thenReturn(List.of(
+                membership(1L, "PARENT", true), membership(2L, "PARENT", true)));
+        when(school.isBotAllowed(new SchoolId(1L), Set.of("PARENT"))).thenReturn(false);
+
+        BotContext ctx = loader.load(CHAT).orElseThrow();
+
+        assertThat(ctx.memberships()).extracting(MembershipInfo::schoolId).containsExactly(2L);
+        assertThat(ctx.blockedBySchoolSettings()).isFalse();
+    }
+
+    @Test
+    void withoutBotRestrictionsNothingChanges() {
+        linked();
+        when(iam.findMembershipsByUser(new UserId(USER))).thenReturn(List.of(
+                membership(1L, "PARENT", true), membership(2L, "TEACHER", true)));
+
+        BotContext ctx = loader.load(CHAT).orElseThrow();
+
+        assertThat(ctx.memberships()).hasSize(2);
+        assertThat(ctx.blockedBySchoolSettings()).isFalse();
+    }
+
+    @Test
+    void userWithNoActiveMembershipsIsNotBlockedBySchoolSettings() {
+        linked();
+        when(iam.findMembershipsByUser(new UserId(USER))).thenReturn(List.of(membership(1L, "PARENT", false)));
+
+        BotContext ctx = loader.load(CHAT).orElseThrow();
+
+        assertThat(ctx.memberships()).isEmpty();
+        assertThat(ctx.blockedBySchoolSettings()).isFalse();
     }
 }

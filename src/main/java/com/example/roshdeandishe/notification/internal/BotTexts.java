@@ -26,6 +26,9 @@ final class BotTexts {
 
     static final String UNKNOWN_TEXT = "متوجه نشدم. لطفاً از دکمه‌های پایین انتخاب کنید.";
     static final String NOT_AVAILABLE = "این مورد برای شما در دسترس نیست.";
+
+    /** کاربر عضویت فعال دارد ولی تنظیمات بات مدرسه‌هایش (خاموش یا نقش مجاز) اجازه نمی‌دهد. */
+    static final String BOT_DISABLED_FOR_SCHOOL = "بات برای مدرسه‌ی شما فعال نیست.";
     static final String CHOOSE_STUDENT = "برای کدام دانش‌آموز؟";
     static final String CHOOSE_SCHOOL = "برای کدام مدرسه؟";
 

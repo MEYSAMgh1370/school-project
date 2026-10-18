@@ -14,16 +14,19 @@ import com.example.roshdeandishe.notification.internal.BaleUpdate.BaleContact;
 import com.example.roshdeandishe.notification.internal.BaleUpdate.BaleMessage;
 import com.example.roshdeandishe.notification.internal.BaleUpdate.BaleUser;
 import com.example.roshdeandishe.school.SchoolFacade;
+import com.example.roshdeandishe.school.SchoolFacade.SchoolId;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -57,7 +60,8 @@ class BaleUpdateHandlerTest {
         schoolAnswers = mock(SchoolAnswers.class);
         BotRouter router = new BotRouter(resolver, studentAnswers, mock(TimetableAnswers.class), schoolAnswers);
         handler = new BaleUpdateHandler(links, client, iam, school, finance,
-                new BotContextLoader(links, iam), resolver, router);
+                new BotContextLoader(links, iam, school), resolver, router);
+        when(school.isBotAllowed(any(), any())).thenReturn(true);
         when(academic.listWards(any(), any())).thenReturn(List.of());
         when(academic.findMyEnrollment(any(), any())).thenReturn(Optional.empty());
     }
@@ -335,5 +339,93 @@ class BaleUpdateHandlerTest {
                 .contains(BotTexts.BTN_GRADES).doesNotContain(BotTexts.BTN_INVOICES);
         verify(client).sendMessage(42L, BotTexts.NOT_AVAILABLE);
         verifyNoInteractions(schoolAnswers);
+    }
+
+    // ---------------------------------------------------------------- تنظیمات بات مدرسه
+
+    private static final String BOT_OFF = "بات برای مدرسه‌ی شما فعال نیست.";
+
+    private void parentOfDisabledSchool() {
+        link(42L, 7L);
+        when(iam.findMembershipsByUser(new UserId(7L))).thenReturn(List.of(
+                new MembershipInfo(1L, new UserId(7L), "a@b.c", "والد", 10L, "PARENT", true, true)));
+        when(school.isBotAllowed(new SchoolId(10L), Set.of("PARENT"))).thenReturn(false);
+    }
+
+    @Test
+    void blockedUserGetsExactlyTheDisabledTextForFreeText() {
+        parentOfDisabledSchool();
+
+        handler.handle(textUpdate(42L, "نمره‌های سارا چند است؟"));
+
+        verify(client).sendMessage(42L, BOT_OFF);
+        verifyNoInteractions(studentAnswers, schoolAnswers);
+        verify(client, never()).sendMenu(anyLong(), any(), any());
+    }
+
+    @Test
+    void blockedUserGetsTheDisabledTextForCallbacks() {
+        parentOfDisabledSchool();
+
+        handler.handle(callbackUpdate("cb20", 42L, "g:100"));
+
+        verify(client).answerCallbackQuery("cb20");
+        verify(client).sendMessage(42L, BOT_OFF);
+        verifyNoInteractions(studentAnswers);
+    }
+
+    @Test
+    void blockedUserGetsTheDisabledTextForMySchoolsAndWardsAndHelp() {
+        parentOfDisabledSchool();
+
+        handler.handle(textUpdate(42L, "مدرسه‌های من"));
+        handler.handle(textUpdate(42L, "فرزندان من"));
+        handler.handle(textUpdate(42L, "راهنما"));
+
+        verify(client, org.mockito.Mockito.times(3)).sendMessage(42L, BOT_OFF);
+    }
+
+    @Test
+    void startAndContactLinkingAreNotBlocked() {
+        parentOfDisabledSchool();
+        when(iam.findUserByPhoneNumber("0912"))
+                .thenReturn(Optional.of(new UserProfile(new UserId(7L), "a@b.c", "والد", "0912")));
+        when(links.findByUserId(7L)).thenReturn(Optional.empty());
+
+        handler.handle(textUpdate(42L, "/start"));
+        handler.handle(contactUpdate(42L, "private", 42L, "0912", 42L));
+
+        verify(client).sendContactRequest(42L, BotTexts.WELCOME_TEXT);
+        verify(client).sendMenu(eq(42L), eq(BotTexts.linkSuccess("والد")), any());
+        verify(client, never()).sendMessage(42L, BOT_OFF);
+    }
+
+    @Test
+    void allowedUserIsUnaffected() {
+        link(42L, 7L);
+        when(iam.findMembershipsByUser(new UserId(7L))).thenReturn(List.of(
+                new MembershipInfo(1L, new UserId(7L), "a@b.c", "والد", 10L, "PARENT", true, true)));
+        when(school.isBotAllowed(new SchoolId(10L), Set.of("PARENT"))).thenReturn(true);
+
+        handler.handle(textUpdate(42L, "سلام"));
+
+        verify(client).sendMenu(eq(42L), eq(BotTexts.UNKNOWN_TEXT), any());
+        verify(client, never()).sendMessage(42L, BOT_OFF);
+    }
+
+    @Test
+    void mySchoolsListsOnlyAllowedSchools() {
+        link(42L, 7L);
+        when(iam.findMembershipsByUser(new UserId(7L))).thenReturn(List.of(
+                new MembershipInfo(1L, new UserId(7L), "a@b.c", "والد", 10L, "PARENT", true, true),
+                new MembershipInfo(2L, new UserId(7L), "a@b.c", "والد", 20L, "PARENT", true, true)));
+        when(school.isBotAllowed(new SchoolId(10L), Set.of("PARENT"))).thenReturn(false);
+        when(school.findSchool(new SchoolId(20L))).thenReturn(Optional.empty());
+
+        handler.handle(textUpdate(42L, "مدرسه‌های من"));
+
+        org.mockito.ArgumentCaptor<String> text = org.mockito.ArgumentCaptor.forClass(String.class);
+        verify(client).sendMessage(org.mockito.ArgumentMatchers.eq(42L), text.capture());
+        assertThat(text.getValue()).contains(BotTexts.schoolFallback(20L)).doesNotContain(BotTexts.schoolFallback(10L));
     }
 }

@@ -107,6 +107,10 @@ class BaleUpdateHandler {
         }
 
         BotContext ctx = context.get();
+        if (ctx.blockedBySchoolSettings()) {
+            baleClient.sendMessage(chatId, BotTexts.BOT_DISABLED_FOR_SCHOOL);
+            return;
+        }
         switch (text) {
             case BotTexts.BTN_HELP -> baleClient.sendMenu(chatId, BotTexts.HELP_TEXT, botRouter.menu(ctx));
             case BotTexts.CMD_MY_SCHOOLS -> baleClient.sendMessage(chatId, describeMemberships(ctx));
@@ -148,6 +152,10 @@ class BaleUpdateHandler {
         Optional<BotContext> context = botContextLoader.load(chatId);
         if (context.isEmpty()) {
             baleClient.sendMessage(chatId, BotTexts.NOT_LINKED_TEXT);
+            return;
+        }
+        if (context.get().blockedBySchoolSettings()) {
+            baleClient.sendMessage(chatId, BotTexts.BOT_DISABLED_FOR_SCHOOL);
             return;
         }
         send(chatId, botRouter.onCallback(context.get(), callback.data()));
