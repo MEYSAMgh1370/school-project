@@ -152,11 +152,13 @@ class SchoolSettingsApiIntegrationTest {
     void tenantMismatchIsRejected() throws Exception {
         MockHttpSession admin = admin();
         mockMvc.perform(get("/api/admin/schools/2/settings").header("X-School-ID", "1").session(admin))
-                .andExpect(status().is4xxClientError());
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.type").value(org.hamcrest.Matchers.endsWith("tenant-context-missing")));
         mockMvc.perform(put("/api/admin/schools/2/settings/bot").with(csrf()).header("X-School-ID", "1")
                         .session(admin).contentType(MediaType.APPLICATION_JSON)
                         .content("{\"enabled\":false,\"roles\":[]}"))
-                .andExpect(status().is4xxClientError());
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.type").value(org.hamcrest.Matchers.endsWith("tenant-context-missing")));
         assertThat(schoolFacade.getBotSettings(new SchoolId(1L)).enabled()).isTrue();
     }
 }
