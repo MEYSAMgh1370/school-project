@@ -201,6 +201,7 @@ class IamSeedDataRunner implements ApplicationRunner {
         permission(permissions, "EXPENSE_MANAGE", "ثبت/مدیریت هزینه‌های مدرسه");
         permission(permissions, "EXPENSE_APPROVE", "تأیید هزینه‌های مدرسه");
         permission(permissions, "ROLE_MANAGE", "ساخت نقش سفارشی و مدیریت دسترسی‌ها");
+        permission(permissions, "BALE_BOT_MANAGE", "مدیریت بات بله‌ی مدرسه");
         permission(permissions, "CURRICULUM_VIEW", "مشاهده‌ی سرفصل‌ها و بانک سؤال");
         permission(permissions, "CURRICULUM_MANAGE", "ساخت سرفصل و سؤال در بانک سؤال");
         permission(permissions, "QUESTION_REPORT", "گزارش مشکل یک سؤال");
@@ -324,6 +325,7 @@ class IamSeedDataRunner implements ApplicationRunner {
         // ساخت/مدیریت نقش سفارشی همان سطح حساسیتِ MEMBERSHIP_MANAGE را دارد -
         // فقط SCHOOL_ADMIN، نه FINANCE_ADMIN (§11 Q3، حل‌شده ۲۰۲۶-۰۷-۱۳)
         grant(roles.get("SCHOOL_ADMIN"), permissions.get("ROLE_MANAGE"));
+        grant(roles.get("SCHOOL_ADMIN"), permissions.get("BALE_BOT_MANAGE"));
         grant(roles.get("SCHOOL_ADMIN"), permissions.get("CURRICULUM_VIEW"));
         grant(roles.get("SCHOOL_ADMIN"), permissions.get("CURRICULUM_MANAGE"));
         grant(roles.get("SCHOOL_ADMIN"), permissions.get("STUDYPLAN_VIEW"));

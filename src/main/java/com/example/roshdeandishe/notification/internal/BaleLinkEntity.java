@@ -12,7 +12,10 @@ import java.time.Instant;
  * عددی مات از دید bale است (بدون FK به iam)، دقیقاً همان قرارداد
  * academic.StudentEntity.userId.
  * <p>
- * یک ردیف به‌ازای هر User (نه هر chat) - اگر همان کاربر از یک chatId
+ * یک ردیف به‌ازای هر (ربات، User): {@code botId} خالی یعنی ربات مشترک و در غیر این صورت یک رباتِ مدرسه؛ پس
+ * یک کاربر می‌تواند یک پیوند با ربات مشترک و یک پیوند با هر رباتِ مدرسه داشته باشد.
+ * <p>
+ * یک ردیف به‌ازای هر User (نه هر chat) در هر ربات - اگر همان کاربر از یک chatId
  * دیگر دوباره شماره‌اش را به اشتراک بگذارد، همین ردیف به‌روزرسانی
  * می‌شود، نه ردیف تازه (رجوع به NotificationFacadeImpl.linkChat).
  */
@@ -27,16 +30,21 @@ class BaleLinkEntity {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(name = "user_id", nullable = false, unique = true)
+    /** خالی = پیوندِ ربات مشترک؛ در غیر این صورت شناسه‌ی school_bots (یکتایی به‌ازای هر ربات). */
+    @Column(name = "bot_id")
+    private Long botId;
+
+    @Column(name = "user_id", nullable = false)
     private Long userId;
 
-    @Column(name = "chat_id", nullable = false, unique = true)
+    @Column(name = "chat_id", nullable = false)
     private Long chatId;
 
     @Column(name = "linked_at", nullable = false)
     private Instant linkedAt;
 
-    BaleLinkEntity(Long userId, Long chatId, Instant linkedAt) {
+    BaleLinkEntity(Long botId, Long userId, Long chatId, Instant linkedAt) {
+        this.botId = botId;
         this.userId = userId;
         this.chatId = chatId;
         this.linkedAt = linkedAt;

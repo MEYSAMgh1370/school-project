@@ -27,4 +27,12 @@ interface NotificationChannel {
                 ? NotificationFacade.DeliveryResult.SENT
                 : NotificationFacade.DeliveryResult.UNDELIVERABLE;
     }
+
+    /**
+     * نسخه‌ی مدرسه‌آگاه: کانالی که مسیریابی بر پایه‌ی مدرسه دارد (مثل {@link BaleChannel}) آن را بازنویسی می‌کند؛
+     * پیش‌فرض همان {@link #deliver(Long, String)} است و مدرسه را نادیده می‌گیرد.
+     */
+    default NotificationFacade.DeliveryResult deliver(Long userId, Long schoolId, String text) {
+        return deliver(userId, text);
+    }
 }
