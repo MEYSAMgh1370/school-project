@@ -9,6 +9,7 @@ import com.example.roshdeandishe.academic.dto.request.*;
 import com.example.roshdeandishe.academic.dto.response.*;
 import com.example.roshdeandishe.academic.shared.AcademicError;
 import com.example.roshdeandishe.academic.shared.AcademicException;
+import com.example.roshdeandishe.iam.AccessContext;
 import com.example.roshdeandishe.iam.IamFacade;
 import com.example.roshdeandishe.iam.shared.RequiresModule;
 import com.example.roshdeandishe.iam.shared.RequiresPermission;
@@ -23,6 +24,7 @@ import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeParseException;
 import java.time.format.ResolverStyle;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -40,6 +42,8 @@ import java.util.Map;
 @RequiresModule("ACADEMIC")
 @RequiresPermission("TIMETABLE_MANAGE")
 public class TimetableController {
+
+    private static final IamFacade.PermissionCode ASSIGNABLE = new IamFacade.PermissionCode("TIMETABLE_ASSIGNABLE");
 
     private final TimetableFacade timetableFacade;
     private final AcademicFacade academicFacade;
@@ -150,15 +154,22 @@ public class TimetableController {
                 .toList();
     }
 
-    /** معلم‌های فعالِ مدرسه برای انتخابگرِ معلمِ هر خانه. */
+    /**
+     * انتخابگرِ معلمِ هر خانه: اعضای فعالِ دارای TIMETABLE_ASSIGNABLE (TEACHER، یا نقشِ سفارشیِ دارای آن؛
+     * همان قاعده‌ی setEntry، finance-view-all-permission.md). هر کاربر یک‌بار و یک checkPermission.
+     */
     @GetMapping("/teachers")
     public List<TeacherResponse> teachers(@PathVariable Long schoolId) {
         TenantContext.requireMatches(schoolId);
 
-        return iamFacade.findMembershipsBySchool(schoolId).stream()
-                .filter(m -> "TEACHER".equals(m.roleCode()) && m.active())
-                .map(m -> new TeacherResponse(m.userId().value(), m.fullName()))
-                .distinct()
+        Map<Long, TeacherResponse> activeMembers = new LinkedHashMap<>();
+        iamFacade.findMembershipsBySchool(schoolId).stream()
+                .filter(IamFacade.MembershipInfo::active)
+                .forEach(m -> activeMembers.putIfAbsent(m.userId().value(),
+                        new TeacherResponse(m.userId().value(), m.fullName())));
+        AccessContext school = new AccessContext.SchoolContext(schoolId);
+        return activeMembers.values().stream()
+                .filter(t -> iamFacade.checkPermission(new IamFacade.UserId(t.userId()), ASSIGNABLE, school).isGranted())
                 .toList();
     }
 

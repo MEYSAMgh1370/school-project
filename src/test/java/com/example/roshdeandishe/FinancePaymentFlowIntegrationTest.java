@@ -505,4 +505,131 @@ class FinancePaymentFlowIntegrationTest {
         mockMvc.perform(get("/api/admin/schools/1/invoices").header("X-School-ID", "1").session(studentSession))
                 .andExpect(status().isForbidden());
     }
+
+    @Test
+    void financeViewAllGrantsSchoolWideVisibilityToCustomRoleAndToParentHoldingIt() throws Exception {
+        // finance-view-all-permission.md: دیدِ کلِ مدرسه با Permissionِ FINANCE_VIEW_ALL است، نه کدِ نقش
+        MockHttpSession adminSession = loginAsAdmin();
+        long suffix = System.nanoTime();
+
+        mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders
+                        .put("/api/admin/schools/1/tuition-fee")
+                        .with(csrf())
+                        .header("X-School-ID", "1")
+                        .session(adminSession)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"amount\":1300000.00}"))
+                .andExpect(status().isOk());
+
+        MvcResult classResult = mockMvc.perform(post("/api/admin/schools/1/classes")
+                        .with(csrf())
+                        .header("X-School-ID", "1")
+                        .session(adminSession)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"name\":\"کلاس حسابدار\",\"section\":\"ج\",\"teacherId\":null,\"gradeLevel\":5}"))
+                .andExpect(status().isOk())
+                .andReturn();
+        Long classId = objectMapper.readTree(classResult.getResponse().getContentAsString()).get("id").asLong();
+
+        MvcResult enrollResult = mockMvc.perform(post("/api/admin/schools/1/students")
+                        .with(csrf())
+                        .header("X-School-ID", "1")
+                        .session(adminSession)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"email\":\"viewall.student." + suffix + "@roshdeandishe.test\","
+                                + "\"fullName\":\"دانش‌آموز حسابدار\",\"classId\":" + classId + "}"))
+                .andExpect(status().isOk())
+                .andReturn();
+        Long wardId = objectMapper.readTree(enrollResult.getResponse().getContentAsString())
+                .get("studentId").asLong();
+        await().atMost(Duration.ofSeconds(15)).untilAsserted(() ->
+                assertThat(financeFacade.listInvoicesForStudents(1L, List.of(wardId))).hasSize(1));
+
+        Long otherStudentId = 7_306_000L + suffix % 1_000_000L;
+        financeFacade.issueTuitionInvoice(1L, otherStudentId);
+        Long otherInvoiceId = financeFacade.listInvoicesForStudents(1L, List.of(otherStudentId)).get(0).id();
+
+        // نقشِ سفارشیِ فقط‌خواندنی با FINANCE_VIEW_ALL، و نقشی که فقط FINANCE_VIEW دارد (مثل ولی، بدون فرزند)
+        String viewAllRole = "ACCOUNTANT_" + suffix;
+        String viewOnlyRole = "FIN_VIEWER_" + suffix;
+        createRole(adminSession, viewAllRole, "حسابدار", "\"FINANCE_VIEW\",\"FINANCE_VIEW_ALL\"");
+        createRole(adminSession, viewOnlyRole, "بیننده‌ی مالی", "\"FINANCE_VIEW\"");
+
+        String accountantEmail = "viewall.accountant." + suffix + "@roshdeandishe.test";
+        MockHttpSession accountantSession = registerAndLogin(accountantEmail, "حسابدار تست");
+        addMembership(adminSession, accountantEmail, "حسابدار تست", viewAllRole);
+
+        mockMvc.perform(get("/api/admin/schools/1/invoices").header("X-School-ID", "1").session(accountantSession))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[?(@.studentId == " + wardId + ")]").exists())
+                .andExpect(jsonPath("$[?(@.studentId == " + otherStudentId + ")]").exists());
+        mockMvc.perform(get("/api/admin/schools/1/invoices/" + otherInvoiceId + "/payments")
+                        .header("X-School-ID", "1")
+                        .session(accountantSession))
+                .andExpect(status().isOk());
+
+        String viewerEmail = "viewall.viewer." + suffix + "@roshdeandishe.test";
+        MockHttpSession viewerSession = registerAndLogin(viewerEmail, "بیننده تست");
+        addMembership(adminSession, viewerEmail, "بیننده تست", viewOnlyRole);
+        mockMvc.perform(get("/api/admin/schools/1/invoices").header("X-School-ID", "1").session(viewerSession))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$").isEmpty());
+
+        // ولیِ لینک‌شده: اول فقط فاکتورِ فرزندش؛ با نقشِ دوم (FINANCE_VIEW_ALL) دیدِ کامل
+        String parentEmail = "viewall.parent." + suffix + "@roshdeandishe.test";
+        MockHttpSession parentSession = registerAndLogin(parentEmail, "ولی حسابدار");
+        Long parentUserId = addMembership(adminSession, parentEmail, "ولی حسابدار", "PARENT");
+        mockMvc.perform(post("/api/admin/schools/1/students/" + wardId + "/guardians")
+                        .with(csrf())
+                        .header("X-School-ID", "1")
+                        .session(adminSession)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"guardianUserId\":" + parentUserId + "}"))
+                .andExpect(status().isOk());
+
+        mockMvc.perform(get("/api/admin/schools/1/invoices").header("X-School-ID", "1").session(parentSession))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$", org.hamcrest.Matchers.hasSize(1)))
+                .andExpect(jsonPath("$[0].studentId").value(wardId));
+        mockMvc.perform(get("/api/admin/schools/1/invoices/" + otherInvoiceId + "/payments")
+                        .header("X-School-ID", "1")
+                        .session(parentSession))
+                .andExpect(status().isNotFound());
+
+        addMembership(adminSession, parentEmail, "ولی حسابدار", viewAllRole);
+        mockMvc.perform(get("/api/admin/schools/1/invoices").header("X-School-ID", "1").session(parentSession))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[?(@.studentId == " + wardId + ")]").exists())
+                .andExpect(jsonPath("$[?(@.studentId == " + otherStudentId + ")]").exists());
+        mockMvc.perform(get("/api/admin/schools/1/invoices/" + otherInvoiceId + "/payments")
+                        .header("X-School-ID", "1")
+                        .session(parentSession))
+                .andExpect(status().isOk());
+    }
+
+    private void createRole(MockHttpSession adminSession, String code, String displayName, String permissionCodes)
+            throws Exception {
+        mockMvc.perform(post("/api/admin/schools/1/roles")
+                        .with(csrf())
+                        .header("X-School-ID", "1")
+                        .session(adminSession)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"code\":\"" + code + "\",\"displayName\":\"" + displayName
+                                + "\",\"permissionCodes\":[" + permissionCodes + "]}"))
+                .andExpect(status().is2xxSuccessful());
+    }
+
+    private Long addMembership(MockHttpSession adminSession, String email, String fullName, String roleCode)
+            throws Exception {
+        MvcResult result = mockMvc.perform(post("/api/admin/schools/1/memberships")
+                        .with(csrf())
+                        .header("X-School-ID", "1")
+                        .session(adminSession)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"email\":\"" + email + "\",\"fullName\":\"" + fullName
+                                + "\",\"roleCode\":\"" + roleCode + "\"}"))
+                .andExpect(status().isOk())
+                .andReturn();
+        return objectMapper.readTree(result.getResponse().getContentAsString()).get("userId").asLong();
+    }
 }

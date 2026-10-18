@@ -239,7 +239,9 @@ class LoginDashboardFlowIntegrationTest {
         // ادمین نمونه شماره تلفنی seed نشده - فیلد باید خالی رندر شود
         mockMvc.perform(get("/dashboard").session(session))
                 .andExpect(status().isOk())
-                .andExpect(content().string(org.hamcrest.Matchers.containsString("data-phone-number=\"\"")));
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("data-phone-number=\"\"")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString(
+                        "شماره‌ی موبایلی که با آن در بله هستید، مثلاً ۰۹۱۲۳۴۵۶۷۸۹")));
 
         mockMvc.perform(put("/api/me/phone")
                         .with(csrf())

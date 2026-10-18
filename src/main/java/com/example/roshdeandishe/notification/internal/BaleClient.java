@@ -79,7 +79,7 @@ class BaleClient {
             log.warn("ارسال پیام بله به chatId={} شکست خورد (HTTP {}).", chatId, status);
             return permanent ? DeliveryResult.UNDELIVERABLE : DeliveryResult.TEMPORARY_FAILURE;
         } catch (RestClientException e) {
-            log.warn("ارسال پیام بله به chatId={} شکست خورد.", chatId, e);
+            log.warn("ارسال پیام بله به chatId={} شکست خورد ({}).", chatId, failureKind(e));
             return DeliveryResult.TEMPORARY_FAILURE;
         }
     }
@@ -107,7 +107,32 @@ class BaleClient {
                     .toBodilessEntity();
             return true;
         } catch (RestClientException e) {
-            log.warn("ارسال درخواست شماره تلفن به chatId={} شکست خورد.", chatId, e);
+            log.warn("ارسال درخواست شماره تلفن به chatId={} شکست خورد ({}).", chatId, failureKind(e));
+            return false;
+        }
+    }
+
+    /**
+     * پیام همراه با کیبورد پاسخِ پایدار (منوی همیشه‌نمایان): resize_keyboard=true و one_time_keyboard=false؛ هر
+     * عنصر rows یک ردیف از متن دکمه‌هاست. بدون توکن هیچ تماسی برقرار نمی‌شود.
+     */
+    boolean sendMenu(Long chatId, String text, List<List<String>> rows) {
+        if (botToken == null || botToken.isBlank()) {
+            log.warn("roshdeandishe.bale.bot-token پیکربندی نشده - پیام منو به chatId={} ارسال نشد.", chatId);
+            return false;
+        }
+
+        MenuKeyboardMarkup markup = new MenuKeyboardMarkup(rows, true, false);
+
+        try {
+            restClient.post()
+                    .uri("/bot{token}/sendMessage", botToken)
+                    .body(new SendMessageRequest(chatId, text, markup))
+                    .retrieve()
+                    .toBodilessEntity();
+            return true;
+        } catch (RestClientException e) {
+            log.warn("ارسال پیام منو به chatId={} شکست خورد ({}).", chatId, failureKind(e));
             return false;
         }
     }
@@ -152,7 +177,7 @@ class BaleClient {
                     .toBodilessEntity();
             return true;
         } catch (RestClientException e) {
-            log.warn("ارسال پیام کیبورددار به chatId={} شکست خورد.", chatId, e);
+            log.warn("ارسال پیام کیبورددار به chatId={} شکست خورد ({}).", chatId, failureKind(e));
             return false;
         }
     }
@@ -172,9 +197,21 @@ class BaleClient {
                     .toBodilessEntity();
             return true;
         } catch (RestClientException e) {
-            log.warn("پاسخ به callback_query شکست خورد.", e);
+            log.warn("پاسخ به callback_query شکست خورد ({}).", failureKind(e));
             return false;
         }
+    }
+
+    /** هر sendMessage از اینجا می‌گذرد، پس متن همه‌ی پیام‌ها بدون نویسه‌ی Markdown فرستاده می‌شود. */
+    /**
+     * شرح امنِ یک شکست برای لاگ: فقط نوع خطا و در صورت وجود وضعیت HTTP. عمداً نه خود exception و نه پیامش، چون
+     * پیام exceptionهای شبکه‌ی Spring آدرس کامل درخواست را دارد و توکن بات بخشی از آن آدرس است ({@code /bot<token>/}).
+     */
+    static String failureKind(RestClientException e) {
+        if (e instanceof RestClientResponseException response) {
+            return "HTTP " + response.getStatusCode().value();
+        }
+        return e.getClass().getSimpleName();
     }
 
     private record SendMessageRequest(
@@ -182,6 +219,9 @@ class BaleClient {
             String text,
             @JsonProperty("reply_markup") Object replyMarkup
     ) {
+        SendMessageRequest {
+            text = PersianText.withoutMarkdown(text);
+        }
     }
 
     private record ReplyKeyboardMarkup(
@@ -193,6 +233,13 @@ class BaleClient {
     private record KeyboardButton(
             String text,
             @JsonProperty("request_contact") boolean requestContact
+    ) {
+    }
+
+    private record MenuKeyboardMarkup(
+            @JsonProperty("keyboard") List<List<String>> keyboard,
+            @JsonProperty("resize_keyboard") boolean resizeKeyboard,
+            @JsonProperty("one_time_keyboard") boolean oneTimeKeyboard
     ) {
     }
 

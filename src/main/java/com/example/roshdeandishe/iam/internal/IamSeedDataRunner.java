@@ -189,6 +189,7 @@ class IamSeedDataRunner implements ApplicationRunner {
         permission(permissions, "GRADES_EDIT", "ثبت/ویرایش نمرات");
         permission(permissions, "FINANCE_VIEW", "مشاهده وضعیت مالی");
         permission(permissions, "FINANCE_MANAGE", "صدور/مدیریت فاکتور");
+        permission(permissions, "FINANCE_VIEW_ALL", "مشاهده‌ی وضعیت مالی همه‌ی دانش‌آموزان");
         permission(permissions, "MEMBERSHIP_MANAGE", "مدیریت عضویت‌ها (فعال/غیرفعال‌سازی دسترسی)");
         permission(permissions, "MEMBER_NAMES_VIEW", "مشاهده‌ی نام اعضا (بدون ایمیل و وضعیت عضویت)");
         permission(permissions, "STUDENT_ENROLL", "ثبت‌نام دانش‌آموز در کلاس");
@@ -208,6 +209,7 @@ class IamSeedDataRunner implements ApplicationRunner {
         permission(permissions, "EXAM_VIEW", "مشاهده‌ی آزمون‌ها و نتایج");
         permission(permissions, "EXAM_MANAGE", "تألیف/تخصیص آزمون و ساخت بخش‌های آن");
         permission(permissions, "ACADEMIC_YEAR_MANAGE", "انتخاب سال تحصیلی جاریِ مدرسه");
+        permission(permissions, "TIMETABLE_ASSIGNABLE", "قابل انتخاب به‌عنوان معلمِ خانه‌های برنامهٔ کلاسی");
         permission(permissions, "TIMETABLE_MANAGE", "مدیریت برنامهٔ کلاسی (زنگ‌ها، فعالیت‌ها و جدول کلاس‌ها)");
         permission(permissions, "CALENDAR_MANAGE", "مدیریت تقویم مدرسه");
         permission(permissions, "YEARLY_PLAN_MANAGE", "مدیریت برنامه‌ی سالانه");
@@ -216,6 +218,7 @@ class IamSeedDataRunner implements ApplicationRunner {
         permission(permissions, "ATTENDANCE_EDIT_PAST", "ویرایش حضور و غیاب روزهای گذشته");
         permission(permissions, "ATTENDANCE_VIEW_ALL", "مشاهده‌ی حضور و غیاب همه‌ی کلاس‌ها و گزارش آن");
         permission(permissions, "QUESTION_BOX_MANAGE", "ساخت سؤال، سربرگ و برگه‌ی چاپی در باکس سؤالات");
+        permission(permissions, "QUESTION_BOX_MANAGE_ANY", "ویرایش و حذف سؤال، سربرگ و برگه‌ی دیگران در باکس سؤالات");
         // Permission سطح پلتفرم: فقط ردیف کاتالوگ - عمداً به هیچ نقشی grant نمی‌شود؛ تنها مسیر اعطا،
         // شاخه‌ی PlatformContext در PermissionDecisionService برای کاربرِ platform_admins است
         permission(permissions, PlatformPermissions.HOLIDAY_MANAGE, "مدیریت تعطیلی‌های سراسری");
@@ -235,6 +238,8 @@ class IamSeedDataRunner implements ApplicationRunner {
         grant(roles.get("TEACHER"), permissions.get("QUESTION_REPORT"));
         grant(roles.get("TEACHER"), permissions.get("QUESTION_BOX_MANAGE"));
         grant(roles.get("SCHOOL_ADMIN"), permissions.get("QUESTION_BOX_MANAGE"));
+        // ویرایش/حذفِ مواردِ دیگران (questionbox EditRule)؛ به نقشِ سفارشی هم قابل‌تخصیص
+        grant(roles.get("SCHOOL_ADMIN"), permissions.get("QUESTION_BOX_MANAGE_ANY"));
         grant(roles.get("SCHOOL_ADMIN"), permissions.get("QUESTION_REPORT"));
 
         grant(roles.get("TEACHER"), permissions.get("GRADES_VIEW"));
@@ -276,6 +281,8 @@ class IamSeedDataRunner implements ApplicationRunner {
         // حضور و غیابِ کلاسِ خودش کارِ روزمره‌ی معلم است؛ برای کلاسِ دیگران
         // ATTENDANCE_RECORD_ANY (فقط SCHOOL_ADMIN) لازم است (attendance.md قاعده ۵)
         grant(roles.get("TEACHER"), permissions.get("ATTENDANCE_RECORD"));
+        // چه کسی معلمِ یک خانه‌ی برنامهٔ کلاسی می‌شود (TimetableFacadeImpl)؛ به نقشِ سفارشی هم قابل‌تخصیص
+        grant(roles.get("TEACHER"), permissions.get("TIMETABLE_ASSIGNABLE"));
 
         grant(roles.get("PARENT"), permissions.get("GRADES_VIEW"));
         grant(roles.get("PARENT"), permissions.get("FINANCE_VIEW"));
@@ -290,6 +297,8 @@ class IamSeedDataRunner implements ApplicationRunner {
         grant(roles.get("SCHOOL_ADMIN"), permissions.get("GRADES_EDIT"));
         grant(roles.get("SCHOOL_ADMIN"), permissions.get("FINANCE_VIEW"));
         grant(roles.get("SCHOOL_ADMIN"), permissions.get("FINANCE_MANAGE"));
+        // دیدِ مالیِ کلِ مدرسه؛ PARENT فقط FINANCE_VIEW دارد و فاکتورِ فرزندانش را می‌بیند (finance-view-all-permission.md)
+        grant(roles.get("SCHOOL_ADMIN"), permissions.get("FINANCE_VIEW_ALL"));
         grant(roles.get("SCHOOL_ADMIN"), permissions.get("MEMBERSHIP_MANAGE"));
         grant(roles.get("SCHOOL_ADMIN"), permissions.get("ACADEMIC_YEAR_MANAGE"));
         grant(roles.get("SCHOOL_ADMIN"), permissions.get("TIMETABLE_MANAGE"));
@@ -331,6 +340,7 @@ class IamSeedDataRunner implements ApplicationRunner {
         // می‌کند، تأییدکننده‌اش نیست (فقط SCHOOL_ADMIN تأیید می‌کند).
         grant(roles.get("FINANCE_ADMIN"), permissions.get("FINANCE_VIEW"));
         grant(roles.get("FINANCE_ADMIN"), permissions.get("FINANCE_MANAGE"));
+        grant(roles.get("FINANCE_ADMIN"), permissions.get("FINANCE_VIEW_ALL"));
         grant(roles.get("FINANCE_ADMIN"), permissions.get("EXPENSE_VIEW"));
         grant(roles.get("FINANCE_ADMIN"), permissions.get("EXPENSE_MANAGE"));
         // STUDENT_VIEW/MEMBER_NAMES_VIEW (UX_ROADMAP.md §6.4): بدون این دو،
