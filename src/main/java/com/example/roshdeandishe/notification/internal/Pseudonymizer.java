@@ -15,7 +15,7 @@ import java.util.regex.Pattern;
  *
  * <p>متن و نام‌ها هر دو نرمال می‌شوند (ي به ی، ك به ک، نیم‌فاصله به فاصله، فاصله‌های پیاپی به یکی، trim) و
  * خروجی همان متن نرمال‌شده است. نام کامل پیش از نام کوچک و بلندترین تطابق پیش از کوتاه‌تر جایگزین می‌شود
- * («علیرضا» پیش از «علی»). نام کوچکی که به دو نام یا بیشتر تعلق دارد، و هر تکه‌ی مشترک میان چند نام (مثل نام
+ * («علیرضا» پیش از «علی»). هر تکه‌ی نامی که فقط به یک نام تعلق دارد (نام کوچک یا خانوادگی) با برچسب همان نام، و هر تکه‌ی مشترک میان چند نام (مثل نام
  * خانوادگی خواهر و برادر)، به {@code [نام]} تبدیل می‌شود تا هویت یک فرزند لو نرود. تطابق فقط در مرز واژه است:
  * نویسه‌ی قبل و بعد نباید حرف ({@link Character#isLetter(int)}) باشد.
  */
@@ -56,7 +56,7 @@ final class Pseudonymizer {
         // الگو ← برچسب؛ نام کامل‌ها بلندترین‌اول، سپس تکه‌ها بلندترین‌اول
         Map<String, String> full = new LinkedHashMap<>();
         Map<String, Integer> tokenCount = new HashMap<>();
-        Map<String, String> firstTokenLabel = new HashMap<>();
+        Map<String, String> tokenLabel = new HashMap<>();
         for (NamedLabel n : names) {
             String name = normalise(n.name());
             if (name.isEmpty()) {
@@ -67,7 +67,9 @@ final class Pseudonymizer {
             for (String t : new LinkedHashSet<>(List.of(tokens))) {
                 tokenCount.merge(t, 1, Integer::sum);
             }
-            firstTokenLabel.putIfAbsent(tokens[0], n.label());
+            for (String t : new LinkedHashSet<>(List.of(tokens))) {
+                tokenLabel.putIfAbsent(t, n.label());
+            }
         }
         List<Map.Entry<String, String>> patterns = new ArrayList<>();
         patterns.addAll(sortedLongestFirst(full));
@@ -77,7 +79,7 @@ final class Pseudonymizer {
                 tokens.put(e.getKey(), GENERIC_NAME);
             }
         }
-        for (Map.Entry<String, String> e : firstTokenLabel.entrySet()) {
+        for (Map.Entry<String, String> e : tokenLabel.entrySet()) {
             if (tokenCount.get(e.getKey()) == 1 && !full.containsKey(e.getKey())) {
                 tokens.put(e.getKey(), e.getValue());
             }

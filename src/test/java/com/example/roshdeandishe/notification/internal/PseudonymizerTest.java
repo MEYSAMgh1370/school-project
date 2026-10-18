@@ -29,6 +29,14 @@ class PseudonymizerTest {
     }
 
     @Test
+    void uniqueFamilyNameIsReplaced() {
+        List<Pseudonymizer.NamedLabel> names = List.of(
+                new Pseudonymizer.NamedLabel("علی رضایی", "[فرزند_۱]"),
+                new Pseudonymizer.NamedLabel("مریم احمدی", "[فرزند_۲]"));
+        assertThat(Pseudonymizer.pseudonymize("احمدی امتحان داره؟", names)).isEqualTo("[فرزند_۲] امتحان داره؟");
+    }
+
+    @Test
     void normalisesArabicLettersAndZwnj() {
         assertThat(Pseudonymizer.pseudonymize("نمره هاي علي", KIDS)).isEqualTo("نمره های [فرزند_۱]");
         assertThat(Pseudonymizer.pseudonymize("نمره‌ها", List.of())).isEqualTo("نمره ها");
