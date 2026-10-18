@@ -3,6 +3,7 @@ package com.example.roshdeandishe.finance;
 import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 
 /**
@@ -178,6 +179,40 @@ public interface FinanceFacade {
 
     /** آنچه هنوز به سالی نسبت داده نشده - برای هشدارِ صفحه‌ی مالی. */
     UnattributedSummary unattributedSummary(Long schoolId);
+
+    /**
+     * فهرستِ «دانش‌آموزمحور» صفحه‌ی مالی: به‌ازای هر دانش‌آموز وضعیتِ فاکتورِ سالِ جاری، بدهیِ سال‌های قبل و
+     * مانده‌ی کل. بدهیِ قبلی = جمعِ مانده (قابل پرداخت منهای پرداخت‌شده، هرگز منفی) فاکتورهای سالی که سالِ جاریِ
+     * مدرسه نیست (سالِ تهی هم «قبل» است)؛ مدرسه‌ای بدونِ سالِ جاری همه‌ی فاکتورها را «جاری» می‌شمارد و بدهیِ قبلی
+     * صفر است. {@link StudentScope#CURRENT}: دست‌کم یک فاکتورِ جاری؛ {@link StudentScope#PREVIOUS}: بدهیِ قبلی
+     * مثبت (فقط بدهکاران؛ فارغ‌التحصیل/ترک‌کرده هم)؛ {@link StudentScope#ALL}: هر دو. {@code counts} با همان
+     * فیلترهای نام و بدهی و فقط با scope متفاوت شمرده می‌شود. مرتب بر اساس نامِ نرمال‌شده سپس شناسه.
+     *
+     * @throws com.example.roshdeandishe.finance.shared.FinanceException با FinanceError.InvalidFilter اگر
+     * scope/debt خالی یا page &lt; 0 یا size خارج از 1..100 باشد
+     */
+    StudentFinancePage listStudentFinance(Long schoolId, StudentFinanceQuery query);
+
+    /** همه‌ی فاکتورهای یک دانش‌آموزِ همین مدرسه در همه‌ی سال‌ها، جدیدترین سال اول («بدون سال» آخر). */
+    List<InvoiceInfo> listInvoicesOfStudent(Long schoolId, Long studentId);
+
+    enum StudentScope { ALL, CURRENT, PREVIOUS }
+
+    enum DebtFilter { ANY, OWING, OVERDUE, SETTLED }
+
+    record StudentFinanceQuery(StudentScope scope, String firstName, String lastName, String q, DebtFilter debt,
+                               int page, int size) {
+    }
+
+    /** {@code currentStatus} تهی = فاکتورِ سالِ جاری ندارد؛ {@code studentStatus} تهی = ردیفِ دانش‌آموز پیدا نشد. */
+    record StudentFinanceRow(Long studentId, String fullName, String studentStatus, InvoiceStatus currentStatus,
+                             BigDecimal currentRemaining, BigDecimal previousDebt, BigDecimal totalRemaining,
+                             boolean overdue) {
+    }
+
+    record StudentFinancePage(List<StudentFinanceRow> items, long total, Map<StudentScope, Long> counts,
+                              int page, int size) {
+    }
 
     record AttributionResult(boolean tuitionAttributed, int invoicesAttributed) {
     }

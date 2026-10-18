@@ -20,6 +20,8 @@ import com.example.roshdeandishe.finance.dto.response.FinanceYearsResponse;
 import com.example.roshdeandishe.finance.dto.response.UnattributedResponse;
 import com.example.roshdeandishe.finance.dto.response.InvoiceResponse;
 import com.example.roshdeandishe.finance.dto.response.PaymentResponse;
+import com.example.roshdeandishe.finance.dto.response.StudentFinancePageResponse;
+import com.example.roshdeandishe.finance.dto.response.StudentFinanceRowResponse;
 import com.example.roshdeandishe.finance.dto.request.RecordPaymentRequest;
 import com.example.roshdeandishe.finance.dto.request.SetTuitionFeeRequest;
 import com.example.roshdeandishe.finance.dto.response.TuitionFeeResponse;
@@ -33,7 +35,10 @@ import com.example.roshdeandishe.platform.TenantContext;
 import com.example.roshdeandishe.school.SchoolFacade;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Locale;
+import java.util.Map;
 
 /**
  * مدیریت مالی یک مدرسه: تنظیم شهریه‌ی مصوب و مشاهده‌ی فاکتورها.
@@ -297,6 +302,57 @@ public class FinanceController {
 
         FinanceFacade.AttributionResult result = financeFacade.attributeToYear(schoolId, request.academicYear());
         return new AttributionResponse(result.tuitionAttributed(), result.invoicesAttributed());
+    }
+
+    /**
+     * صفحه‌ی مالیِ دانش‌آموزمحور (school-settings §4): scope=all|current|previous، debt=any|owing|overdue|settled،
+     * فیلترِ نام/نام‌خانوادگی/متنِ آزاد، صفحه‌بندی (size ۱ تا ۱۰۰، پیش‌فرض ۵۰). مقدارِ نامعتبر: 400 invalid-filter.
+     */
+    @GetMapping("/finance/students")
+    @RequiresPermission("FINANCE_MANAGE")
+    public StudentFinancePageResponse listStudents(
+            @PathVariable Long schoolId,
+            @RequestParam(required = false, defaultValue = "all") String scope,
+            @RequestParam(required = false) String firstName,
+            @RequestParam(required = false) String lastName,
+            @RequestParam(required = false) String q,
+            @RequestParam(required = false, defaultValue = "any") String debt,
+            @RequestParam(required = false, defaultValue = "0") int page,
+            @RequestParam(required = false, defaultValue = "50") int size
+    ) {
+        TenantContext.requireMatches(schoolId);
+
+        FinanceFacade.StudentFinancePage result = financeFacade.listStudentFinance(schoolId,
+                new FinanceFacade.StudentFinanceQuery(
+                        parseFilter(FinanceFacade.StudentScope.class, "scope", scope), firstName, lastName, q,
+                        parseFilter(FinanceFacade.DebtFilter.class, "debt", debt), page, size));
+        Map<String, Long> counts = new LinkedHashMap<>();
+        result.counts().forEach((key, value) -> counts.put(key.name().toLowerCase(Locale.ROOT), value));
+        return new StudentFinancePageResponse(
+                result.items().stream().map(row -> new StudentFinanceRowResponse(row.studentId(), row.fullName(),
+                        row.studentStatus(), row.currentStatus(), row.currentRemaining(), row.previousDebt(),
+                        row.totalRemaining(), row.overdue())).toList(),
+                result.total(), counts, result.page(), result.size());
+    }
+
+    /** همه‌ی فاکتورهای یک دانش‌آموز در همه‌ی سال‌ها (جدیدترین اول) برای باز شدنِ ردیف. */
+    @GetMapping("/finance/students/{studentId}/invoices")
+    @RequiresPermission("FINANCE_MANAGE")
+    public List<InvoiceResponse> listStudentInvoices(@PathVariable Long schoolId, @PathVariable Long studentId) {
+        TenantContext.requireMatches(schoolId);
+
+        return financeFacade.listInvoicesOfStudent(schoolId, studentId).stream()
+                .map(FinanceController::toResponse)
+                .toList();
+    }
+
+    private static <E extends Enum<E>> E parseFilter(Class<E> type, String name, String value) {
+        try {
+            return Enum.valueOf(type, value.trim().toUpperCase(Locale.ROOT));
+        } catch (IllegalArgumentException e) {
+            throw new FinanceException(new FinanceError.InvalidFilter(
+                    "مقدار پارامتر " + name + " نامعتبر است."));
+        }
     }
 
     private static InvoiceResponse toResponse(InvoiceInfo info) {

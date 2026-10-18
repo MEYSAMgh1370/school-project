@@ -193,6 +193,147 @@ class FinanceFacadeImpl implements FinanceFacade {
     }
 
     @Override
+    public StudentFinancePage listStudentFinance(Long schoolId, StudentFinanceQuery query) {
+        if (query.scope() == null || query.debt() == null) {
+            throw new FinanceException(new FinanceError.InvalidFilter("بازه یا وضعیت بدهی نامعتبر است."));
+        }
+        if (query.page() < 0) {
+            throw new FinanceException(new FinanceError.InvalidFilter("شماره‌ی صفحه نباید منفی باشد."));
+        }
+        if (query.size() < 1 || query.size() > 100) {
+            throw new FinanceException(new FinanceError.InvalidFilter("اندازه‌ی صفحه باید بین ۱ تا ۱۰۰ باشد."));
+        }
+        // یک query برای فاکتورهای مدرسه؛ بقیه در حافظه (وضعیت/تخفیفِ در اثر همان toInvoiceInfos است)
+        List<InvoiceInfo> invoices = toInvoiceInfos(schoolId, invoiceRepository.findBySchoolIdOrderByIssuedAtDesc(schoolId));
+        String currentYear = resolveYear(schoolId, null);
+        Map<Long, List<InvoiceInfo>> byStudent = invoices.stream()
+                .collect(Collectors.groupingBy(InvoiceInfo::studentId));
+        if (byStudent.isEmpty()) {
+            return new StudentFinancePage(List.of(), 0, emptyCounts(), query.page(), query.size());
+        }
+
+        // دانش‌آموزِ فعال با یک query؛ ترک‌کرده/فارغ‌التحصیلِ دارای فاکتور تک‌به‌تک (فقط خودِ آن‌ها)
+        Map<Long, AcademicFacade.StudentInfo> infos = new HashMap<>();
+        academicFacade.listStudents(schoolId).forEach(s -> infos.put(s.id().value(), s));
+        for (Long studentId : byStudent.keySet()) {
+            if (!infos.containsKey(studentId)) {
+                academicFacade.findStudentInfo(studentId)
+                        .filter(s -> schoolId.equals(s.schoolId()))
+                        .ifPresent(s -> infos.put(studentId, s));
+            }
+        }
+
+        record Candidate(StudentFinanceRow row, String sortKey) {
+        }
+        List<Candidate> candidates = new ArrayList<>();
+        for (Map.Entry<Long, List<InvoiceInfo>> entry : byStudent.entrySet()) {
+            AcademicFacade.StudentInfo info = infos.get(entry.getKey());
+            String name = info == null ? null : userName(info.userId());
+            String fullName = name == null || name.isBlank() ? UNKNOWN_NAME : name.strip();
+            if (!StudentNameMatcher.matches(fullName, query.firstName(), query.lastName(), query.q())) {
+                continue;
+            }
+            StudentFinanceRow row = toStudentRow(entry.getKey(), fullName, info, entry.getValue(), currentYear);
+            if (matchesDebt(row, entry.getValue(), query.debt())) {
+                candidates.add(new Candidate(row, StudentNameMatcher.normalise(fullName)));
+            }
+        }
+
+        Map<StudentScope, Long> counts = emptyCounts();
+        for (StudentScope scope : StudentScope.values()) {
+            counts.put(scope, candidates.stream().filter(c -> inScope(c.row(), scope)).count());
+        }
+        List<StudentFinanceRow> scoped = candidates.stream()
+                .filter(c -> inScope(c.row(), query.scope()))
+                .sorted(Comparator.comparing(Candidate::sortKey).thenComparing(c -> c.row().studentId()))
+                .map(Candidate::row)
+                .toList();
+        long from = (long) query.page() * query.size();
+        List<StudentFinanceRow> items = from >= scoped.size() ? List.of()
+                : scoped.subList((int) from, (int) Math.min(scoped.size(), from + query.size()));
+        return new StudentFinancePage(items, scoped.size(), counts, query.page(), query.size());
+    }
+
+    private static final String UNKNOWN_NAME = "نامشخص";
+
+    private static Map<StudentScope, Long> emptyCounts() {
+        Map<StudentScope, Long> counts = new java.util.EnumMap<>(StudentScope.class);
+        for (StudentScope scope : StudentScope.values()) {
+            counts.put(scope, 0L);
+        }
+        return counts;
+    }
+
+    private StudentFinanceRow toStudentRow(Long studentId, String fullName, AcademicFacade.StudentInfo info,
+                                           List<InvoiceInfo> invoices, String currentYear) {
+        BigDecimal currentRemaining = BigDecimal.ZERO;
+        BigDecimal previousDebt = BigDecimal.ZERO;
+        InvoiceStatus currentStatus = null;
+        boolean overdue = false;
+        boolean hasCurrent = false;
+        for (InvoiceInfo invoice : invoices) {
+            BigDecimal remaining = remaining(invoice);
+            // مدرسه‌ی بدون سالِ جاری: همه «جاری»اند؛ وگرنه سالِ دیگر یا تهی «قبل» است
+            boolean current = currentYear == null || currentYear.equals(invoice.academicYear());
+            if (current) {
+                currentRemaining = currentRemaining.add(remaining);
+                if (!hasCurrent) {
+                    currentStatus = invoice.status();
+                    hasCurrent = true;
+                }
+            } else {
+                previousDebt = previousDebt.add(remaining);
+            }
+            overdue |= invoice.status() == InvoiceStatus.OVERDUE;
+        }
+        return new StudentFinanceRow(studentId, fullName, info == null ? null : info.status().name(), currentStatus,
+                hasCurrent ? currentRemaining : BigDecimal.ZERO, previousDebt, currentRemaining.add(previousDebt),
+                overdue);
+    }
+
+    /** مانده‌ی یک فاکتور = قابل پرداخت (مبلغ منهای تخفیفِ در اثر) منهای پرداخت‌شده، هرگز منفی. */
+    private static BigDecimal remaining(InvoiceInfo invoice) {
+        return invoice.amount().subtract(invoice.discountTotal()).subtract(invoice.amountPaid()).max(BigDecimal.ZERO);
+    }
+
+    /** همه‌ی دانش‌آموزانِ فهرست‌شده دست‌کم یک فاکتور دارند؛ SETTLED یعنی مانده‌ی کل صفر. */
+    private static boolean matchesDebt(StudentFinanceRow row, List<InvoiceInfo> invoices, DebtFilter debt) {
+        return switch (debt) {
+            case ANY -> true;
+            case OWING -> row.totalRemaining().signum() > 0;
+            case OVERDUE -> row.overdue();
+            case SETTLED -> row.totalRemaining().signum() == 0 && !invoices.isEmpty();
+        };
+    }
+
+    private static boolean inScope(StudentFinanceRow row, StudentScope scope) {
+        boolean hasCurrent = row.currentStatus() != null;
+        boolean debtor = row.previousDebt().signum() > 0;
+        return switch (scope) {
+            case CURRENT -> hasCurrent;
+            case PREVIOUS -> debtor;
+            case ALL -> hasCurrent || debtor;
+        };
+    }
+
+    private String userName(Long userId) {
+        return userId == null ? null
+                : iamFacade.findUser(new IamFacade.UserId(userId)).map(IamFacade.UserProfile::fullName).orElse(null);
+    }
+
+    @Override
+    public List<InvoiceInfo> listInvoicesOfStudent(Long schoolId, Long studentId) {
+        // newest year first; «بدون سال» last, then newest issued
+        return toInvoiceInfos(schoolId, invoiceRepository.findBySchoolIdAndStudentId(schoolId, studentId)).stream()
+                .sorted(Comparator
+                        .comparing(InvoiceInfo::academicYear, Comparator.nullsFirst(Comparator.<String>naturalOrder()))
+                        .reversed()
+                        .thenComparing(Comparator.comparing(InvoiceInfo::issuedAt).reversed())
+                        .thenComparing(Comparator.comparing(InvoiceInfo::id).reversed()))
+                .toList();
+    }
+
+    @Override
     public TuitionSummary tuitionSummary(Long schoolId, String academicYear) {
         // بدون بارگذاریِ اقساط: داشبورد فقط جمعِ صورت‌حساب و پرداخت را می‌خواهد
         List<InvoiceEntity> invoices = findInvoices(schoolId, academicYear);

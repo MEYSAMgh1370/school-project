@@ -32,6 +32,7 @@ public final class FinanceException extends RuntimeException {
                     "حداکثر تخفیف قابل ثبت برای فاکتور " + e.invoiceId() + " برابر " + e.maxDiscount() + " است.";
             case FinanceError.InvalidSetting e -> e.reason();
             case FinanceError.InvalidAuditFilter e -> e.reason();
+            case FinanceError.InvalidFilter e -> e.reason();
             case FinanceError.InstallmentsNotEnabled e ->
                     "اقساط برای مدرسه‌ی " + e.schoolId() + " روشن نیست.";
             case FinanceError.InvalidInstallments e -> e.reason();
