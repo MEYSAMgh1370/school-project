@@ -68,6 +68,16 @@ class NavPermissionsFlowIntegrationTest {
     }
 
     @Test
+    void schoolAdminHoldsSettingsManageAndOthersDoNot() {
+        Map<String, List<String>> permissionsByRole = iamFacade.findPermissionCodesByRole(1L, SYSTEM_ROLES);
+
+        assertThat(permissionsByRole.get("SCHOOL_ADMIN")).contains("SCHOOL_SETTINGS_MANAGE");
+        for (String role : List.of("TEACHER", "PARENT", "STUDENT", "FINANCE_ADMIN")) {
+            assertThat(permissionsByRole.get(role)).as(role).doesNotContain("SCHOOL_SETTINGS_MANAGE");
+        }
+    }
+
+    @Test
     void customRoleDisplayNamesAreSchoolScopedAndExcludeSystemRoles() {
         assertThat(iamFacade.findCustomRoleDisplayNames(1L, List.of("SCHOOL_ADMIN", "NO_SUCH_ROLE", "PLATFORM_ADMIN")))
                 .isEmpty();
