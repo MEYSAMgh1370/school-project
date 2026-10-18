@@ -36,7 +36,7 @@ Off by default (`BOT_LLM_ENABLED=false`); disabled, failing or uncertain all mea
 ### Decisions made in this plan (not by the PO; listed for review)
 
 - **D1. When the fallback runs:** only when the primary *fails*: timeout, connection error, non-2xx, or a reply that cannot be parsed. A primary answer with low confidence is a real answer and goes to the menu without trying the fallback.
-- **D2. Time budget:** primary 5 s, fallback 3 s, so the total stays within the spec's 8 s.
+- **D2. Time budget (PO, 2026-10-18):** primary (Jev) 3 s, fallback (Qwen) 5 s, so the total stays within the spec's 8 s. Jev returns a choice without generating text and is fast; Qwen generates its answer token by token and needs more time.
 - **D3. Service-wide daily cap:** the key `bot.llm.daily-cap-total` exists with default `0`, which means no cap. The spec leaves the value open.
 - **D4. Jev path:** TypeSafe's own API is `POST /v1/systemone`. How Liara exposes Jev is unknown, so the path relative to `BOT_LLM_BASE_URL` is configurable via `bot.llm.decision-path` (default `/systemone`). The evaluation script confirms it.
 - **D5. Qwen3 thinking mode:** the fallback adapter appends ` /no_think` to the user message, removes any `<think>…</think>` block, and parses the first `{…}` in the reply.
@@ -237,8 +237,8 @@ The test `IntentHintsTest.everyIntentHasAHintAndNoneIsLast` asserts that `LlmPro
       fallback-model: ${BOT_LLM_FALLBACK_MODEL:qwen/qwen3-32b}
       # مسیرِ API تصمیمِ TypeSafe نسبت به base-url؛ نحوه‌ی ارائه در لیارا هنوز تأیید نشده
       decision-path: ${BOT_LLM_DECISION_PATH:/systemone}
-      primary-timeout: 5s
-      fallback-timeout: 3s
+      primary-timeout: 3s
+      fallback-timeout: 5s
       min-confidence: 0.7
       max-text-length: 500
       daily-cap-total: 0
@@ -414,7 +414,7 @@ The test `IntentHintsTest.everyIntentHasAHintAndNoneIsLast` asserts that `LlmPro
 - Decision record: it supersedes `CLAUDE_LEGACY.md` §10 for the free-text router only, and records:
   - the privacy rules (router only, no database result, pseudonymisation, no user text in logs);
   - the provider decision (Liara; Jev primary; `qwen/qwen3-32b` fallback; PO 2026-10-18);
-  - decisions D1–D5 from this plan.
+  - decisions D1–D5 from this plan (D2 approved by the PO).
 - Spec updates:
   - In `bale-smart-bot.md`:
     - Status: stage 3 implemented.
