@@ -90,6 +90,9 @@ public class TenantResolverFilter extends OncePerRequestFilter {
             "/my-grades",
             // همان استدلال /people برای صفحه‌ی «سال تحصیلی» (تنظیم سال جاریِ مدرسه)
             "/academic-year",
+            // همان استدلال /academic-year برای صفحه‌ی «تنظیمات مدرسه»؛ fetchهای آن (/api/admin/schools/{id}/settings و
+            // endpointهای هر تنظیم) هدر را می‌فرستند
+            "/settings",
             // همان استدلال /academic-year برای صفحه‌ی «ارتقای پایه» (academic-year.md فاز ۳)؛ API آن زیر
             // /api/admin/schools/{id}/promotion است و هدر دارد
             "/promotion",

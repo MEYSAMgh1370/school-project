@@ -67,6 +67,18 @@ class TenantResolverFilterPlatformPathTest {
     }
 
     @Test
+    void theSettingsPageNeedsNoHeaderButItsApiDoes() throws Exception {
+        // صفحه‌ی HTML با ناوبری باز می‌شود و هدری نمی‌فرستد؛ fetchهای آن (زیر /api/admin/schools/{id}) هدر دارند
+        Outcome page = call("/settings", null);
+        assertThat(page.chainCalled()).isTrue();
+        assertThat(page.status()).isEqualTo(200);
+
+        Outcome api = call("/api/admin/schools/1/settings", null);
+        assertThat(api.chainCalled()).isFalse();
+        assertThat(api.status()).isEqualTo(400);
+    }
+
+    @Test
     void aLookalikePrefixIsNotAPlatformPath() throws Exception {
         Outcome outcome = call("/api/platformish/x", null);
 
