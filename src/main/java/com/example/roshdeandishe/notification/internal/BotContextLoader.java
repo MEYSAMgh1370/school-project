@@ -20,6 +20,7 @@ import java.util.Set;
 @Component
 class BotContextLoader {
 
+
     private final BaleLinkRepository baleLinkRepository;
     private final IamFacade iamFacade;
     private final SchoolBotRepository schoolBots;
