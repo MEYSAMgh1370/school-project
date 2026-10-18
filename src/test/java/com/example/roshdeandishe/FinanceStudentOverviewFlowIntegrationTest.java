@@ -370,6 +370,36 @@ class FinanceStudentOverviewFlowIntegrationTest {
     }
 
     @Test
+    void rowStatusIsTheWorstCurrentYearInvoice() throws Exception {
+        // مدرسه‌ی بدون سالِ جاری: همه‌ی فاکتورها «جاری»اند، پس یک دانش‌آموز می‌تواند چند فاکتورِ جاری داشته باشد
+        Fixture f = newSchool();
+        long x = enroll(f, "آرش نیکو");
+        long y = enroll(f, "ترانه کیانی");
+        setTuition(f, OLD, 80);
+        ensureInvoiced(f, OLD, 2);
+        setTuition(f, null, 100);
+        ensureInvoiced(f, null, 4);
+        // X: فاکتورِ تازه‌تر کامل پرداخت (PAID)، فاکتورِ قدیمی‌تر پرداخت‌نشده (UNPAID)
+        pay(f, invoiceId(f, x, null), 100);
+        jdbc.update("update finance.invoices set issued_at = now() - interval '10 days' where id = ?",
+                invoiceId(f, x, OLD));
+        // Y: فقط یک فاکتورِ جاری پرداخت‌شده می‌ماند؛ فاکتورِ دیگرش هم پرداخت می‌شود → بدون تغییر PAID
+        pay(f, invoiceId(f, y, null), 100);
+        pay(f, invoiceId(f, y, OLD), 80);
+
+        JsonNode page = json(students(f).andExpect(status().isOk()));
+        assertThat(row(page, x).get("currentStatus").asText()).isEqualTo("UNPAID");
+        assertThat(row(page, x).get("currentRemaining").decimalValue()).isEqualByComparingTo("80");
+        assertThat(row(page, y).get("currentStatus").asText()).isEqualTo("PAID");
+
+        // یک فاکتورِ جاری: بدون تغییر. OVERDUE بدترین است، حتی اگر فاکتورِ دیگر UNPAID باشد
+        jdbc.update("update finance.invoices set due_date = now() - interval '2 days' where id = ?",
+                invoiceId(f, x, OLD));
+        assertThat(row(json(students(f).andExpect(status().isOk())), x).get("currentStatus").asText())
+                .isEqualTo("OVERDUE");
+    }
+
+    @Test
     void countsFollowFiltersButNotScope() throws Exception {
         Scenario s = scenario();
 

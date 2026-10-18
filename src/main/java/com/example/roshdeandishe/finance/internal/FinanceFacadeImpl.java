@@ -287,10 +287,12 @@ class FinanceFacadeImpl implements FinanceFacade {
             boolean current = currentYear == null || currentYear.equals(invoice.academicYear());
             if (current) {
                 currentRemaining = currentRemaining.add(remaining);
-                if (!hasCurrent) {
+                // بدترین وضعیتِ فاکتورهای جاری؛ ترتیب اعلام‌شده‌ی enum از بهترین به بدترین است:
+                // PAID < PARTIAL < UNPAID < OVERDUE
+                if (currentStatus == null || invoice.status().compareTo(currentStatus) > 0) {
                     currentStatus = invoice.status();
-                    hasCurrent = true;
                 }
+                hasCurrent = true;
             } else {
                 previousDebt = previousDebt.add(remaining);
             }
