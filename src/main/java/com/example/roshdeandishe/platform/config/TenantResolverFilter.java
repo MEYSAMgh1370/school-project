@@ -88,7 +88,7 @@ public class TenantResolverFilter extends OncePerRequestFilter {
             // خودش هم زیرمجموعه‌ی پیشوند /api/me است و بدون X-School-ID کار
             // می‌کند (schoolId از path می‌آید، نه هدر)
             "/my-grades",
-            // همان استدلال /people برای صفحه‌ی «سال تحصیلی» (تنظیم سال جاریِ مدرسه)
+            // نشانی قدیمیِ صفحه‌ی «سال تحصیلی» که فقط به /settings ریدایرکت می‌شود؛ همان استدلال /people (بدون fetch)
             "/academic-year",
             // همان استدلال /academic-year برای صفحه‌ی «تنظیمات مدرسه»؛ fetchهای آن (/api/admin/schools/{id}/settings و
             // endpointهای هر تنظیم) هدر را می‌فرستند
