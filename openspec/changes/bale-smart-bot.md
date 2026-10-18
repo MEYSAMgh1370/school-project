@@ -133,7 +133,7 @@ Out of phase 1: payments, recording attendance, submitting an excuse (first phas
 
 | Situation | Behavior |
 |---|---|
-| LLM timeout (**assumption:** 8 s) or network error | menu + «متوجه نشدم، از گزینه‌ها انتخاب کنید» |
+| LLM timeout (primary 3 s, then fallback 5 s; PO, 2026-10-18) or network error | menu + «متوجه نشدم، از گزینه‌ها انتخاب کنید» |
 | Unparsable reply, unknown or disallowed intent, confidence below `bot.llm.min-confidence` | same menu, no retry |
 | `BOT_LLM_ENABLED=false` (default) | free text goes straight to the menu |
 | Unlinked user | current message, no LLM |
@@ -200,7 +200,7 @@ The PR #153 review raised these; the product owner chose to schedule them, not t
 1. Confirm with the evaluation set (`scripts/bot-llm-eval.py`) that Jev on Liara is accurate enough in Persian and fast enough, and that the decision path (`/systemone` by default) is right on Liara, before `BOT_LLM_ENABLED=true`. The provider itself is decided (Liara; Jev primary, `qwen/qwen3-32b` fallback; PO, 2026-10-18). The earlier Jev-specific access concern is resolved: Liara resells it with rial payment. Still open for Jev: Persian support is not stated in its public material and its speed figures are the vendor's own.
 2. The confidence threshold (0.7 is an assumption), set from the evaluation set.
 3. Exact `SCHOOL_ADMIN` daily limit (100 is an assumption) and the service-wide daily cap.
-4. LLM timeout (8 s) and maximum text length (500) are assumptions.
+4. The maximum text length (500) is an assumption. The LLM timeouts are decided (3 s primary, 5 s fallback; PO, 2026-10-18).
 5. Whether daily counters may be in memory (single instance) or must be persisted.
 6. Whether the provider's data-processing terms are acceptable for pseudonymised text from minors' parents and students.
 7. Stage 1 assumptions, not confirmed by the product owner: the webhook handling pool (core 2, max 4, queue 100) and the de-duplication capacity (last 1000 `update_id`s) were chosen without load data; both should be revisited with real traffic.

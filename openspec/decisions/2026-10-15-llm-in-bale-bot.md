@@ -30,8 +30,10 @@ An LLM may be used in the Bale bot for one job: **mapping a user's free text to 
 
 ### Decisions made in the implementation plan
 
+D1 to D5 were proposed in the implementation plan and approved by the product owner on 2026-10-18 (D2 was also chosen by the product owner). D6 is a plan decision.
+
 - **D1. When the fallback runs.** Only when the primary *fails*: timeout, connection error, non-2xx, or a reply that cannot be parsed. A primary answer with low confidence is a real answer and goes to the menu without trying the fallback.
-- **D2. Time budget (approved by the product owner, 2026-10-18).** Primary 3 s, fallback 5 s, so the total stays within the spec's 8 s. Jev returns a choice without generating text and is fast; Qwen generates token by token and needs more time.
+- **D2. Time budget (chosen by the product owner, 2026-10-18).** Primary 3 s, fallback 5 s, so the total stays within the spec's 8 s. Jev returns a choice without generating text and is fast; Qwen generates token by token and needs more time.
 - **D3. Service-wide daily cap.** `bot.llm.daily-cap-total` exists with default `0` (no cap). The spec leaves the value open.
 - **D4. Jev path.** TypeSafe's own API is `POST /v1/systemone`. How Liara exposes Jev was unknown, so the path relative to `BOT_LLM_BASE_URL` is configurable (`bot.llm.decision-path`, `BOT_LLM_DECISION_PATH`, default `/systemone`). `scripts/bot-llm-eval.py` confirms it before the switch is turned on.
 - **D5. Qwen3 thinking mode.** The fallback adapter appends ` /no_think` to the user message, removes any `<think>…</think>` block and parses the first `{…}` of the reply. The OpenAI-compatible API gives no probability, so the adapter reports confidence `1.0` whenever the reply parses.
