@@ -327,6 +327,49 @@ class FinanceStudentOverviewFlowIntegrationTest {
     }
 
     @Test
+    void debtFiltersFollowTheSelectedScope() throws Exception {
+        Fixture f = newSchool();
+        long x = enroll(f, "امیر حسینی");
+        long y = enroll(f, "الهام صادقی");
+        setCurrentYear(f, CURRENT);
+        setTuition(f, OLD, 80);
+        ensureInvoiced(f, OLD, 2);
+        setTuition(f, null, 100);
+        ensureInvoiced(f, CURRENT, 2);
+        // X: سالِ قبل تسویه، فاکتور سالِ جاری دیرکرد. Y: فقط فاکتور سالِ قبل دیرکرد، سالِ جاری سررسیدنگذشته
+        pay(f, invoiceId(f, x, OLD), 80);
+        jdbc.update("update finance.invoices set due_date = now() - interval '2 days' where id = ?",
+                invoiceId(f, x, CURRENT));
+        jdbc.update("update finance.invoices set due_date = now() - interval '2 days' where id = ?",
+                invoiceId(f, y, OLD));
+
+        assertThat(ids(json(students(f, "scope", "previous", "debt", "overdue").andExpect(status().isOk()))))
+                .containsExactly(y);
+        assertThat(ids(json(students(f, "scope", "current", "debt", "overdue").andExpect(status().isOk()))))
+                .containsExactly(x);
+        assertThat(ids(json(students(f, "scope", "all", "debt", "overdue").andExpect(status().isOk()))))
+                .containsExactlyInAnyOrder(x, y);
+
+        // OWING: X فقط در سالِ جاری بدهکار است، Y در هر دو
+        assertThat(ids(json(students(f, "scope", "previous", "debt", "owing").andExpect(status().isOk()))))
+                .containsExactly(y);
+        assertThat(ids(json(students(f, "scope", "current", "debt", "owing").andExpect(status().isOk()))))
+                .containsExactlyInAnyOrder(x, y);
+
+        // SETTLED: X در سالِ قبل تسویه است ولی بدهکارِ قبلی نیست (فهرستِ «سال‌های پیش» فقط بدهکاران)؛ پس
+        // previous+settled تهی است و current+settled هم تهی (هر دو فاکتورِ جاری پرداخت‌نشده‌اند)
+        assertThat(ids(json(students(f, "scope", "previous", "debt", "settled").andExpect(status().isOk())))).isEmpty();
+        assertThat(ids(json(students(f, "scope", "current", "debt", "settled").andExpect(status().isOk())))).isEmpty();
+        assertThat(ids(json(students(f, "scope", "all", "debt", "settled").andExpect(status().isOk())))).isEmpty();
+
+        // شمارنده‌ها: هر بازه با همان قاعده‌ی خودش
+        JsonNode counts = json(students(f, "debt", "overdue").andExpect(status().isOk())).get("counts");
+        assertThat(counts.get("current").asLong()).isEqualTo(1);
+        assertThat(counts.get("previous").asLong()).isEqualTo(1);
+        assertThat(counts.get("all").asLong()).isEqualTo(2);
+    }
+
+    @Test
     void countsFollowFiltersButNotScope() throws Exception {
         Scenario s = scenario();
 

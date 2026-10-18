@@ -223,7 +223,7 @@ class FinanceFacadeImpl implements FinanceFacade {
             }
         }
 
-        record Candidate(StudentFinanceRow row, String sortKey) {
+        record Candidate(StudentFinanceRow row, String sortKey, Set<StudentScope> debtMatches) {
         }
         List<Candidate> candidates = new ArrayList<>();
         for (Map.Entry<Long, List<InvoiceInfo>> entry : byStudent.entrySet()) {
@@ -234,17 +234,27 @@ class FinanceFacadeImpl implements FinanceFacade {
                 continue;
             }
             StudentFinanceRow row = toStudentRow(entry.getKey(), fullName, info, entry.getValue(), currentYear);
-            if (matchesDebt(row, entry.getValue(), query.debt())) {
-                candidates.add(new Candidate(row, StudentNameMatcher.normalise(fullName)));
+            // فیلتر بدهی فقط فاکتورهای همان بازه را می‌بیند؛ پس برای هر بازه جدا ارزیابی می‌شود
+            Set<StudentScope> debtMatches = java.util.EnumSet.noneOf(StudentScope.class);
+            for (StudentScope scope : StudentScope.values()) {
+                List<InvoiceInfo> considered = entry.getValue().stream()
+                        .filter(i -> invoiceInScope(i, scope, currentYear)).toList();
+                if (matchesDebt(considered, query.debt())) {
+                    debtMatches.add(scope);
+                }
+            }
+            if (!debtMatches.isEmpty()) {
+                candidates.add(new Candidate(row, StudentNameMatcher.normalise(fullName), debtMatches));
             }
         }
 
         Map<StudentScope, Long> counts = emptyCounts();
         for (StudentScope scope : StudentScope.values()) {
-            counts.put(scope, candidates.stream().filter(c -> inScope(c.row(), scope)).count());
+            counts.put(scope, candidates.stream()
+                    .filter(c -> c.debtMatches().contains(scope) && inScope(c.row(), scope)).count());
         }
         List<StudentFinanceRow> scoped = candidates.stream()
-                .filter(c -> inScope(c.row(), query.scope()))
+                .filter(c -> c.debtMatches().contains(query.scope()) && inScope(c.row(), query.scope()))
                 .sorted(Comparator.comparing(Candidate::sortKey).thenComparing(c -> c.row().studentId()))
                 .map(Candidate::row)
                 .toList();
@@ -296,13 +306,29 @@ class FinanceFacadeImpl implements FinanceFacade {
         return invoice.amount().subtract(invoice.discountTotal()).subtract(invoice.amountPaid()).max(BigDecimal.ZERO);
     }
 
-    /** همه‌ی دانش‌آموزانِ فهرست‌شده دست‌کم یک فاکتور دارند؛ SETTLED یعنی مانده‌ی کل صفر. */
-    private static boolean matchesDebt(StudentFinanceRow row, List<InvoiceInfo> invoices, DebtFilter debt) {
+    /**
+     * فاکتور در بازه هست؟ جاری = سالِ جاریِ مدرسه (یا همه، وقتی مدرسه سالِ جاری ندارد)؛ قبل = هر چیزِ دیگر
+     * از جمله فاکتورِ بدون سال؛ همه = همه. همان قاعده‌ی toStudentRow.
+     */
+    private static boolean invoiceInScope(InvoiceInfo invoice, StudentScope scope, String currentYear) {
+        boolean current = currentYear == null || currentYear.equals(invoice.academicYear());
+        return switch (scope) {
+            case CURRENT -> current;
+            case PREVIOUS -> !current;
+            case ALL -> true;
+        };
+    }
+
+    /**
+     * فقط فاکتورهای بازه‌ی انتخابی بررسی می‌شوند: OWING = مانده‌ی مثبت، OVERDUE = دست‌کم یک فاکتور دیرکرد،
+     * SETTLED = دست‌کم یک فاکتور و هیچ‌کدام بدهکار نیست.
+     */
+    private static boolean matchesDebt(List<InvoiceInfo> considered, DebtFilter debt) {
         return switch (debt) {
             case ANY -> true;
-            case OWING -> row.totalRemaining().signum() > 0;
-            case OVERDUE -> row.overdue();
-            case SETTLED -> row.totalRemaining().signum() == 0 && !invoices.isEmpty();
+            case OWING -> considered.stream().anyMatch(i -> remaining(i).signum() > 0);
+            case OVERDUE -> considered.stream().anyMatch(i -> i.status() == InvoiceStatus.OVERDUE);
+            case SETTLED -> !considered.isEmpty() && considered.stream().noneMatch(i -> remaining(i).signum() > 0);
         };
     }
 
