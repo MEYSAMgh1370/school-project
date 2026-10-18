@@ -74,5 +74,19 @@ window.SettingsLogic = (function () {
         return index < 0 ? [] : years.slice(0, index + 1);
     }
 
-    return { fromResponse, isAllRoles, knownSelected, rolesError, reminderBody, botBody, yearBody, attributableYears };
+    const SECTIONS = ['year', 'finance', 'reminders', 'bot'];
+
+    // حالتِ تازه‌ی هر بخش؛ شمارنده‌ی ذخیره از وضعیتِ قبلی بالاتر می‌رود و هرگز به صفر برنمی‌گردد، وگرنه پس از
+    // مدرسه‌ی A←B←A توکنِ ذخیره‌ی کهنه با ذخیره‌ی جدید یکی می‌شد و پاسخِ دیرش پذیرفته می‌شد
+    function emptySections(previous) {
+        return Object.fromEntries(SECTIONS.map((key) => [key,
+            { error: '', notice: '', saving: false, seq: previous ? previous[key].seq + 1 : 0 }]));
+    }
+
+    // فقط ذخیره‌ی آخرِ همان بخش (توکن {key, n}) معتبر است
+    function isLatest(sections, token) {
+        return token.n === sections[token.key].seq;
+    }
+
+    return { SECTIONS, emptySections, isLatest, fromResponse, isAllRoles, knownSelected, rolesError, reminderBody, botBody, yearBody, attributableYears };
 })();

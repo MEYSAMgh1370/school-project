@@ -80,3 +80,17 @@ test('attributableYears lists years up to and including the current one', () => 
     assert.deepEqual(L.attributableYears(years, null), []);
     assert.deepEqual(L.attributableYears(years, { id: 99 }), []);
 });
+
+test('section save counters stay monotonic across school switches (A -> B -> A)', () => {
+    let sec = L.emptySections();
+    const first = ++sec.year.seq; // save started on school A
+    sec = L.emptySections(sec); // switch to B (load resets state)
+    sec = L.emptySections(sec); // switch back to A
+    const second = ++sec.year.seq; // new save on A
+    assert.notEqual(second, first);
+    assert.equal(L.isLatest(sec, { key: 'year', n: first }), false, 'late response of the first save is stale');
+    assert.equal(L.isLatest(sec, { key: 'year', n: second }), true);
+    for (const key of ['year', 'finance', 'reminders', 'bot']) {
+        assert.deepEqual([sec[key].error, sec[key].notice, sec[key].saving], ['', '', false]);
+    }
+});

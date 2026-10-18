@@ -3,13 +3,10 @@
 // منطقِ خالص در settings-logic.js است. وابستگی: /js/calendar.js، /js/modal-focus.js و /js/settings-logic.js پیش از این فایل.
 document.addEventListener('alpine:init', () => {
     const Logic = window.SettingsLogic;
-    const SECTIONS = ['year', 'finance', 'reminders', 'bot'];
     const NO_SERVER = 'ارتباط با سرور برقرار نشد.';
     const ENTITLED = 'این مدرسه ماژول مورد نیاز را فعال ندارد. برای فعال‌سازی با پشتیبانی تماس بگیرید.';
     const DENIED = 'نقش انتخاب‌شده‌ی شما اجازه‌ی تغییر این تنظیم را ندارد.';
     const NONE_DENIED = 'نقش انتخاب‌شده‌ی شما به هیچ‌یک از تنظیمات مدرسه دسترسی ندارد.';
-
-    const emptySections = () => Object.fromEntries(SECTIONS.map(key => [key, { error: '', notice: '', saving: false, seq: 0 }]));
 
     Alpine.data('settingsPage', () => ({
         schoolId: null,
@@ -21,7 +18,7 @@ document.addEventListener('alpine:init', () => {
         // فقط پاسخ آخرین بارگذاری اثر می‌گذارد (عوض‌کردنِ سریعِ مدرسه پاسخ کهنه را دور می‌ریزد)
         seq: 0,
         // خطا، پیام و وضعیتِ ذخیره‌ی هر بخش جدا؛ seq هر بخش پاسخِ کهنه‌ی همان بخش را دور می‌اندازد
-        sec: emptySections(),
+        sec: Logic.emptySections(),
 
         hasYear: false,
         hasFinance: false,
@@ -136,7 +133,7 @@ document.addEventListener('alpine:init', () => {
 
         // پاسخِ ذخیره‌ی مدرسه‌ی قبلی یا ذخیره‌ی کهنه‌ترِ همین بخش دور ریخته می‌شود
         isLatest(token) {
-            return token.n === this.sec[token.key].seq && token.schoolId === this.schoolId;
+            return Logic.isLatest(this.sec, token) && token.schoolId === this.schoolId;
         },
 
         endSave(token) {
@@ -151,7 +148,7 @@ document.addEventListener('alpine:init', () => {
             this.error = '';
             this.blocked = false;
             this.loaded = false;
-            this.sec = emptySections();
+            this.sec = Logic.emptySections(this.sec);
             Object.assign(this, {
                 hasYear: false, hasFinance: false, hasReminders: false, hasBot: false,
                 current: null, years: [], selectedId: '', autoPromotion: false, autoSaving: false,
