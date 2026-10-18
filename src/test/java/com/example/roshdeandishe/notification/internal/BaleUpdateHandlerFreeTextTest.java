@@ -69,7 +69,7 @@ class BaleUpdateHandlerFreeTextTest {
                 .withProperty("roshdeandishe.bot.llm.api-key", "k");
         finance = mock(FinanceFacade.class);
         handler = new BaleUpdateHandler(links, client, iam, school, finance,
-                new BotContextLoader(links, iam, mock(SchoolBotRepository.class)), resolver, router, tokens,
+                new BotContextLoader(links, iam, mock(SchoolBotRepository.class),school), resolver, router, tokens,
                 new LlmSettings(env));
         when(academic.listWards(any(), any())).thenReturn(List.of());
         when(academic.findMyEnrollment(any(), any())).thenReturn(Optional.empty());
