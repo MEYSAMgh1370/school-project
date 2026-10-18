@@ -309,7 +309,7 @@
 
                                         <p class="has-text-grey" id="installmentsOffHint"
                                            x-show="!installmentsLoading && !installmentsEnabled && installments.length === 0">
-                                            تقسیط شهریه برای این مدرسه خاموش است؛ گزینه‌ی «اقساط شهریه» را در تنظیمات مدرسه فعال کنید.
+                                            تقسیط شهریه برای این مدرسه خاموش است؛ گزینه‌ی «اقساط شهریه» را در <a href="/settings" data-installments-settings-link>تنظیمات مدرسه</a> فعال کنید.
                                         </p>
 
                                         <template x-if="!installmentsLoading && installments.length > 0">
@@ -370,7 +370,7 @@
                                                 </ul>
 
                                                 <p class="has-text-grey" x-show="!installmentsEnabled">
-                                                    اقساط تعریف‌شده فقط‌خواندنی است؛ برای تغییر، «اقساط شهریه» را در تنظیمات مدرسه فعال کنید.
+                                                    اقساط تعریف‌شده فقط‌خواندنی است؛ برای تغییر، «اقساط شهریه» را در <a href="/settings" data-installments-settings-link>تنظیمات مدرسه</a> فعال کنید.
                                                 </p>
 
                                                 <button class="button is-light" type="button" x-ref="editInstallmentsButton"

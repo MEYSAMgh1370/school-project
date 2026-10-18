@@ -81,13 +81,13 @@ class GradesCoursePickerRenderTest {
     }
 
     @Test
-    void theYearIsASelectOfListedYearsWithATextFallbackWhenThereAreNone() {
+    void theGradebookHasNoYearControlAndPointsToSettingsWhenTheSchoolHasNoCurrentYear() {
         String html = render("grades.jte", Map.of("navbar", NAVBAR));
 
-        // با فهرستِ سال‌ها: select؛ بدونِ هیچ سالی: فیلدِ متنی (هر دو به filter.academicYear وصل‌اند)
-        assertThat(html).contains("id=\"gradeYear\"").contains("x-for=\"year in years\"");
-        assertThat(html).contains("id=\"gradeYearText\"").contains("x-show=\"years.length === 0\"");
-        assertThat(html).contains("<label class=\"label\" for=\"gradeYear\">سال تحصیلی</label>");
+        // صفحه با سالِ جاریِ مدرسه کار می‌کند؛ نه select و نه فیلدِ متنیِ سال
+        assertThat(html).doesNotContain("gradeYear").doesNotContain("x-for=\"year in years\"")
+                .doesNotContain("id=\"gradeYearText\"").doesNotContain("for=\"gradeYear\"");
+        assertThat(html).contains("id=\"gradesNoYear\"").contains("href=\"/settings\"");
     }
 
     // ورود سریعِ نمرات (DESIGN.md §5a): ساختارِ قالب. رفتارِ Alpine در مرورگر راستی‌آزمایی می‌شود

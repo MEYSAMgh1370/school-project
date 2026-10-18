@@ -39,7 +39,9 @@
                     </div>
                     <div class="level-right is-flex-wrap-wrap is-gap-2">
                         <button class="button is-light" type="button" id="yearlyPlanRange" @click="openRange">تنظیم بازه‌ی سال</button>
-                        <button class="button is-light" type="button" id="yearlyPlanRoles" @click="openRoles">گیرندگان یادآوری</button>
+                        <%-- گیرندگان یادآوری به «تنظیمات مدرسه» رفته‌اند؛ فقط برای مدیر یا دارنده‌ی YEARLY_PLAN_MANAGE --%>
+                        <a class="button is-light" id="yearlyPlanRolesLink" href="/settings" x-cloak
+                           x-show="['SCHOOL_ADMIN'].includes($store.nav.selectedRole) || $store.nav.permissions.includes('YEARLY_PLAN_MANAGE')">تنظیم گیرندگان یادآوری در تنظیمات مدرسه</a>
                         <div class="field" x-show="years.length > 1">
                             <label class="label is-sr-only" for="yearlyPlanYear">سال تحصیلی</label>
                             <div class="control">
@@ -61,7 +63,7 @@
                 @template.layout.empty-state(
                     show = "loaded && !loading && !year",
                     art = "calendar",
-                    message = @`برای این مدرسه هنوز سال تحصیلی جاری انتخاب نشده است. مدیر مدرسه می‌تواند آن را در صفحه‌ی <a href="/academic-year">سال تحصیلی</a> تعیین کند.`)
+                    message = @`برای این مدرسه هنوز سال تحصیلی جاری انتخاب نشده است. مدیر مدرسه می‌تواند آن را در صفحه‌ی <a href="/settings">تنظیمات مدرسه</a> تعیین کند.`)
 
                 <%-- سالِ جاری هست ولی چیزی ثبت نشده --%>
                 @template.layout.empty-state(
@@ -240,46 +242,6 @@
                             <button class="button" type="button" @click="closeConfirm">انصراف</button>
                         </footer>
                     </div>
-                </div>
-
-                <%-- ------------------------------------------------ گیرندگانِ یادآوری (همیشه یک modal) --%>
-                <div class="modal" role="dialog" aria-modal="true" aria-labelledby="yearlyPlanRolesTitle"
-                     tabindex="-1" x-ref="rolesModal" :class="{ 'is-active': rolesForm }" x-cloak
-                     @keydown.tab="window.ModalFocus.trap($event, $el)" @keydown.escape.stop="closeRoles">
-                    <div class="modal-background" @click="closeRoles"></div>
-                    <template x-if="rolesForm">
-                        <form class="modal-card" @submit.prevent="submitRoles" novalidate>
-                            <header class="modal-card-head">
-                                <p class="modal-card-title" id="yearlyPlanRolesTitle">گیرندگان یادآوری</p>
-                                <button class="delete" type="button" aria-label="بستن" @click="closeRoles"></button>
-                            </header>
-                            <section class="modal-card-body">
-                                <div class="notification is-danger" role="alert" x-show="rolesForm.error"><span class="app-notice">@template.layout.icon(name = "alert", size = 20)<span x-text="rolesForm.error"></span></span></div>
-                                <p x-show="rolesForm.loading">در حال بارگذاری...</p>
-
-                                <div x-show="!rolesForm.loading">
-                                    <p class="help mb-4" id="yearlyPlanRolesNote" x-show="rolesForm.unset">تا وقتی نقش‌ها را انتخاب نکنید، همه‌ی اعضای مدرسه یادآوری می‌گیرند.</p>
-                                    <template x-for="(role, index) in rolesForm.roles" :key="role.code">
-                                        <div class="field">
-                                            <div class="control">
-                                                <label class="checkbox" :for="'yearlyPlanRole-' + index">
-                                                    <input type="checkbox" :id="'yearlyPlanRole-' + index" :value="role.code"
-                                                           x-model="rolesForm.selected">
-                                                    <span x-text="role.title"></span>
-                                                </label>
-                                            </div>
-                                        </div>
-                                    </template>
-                                    <p class="help is-danger" role="alert" id="yearlyPlanRolesError" x-show="rolesForm.rolesError"><span class="app-notice">@template.layout.icon(name = "alert", size = 16)<span x-text="rolesForm.rolesError"></span></span></p>
-                                </div>
-                            </section>
-                            <footer class="modal-card-foot">
-                                <button class="button is-link" type="submit" id="yearlyPlanRolesSubmit"
-                                        :class="{ 'is-loading': saving }">ذخیره</button>
-                                <button class="button" type="button" @click="closeRoles">انصراف</button>
-                            </footer>
-                        </form>
-                    </template>
                 </div>
             `)
     </div>

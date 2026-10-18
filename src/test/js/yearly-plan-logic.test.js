@@ -168,27 +168,10 @@ test('the reminder tag shows only for school events that have a lead time', () =
     assert.equal(YearlyPlanLogic.remindTag(null), '');
 });
 
-test('reminder roles: null selection starts unchecked, otherwise the selected are checked', () => {
-    const roles = [{ code: 'TEACHER', title: 'معلم' }, { code: 'PARENT', title: 'والد' }];
-
-    const unset = YearlyPlanLogic.rolesState({ roles, selected: null });
-    assert.deepEqual(unset, { roles, unset: true, selected: [] });
-
-    const some = YearlyPlanLogic.rolesState({ roles, selected: ['PARENT', 'GONE'] });
-    assert.equal(some.unset, false);
-    assert.deepEqual(some.selected, ['PARENT']);
-
-    assert.deepEqual(YearlyPlanLogic.rolesState(null), { roles: [], unset: true, selected: [] });
-});
-
-test('reminder roles need at least one choice and the body follows the role order', () => {
-    const roles = [{ code: 'TEACHER', title: 'معلم' }, { code: 'PARENT', title: 'والد' }, { code: 'STUDENT', title: 'دانش‌آموز' }];
-    assert.equal(YearlyPlanLogic.rolesError([]), 'حداقل یک نقش را انتخاب کنید.');
-    assert.equal(YearlyPlanLogic.rolesError(null), 'حداقل یک نقش را انتخاب کنید.');
-    assert.equal(YearlyPlanLogic.rolesError(['PARENT']), '');
-
-    assert.deepEqual(YearlyPlanLogic.rolesBody(['STUDENT', 'TEACHER', 'UNKNOWN'], roles),
-        { roleCodes: ['TEACHER', 'STUDENT'] });
+test('reminder-recipient logic lives in settings, not in the yearly plan', () => {
+    for (const name of ['rolesState', 'rolesError', 'rolesBody']) {
+        assert.equal(YearlyPlanLogic[name], undefined, name);
+    }
 });
 
 test('the extension is capped at one Jalali month on each side', () => {

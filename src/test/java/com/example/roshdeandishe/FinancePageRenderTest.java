@@ -105,6 +105,9 @@ class FinancePageRenderTest {
                 .contains("ویرایش مبالغ و تاریخ‌ها").contains("جمع اقساط:").contains("باید برابر باشد با")
                 .contains("canSaveEdit(invoice)").contains("saveEditing(invoice)")
                 .contains("اقساط تعریف‌شده فقط‌خواندنی است");
+        // راهنمای خاموش بودن اقساط به صفحه‌ی تنظیمات پیوند می‌دهد، نه فقط متن
+        assertThat(html).contains("id=\"installmentsOffHint\"").contains("href=\"/settings\"")
+                .contains("data-installments-settings-link");
         // اقساط: فهرست انباشته (بدون جدول و اسکرول افقی)، نه جدول
         String installments = html.substring(html.indexOf("<h4 class=\"title is-6\">اقساط</h4>"));
         installments = installments.substring(0, installments.indexOf("@submit.prevent=\"generateInstallments(invoice)\""));

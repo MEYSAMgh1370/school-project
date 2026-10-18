@@ -161,7 +161,6 @@ window.YearlyPlanLogic = (function () {
     // گزینه‌های رایجِ فرم (فقط UI): سرور هر عدد صحیحِ ۰ تا ۳۰ را می‌پذیرد
     const REMIND_CHOICES = [0, 1, 2, 3, 7, 14];
     const REMIND_MAX = 30;
-    const ROLES_REQUIRED = 'حداقل یک نقش را انتخاب کنید.';
 
     // «همان روز» / «۳ روز قبل»؛ مقدارِ نامعتبر ''
     function remindLabel(days) {
@@ -200,28 +199,9 @@ window.YearlyPlanLogic = (function () {
         return { academicYearId, day: dayIso, title, remindDaysBefore: remindValue(remindText) };
     }
 
-    // پاسخ GET reminder-roles → حالتِ فرم؛ selected تهی = هنوز انتخابی نشده (همه یادآوری می‌گیرند)، همه بی‌تیک
-    function rolesState(payload) {
-        const roles = (payload && payload.roles) || [];
-        const unset = !payload || payload.selected === null || payload.selected === undefined;
-        const known = new Set(roles.map((role) => role.code));
-        return { roles, unset, selected: unset ? [] : payload.selected.filter((code) => known.has(code)) };
-    }
-
-    // حداقل یک نقش؛ '' = درست
-    function rolesError(selected) {
-        return selected && selected.length > 0 ? '' : ROLES_REQUIRED;
-    }
-
-    // بدنه‌ی PUT: کدها به ترتیبِ فهرستِ نقش‌ها و فقط کدهای شناخته‌شده
-    function rolesBody(selected, roles) {
-        const chosen = new Set(selected);
-        return { roleCodes: roles.map((role) => role.code).filter((code) => chosen.has(code)) };
-    }
-
     return {
         itemKey, groupByMonth, pickYear, effectiveRange, yearLine, isCustom, CUSTOM_TAG, rangeHelp, defaultRangeHelp,
         inRange, exampleDate, rangeMessage, validateRange, rangeLimits,
-        remindLabel, remindOptions, remindValue, remindTag, addBody, rolesState, rolesError, rolesBody
+        remindLabel, remindOptions, remindValue, remindTag, addBody
     };
 })();

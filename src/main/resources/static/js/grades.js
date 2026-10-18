@@ -2,15 +2,15 @@ document.addEventListener('alpine:init', () => {
     Alpine.data('gradesPage', () => ({
         schoolId: null,
         classes: [],
-        classesSeq: 0,
         students: [],
         pupils: [],
         // درس‌های سراسریِ هم‌پایه‌ی کلاسِ انتخاب‌شده؛ courseId خالی = «نمره‌ی کل»
         courses: [],
         filter: { classId: '', courseId: '', academicYear: '', term: 'FIRST' },
-        // سال‌هایی که کاربر می‌تواند انتخاب کند: مدیر (ACADEMIC_YEAR_MANAGE) همه‌ی فهرست، بقیه فقط
-        // سالِ جاریِ مدرسه؛ خالی = مدرسه هنوز سالِ جاری ندارد و کاربر مدیر نیست (فیلدِ متنی)
-        years: [],
+        // دفترِ نمرات همیشه با سالِ جاریِ مدرسه کار می‌کند (انتخابگرِ سال نیست؛ سال را مدیر در «تنظیمات مدرسه»
+        // عوض می‌کند). filter.academicYear همان سالِ جاری است و برای API ها (که سال را می‌خواهند) فرستاده می‌شود؛
+        // noYear = مدرسه هنوز سالِ جاری ندارد.
+        noYear: false,
         roster: [],
         filterText: '',
         loading: false,
@@ -83,9 +83,9 @@ document.addEventListener('alpine:init', () => {
                 this.students = [];
                 this.pupils = [];
                 this.filter = { classId: '', courseId: '', academicYear: '', term: 'FIRST' };
-                this.years = [];
+                this.noYear = false;
                 this.loadClasses();
-                this.loadYears();
+                this.loadCurrentYear();
             });
             // با عوض‌شدنِ کلاس، فهرست درس‌های همان پایه گرفته می‌شود و انتخابِ
             // درس به «نمره‌ی کل» برمی‌گردد (درسِ پایه‌ی قبلی برای این کلاس معتبر نیست).
@@ -101,25 +101,6 @@ document.addEventListener('alpine:init', () => {
                 this.roster = [];
                 this.filter.courseId = '';
                 this.loadCourses();
-            });
-            // سالِ دیگر یعنی جدولِ دیگر: ردیف‌های سالِ قبلی با سالِ تازه قابل ثبت نیستند (ثبت از filter.academicYear
-            // می‌خواند) و فهرستِ درس‌ها هم به بازه‌ی اعتبارِ درس وابسته است
-            // (فقط با فهرستِ سال‌ها؛ در فیلدِ متنی load() خودش سال را نرمال می‌کند و این واکنش بارگذاریِ
-            // در جریان را باطل می‌کرد)
-            this.$watch('filter.academicYear', () => {
-                if (this.years.length === 0) {
-                    return;
-                }
-                if (this.revertUnsavedSelection('academicYear')) {
-                    return;
-                }
-                this.loadSeq++;
-                this.loading = false;
-                this.loaded = false;
-                this.roster = [];
-                this.loadCourses();
-                // کلاس‌ها به سال تعلق دارند (academic-year.md فاز ۳)
-                this.reloadClassesForYear();
             });
             // درس و نوبت هم جدول را عوض می‌کنند: با نمره‌ی ثبت‌نشده، همان برگشت را دارند
             this.$watch('filter.courseId', () => {
@@ -141,7 +122,7 @@ document.addEventListener('alpine:init', () => {
             });
             if (this.schoolId) {
                 this.loadClasses();
-                this.loadYears();
+                this.loadCurrentYear();
             }
         },
 
@@ -217,8 +198,7 @@ document.addEventListener('alpine:init', () => {
                 return;
             }
             try {
-                // فقط وقتی سال یکی از سال‌های فهرست است (در فیلدِ متنی، نیمه‌تایپ‌شده سالِ نامعتبر می‌شد)
-                const yearQuery = this.years.includes(this.filter.academicYear)
+                const yearQuery = this.filter.academicYear
                     ? `&academicYear=${encodeURIComponent(this.filter.academicYear)}` : '';
                 const response = await fetch(`${this.gradesBase()}/courses?classId=${classId}${yearQuery}`, {
                     headers: { 'X-School-ID': this.schoolId }
@@ -273,45 +253,28 @@ document.addEventListener('alpine:init', () => {
             }
         },
 
-        // سال‌های قابل‌انتخاب و سالِ جاریِ مدرسه (openspec/changes/academic-year.md): مدیر (ACADEMIC_YEAR_MANAGE)
-        // همه‌ی فهرست را از endpoint ادمین می‌گیرد و هر سال را می‌تواند باز کند؛ بقیه فقط سالِ جاری را
-        // می‌بینند. سالِ جاری پیش‌فرضِ انتخاب است و فقط وقتی پر می‌شود که خالی باشد و مدرسه عوض
-        // نشده باشد؛ بدون هیچ سالی، فیلد متنی می‌ماند و سرور سالِ ناشناخته را رد می‌کند.
-        async loadYears() {
+        // سالِ جاریِ مدرسه (openspec/changes/academic-year.md) از endpoint «من» که برای هر عضو باز است. فقط وقتی
+        // اعمال می‌شود که مدرسه عوض نشده باشد؛ بدونِ سالِ جاری، صفحه به «تنظیمات مدرسه» راهنمایی می‌کند.
+        async loadCurrentYear() {
             const seq = ++this.yearSeq;
             const schoolId = this.schoolId;
             try {
-                let codes = [];
-                let current = null;
-                const adminResponse = await fetch(`/api/admin/schools/${schoolId}/academic-year`,
-                    { headers: { 'X-School-ID': schoolId } });
-                if (adminResponse.ok) {
-                    const settings = await adminResponse.json();
-                    codes = settings.years.map(y => y.code);
-                    current = settings.current ? settings.current.code : null;
-                } else {
-                    const response = await fetch(`/api/me/schools/${schoolId}/academic-year`);
-                    if (!response.ok) {
-                        return;
-                    }
-                    const settings = await response.json();
-                    current = settings.current ? settings.current.code : null;
-                    codes = current ? [current] : [];
+                const response = await fetch(`/api/me/schools/${schoolId}/academic-year`);
+                if (!response.ok) {
+                    return;
                 }
+                const settings = await response.json();
                 if (seq !== this.yearSeq || schoolId !== this.schoolId) {
                     return;
                 }
-                this.years = codes;
-                if (current && !this.filter.academicYear) {
-                    // پس از رندرِ گزینه‌ها، تا x-model روی select مقدار را از دست ندهد
-                    this.$nextTick(() => {
-                        if (seq === this.yearSeq && !this.filter.academicYear) {
-                            this.filter.academicYear = current;
-                        }
-                    });
+                const current = settings.current ? settings.current.code : '';
+                this.noYear = !current;
+                this.filter.academicYear = current;
+                if (current && this.filter.classId) {
+                    this.loadCourses();
                 }
             } catch (e) {
-                // پیش‌فرض اختیاری است؛ نبودنش مانع کار نیست
+                // سال برای ادامه لازم است، ولی شکستِ این درخواست پیامِ جدا ندارد: «بارگذاری» بدونِ سال کاری نمی‌کند
             }
         },
 
@@ -364,35 +327,6 @@ document.addEventListener('alpine:init', () => {
             }
         },
 
-        // کلاس‌های سالِ انتخاب‌شده (برای مدیر که سالِ دیگری را باز می‌کند)؛ اگر کلاسِ انتخاب‌شده در آن سال نبود
-        // انتخاب پاک می‌شود. شکست (کاربری که فقط سالِ جاری را می‌بیند) فهرستِ قبلی را نگه می‌دارد.
-        async reloadClassesForYear() {
-            const year = this.normalizeDigits(this.filter.academicYear || '').trim();
-            if (!year || this.years.length === 0) {
-                return;
-            }
-            const seq = ++this.classesSeq;
-            const schoolId = this.schoolId;
-            try {
-                const response = await fetch(`${this.classesBase()}?academicYear=${encodeURIComponent(year)}`,
-                    { headers: { 'X-School-ID': schoolId } });
-                if (!response.ok) {
-                    return;
-                }
-                const classes = await response.json();
-                if (seq !== this.classesSeq || schoolId !== this.schoolId
-                    || year !== this.normalizeDigits(this.filter.academicYear || '').trim()) {
-                    return;
-                }
-                this.classes = classes;
-                if (this.filter.classId && !classes.some(c => String(c.id) === String(this.filter.classId))) {
-                    this.filter.classId = '';
-                }
-            } catch (e) {
-                // فهرستِ قبلی می‌ماند
-            }
-        },
-
         selectedClassInfo() {
             const id = this.filter.classId ? parseInt(this.filter.classId, 10) : null;
             return this.classes.find(c => c.id === id) || null;
@@ -434,7 +368,6 @@ document.addEventListener('alpine:init', () => {
                 this.error = 'نمره‌های ثبت‌نشده دارید. اول «ثبت همه» را بزنید، سپس دوباره بارگذاری کنید.';
                 return;
             }
-            this.filter.academicYear = this.normalizeDigits(this.filter.academicYear).trim();
             const seq = ++this.loadSeq;
             const requested = {
                 classId: this.filter.classId,

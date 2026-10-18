@@ -36,9 +36,6 @@ document.addEventListener('alpine:init', () => {
         confirm: null,
         // modal تنظیم بازه‌ی سال
         rangeForm: null,
-        // modal گیرندگانِ یادآوری: { loading, roles, selected, unset, rolesError, error }
-        rolesForm: null,
-        rolesSeq: 0,
 
         // فقط پاسخِ آخرین درخواست اثر می‌گذارد؛ عوض‌کردنِ مدرسه همه را بالا می‌برد
         listSeq: 0,
@@ -67,7 +64,6 @@ document.addEventListener('alpine:init', () => {
             this.listSeq++;
             this.yearSeq++;
             this.mutateSeq++;
-            this.rolesSeq++;
             this.saving = false;
             this.loading = false;
             this.loaded = false;
@@ -82,7 +78,6 @@ document.addEventListener('alpine:init', () => {
             this.add = null;
             this.confirm = null;
             this.rangeForm = null;
-            this.rolesForm = null;
         },
 
         // ---------------------------------------------------------------- خواندن
@@ -328,67 +323,6 @@ document.addEventListener('alpine:init', () => {
             });
         },
 
-        // ---------------------------------------------------------------- گیرندگانِ یادآوری
-
-        // برای همه‌ی نقش‌ها دیده می‌شود؛ بدونِ مجوز، GET پیامِ مشترکِ «اجازه ندارید» می‌دهد و صفحه خواندنی می‌ماند
-        async openRoles() {
-            this.notice = '';
-            this.error = '';
-            const schoolId = this.schoolId;
-            const seq = ++this.rolesSeq;
-            this.rolesForm = { loading: true, roles: [], selected: [], unset: false, rolesError: '', error: '' };
-            this.$nextTick(() => window.ModalFocus.focusFirst(this.$refs.rolesModal));
-            try {
-                const payload = await SchoolApi.request(schoolId, 'GET',
-                    `${ADMIN(schoolId)}/yearly-plan/reminder-roles`, undefined, MESSAGES);
-                if (seq !== this.rolesSeq || schoolId !== this.schoolId || !this.rolesForm) {
-                    return;
-                }
-                Object.assign(this.rolesForm, Logic.rolesState(payload), { loading: false });
-            } catch (e) {
-                if (seq !== this.rolesSeq || schoolId !== this.schoolId) {
-                    return;
-                }
-                const message = SchoolApi.messageOf(e);
-                if (e.blocking) {
-                    this.rolesForm = null;
-                    this.error = message;
-                } else if (this.rolesForm) {
-                    this.rolesForm.loading = false;
-                    this.rolesForm.error = message;
-                }
-            }
-        },
-
-        closeRoles() {
-            this.rolesSeq++;
-            this.rolesForm = null;
-        },
-
-        async submitRoles() {
-            const form = this.rolesForm;
-            if (!form || form.loading || this.saving) {
-                return;
-            }
-            form.error = '';
-            form.rolesError = Logic.rolesError(form.selected);
-            if (form.rolesError) {
-                form.error = 'فرم را کامل و درست پر کنید.';
-                return;
-            }
-            const body = Logic.rolesBody(form.selected, form.roles);
-            await this.mutate(async () => {
-                await SchoolApi.request(this.schoolId, 'PUT', `${ADMIN(this.schoolId)}/yearly-plan/reminder-roles`,
-                    body, MESSAGES);
-            }, 'گیرندگان یادآوری ذخیره شد.', () => {
-                this.rolesForm = null;
-            }, (message) => {
-                if (this.rolesForm) {
-                    this.rolesForm.error = message;
-                }
-            });
-        },
-
         // ---------------------------------------------------------------- حذف (با تأیید در modal)
 
         askRemove(item) {
@@ -446,8 +380,7 @@ document.addEventListener('alpine:init', () => {
                         this.add = null;
                         this.confirm = null;
                         this.rangeForm = null;
-                        this.rolesForm = null;
-                        this.error = message;
+                                    this.error = message;
                     } else {
                         onFailure(message);
                     }
