@@ -132,7 +132,13 @@ window.FinanceLogic = (function () {
         return parts.join('&');
     }
 
-    return { cents, buildStudentsQuery, payable, remaining, isEditable, expectedSum, editedSum, sumMatches,
+    // حالتِ فهرست بعد از بارگذاریِ ناموفق: ردیف‌های قبلی (فیلتر یا مدرسه‌ی دیگر) نباید زیر پیامِ خطا بمانند.
+    // listLoaded درست می‌ماند؛ حالت‌های خالی با «error» پنهان می‌شوند.
+    function failedListState() {
+        return { students: [], total: 0, counts: { all: 0, current: 0, previous: 0 }, listLoaded: true };
+    }
+
+    return { cents, buildStudentsQuery, failedListState, payable, remaining, isEditable, expectedSum, editedSum, sumMatches,
         pendingDiscounts, discountStatusLabel, discountStatusClass,
         isUndated, dueDateLabel, editDueText, resolveDueDate };
 })();

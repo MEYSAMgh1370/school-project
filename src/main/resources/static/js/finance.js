@@ -195,6 +195,10 @@ document.addEventListener('alpine:init', () => {
             await this.fetchStudents(0, Math.min(MAX_SIZE, Math.ceil(loaded / PAGE_SIZE) * PAGE_SIZE), false);
         },
 
+        clearList() {
+            Object.assign(this, FinanceLogic.failedListState());
+        },
+
         hasMoreStudents() {
             return this.students.length < this.total;
         },
@@ -230,6 +234,9 @@ document.addEventListener('alpine:init', () => {
                     const classified = await this.classifyError(response);
                     this.error = classified.message;
                     this.blocked = classified.blocking;
+                    if (!append) {
+                        this.clearList();
+                    }
                     return;
                 }
                 const body = await response.json();
@@ -244,6 +251,9 @@ document.addEventListener('alpine:init', () => {
             } catch (e) {
                 if (seq === this.listSeq) {
                     this.error = 'ارتباط با سرور برقرار نشد.';
+                    if (!append) {
+                        this.clearList();
+                    }
                 }
             } finally {
                 if (seq === this.listSeq) {
@@ -714,6 +724,11 @@ document.addEventListener('alpine:init', () => {
                     const classified = await this.classifyError(feeResponse);
                     this.error = classified.message;
                     this.blocked = classified.blocking;
+                    // فهرستِ قبلی (مدرسه یا فیلترِ دیگر) زیر خطا نماند
+                    this.cancelSearchTimer();
+                    this.listSeq++;
+                    this.collapseStudent();
+                    this.clearList();
                     return;
                 } else {
                     this.tuitionFee = (await feeResponse.json()).amount;
@@ -723,6 +738,9 @@ document.addEventListener('alpine:init', () => {
             } catch (e) {
                 if (seq === this.loadSeq) {
                     this.error = 'ارتباط با سرور برقرار نشد.';
+                    this.listSeq++;
+                    this.collapseStudent();
+                    this.clearList();
                 }
             } finally {
                 if (seq === this.loadSeq) {

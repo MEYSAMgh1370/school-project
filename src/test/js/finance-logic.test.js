@@ -108,3 +108,9 @@ test('buildStudentsQuery encodes Persian text and keeps the field order', () => 
     assert.ok(!query.includes('?'));
     assert.ok(!/[^\x00-\x7f]/.test(query));
 });
+
+test('failedListState clears rows, total and counts but keeps the list marked as loaded', () => {
+    const state = FinanceLogic.failedListState();
+    assert.deepEqual(state, { students: [], total: 0, counts: { all: 0, current: 0, previous: 0 }, listLoaded: true });
+    assert.notEqual(FinanceLogic.failedListState().counts, state.counts);
+});
