@@ -28,6 +28,7 @@ import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.util.List;
 import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -64,6 +65,12 @@ class BaleFlowIntegrationTest {
     private static final String BOT_TOKEN = "test-bot-token";
     private static final List<String> SENT_MESSAGES = new CopyOnWriteArrayList<>();
     private static final AtomicLong SEQ = new AtomicLong(System.nanoTime());
+    private static final String LLM_API_KEY = "test-llm-key";
+    /** بدنه‌ی درخواست‌هایی که به مدلِ جعلی رسیده؛ برای اثباتِ نرسیدنِ نامِ فرزند به مدل. */
+    private static final List<String> LLM_REQUESTS = new CopyOnWriteArrayList<>();
+    /** true یعنی هر دو مدل (تصمیم و پشتیبان) HTTP 500 برمی‌گردانند، پس FailoverLlmClient خطای LlmException می‌دهد. */
+    private static final AtomicBoolean LLM_DOWN = new AtomicBoolean();
+    private static final String LLM_GRADES_ANSWER = "{\"answers\":{\"intent\":{\"choice\":\"GRADES\",\"confidence\":0.95}}}";
 
     // فیلد static + مقداردهی در همان‌جا (نه @BeforeAll) عمداً: متد
     // @DynamicPropertySource باید پیش از بالا آمدن ApplicationContext مقدار
@@ -84,11 +91,29 @@ class BaleFlowIntegrationTest {
                 exchange.getResponseBody().write(response);
                 exchange.close();
             });
+            // نشانگرِ «در حال نوشتن» best-effort است و در شمارشِ پیام‌ها نمی‌آید
+            server.createContext("/bot" + BOT_TOKEN + "/sendChatAction", exchange -> respond(exchange, 200, "{\"ok\":true}"));
+            // مسیریابِ متن آزاد: مدلِ تصمیم (decision-path) و مدلِ پشتیبانِ سازگار با OpenAI روی همین سرور
+            server.createContext("/llm/decide", exchange -> {
+                LLM_REQUESTS.add(new String(exchange.getRequestBody().readAllBytes(), StandardCharsets.UTF_8));
+                respond(exchange, LLM_DOWN.get() ? 500 : 200, LLM_DOWN.get() ? "{}" : LLM_GRADES_ANSWER);
+            });
+            server.createContext("/llm/chat/completions", exchange -> {
+                LLM_REQUESTS.add(new String(exchange.getRequestBody().readAllBytes(), StandardCharsets.UTF_8));
+                respond(exchange, 500, "{}");
+            });
             server.start();
             return server;
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
+    }
+
+    private static void respond(com.sun.net.httpserver.HttpExchange exchange, int status, String body) throws IOException {
+        byte[] response = body.getBytes(StandardCharsets.UTF_8);
+        exchange.sendResponseHeaders(status, response.length);
+        exchange.getResponseBody().write(response);
+        exchange.close();
     }
 
     @DynamicPropertySource
@@ -97,6 +122,12 @@ class BaleFlowIntegrationTest {
                 () -> "http://localhost:" + FAKE_BALE_API.getAddress().getPort());
         registry.add("roshdeandishe.bale.bot-token", () -> BOT_TOKEN);
         registry.add("roshdeandishe.bale.webhook-secret", () -> WEBHOOK_SECRET);
+        // مسیریابِ متن آزاد روشن، رو به مدلِ جعلیِ همین سرور؛ دکمه‌ها و دستورها هرگز به مدل نمی‌روند
+        registry.add("roshdeandishe.bot.llm.enabled", () -> "true");
+        registry.add("roshdeandishe.bot.llm.base-url",
+                () -> "http://localhost:" + FAKE_BALE_API.getAddress().getPort() + "/llm");
+        registry.add("roshdeandishe.bot.llm.api-key", () -> LLM_API_KEY);
+        registry.add("roshdeandishe.bot.llm.decision-path", () -> "/decide");
     }
 
     @AfterAll
@@ -128,6 +159,8 @@ class BaleFlowIntegrationTest {
     @BeforeEach
     void clearCapturedMessages() {
         SENT_MESSAGES.clear();
+        LLM_REQUESTS.clear();
+        LLM_DOWN.set(false);
     }
 
     @Test
@@ -355,6 +388,58 @@ class BaleFlowIntegrationTest {
 
         awaitSentMessageCount(1);
         assertThat(SENT_MESSAGES.get(0)).contains("فرزند منو");
+    }
+
+    @Test
+    void linkedParentFreeTextIsRoutedByTheModelWithoutTheWardName() throws Exception {
+        long chatId = linkParentWithWard("مدرسه‌ی تست بله ۴", "کیان آزمایشی");
+
+        mockMvc.perform(post("/api/bale/webhook/" + WEBHOOK_SECRET)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(updateJsonForText(chatId, "نمره‌های کیان چی شد؟")))
+                .andExpect(status().isOk());
+
+        awaitSentMessageCount(1);
+        assertThat(SENT_MESSAGES.get(0)).contains("کیان آزمایشی");
+        assertThat(LLM_REQUESTS).hasSize(1);
+        assertThat(LLM_REQUESTS.get(0)).contains("[فرزند_۱]")
+                .doesNotContain("کیان", "آزمایشی", "مدرسه‌ی تست", LLM_API_KEY);
+    }
+
+    @Test
+    void modelFailureFallsBackToTheMenu() throws Exception {
+        long chatId = linkParentWithWard("مدرسه‌ی تست بله ۵", "سینا آزمایشی");
+        LLM_DOWN.set(true);
+
+        mockMvc.perform(post("/api/bale/webhook/" + WEBHOOK_SECRET)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(updateJsonForText(chatId, "نمره‌های سینا چی شد؟")))
+                .andExpect(status().isOk());
+
+        awaitSentMessageCount(1);
+        assertThat(SENT_MESSAGES.get(0)).contains("متوجه نشدم").contains("keyboard");
+        assertThat(LLM_REQUESTS).hasSize(2); // مدلِ تصمیم و سپس مدلِ پشتیبان
+    }
+
+    /** والدِ تازه با یک فرزند در مدرسه‌ای تازه، با chat لینک‌شده؛ شناسه‌ی chat را برمی‌گرداند. */
+    private long linkParentWithWard(String schoolName, String wardName) throws Exception {
+        long schoolId = schoolFacade.createSchool(
+                schoolName, "Asia/Tehran", "fa-IR", SchoolLevel.ELEMENTARY, null).value();
+        String parentEmail = "bale-llm-parent-" + System.nanoTime() + "@roshdeandishe.test";
+        String parentPhone = uniquePhoneNumber();
+        MockHttpSession parentSession = registerAndLogin(parentEmail, "والد مدل");
+        setPhoneNumber(parentSession, parentPhone);
+        IamFacade.UserId parentUserId = iamFacade.findOrCreateUser(parentEmail, "والد مدل");
+        iamFacade.createMembership(parentUserId, schoolId, "PARENT");
+
+        AcademicFacade.ClassId classId = academicFacade.createClass(schoolId, "کلاس مدل", null, null, 5, GradingScheme.NUMERIC);
+        AcademicFacade.StudentId studentId = academicFacade.enrollStudent(
+                "bale-llm-ward-" + System.nanoTime() + "@roshdeandishe.test", wardName, schoolId, classId.value());
+        academicFacade.linkGuardian(schoolId, studentId.value(), parentUserId.value());
+
+        long chatId = uniqueChatId();
+        linkChatToPhoneNumber(chatId, parentPhone);
+        return chatId;
     }
 
     @Test

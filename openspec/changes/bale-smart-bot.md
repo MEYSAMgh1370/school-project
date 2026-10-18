@@ -1,6 +1,6 @@
 # Bale smart bot (بات هوشمند بله)
 
-Status: proposed 2026-10-15, revised 2026-10-16 (classification contract with confidence, Jev as a candidate), stage 1 implemented 2026-10-16 (`studentview` module, callback queries and inline keyboards, `BotContext`, asynchronous de-duplicated webhook handling; current behavior is in `specs/current-system.md`); stage 2 implemented 2026-10-16 (per-chat ordering, role-based button menu answering every phase-1 intent, rial amounts; current behavior is in `specs/current-system.md`); stages 3 and 4 not implemented. Designed with the product owner in a brainstorming session on 2026-10-15; every decision below marked **(PO)** was made by the product owner, items marked **assumption** were not and are listed under Unresolved questions.
+Status: proposed 2026-10-15, revised 2026-10-16 (classification contract with confidence, Jev as a candidate), stage 1 implemented 2026-10-16 (`studentview` module, callback queries and inline keyboards, `BotContext`, asynchronous de-duplicated webhook handling; current behavior is in `specs/current-system.md`); stage 2 implemented 2026-10-16 (per-chat ordering, role-based button menu answering every phase-1 intent, rial amounts; current behavior is in `specs/current-system.md`); stage 3 implemented 2026-10-18 (Liara-hosted Jev with a Qwen fallback, pseudonymisation, daily limits, evaluation script and set; the switch `BOT_LLM_ENABLED` is off until the evaluation has been run; current behavior is in `specs/current-system.md` and the decision in `decisions/2026-10-15-llm-in-bale-bot.md`); stage 4 not implemented. Designed with the product owner in a brainstorming session on 2026-10-15; every decision below marked **(PO)** was made by the product owner, items marked **assumption** were not and are listed under Unresolved questions.
 
 See also `openspec/changes/bale-school-bots.md`: per-school bots change how the webhook secret identifies a bot, the per-chat queue keys, `bale_links` uniqueness and the scope of `BotContext`; the stages below describe the single shared bot and apply to every bot.
 
@@ -26,7 +26,7 @@ The `BaleUpdateHandler` class comment cites "CLAUDE.md §10: do not build AI". T
 ## Decisions (product owner, 2026-10-15)
 
 1. **Scope order:** personal-data questions first (phase 1, read-only), actions second (phase 2).
-2. **LLM provider: not chosen yet.** Build a provider-agnostic port; send the model the minimum, with names replaced by labels.
+2. **LLM provider: Liara, with Jev as the primary model and `qwen/qwen3-32b` as the fallback (PO, 2026-10-18).** The code keeps a provider-agnostic port; send the model the minimum, with names replaced by labels. The fallback runs only when the primary fails, not on low confidence; timeouts are 3 s (primary) and 5 s (fallback) (PO, 2026-10-18).
 3. **The LLM is a router only.** It maps text to an intent and arguments; replies are built by the server from templates. **No database result is ever sent to the LLM.** This also compensates for possibly weaker domestic models.
 4. **Architecture: in-process, layered** (approach 1). No MCP server and no agent framework in phase 1. Each intent is a self-contained handler so it can later be exposed as an MCP tool without rework.
 5. **Phase-1 intent list approved** (below); **students never see finance**.
@@ -133,7 +133,7 @@ Out of phase 1: payments, recording attendance, submitting an excuse (first phas
 
 | Situation | Behavior |
 |---|---|
-| LLM timeout (**assumption:** 8 s) or network error | menu + «متوجه نشدم، از گزینه‌ها انتخاب کنید» |
+| LLM timeout (primary 3 s, then fallback 5 s; PO, 2026-10-18) or network error | menu + «متوجه نشدم، از گزینه‌ها انتخاب کنید» |
 | Unparsable reply, unknown or disallowed intent, confidence below `bot.llm.min-confidence` | same menu, no retry |
 | `BOT_LLM_ENABLED=false` (default) | free text goes straight to the menu |
 | Unlinked user | current message, no LLM |
@@ -197,10 +197,10 @@ The PR #153 review raised these; the product owner chose to schedule them, not t
 
 ## Unresolved questions
 
-1. Which provider (domestic API, foreign API, self-hosted, or a decision model such as TypeSafe AI's Jev); to be decided with the evaluation set. For Jev specifically: Persian support is not stated in its public material (as of 2026-10-16), it is a foreign service (access and payment from Iran, data leaving the country), and it is a new release whose speed figures are the vendor's own.
+1. Confirm with the evaluation set (`scripts/bot-llm-eval.py`) that Jev on Liara is accurate enough in Persian and fast enough, and that the decision path (`/systemone` by default) is right on Liara, before `BOT_LLM_ENABLED=true`. The provider itself is decided (Liara; Jev primary, `qwen/qwen3-32b` fallback; PO, 2026-10-18). The earlier Jev-specific access concern is resolved: Liara resells it with rial payment. Still open for Jev: Persian support is not stated in its public material and its speed figures are the vendor's own.
 2. The confidence threshold (0.7 is an assumption), set from the evaluation set.
 3. Exact `SCHOOL_ADMIN` daily limit (100 is an assumption) and the service-wide daily cap.
-4. LLM timeout (8 s) and maximum text length (500) are assumptions.
+4. The maximum text length (500) is an assumption. The LLM timeouts are decided (3 s primary, 5 s fallback; PO, 2026-10-18).
 5. Whether daily counters may be in memory (single instance) or must be persisted.
 6. Whether the provider's data-processing terms are acceptable for pseudonymised text from minors' parents and students.
 7. Stage 1 assumptions, not confirmed by the product owner: the webhook handling pool (core 2, max 4, queue 100) and the de-duplication capacity (last 1000 `update_id`s) were chosen without load data; both should be revisited with real traffic.
