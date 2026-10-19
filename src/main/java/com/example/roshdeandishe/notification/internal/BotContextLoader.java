@@ -4,6 +4,8 @@ import com.example.roshdeandishe.iam.IamFacade;
 import com.example.roshdeandishe.iam.IamFacade.MembershipInfo;
 import com.example.roshdeandishe.iam.IamFacade.UserId;
 import com.example.roshdeandishe.iam.IamFacade.UserProfile;
+import com.example.roshdeandishe.school.SchoolFacade;
+import com.example.roshdeandishe.school.SchoolFacade.SchoolId;
 import org.springframework.stereotype.Component;
 
 import java.util.List;
@@ -18,14 +20,18 @@ import java.util.Set;
 @Component
 class BotContextLoader {
 
+
     private final BaleLinkRepository baleLinkRepository;
     private final IamFacade iamFacade;
     private final SchoolBotRepository schoolBots;
+    private final SchoolFacade schoolFacade;
 
-    BotContextLoader(BaleLinkRepository baleLinkRepository, IamFacade iamFacade, SchoolBotRepository schoolBots) {
+    BotContextLoader(BaleLinkRepository baleLinkRepository, IamFacade iamFacade, SchoolBotRepository schoolBots,
+                     SchoolFacade schoolFacade) {
         this.baleLinkRepository = baleLinkRepository;
         this.iamFacade = iamFacade;
         this.schoolBots = schoolBots;
+        this.schoolFacade = schoolFacade;
     }
 
     /**
@@ -45,17 +51,27 @@ class BotContextLoader {
             return Optional.empty();
         }
 
+        // ۱) دامنه‌ی ربات (کدام ربات، ربات این chat است) - قبل از تنظیمات مدرسه.
         // Make schoolBots result tolerant (may be null from mocks). Treat null as empty set.
         Set<Long> schoolsWithActiveBot = bot.isShared()
                 ? Optional.ofNullable(schoolBots.findActiveSchoolIds()).orElse(Set.of())
                 : Set.of();
-        List<MembershipInfo> memberships = iamFacade.findMembershipsByUser(userId).stream()
+        List<MembershipInfo> inScope = iamFacade.findMembershipsByUser(userId).stream()
                 .filter(MembershipInfo::active)
                 .filter(m -> bot.isShared()
                         ? !schoolsWithActiveBot.contains(m.schoolId())
                         : m.schoolId().equals(bot.schoolId()))
                 .toList();
+        // ۲) تنظیمات بات هر مدرسه (روشن/خاموش و نقش‌های مجاز) اینجا اعمال می‌شود؛ فرزندان و بقیه‌ی هدف‌ها
+        // تنبل از همین عضویت‌ها می‌آیند (SubjectResolver)، پس عضویتِ حذف‌شده راهی به داده‌ی آن مدرسه ندارد.
+        // روی هر رباتی که مدرسه را سرویس می‌دهد (ربات خودِ مدرسه یا ربات مشترک) یکسان اعمال می‌شود.
+        List<MembershipInfo> allowed = inScope.stream()
+                .filter(m -> schoolFacade.isBotAllowed(new SchoolId(m.schoolId()), Set.of(m.roleCode())))
+                .toList();
+        // «مسدود با تنظیمات» فقط وقتی که عضویتِ فعالِ داخل دامنه‌ی این ربات داشته و همه را تنظیمات حذف کرده؛
+        // کاربری که در دامنه‌ی این ربات اصلاً عضویتی ندارد رفتار قبلیِ «بدون عضویت» را می‌گیرد.
+        boolean blocked = !inScope.isEmpty() && allowed.isEmpty();
 
-        return Optional.of(new BotContext(chatId, userId, profile.get().fullName(), memberships));
+        return Optional.of(new BotContext(chatId, userId, profile.get().fullName(), allowed, blocked));
     }
 }
