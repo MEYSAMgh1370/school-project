@@ -106,4 +106,8 @@ public sealed interface FinanceError {
     /** فیلترِ خواندنِ audit نامعتبر است (from > to، تاریخِ بد، page/size خارج از بازه). */
     record InvalidAuditFilter(String reason) implements FinanceError {
     }
+
+    /** فیلترِ فهرستِ دانش‌آموزانِ مالی نامعتبر است (scope/debt ناشناخته، page/size خارج از بازه). */
+    record InvalidFilter(String reason) implements FinanceError {
+    }
 }

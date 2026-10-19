@@ -14,8 +14,8 @@ import java.util.Map;
 import static org.assertj.core.api.Assertions.assertThat;
 
 /**
- * صفحه‌ی مالی به‌تفکیک سال (academic-year.md فاز ۲) بدون Spring و Docker: انتخاب سال، هشدارِ نسبت دادنِ اطلاعاتِ
- * بدون سال و برچسبِ «بدون سال». رفتارِ سمتِ کلاینت در مرورگر با APIهای شبیه‌سازی‌شده راستی‌آزمایی شد؛ پروژه تست JS ندارد.
+ * صفحه‌ی مالیِ دانش‌آموز-محور (school-settings): دامنه‌ی «همه / فقط امسال / سال‌های پیش»، جست‌وجوی نام و پنل‌های فاکتور،
+ * بدون Spring و Docker. سال، هشدار «بدون سال» و کلید اقساط به /settings رفته‌اند. رفتار سمت کلاینت را مرورگر نشان می‌دهد.
  */
 class FinancePageRenderTest {
 
@@ -39,30 +39,34 @@ class FinancePageRenderTest {
     }
 
     @Test
-    void theYearSelectIsHiddenUntilThereIsAListOfYears() {
+    void theStudentListHasScopeButtonsWithCountsAndNameSearchInputs() {
         String html = render();
 
-        assertThat(html).contains("id=\"financeYear\"").contains("x-model=\"year\"").contains("@change=\"onYearChange()\"");
-        assertThat(html).contains("id=\"financeYearBox\"").contains("x-show=\"years.length > 0\"");
+        assertThat(html).contains("id=\"financeFirstName\"").contains("id=\"financeLastName\"").contains("id=\"financeSearch\"");
+        assertThat(html).contains(">همه</span>").contains(">فقط امسال</span>").contains(">سال‌های پیش</span>");
+        assertThat(html).contains("data-scope-chip").contains("fa(counts.all)").contains("fa(counts.current)").contains("fa(counts.previous)")
+                .contains(":aria-pressed=\"scope === 'current' ? 'true' : 'false'\"");
+        assertThat(html).contains("data-debt-chip").contains("بدهی پیشین").contains("مانده‌ی کل")
+                .contains("loadMoreStudents()");
     }
 
     @Test
-    void theUnattributedWarningOffersTheAttributionAndTheInvoiceRowsTagThem() {
+    void theYearSelectTheUnattributedBannerAndTheInstallmentsBoxMovedToSettings() {
         String html = render();
 
-        assertThat(html).contains("id=\"financeUnattributedBanner\"").contains("x-show=\"hasUnattributed()\"");
-        assertThat(html).contains("id=\"financeAttributeYear\"").contains("@click=\"askAttribute()\"");
-        assertThat(html).contains("x-show=\"currentYear && !invoice.academicYear\"").contains(">بدون سال</span>");
-        assertThat(html).contains("صدور فاکتورهای این سال برای دانش‌آموزان بدون فاکتور");
+        assertThat(html).doesNotContain("id=\"financeYear\"").doesNotContain("financeYearBox")
+                .doesNotContain("financeUnattributedBanner").doesNotContain("financeAttributeYear")
+                .doesNotContain("financeInstallmentsSettingBox").doesNotContain("id=\"installmentsEnabled\"")
+                .doesNotContain("onYearChange").doesNotContain("askAttribute");
     }
 
     @Test
-    void theInstallmentsSwitchAndItsScriptsAreOnThePage() {
+    void theTuitionBoxAndTheBackfillButtonStayAndTargetTheCurrentYear() {
         String html = render();
 
-        assertThat(html).contains("id=\"financeInstallmentsSettingBox\"").contains("id=\"installmentsEnabled\"")
-                .contains("setInstallmentsEnabled($event.target.checked, $event.target)")
-                .contains("اقساط شهریه");
+        assertThat(html).contains("id=\"tuitionAmount\"").contains("@submit.prevent=\"setTuitionFee\"")
+                .contains("ثبت شهریه");
+        assertThat(html).contains("صدور فاکتورهای این سال برای دانش‌آموزان بدون فاکتور").contains("@click=\"askBackfill\"");
         assertThat(html).contains("/js/finance-logic.js").contains("/js/date-input.js");
     }
 
@@ -101,6 +105,9 @@ class FinancePageRenderTest {
                 .contains("ویرایش مبالغ و تاریخ‌ها").contains("جمع اقساط:").contains("باید برابر باشد با")
                 .contains("canSaveEdit(invoice)").contains("saveEditing(invoice)")
                 .contains("اقساط تعریف‌شده فقط‌خواندنی است");
+        // راهنمای خاموش بودن اقساط به صفحه‌ی تنظیمات پیوند می‌دهد، نه فقط متن
+        assertThat(html).contains("id=\"installmentsOffHint\"").contains("href=\"/settings\"")
+                .contains("data-installments-settings-link");
         // اقساط: فهرست انباشته (بدون جدول و اسکرول افقی)، نه جدول
         String installments = html.substring(html.indexOf("<h4 class=\"title is-6\">اقساط</h4>"));
         installments = installments.substring(0, installments.indexOf("@submit.prevent=\"generateInstallments(invoice)\""));

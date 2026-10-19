@@ -51,7 +51,8 @@ class EventReminderFacadeTest {
         reminderRoles = mock(ReminderRoleRepository.class);
         facade = new SchoolFacadeImpl(schools, years, calendar, mock(PlatformHolidayRepository.class),
                 mock(SchoolYearRangeRepository.class), mock(org.springframework.context.ApplicationEventPublisher.class),
-                reminderRoles);
+                reminderRoles,
+                mock(SchoolSettingsRepository.class), mock(BotRoleRepository.class));
         when(schools.existsById(5L)).thenReturn(true);
         AcademicYearEntity year = new AcademicYearEntity();
         ReflectionTestUtils.setField(year, "id", 2L);

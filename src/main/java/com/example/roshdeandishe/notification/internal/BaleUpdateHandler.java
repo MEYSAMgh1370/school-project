@@ -125,6 +125,11 @@ class BaleUpdateHandler {
         }
 
         BotContext ctx = context.get();
+        // «راهنما» همیشه کار می‌کند: متن ثابت و منو از عضویت‌های فیلترشده، بدون داده‌ی مدرسه
+        if (ctx.blockedBySchoolSettings() && !BotTexts.BTN_HELP.equals(text)) {
+            baleClient.sendMessage(botTokens.tokenFor(bot), chatId, BotTexts.BOT_DISABLED_FOR_SCHOOL);
+            return Optional.empty();
+        }
         switch (text) {
             case BotTexts.BTN_HELP -> baleClient.sendMenu(botTokens.tokenFor(bot), chatId, botRouter.help(ctx), botRouter.menu(ctx));
             case BotTexts.CMD_MY_SCHOOLS -> baleClient.sendMessage(botTokens.tokenFor(bot), chatId, describeMemberships(ctx));
@@ -277,6 +282,10 @@ class BaleUpdateHandler {
         Optional<BotContext> context = botContextLoader.load(bot, chatId);
         if (context.isEmpty()) {
             baleClient.sendMessage(botTokens.tokenFor(bot), chatId, BotTexts.NOT_LINKED_TEXT);
+            return;
+        }
+        if (context.get().blockedBySchoolSettings()) {
+            baleClient.sendMessage(botTokens.tokenFor(bot), chatId, BotTexts.BOT_DISABLED_FOR_SCHOOL);
             return;
         }
         send(bot, chatId, botRouter.onCallback(context.get(), callback.data()));

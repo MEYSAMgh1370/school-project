@@ -68,6 +68,16 @@ class NavPermissionsFlowIntegrationTest {
     }
 
     @Test
+    void schoolAdminHoldsSettingsManageAndOthersDoNot() {
+        Map<String, List<String>> permissionsByRole = iamFacade.findPermissionCodesByRole(1L, SYSTEM_ROLES);
+
+        assertThat(permissionsByRole.get("SCHOOL_ADMIN")).contains("SCHOOL_SETTINGS_MANAGE");
+        for (String role : List.of("TEACHER", "PARENT", "STUDENT", "FINANCE_ADMIN")) {
+            assertThat(permissionsByRole.get(role)).as(role).doesNotContain("SCHOOL_SETTINGS_MANAGE");
+        }
+    }
+
+    @Test
     void customRoleDisplayNamesAreSchoolScopedAndExcludeSystemRoles() {
         assertThat(iamFacade.findCustomRoleDisplayNames(1L, List.of("SCHOOL_ADMIN", "NO_SUCH_ROLE", "PLATFORM_ADMIN")))
                 .isEmpty();
@@ -107,6 +117,43 @@ class NavPermissionsFlowIntegrationTest {
         // و API همان Permission را واقعاً می‌دهد: لینک فقط نمایشِ همین دسترسی است
         mockMvc.perform(get("/api/admin/schools/1/timetable/years").header("X-School-ID", "1").session(deputy))
                 .andExpect(status().isOk());
+    }
+
+    @Test
+    void schoolSettingsLinkShowsForAdminAndFinanceAdminAndForACustomRoleHoldingJustOneOfTheFourPermissions() throws Exception {
+        MockHttpSession admin = login("admin@roshdeandishe.test", "password");
+        String code = "REMINDER_" + UUID.randomUUID().toString().substring(0, 6).toUpperCase().replace("-", "");
+        mockMvc.perform(post("/api/admin/schools/1/roles").with(csrf()).header("X-School-ID", "1").session(admin)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"code\":\"" + code + "\",\"displayName\":\"مسئول برنامه\","
+                                + "\"permissionCodes\":[\"YEARLY_PLAN_MANAGE\"]}"))
+                .andExpect(status().isOk());
+        String email = "nav.planner." + UUID.randomUUID().toString().substring(0, 8) + "@roshdeandishe.test";
+        MockHttpSession planner = registerAndLogin(email, "مسئول برنامه");
+        mockMvc.perform(post("/api/admin/schools/1/memberships").with(csrf()).header("X-School-ID", "1").session(admin)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"email\":\"" + email + "\",\"fullName\":\"مسئول برنامه\",\"roleCode\":\"" + code + "\"}"))
+                .andExpect(status().isOk());
+
+        String html = HtmlUtils.htmlUnescape(mockMvc.perform(get("/dashboard").session(planner))
+                .andExpect(status().isOk()).andReturn().getResponse().getContentAsString());
+
+        assertThat(html).contains("href=\"/settings\" x-show=\"['SCHOOL_ADMIN', 'FINANCE_ADMIN'].includes(selectedRole)")
+                .contains("['YEARLY_PLAN_MANAGE'].every(p => permissions.includes(p))")
+                .doesNotContain("href=\"/academic-year\"");
+    }
+
+    @Test
+    void settingsLinkIsGrantedToExactlyTheAdminAndFinanceAdminSystemRoles() {
+        Map<String, List<String>> permissionsByRole = iamFacade.findPermissionCodesByRole(1L, SYSTEM_ROLES);
+        NavCatalog.Link settings = NavCatalog.groups().stream().flatMap(g -> g.links().stream())
+                .filter(l -> l.href().equals("/settings")).findFirst().orElseThrow();
+
+        for (String role : SYSTEM_ROLES) {
+            boolean byPermission = settings.permissionSets().stream()
+                    .anyMatch(set -> permissionsByRole.get(role).containsAll(set));
+            assertThat(byPermission).as(role).isEqualTo(List.of("SCHOOL_ADMIN", "FINANCE_ADMIN").contains(role));
+        }
     }
 
     private MockHttpSession login(String email, String password) throws Exception {

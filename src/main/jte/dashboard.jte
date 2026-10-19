@@ -219,7 +219,7 @@
                                    x-cloak x-show="${link.shortcutVisibleWhen("$store.nav.selectedRole", "$store.nav.permissions")}">
                                     @template.layout.icon(name = link.icon(), size = 20)
                                     <span class="app-row__label">${link.label()}</span>
-                                    @if("/academic-year".equals(link.href()))
+                                    @if("/settings".equals(link.href()))
                                         @for(var school : navbar.schools())
                                             @if(school.currentYear() != null)
                                                 <span class="is-size-7 has-text-grey" dir="ltr"

@@ -193,6 +193,8 @@ re-modelling.
 - The page **«سال تحصیلی»** (`/academic-year`, `SCHOOL_ADMIN`, sidebar group
   «مدرسه» and a dashboard shortcut) shows the current year, a select of the
   years and a save button.
+  (Moved 2026-10-18: the choice is now made on `/settings` and `/academic-year`
+  redirects there; see `school-settings.md`.)
 - Reading the current year is a facade call (`SchoolFacade.findCurrentAcademicYear`)
   so other modules can use it without depending on each other; the list lives in
   `school`, which already owns school settings.

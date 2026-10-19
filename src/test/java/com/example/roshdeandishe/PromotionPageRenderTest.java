@@ -65,7 +65,7 @@ class PromotionPageRenderTest {
     void explainsTheMissingYearAndUnattributedDataInsteadOfGuessing() {
         String html = render();
 
-        assertThat(html).contains("id=\"promotionNoYear\"").contains("href=\"/academic-year\"")
+        assertThat(html).contains("id=\"promotionNoYear\"").contains("href=\"/settings\"")
                 .contains("id=\"promotionUnattributed\"");
         assertThat(html).contains("دانش‌آموزی برای ارتقا از این سال نمانده است");
     }

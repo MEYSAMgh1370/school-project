@@ -46,17 +46,6 @@
                                     </select>
                                 </div>
                             </div>
-                            <div class="control" x-show="years.length > 0" x-cloak>
-                                <label class="label" for="classYear">سال تحصیلی</label>
-                                <div class="select">
-                                    <select id="classYear" x-model="form.academicYear">
-                                        <option value="" x-text="currentYear ? 'سال جاری (' + Calendar.digits(currentYear) + ')' : 'بدون سال'"></option>
-                                        <template x-for="year in years" :key="year.id">
-                                            <option :value="year.code" x-text="Calendar.digits(year.code)"></option>
-                                        </template>
-                                    </select>
-                                </div>
-                            </div>
                             <div class="control app-control-align-end">
                                 <button class="button is-link" type="submit" :class="{ 'is-loading': submitting }">
                                     افزودن
@@ -64,18 +53,6 @@
                             </div>
                         </div>
                     </form>
-                </div>
-
-                <div class="field" x-show="years.length > 0" x-cloak>
-                    <label class="label" for="classYearFilter">سالِ نمایش‌داده‌شده</label>
-                    <div class="select">
-                        <select id="classYearFilter" x-model="yearFilter" @change="$nextTick(() => load())">
-                            <option value="" x-text="currentYear ? 'سال جاری (' + Calendar.digits(currentYear) + ')' : 'همه‌ی کلاس‌ها'"></option>
-                            <template x-for="year in years" :key="year.id">
-                                <option :value="year.code" x-text="Calendar.digits(year.code)"></option>
-                            </template>
-                        </select>
-                    </div>
                 </div>
 
                 <%-- فهرست ردیفی (DESIGN.md §5a): هر کلاس یک ردیف با نام، سال، پایه، بخش و معلم، و دکمه‌ی فهرست

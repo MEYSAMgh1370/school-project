@@ -19,7 +19,6 @@ import org.springframework.web.bind.annotation.*;
 import java.time.LocalDate;
 import java.time.ZoneId;
 import java.time.temporal.ChronoUnit;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
@@ -32,8 +31,6 @@ import java.util.TreeSet;
  */
 @RestController
 public class EventReminderController {
-
-    private static final String PLATFORM_ROLE_PREFIX = "PLATFORM_";
 
     private final SchoolFacade schoolFacade;
     private final IamFacade iamFacade;
@@ -59,16 +56,7 @@ public class EventReminderController {
             throw new SchoolException(new SchoolError.InvalidSetting(
                     "دست‌کم یک نقش برای دریافت یادآوری باید انتخاب شود."));
         }
-        Set<String> allowed = new HashSet<>();
-        roleOptions(schoolId).forEach(role -> allowed.add(role.code()));
-        Set<String> wanted = new HashSet<>();
-        for (String code : request.roleCodes()) {
-            if (code == null || !allowed.contains(code)) {
-                throw new SchoolException(new SchoolError.InvalidSetting(
-                        "نقش «" + code + "» جزو نقش‌های این مدرسه نیست."));
-            }
-            wanted.add(code);
-        }
+        Set<String> wanted = SchoolRoleCodes.validate(iamFacade, schoolId, request.roleCodes());
         schoolFacade.setReminderRoleCodes(new SchoolId(schoolId), wanted);
         return rolesResponse(schoolId);
     }
@@ -107,9 +95,7 @@ public class EventReminderController {
     }
 
     private List<ReminderRolesResponse.Role> roleOptions(Long schoolId) {
-        // همان فهرستِ ویرایشگر نقش (listRoles: سیستمی + سفارشیِ همین مدرسه)؛ نقش پلتفرم هرگز
-        return iamFacade.listRoles(schoolId).stream()
-                .filter(role -> role.code() != null && !role.code().startsWith(PLATFORM_ROLE_PREFIX))
+        return SchoolRoleCodes.selectable(iamFacade, schoolId).stream()
                 .map(role -> new ReminderRolesResponse.Role(role.code(), role.displayName()))
                 .toList();
     }

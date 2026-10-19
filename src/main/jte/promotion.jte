@@ -21,14 +21,14 @@
                     <div>
                         <%-- بدونِ سالِ جاری ارتقا معنا ندارد (هیچ سالی حدس زده نمی‌شود) --%>
                         <div class="notification is-warning is-light" id="promotionNoYear" x-show="!current">
-                            ابتدا در صفحه‌ی <a href="/academic-year">سال تحصیلی</a> سالِ جاریِ مدرسه را انتخاب کنید.
+                            ابتدا در صفحه‌ی <a href="/settings">تنظیمات مدرسه</a> سالِ جاریِ مدرسه را انتخاب کنید.
                         </div>
 
                         <div class="notification is-warning is-light" id="promotionUnattributed"
                              x-show="current && (unattributed.classes > 0 || unattributed.students > 0)">
                             <span x-text="Calendar.digits(String(unattributed.classes))"></span> کلاس و
                             <span x-text="Calendar.digits(String(unattributed.students))"></span> دانش‌آموز هنوز به هیچ سالی
-                            نسبت داده نشده‌اند و در ارتقا نمی‌آیند. در صفحه‌ی <a href="/academic-year">سال تحصیلی</a>
+                            نسبت داده نشده‌اند و در ارتقا نمی‌آیند. در صفحه‌ی <a href="/settings">تنظیمات مدرسه</a>
                             آن‌ها را به یک سال نسبت دهید.
                         </div>
 

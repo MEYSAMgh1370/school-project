@@ -14,12 +14,14 @@ import com.example.roshdeandishe.notification.internal.BaleUpdate.BaleContact;
 import com.example.roshdeandishe.notification.internal.BaleUpdate.BaleMessage;
 import com.example.roshdeandishe.notification.internal.BaleUpdate.BaleUser;
 import com.example.roshdeandishe.school.SchoolFacade;
+import com.example.roshdeandishe.school.SchoolFacade.SchoolId;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
@@ -46,6 +48,7 @@ class BaleUpdateHandlerTest {
     private SchoolAnswers schoolAnswers;
     private BaleUpdateHandler handler;
     private BotTokens tokens;
+    private SchoolBotRepository schoolBots;
 
     @BeforeEach
     void setUp() {
@@ -61,9 +64,11 @@ class BaleUpdateHandlerTest {
         BotRouter router = new BotRouter(resolver, studentAnswers, mock(TimetableAnswers.class), schoolAnswers);
         tokens = mock(BotTokens.class);
         when(tokens.tokenFor(any())).thenReturn("tok");
+        schoolBots = mock(SchoolBotRepository.class);
         handler = new BaleUpdateHandler(links, client, iam, school, finance,
-                new BotContextLoader(links, iam, mock(SchoolBotRepository.class)), resolver, router, tokens,
+                new BotContextLoader(links, iam, schoolBots, school), resolver, router, tokens,
                 new LlmSettings(new org.springframework.mock.env.MockEnvironment()));
+        when(school.isBotAllowed(any(), any())).thenReturn(true);
         when(academic.listWards(any(), any())).thenReturn(List.of());
         when(academic.findMyEnrollment(any(), any())).thenReturn(Optional.empty());
     }
@@ -345,6 +350,109 @@ class BaleUpdateHandlerTest {
         verifyNoInteractions(schoolAnswers);
     }
 
+    // ---------------------------------------------------------------- تنظیمات بات مدرسه
+
+    private static final String BOT_OFF = "بات برای مدرسه‌ی شما فعال نیست.";
+
+    private void parentOfDisabledSchool() {
+        link(42L, 7L);
+        when(iam.findMembershipsByUser(new UserId(7L))).thenReturn(List.of(
+                new MembershipInfo(1L, new UserId(7L), "a@b.c", "والد", 10L, "PARENT", true, true)));
+        when(school.isBotAllowed(new SchoolId(10L), Set.of("PARENT"))).thenReturn(false);
+    }
+
+    @Test
+    void blockedUserGetsExactlyTheDisabledTextForFreeText() {
+        parentOfDisabledSchool();
+
+        handler.handle(BotRef.SHARED, textUpdate(42L, "نمره‌های سارا چند است؟"));
+
+        verify(client).sendMessage("tok", 42L, BOT_OFF);
+        verifyNoInteractions(studentAnswers, schoolAnswers);
+        verify(client, never()).sendMenu(any(), anyLong(), any(), any());
+    }
+
+    @Test
+    void blockedUserGetsTheDisabledTextForCallbacks() {
+        parentOfDisabledSchool();
+
+        handler.handle(BotRef.SHARED, callbackUpdate("cb20", 42L, "g:100"));
+
+        verify(client).answerCallbackQuery("tok", "cb20");
+        verify(client).sendMessage("tok", 42L, BOT_OFF);
+        verifyNoInteractions(studentAnswers);
+    }
+
+    @Test
+    void blockedUserGetsTheDisabledTextForMySchoolsAndWards() {
+        parentOfDisabledSchool();
+
+        handler.handle(BotRef.SHARED, textUpdate(42L, "مدرسه‌های من"));
+        handler.handle(BotRef.SHARED, textUpdate(42L, "فرزندان من"));
+
+        verify(client, org.mockito.Mockito.times(2)).sendMessage("tok", 42L, BOT_OFF);
+    }
+
+    @Test
+    void helpAlwaysWorks() {
+        parentOfDisabledSchool();
+
+        handler.handle(BotRef.SHARED, textUpdate(42L, "راهنما"));
+
+        verify(client).sendMenu(eq("tok"), eq(42L), argThat(text -> text.startsWith(BotTexts.HELP_NOTHING_AVAILABLE)),
+                eq(List.of(List.of(BotTexts.BTN_HELP))));
+        verify(client, never()).sendMessage("tok", 42L, BOT_OFF);
+
+        // کاربر مجاز بدون تغییر
+        when(school.isBotAllowed(new SchoolId(10L), Set.of("PARENT"))).thenReturn(true);
+        handler.handle(BotRef.SHARED, textUpdate(42L, "راهنما"));
+        verify(client, org.mockito.Mockito.times(2)).sendMenu(eq("tok"), eq(42L), any(), any());
+    }
+
+    @Test
+    void startAndContactLinkingAreNotBlocked() {
+        parentOfDisabledSchool();
+        when(iam.findUserByPhoneNumber("0912"))
+                .thenReturn(Optional.of(new UserProfile(new UserId(7L), "a@b.c", "والد", "0912")));
+        when(links.findByUser(BotRef.SHARED, 7L)).thenReturn(Optional.empty());
+
+        handler.handle(BotRef.SHARED, textUpdate(42L, "/start"));
+        handler.handle(BotRef.SHARED, contactUpdate(42L, "private", 42L, "0912", 42L));
+
+        verify(client).sendContactRequest("tok", 42L, BotTexts.WELCOME_TEXT);
+        verify(client).sendMenu(eq("tok"), eq(42L), eq(BotTexts.linkSuccess("والد")), any());
+        verify(client, never()).sendMessage("tok", 42L, BOT_OFF);
+    }
+
+    @Test
+    void allowedUserIsUnaffected() {
+        link(42L, 7L);
+        when(iam.findMembershipsByUser(new UserId(7L))).thenReturn(List.of(
+                new MembershipInfo(1L, new UserId(7L), "a@b.c", "والد", 10L, "PARENT", true, true)));
+        when(school.isBotAllowed(new SchoolId(10L), Set.of("PARENT"))).thenReturn(true);
+
+        handler.handle(BotRef.SHARED, textUpdate(42L, "سلام"));
+
+        verify(client).sendMenu(eq("tok"), eq(42L), eq(BotTexts.UNKNOWN_TEXT), any());
+        verify(client, never()).sendMessage("tok", 42L, BOT_OFF);
+    }
+
+    @Test
+    void mySchoolsListsOnlyAllowedSchools() {
+        link(42L, 7L);
+        when(iam.findMembershipsByUser(new UserId(7L))).thenReturn(List.of(
+                new MembershipInfo(1L, new UserId(7L), "a@b.c", "والد", 10L, "PARENT", true, true),
+                new MembershipInfo(2L, new UserId(7L), "a@b.c", "والد", 20L, "PARENT", true, true)));
+        when(school.isBotAllowed(new SchoolId(10L), Set.of("PARENT"))).thenReturn(false);
+        when(school.findSchool(new SchoolId(20L))).thenReturn(Optional.empty());
+
+        handler.handle(BotRef.SHARED, textUpdate(42L, "مدرسه‌های من"));
+
+        org.mockito.ArgumentCaptor<String> text = org.mockito.ArgumentCaptor.forClass(String.class);
+        verify(client).sendMessage(eq("tok"), org.mockito.ArgumentMatchers.eq(42L), text.capture());
+        assertThat(text.getValue()).contains(BotTexts.schoolFallback(20L)).doesNotContain(BotTexts.schoolFallback(10L));
+    }
+
     private static final BotRef SCHOOL_BOT = BotRef.school(3, 7);
 
     private static MembershipInfo membershipIn(Long userId, Long schoolId, boolean active) {
@@ -457,5 +565,35 @@ class BaleUpdateHandlerTest {
 
         verify(links).save(any(BaleLinkEntity.class));
         verify(iam, never()).isPlatformAdmin(any());
+    }
+
+    // ---------------------------------------------------------------- دامنه‌ی ربات × تنظیمات بات مدرسه
+
+    @Test
+    void schoolBotUserBlockedBySettingsGetsTheDisabledTextWithTheSchoolBotToken() {
+        when(tokens.tokenFor(SCHOOL_BOT)).thenReturn("school-token");
+        when(links.findByChat(SCHOOL_BOT, 42L)).thenReturn(Optional.of(new BaleLinkEntity(3L, 7L, 42L, Instant.now())));
+        when(iam.findUser(new UserId(7L)))
+                .thenReturn(Optional.of(new UserProfile(new UserId(7L), "a@b.c", "والد", "0912")));
+        when(iam.findMembershipsByUser(new UserId(7L))).thenReturn(List.of(membershipIn(7L, 7L, true)));
+        when(school.isBotAllowed(new SchoolId(7L), Set.of("PARENT"))).thenReturn(false);
+
+        handler.handle(SCHOOL_BOT, textUpdate(42L, "سلام"));
+
+        verify(client).sendMessage("school-token", 42L, BOT_OFF);
+        verify(client, never()).sendMenu(any(), anyLong(), any(), any());
+    }
+
+    @Test
+    void sharedBotUserWhoseOnlySchoolHasItsOwnBotKeepsTheNoMembershipBehaviour() {
+        link(42L, 7L);
+        when(schoolBots.findActiveSchoolIds()).thenReturn(Set.of(10L));
+        when(iam.findMembershipsByUser(new UserId(7L))).thenReturn(List.of(membershipIn(7L, 10L, true)));
+        when(school.isBotAllowed(new SchoolId(10L), Set.of("PARENT"))).thenReturn(false);
+
+        handler.handle(BotRef.SHARED, textUpdate(42L, "سلام"));
+
+        verify(client).sendMenu("tok", 42L, BotTexts.UNKNOWN_TEXT, List.of(List.of(BotTexts.BTN_HELP)));
+        verify(client, never()).sendMessage("tok", 42L, BOT_OFF);
     }
 }

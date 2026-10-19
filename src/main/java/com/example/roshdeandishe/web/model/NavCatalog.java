@@ -36,8 +36,11 @@ public final class NavCatalog {
                             List.of(ADMIN, TEACHER), List.of(ADMIN, TEACHER)).withPermissions("STUDENT_ENROLL", "STUDENT_VIEW").withIcon("people"),
                     new Link("/roles", "نقش‌ها و دسترسی‌ها", "تعریف نقش‌ها و دسترسی‌هایشان",
                             List.of(ADMIN), List.of()).withPermissions("ROLE_MANAGE").withIcon("people"),
-                    new Link("/academic-year", "سال تحصیلی", "انتخاب سال تحصیلی جاریِ مدرسه",
-                            List.of(ADMIN), List.of(ADMIN)).withPermissions("ACADEMIC_YEAR_MANAGE").withIcon("calendar"),
+                    // هر بخشِ صفحه را دارنده‌ی مجوزِ خودش می‌بیند (سال، اقساط، گیرندگان یادآوری، بات): «یکی از چهار مجوز»
+                    new Link("/settings", "تنظیمات مدرسه", "سال تحصیلی، اقساط، یادآوری‌ها و بات مدرسه",
+                            List.of(ADMIN, FINANCE), List.of(ADMIN)).withPermissions("ACADEMIC_YEAR_MANAGE")
+                            .orPermissions("FINANCE_MANAGE").orPermissions("YEARLY_PLAN_MANAGE")
+                            .orPermissions("SCHOOL_SETTINGS_MANAGE").withIcon("calendar"),
                     new Link("/promotion", "ارتقای پایه", "ارتقای دانش‌آموزان به سال جدید و جا دادن در کلاس‌ها",
                             List.of(ADMIN), List.of()).withPermissions("ACADEMIC_YEAR_MANAGE").withIcon("class"),
                     new Link("/calendar", "تقویم مدرسه", "روزهای تعطیل مدرسه؛ در این روزها حضور و غیاب گرفته نمی‌شود",

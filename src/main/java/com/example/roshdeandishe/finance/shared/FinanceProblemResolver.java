@@ -74,6 +74,11 @@ public class FinanceProblemResolver {
                     "فیلتر گزارش تغییرات نامعتبر است",
                     e.reason()
             );
+            case FinanceError.InvalidFilter e -> ProblemDetailFactory.problem(
+                    HttpStatus.BAD_REQUEST, "invalid-filter",
+                    "فیلتر فهرست نامعتبر است",
+                    e.reason()
+            );
             case FinanceError.InvalidSetting e -> ProblemDetailFactory.problem(
                     HttpStatus.BAD_REQUEST, "invalid-setting",
                     "مقدار تنظیم نامعتبر است",

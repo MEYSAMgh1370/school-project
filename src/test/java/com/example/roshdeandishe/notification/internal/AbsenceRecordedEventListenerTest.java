@@ -60,6 +60,7 @@ class AbsenceRecordedEventListenerTest {
                 new StudentInfo(new StudentId(STUDENT), STUDENT_USER, SCHOOL, new ClassId(7L))));
         when(iam.findUser(new UserId(STUDENT_USER))).thenReturn(Optional.of(
                 new UserProfile(new UserId(STUDENT_USER), "s@x.test", "علی رضایی", null)));
+        when(school.isNotificationsEnabled(any())).thenReturn(true);
         when(school.formatSolarDate(DAY)).thenReturn(SOLAR);
         when(school.findSchool(new SchoolId(SCHOOL))).thenReturn(Optional.of(new SchoolInfo(new SchoolId(SCHOOL),
                 "دبستان رشد", SchoolStatus.ACTIVE, "Asia/Tehran", "fa-IR", SchoolLevel.ELEMENTARY, null,
@@ -91,7 +92,7 @@ class AbsenceRecordedEventListenerTest {
             }
             return false;
         };
-        NotificationFacade notifications = new NotificationFacadeImpl(List.of(bale), null, null);
+        NotificationFacade notifications = new NotificationFacadeImpl(List.of(bale), null, null, school);
 
         new AbsenceRecordedEventListener(academic, iam, school, notifications).onAbsenceRecorded(event());
 

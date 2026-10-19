@@ -19,6 +19,8 @@ interface InvoiceRepository extends JpaRepository<InvoiceEntity, Long> {
 
     List<InvoiceEntity> findBySchoolIdAndStudentIdInOrderByIssuedAtDesc(Long schoolId, Collection<Long> studentIds);
 
+    List<InvoiceEntity> findBySchoolIdAndStudentId(Long schoolId, Long studentId);
+
     /** فاکتورهای یک سال به‌علاوه‌ی «بدون سال»ها (تا نسبت داده شوند). */
     @Query("select i from InvoiceEntity i where i.schoolId = :schoolId "
             + "and (i.academicYear = :academicYear or i.academicYear is null) order by i.issuedAt desc")

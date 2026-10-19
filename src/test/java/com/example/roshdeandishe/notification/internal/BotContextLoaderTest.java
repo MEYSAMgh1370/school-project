@@ -4,6 +4,8 @@ import com.example.roshdeandishe.iam.IamFacade;
 import com.example.roshdeandishe.iam.IamFacade.MembershipInfo;
 import com.example.roshdeandishe.iam.IamFacade.UserId;
 import com.example.roshdeandishe.iam.IamFacade.UserProfile;
+import com.example.roshdeandishe.school.SchoolFacade;
+import com.example.roshdeandishe.school.SchoolFacade.SchoolId;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
@@ -13,7 +15,9 @@ import java.util.Optional;
 import java.util.Set;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -25,6 +29,7 @@ class BotContextLoaderTest {
     private BaleLinkRepository links;
     private IamFacade iam;
     private SchoolBotRepository bots;
+    private SchoolFacade school;
     private BotContextLoader loader;
 
     @BeforeEach
@@ -32,7 +37,9 @@ class BotContextLoaderTest {
         links = mock(BaleLinkRepository.class);
         iam = mock(IamFacade.class);
         bots = mock(SchoolBotRepository.class);
-        loader = new BotContextLoader(links, iam, bots);
+        school = mock(SchoolFacade.class);
+        when(school.isBotAllowed(any(), any())).thenReturn(true);
+        loader = new BotContextLoader(links, iam, bots, school);
     }
 
     private void linked() {
@@ -76,6 +83,68 @@ class BotContextLoaderTest {
         assertThat(ctx.rolesIn(2L)).isEmpty();
         assertThat(ctx.hasRole("TEACHER")).isTrue();
         assertThat(ctx.hasRole("PARENT")).isFalse();
+    }
+
+    @Test
+    void membershipOfASchoolWithDisabledBotIsDropped() {
+        linked();
+        when(iam.findMembershipsByUser(new UserId(USER))).thenReturn(List.of(membership(1L, "PARENT", true)));
+        when(school.isBotAllowed(new SchoolId(1L), Set.of("PARENT"))).thenReturn(false);
+
+        BotContext ctx = loader.load(BotRef.SHARED, CHAT).orElseThrow();
+
+        assertThat(ctx.memberships()).isEmpty();
+        assertThat(ctx.blockedBySchoolSettings()).isTrue();
+    }
+
+    @Test
+    void membershipWhoseRoleIsExcludedByBotRolesIsDropped() {
+        linked();
+        when(iam.findMembershipsByUser(new UserId(USER))).thenReturn(List.of(
+                membership(1L, "PARENT", true), membership(1L, "TEACHER", true)));
+        when(school.isBotAllowed(new SchoolId(1L), Set.of("PARENT"))).thenReturn(false);
+        when(school.isBotAllowed(new SchoolId(1L), Set.of("TEACHER"))).thenReturn(true);
+
+        BotContext ctx = loader.load(BotRef.SHARED, CHAT).orElseThrow();
+
+        assertThat(ctx.memberships()).extracting(MembershipInfo::roleCode).containsExactly("TEACHER");
+        assertThat(ctx.blockedBySchoolSettings()).isFalse();
+    }
+
+    @Test
+    void ofTwoSchoolsOnlyTheAllowedOneIsKept() {
+        linked();
+        when(iam.findMembershipsByUser(new UserId(USER))).thenReturn(List.of(
+                membership(1L, "PARENT", true), membership(2L, "PARENT", true)));
+        when(school.isBotAllowed(new SchoolId(1L), Set.of("PARENT"))).thenReturn(false);
+
+        BotContext ctx = loader.load(BotRef.SHARED, CHAT).orElseThrow();
+
+        assertThat(ctx.memberships()).extracting(MembershipInfo::schoolId).containsExactly(2L);
+        assertThat(ctx.blockedBySchoolSettings()).isFalse();
+    }
+
+    @Test
+    void withoutBotRestrictionsNothingChanges() {
+        linked();
+        when(iam.findMembershipsByUser(new UserId(USER))).thenReturn(List.of(
+                membership(1L, "PARENT", true), membership(2L, "TEACHER", true)));
+
+        BotContext ctx = loader.load(BotRef.SHARED, CHAT).orElseThrow();
+
+        assertThat(ctx.memberships()).hasSize(2);
+        assertThat(ctx.blockedBySchoolSettings()).isFalse();
+    }
+
+    @Test
+    void userWithNoActiveMembershipsIsNotBlockedBySchoolSettings() {
+        linked();
+        when(iam.findMembershipsByUser(new UserId(USER))).thenReturn(List.of(membership(1L, "PARENT", false)));
+
+        BotContext ctx = loader.load(BotRef.SHARED, CHAT).orElseThrow();
+
+        assertThat(ctx.memberships()).isEmpty();
+        assertThat(ctx.blockedBySchoolSettings()).isFalse();
     }
 
     private static final BotRef SCHOOL_BOT = BotRef.school(3, 7);
@@ -141,5 +210,48 @@ class BotContextLoaderTest {
         assertThat(loader.load(BotRef.SHARED, 5L)).isEmpty();
         verify(links).findByChat(SCHOOL_BOT, 5L);
         verify(links).findByChat(BotRef.SHARED, 5L);
+    }
+
+    // --- ترکیب دامنه‌ی ربات (master) با تنظیمات بات مدرسه (این شاخه): اول دامنه، بعد تنظیمات ---
+
+    @Test
+    void schoolBotUserWhoseInScopeMembershipIsDisabledBySettingsIsBlocked() {
+        linkedIn(SCHOOL_BOT);
+        when(iam.findMembershipsByUser(new UserId(USER))).thenReturn(List.of(
+                membership(7L, "TEACHER", true), membership(8L, "PARENT", true)));
+        when(school.isBotAllowed(new SchoolId(7L), Set.of("TEACHER"))).thenReturn(false);
+
+        BotContext ctx = loader.load(SCHOOL_BOT, 5L).orElseThrow();
+
+        assertThat(ctx.memberships()).isEmpty();
+        assertThat(ctx.blockedBySchoolSettings()).isTrue();
+    }
+
+    @Test
+    void sharedBotUserWhoseOnlySchoolHasItsOwnBotIsNotBlockedBySettings() {
+        linkedIn(BotRef.SHARED);
+        when(bots.findActiveSchoolIds()).thenReturn(Set.of(7L));
+        when(iam.findMembershipsByUser(new UserId(USER))).thenReturn(List.of(membership(7L, "TEACHER", true)));
+        when(school.isBotAllowed(new SchoolId(7L), Set.of("TEACHER"))).thenReturn(false);
+
+        BotContext ctx = loader.load(BotRef.SHARED, 5L).orElseThrow();
+
+        assertThat(ctx.memberships()).isEmpty();
+        assertThat(ctx.blockedBySchoolSettings()).isFalse();
+    }
+
+    @Test
+    void settingsAreAppliedOnlyToMembershipsInsideTheBotScope() {
+        linkedIn(BotRef.SHARED);
+        when(bots.findActiveSchoolIds()).thenReturn(Set.of(7L));
+        when(iam.findMembershipsByUser(new UserId(USER))).thenReturn(List.of(
+                membership(7L, "TEACHER", true), membership(8L, "PARENT", true)));
+        when(school.isBotAllowed(new SchoolId(8L), Set.of("PARENT"))).thenReturn(false);
+
+        BotContext ctx = loader.load(BotRef.SHARED, 5L).orElseThrow();
+
+        assertThat(ctx.memberships()).isEmpty();
+        assertThat(ctx.blockedBySchoolSettings()).isTrue();
+        verify(school, never()).isBotAllowed(new SchoolId(7L), Set.of("TEACHER"));
     }
 }

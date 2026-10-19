@@ -153,6 +153,9 @@ class BaleFlowIntegrationTest {
     @Autowired
     private JdbcTemplate jdbcTemplate;
 
+    @Autowired
+    private org.springframework.context.ApplicationContext applicationContext;
+
     @BeforeEach
     void clearCapturedMessages() {
         SENT_MESSAGES.clear();
@@ -475,6 +478,36 @@ class BaleFlowIntegrationTest {
         assertThat(recipientChatIds).containsExactlyInAnyOrder(
                 String.valueOf(studentChatId), String.valueOf(parentChatId));
         assertThat(SENT_MESSAGES).allMatch(message -> message.contains("فاکتور جدید"));
+    }
+
+    @Test
+    void eventRemindersStillSendWhenBotIsDisabled() throws Exception {
+        long schoolId = schoolFacade.createSchool(
+                "مدرسه‌ی یادآوری بات خاموش", "Asia/Tehran", "fa-IR", SchoolLevel.ELEMENTARY, null).value();
+        schoolFacade.setBotSettings(new SchoolFacade.SchoolId(schoolId), false, java.util.Set.of());
+
+        String email = "bale-reminder-" + System.nanoTime() + "@roshdeandishe.test";
+        String phone = uniquePhoneNumber();
+        MockHttpSession session = registerAndLogin(email, "ولیِ یادآوری");
+        setPhoneNumber(session, phone);
+        IamFacade.UserId userId = iamFacade.findOrCreateUser(email, "ولیِ یادآوری");
+        iamFacade.createMembership(userId, schoolId, "PARENT");
+        long chatId = uniqueChatId();
+        linkChatToPhoneNumber(chatId, phone);
+
+        java.time.ZoneId tehran = java.time.ZoneId.of("Asia/Tehran");
+        java.time.LocalDate today = java.time.LocalDate.now(tehran);
+        jdbcTemplate.update("insert into school.calendar_entries (school_id, day, kind, title, remind_days_before) "
+                + "values (?, ?, 'EVENT', 'جشن بات خاموش', 5)", schoolId, today.plusDays(2));
+
+        Class<?> jobType = Class.forName("com.example.roshdeandishe.notification.internal.EventReminderJob");
+        Object job = applicationContext.getBean(jobType);
+        java.lang.reflect.Method runOnce = jobType.getDeclaredMethod("runOnce", java.time.Instant.class);
+        runOnce.setAccessible(true);
+        runOnce.invoke(job, today.atTime(12, 0).atZone(tehran).toInstant());
+
+        await().atMost(Duration.ofSeconds(10)).untilAsserted(() -> assertThat(SENT_MESSAGES)
+                .anyMatch(m -> chatId == Long.parseLong(extractChatId(m)) && m.contains("جشن بات خاموش")));
     }
 
     private void linkChatToPhoneNumber(long chatId, String phoneNumber) throws Exception {

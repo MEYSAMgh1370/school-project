@@ -50,8 +50,8 @@ class YearlyPlanPageRenderTest {
         assertThat(html).contains("x-data=\"yearlyPlanPage()\"").contains("برنامه‌ی سالانه");
         assertThat(html).contains("رویدادهای مدرسه و تعطیلی‌های سراسری سال تحصیلی");
         assertThat(html).contains("id=\"yearlyPlanAdd\"").contains("افزودن رویداد</button>");
-        // سرصفحه + «افزودن» داخل modal + «ذخیره» در modal بازه و در modal گیرندگان یادآوری (اقدامِ اصلیِ صفحه فقط یکی است)
-        assertThat(count(html, "button is-link")).isEqualTo(4);
+        // سرصفحه + «افزودن» داخل modal + «ذخیره» در modal بازه (modal گیرندگان به /settings رفته؛ اقدامِ اصلیِ صفحه فقط یکی است)
+        assertThat(count(html, "button is-link")).isEqualTo(3);
         assertThat(html.indexOf("id=\"yearlyPlanAdd\"")).isLessThan(html.indexOf("id=\"yearlyPlanYearLine\""));
         assertThat(html.indexOf("id=\"yearlyPlanYearLine\"")).isLessThan(html.indexOf("id=\"yearlyPlanList\""));
         // انتخاب‌گرِ سال فقط با بیش از یک سال
@@ -62,7 +62,7 @@ class YearlyPlanPageRenderTest {
     void bothEmptyStatesTeachAndPlatformHolidaysAreReadOnlyTaggedRows() {
         String html = render();
 
-        assertThat(html).contains("برای این مدرسه هنوز سال تحصیلی جاری انتخاب نشده است.").contains("href=\"/academic-year\"");
+        assertThat(html).contains("برای این مدرسه هنوز سال تحصیلی جاری انتخاب نشده است.").contains("href=\"/settings\"").doesNotContain("href=\"/academic-year\"");
         assertThat(html).contains("هفته‌های امتحان، مراسم، جلسه‌های اولیا و اردوها").contains("«افزودن رویداد»")
                 .contains("تعطیلی‌های سراسری هم خودکار");
         assertThat(html).contains("تعطیلی سراسری</span>").contains("item.source === 'PLATFORM'");
@@ -143,7 +143,7 @@ class YearlyPlanPageRenderTest {
     }
 
     @Test
-    void theAddFormHasAnOptionalReminderChoiceAndTheRolesModalIsSecondary() {
+    void theAddFormHasAnOptionalReminderChoiceAndTheRecipientsLiveInSettings() {
         String html = render();
 
         // انتخاب «یادآوری» در فرم افزودن، با راهنما
@@ -151,13 +151,12 @@ class YearlyPlanPageRenderTest {
                 "id=\"yearlyPlanRemindHelp\"", "اعضای انتخاب‌شده در پیام بله و پیشخوان یادآوری می‌گیرند.");
         // برچسبِ زمانِ یادآوری روی ردیف‌های مدرسه
         assertThat(html).contains("x-text=\"remindTag(item)\"");
-        // دکمه‌ی فرعی (نه اقدامِ اصلی) و modal گیرندگان با checkboxِ هر نقش، یادداشتِ «همه» و خطای ورودی
-        assertThat(html).contains("class=\"button is-light\" type=\"button\" id=\"yearlyPlanRoles\"")
-                .contains("گیرندگان یادآوری</button>");
-        assertThat(html).contains("x-ref=\"rolesModal\"", "id=\"yearlyPlanRolesTitle\"", "type=\"checkbox\"",
-                "id=\"yearlyPlanRolesNote\"", "id=\"yearlyPlanRolesError\"", "id=\"yearlyPlanRolesSubmit\"",
-                "تا وقتی نقش‌ها را انتخاب نکنید، همه‌ی اعضای مدرسه یادآوری می‌گیرند.");
-        // هر input یک label واقعی دارد و modal به‌جای confirm/alert مرورگر کار می‌کند
-        assertThat(html).contains("@keydown.tab=\"window.ModalFocus.trap($event, $el)\"");
+        // دکمه و modal گیرندگان رفته‌اند؛ فقط یک پیوند به تنظیمات مدرسه مانده
+        assertThat(html).doesNotContain("id=\"yearlyPlanRoles\"").doesNotContain("rolesModal")
+                .doesNotContain("yearlyPlanRolesTitle").doesNotContain("yearlyPlanRolesNote")
+                .doesNotContain("yearlyPlanRolesError").doesNotContain("yearlyPlanRolesSubmit")
+                .doesNotContain("openRoles").doesNotContain("submitRoles");
+        assertThat(html).contains("id=\"yearlyPlanRolesLink\"").contains("href=\"/settings\"")
+                .contains("تنظیم گیرندگان یادآوری در تنظیمات مدرسه");
     }
 }

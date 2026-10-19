@@ -18,7 +18,15 @@
                 <template x-if="!blocked">
                     <div>
                         <div class="box">
-                            <h2 class="title is-6">انتخاب کلاس و بازه‌ی تحصیلی</h2>
+                            <h2 class="title is-6">انتخاب کلاس و نوبت</h2>
+                            <%-- دفتر نمرات با سالِ جاریِ مدرسه کار می‌کند؛ سال را مدیر در «تنظیمات مدرسه» تعیین می‌کند --%>
+                            <p class="help mb-3" id="gradesCurrentYear" x-cloak x-show="filter.academicYear">
+                                سال تحصیلی جاری: <span dir="ltr" x-text="Calendar.digits(filter.academicYear)"></span>
+                            </p>
+                            <div class="notification is-warning is-light" id="gradesNoYear" x-cloak x-show="noYear">
+                                برای این مدرسه هنوز سال تحصیلی جاری انتخاب نشده است. مدیر مدرسه می‌تواند آن را در
+                                <a href="/settings">تنظیمات مدرسه</a> تعیین کند.
+                            </div>
                             <form @submit.prevent="load">
                                 <div class="field is-grouped is-grouped-multiline">
                                     <div class="control is-expanded">
@@ -46,21 +54,6 @@
                                                 </template>
                                             </select>
                                         </div>
-                                    </div>
-                                    <div class="control">
-                                        <label class="label" for="gradeYear">سال تحصیلی</label>
-                                        <%-- مدیر هر سالِ فهرست را می‌بیند؛ بقیه فقط سالِ جاری؛ بدونِ هیچ سالی (مدرسه سال
-                                             جاری ندارد و کاربر مدیر نیست) فیلدِ متنی می‌ماند و سرور سالِ ناشناخته را رد می‌کند --%>
-                                        <div class="select is-fullwidth" x-cloak x-show="years.length > 0">
-                                            <select id="gradeYear" dir="ltr" x-model="filter.academicYear" :disabled="years.length === 0">
-                                                <template x-for="year in years" :key="year">
-                                                    <option :value="year" x-text="Calendar.digits(year)"></option>
-                                                </template>
-                                            </select>
-                                        </div>
-                                        <input class="input" dir="ltr" id="gradeYearText" type="text" aria-label="سال تحصیلی"
-                                               placeholder="۱۴۰۴-۱۴۰۵" x-model="filter.academicYear"
-                                               x-cloak x-show="years.length === 0" :required="years.length === 0">
                                     </div>
                                     <div class="control">
                                         <label class="label" for="gradeTerm">نوبت</label>

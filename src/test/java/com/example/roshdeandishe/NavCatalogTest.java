@@ -66,7 +66,7 @@ class NavCatalogTest {
     void groupIsVisibleForTheUnionOfItsLinkRoles() {
         Group school = NavCatalog.groups().stream().filter(g -> g.id().equals("school")).findFirst().orElseThrow();
         assertThat(school.visibleWhen("selectedRole"))
-                .isEqualTo("['SCHOOL_ADMIN', 'TEACHER'].includes(selectedRole)");
+                .isEqualTo("['SCHOOL_ADMIN', 'TEACHER', 'FINANCE_ADMIN'].includes(selectedRole)");
     }
 
     @Test
@@ -190,6 +190,29 @@ class NavCatalogTest {
         assertThat(NavCatalog.shortcuts()).doesNotContain(audit);
     }
 
+    @Test
+    void schoolSettingsReplacesTheAcademicYearLinkForAdminAndFinanceAdminAndAnyOneOfFourPermissions() {
+        assertThat(allLinks()).noneMatch(l -> l.href().equals("/academic-year"));
+        Link settings = linkOf("/settings");
+
+        assertThat(settings.label()).isEqualTo("تنظیمات مدرسه");
+        assertThat(settings.description()).isEqualTo("سال تحصیلی، اقساط، یادآوری‌ها و بات مدرسه");
+        assertThat(groupOf("/settings")).isEqualTo("school");
+        assertThat(settings.roles()).containsExactly("SCHOOL_ADMIN", "FINANCE_ADMIN");
+        assertThat(settings.roles()).doesNotContain("STUDENT", "TEACHER", "PARENT");
+        // کارتِ «دسترسی سریع» فقط برای مدیر (مدیر مالی همچنان کارتِ «امور مالی» دارد)
+        assertThat(settings.shortcutRoles()).containsExactly("SCHOOL_ADMIN");
+        // نقشِ سفارشی: هر یکی از چهار مجوز کافی است (هر کدام یک مجموعه‌ی جدا و «یا» بین آن‌ها)
+        assertThat(settings.permissionSets()).containsExactly(List.of("ACADEMIC_YEAR_MANAGE"),
+                List.of("FINANCE_MANAGE"), List.of("YEARLY_PLAN_MANAGE"), List.of("SCHOOL_SETTINGS_MANAGE"));
+        assertThat(settings.visibleWhen("role", "perms")).isEqualTo(
+                "['SCHOOL_ADMIN', 'FINANCE_ADMIN'].includes(role) || ['ACADEMIC_YEAR_MANAGE'].every(p => perms.includes(p))"
+                        + " || ['FINANCE_MANAGE'].every(p => perms.includes(p))"
+                        + " || ['YEARLY_PLAN_MANAGE'].every(p => perms.includes(p))"
+                        + " || ['SCHOOL_SETTINGS_MANAGE'].every(p => perms.includes(p))");
+        assertThat(NavCatalog.shortcuts()).contains(settings);
+    }
+
     private static Link linkOf(String href) {
         return allLinks().stream().filter(l -> l.href().equals(href)).findFirst().orElseThrow();
     }
@@ -226,9 +249,9 @@ class NavCatalogTest {
         Group school = NavCatalog.groups().stream().filter(g -> g.id().equals("school")).findFirst().orElseThrow();
 
         assertThat(school.visibleWhen("role", "perms"))
-                .startsWith("['SCHOOL_ADMIN', 'TEACHER'].includes(role) || [")
+                .startsWith("['SCHOOL_ADMIN', 'TEACHER', 'FINANCE_ADMIN'].includes(role) || [")
                 .contains("['MEMBERSHIP_MANAGE'].every(", "['STUDENT_ENROLL', 'STUDENT_VIEW'].every(",
-                        "['ROLE_MANAGE'].every(", "['ACADEMIC_YEAR_MANAGE'].every(")
+                        "['ROLE_MANAGE'].every(", "['ACADEMIC_YEAR_MANAGE'].every(", "['SCHOOL_SETTINGS_MANAGE'].every(")
                 .endsWith(".every(p => perms.includes(p))");
     }
 

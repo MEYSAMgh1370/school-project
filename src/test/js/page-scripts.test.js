@@ -112,3 +112,31 @@ test('a page that uses a shared helper loads the file that defines it', () => {
         }
     }
 });
+
+// برش‌دادنِ انتخابگرهای سال (school-settings): /classes و /grades با سالِ جاریِ مدرسه کار می‌کنند و سال را
+// کاربر انتخاب نمی‌کند. متنِ اسکریپت بررسی می‌شود تا برگشتِ بی‌صدای انتخابگر یا state مرده دیده شود.
+const staticSource = (name) => stripComments(fs.readFileSync(path.join(STATIC_DIR, 'js', name), 'utf8'), 'js');
+
+test('classes.js has no year state and creates a class without sending academicYear', () => {
+    const code = staticSource('classes.js');
+    assert.ok(!/academicYear\s*:/.test(code), 'classes.js must not send or keep an academicYear field');
+    assert.ok(!/\byears\b|yearFilter|currentYear/.test(code), 'classes.js still has year-selector state');
+    assert.ok(!/\/academic-year/.test(code), 'classes.js must not fetch the year list any more');
+    assert.ok(/yearLabel\(/.test(code), 'rows keep the year label');
+});
+
+test('grades.js has no year list, no year selector watcher and no per-year class reload', () => {
+    const code = staticSource('grades.js');
+    assert.ok(!/\byears\b|reloadClassesForYear|\$watch\('filter\.academicYear'/.test(code), 'grades.js still has year-selector logic');
+    assert.ok(!/\/api\/admin\/schools\/\$\{schoolId\}\/academic-year/.test(code), 'grades.js must read only the current year');
+});
+
+test('the removed year pages and scripts are gone and nothing links to the old page', () => {
+    assert.ok(!fs.existsSync(path.join(STATIC_DIR, 'js', 'academic-year.js')));
+    assert.ok(!fs.existsSync(path.join(JTE_DIR, 'academic-year.jte')));
+    for (const file of walk(JTE_DIR).filter((f) => f.endsWith('.jte'))) {
+        const source = stripComments(fs.readFileSync(file, 'utf8'), 'jte');
+        assert.ok(!/href="\/academic-year"/.test(source), `${path.relative(JTE_DIR, file)} links to /academic-year`);
+        assert.ok(!/academic-year\.js/.test(source), `${path.relative(JTE_DIR, file)} loads academic-year.js`);
+    }
+});

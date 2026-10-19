@@ -94,6 +94,8 @@ Rules:
    - **shared bot:** drop memberships of schools that have an `ACTIVE` bot.
 
    The menu, the answers and the callback re-validation all use the filtered list. No answer class changes.
+
+   The school bot setting of `openspec/changes/school-settings.md` (on/off and allowed roles, page `/settings`) is applied after this filter, on the memberships it leaves (see "Interplay with per-school bots" there).
 6. **Linking in a school bot.** The existing checks stay, in this order: private chat, the contact is the sender's own, the phone matches a user. A new last check follows: the user is an active member of the bot's school, or a platform administrator. If not, the user gets `BotTexts.NOT_A_MEMBER` («شما عضو این مدرسه نیستید.») and `bale_links` is untouched. A linked platform administrator sees the welcome and help only, because of the scope filter.
 7. **Last update time.** `last_update_at` is written at most once a minute per bot.
 
