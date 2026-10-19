@@ -51,11 +51,12 @@ class BotContextLoader {
             return Optional.empty();
         }
 
+        // ۱) دامنه‌ی ربات (کدام ربات، ربات این chat است) - قبل از تنظیمات مدرسه.
         // Make schoolBots result tolerant (may be null from mocks). Treat null as empty set.
         Set<Long> schoolsWithActiveBot = bot.isShared()
                 ? Optional.ofNullable(schoolBots.findActiveSchoolIds()).orElse(Set.of())
                 : Set.of();
-        List<MembershipInfo> memberships = iamFacade.findMembershipsByUser(userId).stream()
+        List<MembershipInfo> inScope = iamFacade.findMembershipsByUser(userId).stream()
                 .filter(MembershipInfo::active)
                 .filter(m -> bot.isShared()
                         ? !schoolsWithActiveBot.contains(m.schoolId())
