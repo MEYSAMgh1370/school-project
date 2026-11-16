@@ -71,6 +71,14 @@ class PseudonymizerTest {
     }
 
     @Test
+    void arabicVowelMarksInsideNameAreRemoved() {
+        assertThat(Pseudonymizer.pseudonymize("نمره‌های عَلِی", KIDS)).isEqualTo("نمره های [فرزند_۱]");
+        assertThat(Pseudonymizer.pseudonymize("نمره‌های عَلی", KIDS)).isEqualTo("نمره های [فرزند_۱]");
+        List<Pseudonymizer.NamedLabel> names = List.of(new Pseudonymizer.NamedLabel("مَریَم احمدی", "[فرزند_۱]"));
+        assertThat(Pseudonymizer.pseudonymize("مریم امروز رفت؟", names)).isEqualTo("[فرزند_۱] امروز رفت؟");
+    }
+
+    @Test
     void invisibleFormatCharsInsideWordDoNotBreakMatch() {
         for (String c : List.of("\u200D", "\u200E", "\u200F", "\uFEFF", "\u202A", "\u202B", "\u202C",
                 "\u202D", "\u202E", "\u2066", "\u2067", "\u2068", "\u2069")) {
