@@ -39,9 +39,12 @@ final class Pseudonymizer {
     /** هر فاصله‌ی یونیکدی (NBSP، U+202F، فاصله‌ی باریک، فاصله‌ی CJK و …) و فاصله‌ی صفرعرض. */
     private static final Pattern WHITESPACE = Pattern.compile("[\\s\u200B]+", Pattern.UNICODE_CHARACTER_CLASS);
 
-    /** کشیده و نویسه‌های نامرئیِ اتصال/جهت که درونِ واژه می‌نشینند؛ حذف می‌شوند، نه فاصله. */
-    private static final Pattern INVISIBLE =
-            Pattern.compile("[\u0640\u200D\u200E\u200F\uFEFF\u202A-\u202E\u2066-\u2069]");
+    /**
+     * کشیده، نویسه‌های نامرئیِ اتصال/جهت و علامت‌های اعرابِ عربی (فتحه، کسره، ضمه، سکون، شدّه، تنوین، الفِ
+     * خنجری) که درونِ واژه می‌نشینند؛ حذف می‌شوند، نه فاصله.
+     */
+    private static final Pattern INVISIBLE = Pattern.compile(
+            "[\u0610-\u061A\u064B-\u065F\u0670\u0640\u200D\u200E\u200F\uFEFF\u202A-\u202E\u2066-\u2069]");
 
     private Pseudonymizer() {
     }
